@@ -1,9 +1,9 @@
 import type { UserRole } from '@/generated/prisma/enums';
 
-let currentUser: { id: string; role?: UserRole } | null = null;
+let currentUser: { id: string; role?: UserRole; remember: boolean } | null = null;
 
-export function signInAs(userId: number, role?: UserRole) {
-  currentUser = { id: String(userId), role };
+export function signInAs(userId: number, role?: UserRole, { remember = false } = {}) {
+  currentUser = { id: String(userId), role, remember };
 }
 
 export function signOut() {
