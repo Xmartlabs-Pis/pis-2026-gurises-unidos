@@ -3,6 +3,8 @@ import { prismaMock } from '../../mocks/prisma';
 import { PUBLIC_PROJECTS_PAGE_SIZE, getPublicProjectsPage } from '@/lib/projects/public-projects';
 import { beneficiaryValueRows } from '../../mocks/beneficiary-values';
 
+const TOPIC_ID = 2;
+
 const ROW = {
   id: 1,
   name: 'Centro comunitario',
@@ -34,7 +36,7 @@ describe('getPublicProjectsPage', () => {
   test('maps rows to public projects and reports more pages', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, '1');
+    const result = await getPublicProjectsPage(2025, '1', TOPIC_ID);
 
     expect(result).toEqual({
       items: [
@@ -47,15 +49,26 @@ describe('getPublicProjectsPage', () => {
           reach: 15,
         },
       ],
+      total: PUBLIC_PROJECTS_PAGE_SIZE * 2,
       page: 1,
       hasMore: true,
+    });
+  });
+
+  test('filters projects by topic', async () => {
+    mockProjects(1);
+
+    await getPublicProjectsPage(2025, '1', TOPIC_ID);
+
+    expect(prismaMock.project.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ topicId: TOPIC_ID }),
     });
   });
 
   test('reports no more pages on the last page', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, '2');
+    const result = await getPublicProjectsPage(2025, '2', TOPIC_ID);
 
     expect(result).toMatchObject({ page: 2, hasMore: false });
   });
@@ -63,7 +76,7 @@ describe('getPublicProjectsPage', () => {
   test('returns no items when the page is past the end', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, '9');
+    const result = await getPublicProjectsPage(2025, '9', TOPIC_ID);
 
     expect(result).toMatchObject({ items: [], hasMore: false });
   });
@@ -71,7 +84,7 @@ describe('getPublicProjectsPage', () => {
   test('falls back to the first page for an invalid page', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, 'abc');
+    const result = await getPublicProjectsPage(2025, 'abc', TOPIC_ID);
 
     expect(result.page).toBe(1);
   });

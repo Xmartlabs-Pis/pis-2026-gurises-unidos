@@ -2,9 +2,10 @@ import { Button } from '@/components/ui/button';
 import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getReferenceYear } from '@/lib/metrics/queries';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
-import { getPublicProjectsPage } from '@/lib/projects/public-projects';
 import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
-import { TopicCarousel } from '@/components/projects/public-category-list';
+import { TopicCarousels } from '@/components/projects/topic-carousels';
+import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
+import { Suspense } from 'react';
 
 const LEVELS = [
   {
@@ -48,14 +49,12 @@ const PARTNERS = [
 
 export default async function Home() {
   const year = await getReferenceYear();
-  const [values, previousValues, settings, departmentBeneficiaries, firstProjectsPage] =
-    await Promise.all([
-      getMetricValues(year),
-      getMetricValues(year - 1),
-      getMetricSettings(),
-      getDepartmentBeneficiaries(year),
-      getPublicProjectsPage(year, '1'),
-    ]);
+  const [values, previousValues, settings, departmentBeneficiaries] = await Promise.all([
+    getMetricValues(year),
+    getMetricValues(year - 1),
+    getMetricSettings(),
+    getDepartmentBeneficiaries(year),
+  ]);
   const departmentBubbles = departmentBeneficiaries
     .slice(0, MAX_DEPARTMENT_BUBBLES)
     .map(({ department }) => department);
@@ -119,7 +118,9 @@ export default async function Home() {
             Organizados por tematica
           </p>
         </div>
-        <TopicCarousel topic="Educacion" projects={firstProjectsPage.items} />
+        <Suspense fallback={<TopicCarouselSkeleton />}>
+          <TopicCarousels year={year} />
+        </Suspense>
       </section>
       <section className="w-full">
         <div className="mx-auto flex w-full flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
