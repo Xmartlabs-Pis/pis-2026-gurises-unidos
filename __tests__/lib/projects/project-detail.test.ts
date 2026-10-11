@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prismaMock } from '../../mocks/prisma';
-import type { BeneficiaryCounts } from '@/lib/project-display';
+import { FIRST_PROJECT_YEAR, type BeneficiaryCounts } from '@/lib/project-display';
 import { getProjectDetail } from '@/lib/projects/detail';
 import { beneficiaryValueRows } from '../../mocks/beneficiary-values';
 
@@ -169,7 +169,18 @@ describe('getProjectDetail', () => {
 
     expect(prismaMock.project.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        select: expect.objectContaining({ coverPhoto: true, endYear: true }),
+        select: expect.objectContaining({
+          coverPhoto: true,
+          endYear: true,
+          projectBeneficiaries: {
+            where: {
+              year: { gte: FIRST_PROJECT_YEAR, lte: 2026 },
+              values: { some: { value: { gt: 0 } } },
+            },
+            orderBy: { year: 'desc' },
+            select: { year: true },
+          },
+        }),
       })
     );
     expect(result.data.distribution).toHaveLength(7);
@@ -276,7 +287,7 @@ describe('getProjectDetail', () => {
       data: {
         selectedYear: 2025,
         comparisonYear: 2024,
-        availableYears: [2026, 2025],
+        availableYears: [2025],
         metrics: {
           childrenReached: {
             value: 100,
@@ -287,15 +298,15 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('offers a requested year without data in the year options', async () => {
+  it('falls back to the latest recorded year when the requested year has no data', async () => {
     const result = await getProjectDetail('12', '2015');
 
     expect(result).toMatchObject({
       status: 'success',
       data: {
-        selectedYear: 2015,
-        hasData: false,
-        availableYears: [2026, 2025, 2015],
+        selectedYear: 2026,
+        hasData: true,
+        availableYears: [2026, 2025],
       },
     });
   });
@@ -341,31 +352,6 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('keeps a missing selected year instead of substituting data', async () => {
-    const result = await getProjectDetail('12', '2024');
-
-    expect(result).toMatchObject({
-      status: 'success',
-      data: {
-        selectedYear: 2024,
-        hasData: false,
-        metrics: {
-          childrenReached: { value: null },
-          annualGrowth: null,
-        },
-        institutionalContribution: {
-          activeProjects: { projectCount: 1, totalCount: 10 },
-        },
-      },
-    });
-
-    if (result.status !== 'success') {
-      throw new Error('Expected success');
-    }
-
-    expect(result.data.distribution.every(({ value }) => value === null)).toBe(true);
-  });
-
   it('uses the current year for a project without records', async () => {
     prismaMock.project.findFirst.mockResolvedValue({
       ...PROJECT,
@@ -384,7 +370,11 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('preserves a recorded year containing zeros', async () => {
+  it('treats a recorded year containing only zeros as empty', async () => {
+    prismaMock.project.findFirst.mockResolvedValue({
+      ...PROJECT,
+      projectBeneficiaries: [],
+    });
     prismaMock.projectBeneficiary.findUnique.mockResolvedValue({
       values: beneficiaryValueRows(createCounts()),
     });
@@ -393,17 +383,18 @@ describe('getProjectDetail', () => {
     expect(await getProjectDetail('12', '2026')).toMatchObject({
       status: 'success',
       data: {
-        hasData: true,
+        availableYears: [2026],
+        hasData: false,
+        hasHistoricalData: false,
         metrics: {
           childrenReached: {
-            value: 0,
-            absoluteChange: 0,
-            percentageChange: null,
-            trend: 'stable',
+            value: null,
+            absoluteChange: null,
+            trend: null,
           },
         },
         institutionalContribution: {
-          nationalReach: { nationalValue: 0, percentage: null },
+          nationalReach: { projectValue: null, nationalValue: 0, percentage: null },
           activeProjects: { projectCount: 1 },
         },
       },
