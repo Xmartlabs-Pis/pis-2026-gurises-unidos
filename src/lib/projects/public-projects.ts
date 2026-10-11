@@ -14,16 +14,19 @@ export type PublicProject = {
 
 export type PublicProjectsPage = {
   items: PublicProject[];
+  total: number;
   page: number;
   hasMore: boolean;
 };
 
 export async function getPublicProjectsPage(
   year: number,
-  rawPage: string | undefined
+  rawPage: string | undefined,
+  topicId: number
 ): Promise<PublicProjectsPage> {
   const filters = parseProjectFilters({
     beneficiaryYear: String(year),
+    topicId: String(topicId),
     page: rawPage,
     pageSize: String(PUBLIC_PROJECTS_PAGE_SIZE),
   });
@@ -41,6 +44,7 @@ export async function getPublicProjectsPage(
           coverPhoto: project.coverPhoto,
           reach: project.beneficiaries.reduce((sum, record) => sum + record.total, 0),
         })),
+    total: result.total,
     page: result.page,
     hasMore: !outOfRange && result.page < result.totalPages,
   };
