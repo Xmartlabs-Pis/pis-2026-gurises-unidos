@@ -27,6 +27,7 @@ export async function loadProject(id: number) {
   const project = await prisma.project.findUniqueOrThrow({
     where: { id },
     include: {
+      strategicLines: { select: { id: true } },
       projectBeneficiaries: {
         orderBy: { year: 'asc' },
         include: BENEFICIARY_VALUES_SELECT,
