@@ -30,6 +30,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
     include: {
+      strategicLines: { select: { id: true } },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
         select: { id: true, year: true, ...BENEFICIARY_VALUES_SELECT },
@@ -44,49 +45,61 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   if (!canEditProject(user, project)) return <ErrorScreen code={403} />;
   const currentYear = new Date().getFullYear();
 
-  const [coordinators, departments, history, topics, beneficiaryCategories, fieldLabels] =
-    await Promise.all([
-      prisma.user.findMany({
-        where: {
-          OR: [
-            { role: 'coordinator', status: 'active', deletedAt: null },
-            { id: project.leadCoordinatorId },
-          ],
-        },
-        orderBy: { firstName: 'asc' },
-        select: { id: true, firstName: true, lastName: true },
-      }),
-      prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
-      prisma.auditLog.findMany({
-        where: {
-          OR: [
-            { entity: 'project', entityId: project.id },
-            {
-              entity: 'beneficiary',
-              entityId: { in: project.projectBeneficiaries.map((b) => b.id) },
-            },
-          ],
-        },
-        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-        select: {
-          id: true,
-          action: true,
-          entity: true,
-          details: true,
-          occurredAt: true,
-          author: { select: { firstName: true, lastName: true } },
-        },
-      }),
-      prisma.topic.findMany({
-        where: {
-          OR: [{ isActive: true }, ...(project.topicId !== null ? [{ id: project.topicId }] : [])],
-        },
-        orderBy: { name: 'asc' },
-        select: { id: true, name: true },
-      }),
-      getActiveBeneficiaryCategories(),
-      getBeneficiaryCategoryLabels(),
-    ]);
+  const [
+    coordinators,
+    departments,
+    history,
+    topics,
+    strategicLines,
+    beneficiaryCategories,
+    fieldLabels,
+  ] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        OR: [
+          { role: 'coordinator', status: 'active', deletedAt: null },
+          { id: project.leadCoordinatorId },
+        ],
+      },
+      orderBy: { firstName: 'asc' },
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.auditLog.findMany({
+      where: {
+        OR: [
+          { entity: 'project', entityId: project.id },
+          {
+            entity: 'beneficiary',
+            entityId: { in: project.projectBeneficiaries.map((b) => b.id) },
+          },
+        ],
+      },
+      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        details: true,
+        occurredAt: true,
+        author: { select: { firstName: true, lastName: true } },
+      },
+    }),
+    prisma.topic.findMany({
+      where: {
+        OR: [{ isActive: true }, ...(project.topicId !== null ? [{ id: project.topicId }] : [])],
+      },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+    prisma.strategicLine.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+    getActiveBeneficiaryCategories(),
+    getBeneficiaryCategoryLabels(),
+  ]);
 
   const beneficiaryRecords = project.projectBeneficiaries.map(({ year, values }) => ({
     year,
@@ -128,6 +141,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
           beneficiaryCategories
         )}
         beneficiaryRecords={beneficiaryRecords}
+        strategicLines={strategicLines}
         beneficiaryCategories={beneficiaryCategories}
         topics={topics}
         currentYear={currentYear}

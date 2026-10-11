@@ -80,10 +80,10 @@ export function BeneficiariesSection({
       const counts = Object.fromEntries(
         beneficiaryCategories.map(({ key }) => [key, String(record?.[key] ?? 0)])
       );
-      const nextCounts: Partial<Record<string, string | null>> = {
+      const nextCounts = {
         ...counts,
         ...beneficiaryDrafts.current[beneficiaryYear],
-      };
+      } as Partial<Record<string, string | null>>;
       for (const { key } of beneficiaryCategories) {
         setValue(key, String(nextCounts[key] ?? '0'), { shouldValidate: true });
       }

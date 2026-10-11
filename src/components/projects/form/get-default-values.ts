@@ -16,6 +16,7 @@ export function getDefaultValues(
     endYear: '',
     leadCoordinatorId: '',
     departmentId: '',
+    strategicLineIds: [],
     zone: 'city',
     localityNeighborhood: '',
     generalObjective: '',

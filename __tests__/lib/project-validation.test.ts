@@ -121,14 +121,25 @@ it('projectSchema accepts an end year equal to or after the start year, or none 
 it('validates a custom beneficiary category and splits it into the counts', () => {
   const keys = [...BENEFICIARY_CATEGORY_KEYS, 'customVolunteers'];
   const schema = buildProjectFormSchema(keys);
-  const input = { ...BASE_PROJECT, topicId: '1', year: '2021', customVolunteers: '12' };
+  const input = {
+    ...BASE_PROJECT,
+    topicId: '1',
+    year: '2021',
+    strategicLineIds: ['1'],
+    customVolunteers: '12',
+  };
 
   const negative = schema.safeParse({ ...input, customVolunteers: '-1' });
   expect(negative.error?.flatten().fieldErrors).toEqual({
     customVolunteers: ['No puede ser negativo'],
   });
 
-  const { projectData, beneficiaryData } = splitProjectFormData(schema.parse(input), keys);
+  const { projectData, beneficiaryData, strategicLineIds } = splitProjectFormData(
+    schema.parse(input),
+    keys
+  );
+  expect(strategicLineIds).toEqual([1]);
+  expect(projectData).not.toHaveProperty('strategicLineIds');
   expect(beneficiaryData).toEqual({
     year: 2021,
     counts: {
@@ -166,3 +177,31 @@ it.each(['', undefined, null, 'invalid'])(
     ]);
   }
 );
+
+it('requires between one and three unique strategic lines', () => {
+  const schema = buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS);
+  const input = {
+    ...BASE_PROJECT,
+    status: 'active',
+    endYear: '',
+    topicId: '1',
+    year: '2020',
+  };
+
+  expect(schema.parse({ ...input, strategicLineIds: ['7'] }).strategicLineIds).toEqual([7]);
+  expect(schema.parse({ ...input, strategicLineIds: ['7', '8', '9'] }).strategicLineIds).toEqual([
+    7, 8, 9,
+  ]);
+  expect(
+    schema.safeParse({ ...input, strategicLineIds: [] }).error?.flatten().fieldErrors
+      .strategicLineIds
+  ).toEqual(['Seleccioná al menos una línea estratégica']);
+  expect(
+    schema.safeParse({ ...input, strategicLineIds: ['1', '2', '3', '4'] }).error?.flatten()
+      .fieldErrors.strategicLineIds
+  ).toEqual(['Podés seleccionar hasta 3 líneas estratégicas']);
+  expect(
+    schema.safeParse({ ...input, strategicLineIds: ['7', '7'] }).error?.flatten().fieldErrors
+      .strategicLineIds
+  ).toEqual(['No repitas líneas estratégicas']);
+});
