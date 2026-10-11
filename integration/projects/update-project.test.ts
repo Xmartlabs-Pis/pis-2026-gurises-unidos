@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { updateProject } from '@/app/actions/projects';
+import { createProject, updateProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
 import { toBeneficiaryValuesCreate } from '@/lib/project-display';
 import { loadSeedData, type SeedData } from '../fixtures';
@@ -16,6 +16,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     name: 'Project under edit',
     status: 'active',
     intensity: 'high',
+    counterpartyType: 'publicSector',
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
     departmentId: String(seed.departmentIds[0]),
@@ -48,6 +49,7 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       name: 'Project under edit',
       status: 'active',
       intensity: 'high',
+      counterpartyType: 'publicSector',
       startYear: 2020,
       leadCoordinatorId,
       departmentId: seed.departmentIds[0],
@@ -94,6 +96,47 @@ afterEach(async () => {
 });
 
 describe('updateProject (integration)', () => {
+  test.each(['admin', 'coordinator'] as const)(
+    'persists counterparty changes and audits only the changed field as %s',
+    async (role) => {
+      const projectId = await createProjectFixture();
+      signInAs(role === 'admin' ? seed.adminId : seed.coordinatorId);
+      for (const counterpartyType of [
+        'privateSector',
+        'internationalCooperation',
+        'publicSector',
+      ] as const) {
+        await expectRedirectToProject(
+          updateProject(projectId, {}, buildFormData({ counterpartyType })),
+          projectId
+        );
+        expect((await loadProject(projectId)).counterpartyType).toBe(counterpartyType);
+      }
+      expect(await auditLogsFor(projectId)).toEqual(
+        Array.from({ length: 3 }, () =>
+          expect.objectContaining({
+            entity: 'project',
+            action: 'update',
+            details: { changedFields: ['counterpartyType'] },
+          })
+        )
+      );
+    }
+  );
+
+  test.each(['', 'invalid'])(
+    'rejects counterparty %s without changing stored data',
+    async (counterpartyType) => {
+      const projectId = await createProjectFixture();
+      signInAs(seed.adminId);
+      const before = await loadProject(projectId);
+      const result = await updateProject(projectId, {}, buildFormData({ counterpartyType }));
+      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+      expect(await loadProject(projectId)).toEqual(before);
+      expect(await auditLogsFor(projectId)).toEqual([]);
+    }
+  );
+
   test('rejects closing before stored beneficiary years without changing any data', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
@@ -402,4 +445,20 @@ describe('updateProject (integration)', () => {
     ).rejects.toThrow(/^NEXT_REDIRECT:\/login$/);
     expect(await loadProject(projectId)).toEqual(before);
   });
+});
+
+describe('createProject counterparty (integration)', () => {
+  test.each(['publicSector', 'privateSector', 'internationalCooperation'])(
+    'persists counterparty %s when creating a project',
+    async (counterpartyType) => {
+      signInAs(seed.adminId);
+      const name = `Counterparty ${counterpartyType}`;
+      await expect(createProject({}, buildFormData({ name, counterpartyType }))).rejects.toThrow(
+        /^NEXT_REDIRECT:\/dashboard\/projects\/\d+$/
+      );
+      const project = await prisma.project.findFirstOrThrow({ where: { name } });
+      createdProjectIds.push(project.id);
+      expect((await loadProject(project.id)).counterpartyType).toBe(counterpartyType);
+    }
+  );
 });

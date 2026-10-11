@@ -11,6 +11,7 @@ export function getDefaultValues(
     status: 'active',
     topicId: '',
     intensity: 'high',
+    counterpartyType: '',
     startYear: String(currentYear),
     endYear: '',
     leadCoordinatorId: '',

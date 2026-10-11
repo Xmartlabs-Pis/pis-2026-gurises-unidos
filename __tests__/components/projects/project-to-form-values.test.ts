@@ -7,6 +7,7 @@ const PROJECT = {
   name: 'Project',
   status: 'active' as const,
   intensity: 'high' as const,
+  counterpartyType: 'publicSector' as const,
   startYear: 2024,
   endYear: null,
   leadCoordinatorId: 2,
@@ -66,3 +67,15 @@ it('maps all counts from the requested year without mutating the project', () =>
   });
   expect(PROJECT).toEqual(original);
 });
+
+it.each(['publicSector', 'privateSector', 'internationalCooperation'] as const)(
+  'loads the stored counterparty into form values: %s',
+  (counterpartyType) => {
+    const values = projectToFormValues(
+      { ...PROJECT, counterpartyType },
+      2026,
+      BENEFICIARY_CATEGORY_OPTIONS
+    );
+    expect(values.counterpartyType).toBe(counterpartyType);
+  }
+);

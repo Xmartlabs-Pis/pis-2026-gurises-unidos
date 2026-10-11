@@ -36,6 +36,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
+        counterpartyType: 'publicSector',
         name: 'Existing project',
         topicId: '1',
         status: 'active',
@@ -120,7 +121,10 @@ it('shows and submits the selected project placeholder during creation', () => {
       currentYear={2026}
       coordinators={[]}
       departments={[]}
-      initialValues={{ coverPhotoUrl: '/images/project-placeholders/2.webp' }}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        coverPhotoUrl: '/images/project-placeholders/2.webp',
+      }}
       submitAction={vi.fn()}
     />
   );
@@ -146,6 +150,7 @@ it('sends one selected topic and preserves it after a failed save', async () => 
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
+        counterpartyType: 'publicSector',
         name: 'Project',
         leadCoordinatorId: '2',
         departmentId: '3',
@@ -179,6 +184,7 @@ function renderFormWith(initialValues: Record<string, string>) {
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
+        counterpartyType: 'publicSector',
         name: 'Project',
         leadCoordinatorId: '2',
         departmentId: '3',
@@ -209,6 +215,7 @@ it('submits the end year of a closed project', async () => {
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
+        counterpartyType: 'publicSector',
         name: 'Project',
         leadCoordinatorId: '2',
         departmentId: '3',
@@ -238,6 +245,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
+        counterpartyType: 'publicSector',
         name: 'Project',
         leadCoordinatorId: '2',
         departmentId: '3',
@@ -283,7 +291,13 @@ it('clears an invalid closing year and advances beneficiaries to the start year'
       currentYear={2026}
       coordinators={[]}
       departments={[]}
-      initialValues={{ status: 'closed', startYear: '2024', endYear: '2022', year: '2020' }}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        status: 'closed',
+        startYear: '2024',
+        endYear: '2022',
+        year: '2020',
+      }}
       beneficiaryRecords={[
         {
           year: 2024,
@@ -338,6 +352,7 @@ function renderWithManyCategories(
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
+        counterpartyType: 'publicSector',
         name: 'Existing project',
         topicId: '1',
         leadCoordinatorId: '2',
@@ -394,3 +409,63 @@ it('starts expanded when a hidden beneficiary category has a value', () => {
   expect(screen.getByRole('button', { name: 'Mostrar menos' })).toBeTruthy();
   cleanup();
 });
+
+it.each(['create', 'edit'] as const)(
+  'shows counterparty options and submits changes in %s mode',
+  async (mode) => {
+    const submitAction = vi.fn().mockResolvedValue({ formError: 'No se pudo guardar' });
+    const { container } = render(
+      <ProjectForm
+        beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+        mode={mode}
+        currentYear={2026}
+        topics={[{ id: 1, name: 'Education' }]}
+        coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
+        departments={[{ id: 3, name: 'Montevideo' }]}
+        initialValues={{
+          name: 'Project',
+          topicId: '1',
+          leadCoordinatorId: '2',
+          departmentId: '3',
+          counterpartyType: mode === 'edit' ? 'publicSector' : '',
+        }}
+        submitAction={submitAction}
+      />
+    );
+    const field = screen.getByLabelText('Contraparte');
+    expect(field.textContent).toContain(
+      mode === 'edit' ? 'Sector Público' : 'Seleccionar contraparte...'
+    );
+    if (mode === 'create') {
+      await act(async () => {
+        fireEvent.submit(container.querySelector('form')!);
+      });
+      expect(submitAction).not.toHaveBeenCalled();
+      expect(await screen.findByText('Seleccioná una contraparte válida')).toBeTruthy();
+    }
+    fireEvent.click(field);
+    const options = await screen.findAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      'Sector Público',
+      'Sector Privado',
+      'Cooperación Internacional',
+    ]);
+    fireEvent.keyDown(screen.getByRole('option', { name: 'Sector Privado' }), { key: 'Enter' });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form')!);
+    });
+    expect(submitAction).toHaveBeenCalledTimes(1);
+    expect(submitAction.mock.calls[0][1].get('counterpartyType')).toBe('privateSector');
+    expect(field.textContent).toContain('Sector Privado');
+    fireEvent.click(field);
+    fireEvent.keyDown(await screen.findByRole('option', { name: 'Cooperación Internacional' }), {
+      key: 'Enter',
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form')!);
+    });
+    expect(submitAction).toHaveBeenCalledTimes(2);
+    expect(submitAction.mock.calls[1][1].get('counterpartyType')).toBe('internationalCooperation');
+    expect(field.textContent).toContain('Cooperación Internacional');
+  }
+);

@@ -39,6 +39,7 @@ const VALID_FIELDS: FormDataInput = {
   topicId: '1',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: '2020',
   leadCoordinatorId: '1',
   departmentId: '2',
@@ -106,6 +107,19 @@ beforeEach(() => {
 });
 
 describe('createProject', () => {
+  test.each(['publicSector', 'privateSector', 'internationalCooperation'])(
+    'creates a project with counterparty %s',
+    async (counterpartyType) => {
+      const { projectCreate } = setupTransaction();
+      await expect(createProject(EMPTY_STATE, buildFormData({ counterpartyType }))).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ counterpartyType }),
+      });
+    }
+  );
+
   test('redirects to /login and skips the database when there is no session', async () => {
     authMock.mockResolvedValue(null);
 
@@ -152,6 +166,7 @@ describe('createProject', () => {
         name: 'Community Center',
         status: 'active',
         intensity: 'high',
+        counterpartyType: 'publicSector',
         startYear: 2020,
         endYear: null,
         leadCoordinatorId: 1,

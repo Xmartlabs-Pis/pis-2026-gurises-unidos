@@ -74,6 +74,7 @@ const VALID_DATA = {
   topicId: '1',
   status: 'active',
   intensity: 'medium',
+  counterpartyType: 'publicSector',
   startYear: '2019',
   leadCoordinatorId: '2',
   departmentId: '3',
@@ -133,6 +134,15 @@ describe.each([
   ['createProject', (data: FormData) => createProject({}, data)],
   ['updateProject', (data: FormData) => updateProject(10, {}, data)],
 ] as const)('%s', (_name, submit) => {
+  it.each([undefined, '', 'invalid'])(
+    'rejects a missing or invalid counterparty before accessing the database: %s',
+    async (counterpartyType) => {
+      const result = await submit(formData({ counterpartyType }));
+      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+      expect(mocks.transaction).not.toHaveBeenCalled();
+    }
+  );
+
   it('rejects a name that matches another project in the same year ignoring case', async () => {
     mocks.findDuplicateProject.mockResolvedValue({ id: 99 });
     const result = await submit(formData());
@@ -382,6 +392,7 @@ describe('updateProject persistence', () => {
           name: 'Updated project',
           status: 'active',
           intensity: 'medium',
+          counterpartyType: 'publicSector',
           startYear: 2019,
           endYear: null,
           leadCoordinatorId: 2,

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { INTENSITY_OPTIONS, STATUS_OPTIONS } from '@/lib/project-display';
+import { INTENSITY_OPTIONS, STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
@@ -100,6 +100,14 @@ export function BasicInfoSection({
           />
         </div>
       </div>
+      <SelectField
+        id="counterpartyType"
+        name="counterpartyType"
+        label="Contraparte"
+        placeholder="Seleccionar contraparte..."
+        options={COUNTERPARTY_OPTIONS}
+        required
+      />
       <SelectField
         id="leadCoordinatorId"
         name="leadCoordinatorId"

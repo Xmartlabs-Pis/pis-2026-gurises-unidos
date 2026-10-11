@@ -9,6 +9,8 @@ import {
   toBeneficiaryValuesCreate,
 } from '../src/lib/project-display';
 
+import { CounterpartyType } from '../src/generated/prisma/enums';
+
 const prisma = new PrismaClient();
 
 const DEPARTMENTS = [
@@ -32,6 +34,8 @@ const DEPARTMENTS = [
   'Tacuarembó',
   'Treinta y Tres',
 ];
+
+const COUNTERPARTY_TYPES = Object.values(CounterpartyType);
 
 const TOPICS = ['Education', 'Health', 'Protection', 'Community', 'Employment'];
 
@@ -167,6 +171,7 @@ async function main() {
           name,
           status,
           intensity: INTENSITIES[index % INTENSITIES.length],
+          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
           startYear,
           endYear:
             status === 'closed'

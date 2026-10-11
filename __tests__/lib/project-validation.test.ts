@@ -80,6 +80,7 @@ const BASE_PROJECT = {
   name: 'Project',
   status: 'closed',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: '2020',
   endYear: '2022',
   leadCoordinatorId: '1',
@@ -145,3 +146,23 @@ it('validates a custom beneficiary category and splits it into the counts', () =
   expect(projectData).not.toHaveProperty('families');
   expect(projectData).toMatchObject({ name: 'Project', topicId: 1 });
 });
+
+it.each(['publicSector', 'privateSector', 'internationalCooperation'])(
+  'accepts counterparty %s',
+  (counterpartyType) => {
+    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyType });
+    expect(result.success).toBe(true);
+    expect(result.data?.counterpartyType).toBe(counterpartyType);
+  }
+);
+
+it.each(['', undefined, null, 'invalid'])(
+  'rejects a missing or invalid counterparty: %s',
+  (counterpartyType) => {
+    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyType });
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.counterpartyType).toEqual([
+      'Seleccioná una contraparte válida',
+    ]);
+  }
+);

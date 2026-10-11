@@ -55,6 +55,9 @@ export const projectSchema = z
       .max(1000, 'Máx. 1000 caracteres')
       .optional()
       .transform((value) => value || null),
+    counterpartyType: z.enum(['publicSector', 'privateSector', 'internationalCooperation'], {
+      error: 'Seleccioná una contraparte válida',
+    }),
   })
   .superRefine((data, ctx) => {
     if (data.status !== 'closed') {
