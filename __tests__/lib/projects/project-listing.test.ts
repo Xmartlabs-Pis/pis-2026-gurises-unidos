@@ -195,29 +195,22 @@ describe('AC2: filters', () => {
     expect(findManyArgs().where).toEqual({ deletedAt: null, departmentId: 2 });
   });
 
-  test('by name, limited to the projects whose normalized name matches', async () => {
-    prismaMock.$queryRaw.mockResolvedValue([{ id: 1 }, { id: 7 }]);
+  test('by name, ignoring case and accents', async () => {
+    await listWith({ search: 'ÓÑÁS Ü' });
 
-    await listWith({ search: 'CENTRO' });
-
-    expect(findManyArgs().where).toEqual({ deletedAt: null, id: { in: [1, 7] } });
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      searchName: { contains: 'onas u' },
+    });
   });
 
-  test('by name, ignoring case and accents on both the name and the search', async () => {
-    prismaMock.$queryRaw.mockResolvedValue([]);
+  test('by name, matching LIKE wildcards literally', async () => {
+    await listWith({ search: '100%_\\' });
 
-    await listWith({ search: '  Oñás ' });
-
-    const [query, ...values] = prismaMock.$queryRaw.mock.calls[0];
-    expect(query.join('?')).toContain('lower(unaccent("name"))');
-    expect(query.join('?')).toContain('lower(unaccent(?))');
-    expect(values).toEqual(['Oñás']);
-  });
-
-  test('without a search, does not query names', async () => {
-    await listWith({});
-
-    expect(prismaMock.$queryRaw).not.toHaveBeenCalled();
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      searchName: { contains: '100\\%\\_\\\\' },
+    });
   });
 
   test('combines several filters with AND', async () => {
@@ -386,7 +379,6 @@ describe('listProjectFilterOptions', () => {
 });
 
 test('combines topic and department with the other project filters', async () => {
-  prismaMock.$queryRaw.mockResolvedValue([{ id: 5 }]);
   await listWith({
     topicId: '2',
     departmentId: '3',
@@ -402,7 +394,7 @@ test('combines topic and department with the other project filters', async () =>
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',
-    id: { in: [5] },
+    searchName: { contains: 'centro' },
   });
 });
 

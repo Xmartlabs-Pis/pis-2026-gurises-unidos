@@ -5,6 +5,7 @@ import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
 const PROJECT = {
   id: 10,
   name: 'Project',
+  searchName: 'project',
   status: 'active' as const,
   intensity: 'high' as const,
   counterpartyType: 'publicSector' as const,

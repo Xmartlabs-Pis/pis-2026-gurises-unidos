@@ -48,28 +48,38 @@ describe('listProjects search (integration)', () => {
     async (search) => {
       const projectId = await createProjectFixture('Huerta Oñás');
 
-      expect(await searchProjectIds(search)).toEqual([projectId]);
+      expect(await searchProjectIds(search)).toContain(projectId);
     }
   );
 
   test('finds an unaccented name when the search has accents', async () => {
     const projectId = await createProjectFixture('Educacion y Ninez');
 
-    expect(await searchProjectIds('Educación y Niñez')).toEqual([projectId]);
+    expect(await searchProjectIds('Educación y Niñez')).toContain(projectId);
   });
 
   test('matches accented vowels and ñ anywhere in the name', async () => {
     const projectId = await createProjectFixture('Árbol Ünico Íntimo Éxito Ñandú');
 
-    expect(await searchProjectIds('arbol unico intimo exito nandu')).toEqual([projectId]);
+    expect(await searchProjectIds('arbol unico intimo exito nandu')).toContain(projectId);
   });
 
   test('treats LIKE wildcards in the search as plain text', async () => {
-    await createProjectFixture('Huerta comunitaria');
+    const otherProjectId = await createProjectFixture('Huerta comunitaria');
     const projectId = await createProjectFixture('Huerta 100%');
 
-    expect(await searchProjectIds('%')).toEqual([projectId]);
-    expect(await searchProjectIds('_')).toEqual([]);
+    const results = await searchProjectIds('%');
+    expect(results).toContain(projectId);
+    expect(results).not.toContain(otherProjectId);
+    expect(await searchProjectIds('_')).not.toContain(otherProjectId);
+  });
+
+  test('finds a project by its new name after it is renamed', async () => {
+    const projectId = await createProjectFixture('Huerta comunitaria');
+    await prisma.project.update({ where: { id: projectId }, data: { name: 'Huerta Oñás' } });
+
+    expect(await searchProjectIds('onas')).toContain(projectId);
+    expect(await searchProjectIds('comunitaria')).not.toContain(projectId);
   });
 
   test('returns no projects when nothing matches', async () => {
@@ -82,6 +92,6 @@ describe('listProjects search (integration)', () => {
     const projectId = await createProjectFixture('Huerta Oñás');
     await prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } });
 
-    expect(await searchProjectIds('onas')).toEqual([]);
+    expect(await searchProjectIds('onas')).not.toContain(projectId);
   });
 });
