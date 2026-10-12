@@ -17,7 +17,9 @@ function ProjectBadges({ project }: { project: ProjectDetail['project'] }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Badge variant={STATUS_BADGE_VARIANT[project.status]}>{STATUS_LABEL[project.status]}</Badge>
-      <Badge variant="neutral">{INTENSITY_LABEL[project.intensity]} intensidad</Badge>
+      {project.intensity && (
+        <Badge variant="neutral">{INTENSITY_LABEL[project.intensity]} intensidad</Badge>
+      )}
     </div>
   );
 }

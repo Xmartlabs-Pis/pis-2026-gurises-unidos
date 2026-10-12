@@ -10,7 +10,7 @@ export function getDefaultValues(
     name: '',
     status: 'active',
     topicId: '',
-    intensity: 'high',
+    intensity: '',
     counterpartyType: '',
     startYear: String(currentYear),
     endYear: '',

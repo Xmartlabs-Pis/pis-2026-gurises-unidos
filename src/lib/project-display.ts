@@ -17,6 +17,10 @@ export const INTENSITY_DESCRIPTION: Record<Intensity, string> = {
   low: 'Al menos una actividad',
 };
 
+export function getIntensityLabel(intensity: Intensity | null) {
+  return intensity ? INTENSITY_LABEL[intensity] : '—';
+}
+
 export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
   publicSector: 'Sector Público',
   privateSector: 'Sector Privado',
@@ -29,9 +33,9 @@ export const STATUS_OPTIONS = [
 ] as const;
 
 export const INTENSITY_OPTIONS = [
-  { value: 'high', label: INTENSITY_LABEL.high, description: INTENSITY_DESCRIPTION.high },
-  { value: 'medium', label: INTENSITY_LABEL.medium, description: INTENSITY_DESCRIPTION.medium },
-  { value: 'low', label: INTENSITY_LABEL.low, description: INTENSITY_DESCRIPTION.low },
+  { value: 'high', label: INTENSITY_LABEL.high },
+  { value: 'medium', label: INTENSITY_LABEL.medium },
+  { value: 'low', label: INTENSITY_LABEL.low },
 ] as const;
 
 export const COUNTERPARTY_OPTIONS = [
@@ -51,6 +55,8 @@ export const SYSTEM_BENEFICIARY_KEYS = [
 ] as const;
 
 export type SystemBeneficiaryKey = (typeof SYSTEM_BENEFICIARY_KEYS)[number];
+
+export const DIRECT_CHILDREN_KEY: SystemBeneficiaryKey = 'directChildrenAdolescents';
 
 export function isSystemBeneficiaryKey(key: string): key is SystemBeneficiaryKey {
   return (SYSTEM_BENEFICIARY_KEYS as readonly string[]).includes(key);
