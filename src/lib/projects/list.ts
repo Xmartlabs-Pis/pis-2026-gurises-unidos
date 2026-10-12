@@ -36,12 +36,20 @@ export type ProjectListPage = {
   totalPages: number;
 };
 
+async function findProjectIdsByName(search: string): Promise<number[]> {
+  const rows = await prisma.$queryRaw<{ id: number }[]>`
+    SELECT "id" FROM "Project"
+    WHERE strpos(lower(unaccent("name")), lower(unaccent(${search}))) > 0
+  `;
+  return rows.map(({ id }) => id);
+}
+
 export type ListProjectsOptions = { onlyVisibleOnLanding?: boolean };
 
-export function buildProjectWhere(
+export async function buildProjectWhere(
   filters: ProjectFilters,
   { onlyVisibleOnLanding }: ListProjectsOptions = {}
-): Prisma.ProjectWhereInput {
+): Promise<Prisma.ProjectWhereInput> {
   const where: Prisma.ProjectWhereInput = { deletedAt: null };
 
   if (onlyVisibleOnLanding) {
@@ -49,7 +57,7 @@ export function buildProjectWhere(
   }
 
   if (filters.search) {
-    where.name = { contains: filters.search, mode: 'insensitive' };
+    where.id = { in: await findProjectIdsByName(filters.search) };
   }
   if (filters.status) {
     where.status = filters.status;
@@ -90,7 +98,7 @@ export async function listProjects(
   filters: ProjectFilters,
   options?: ListProjectsOptions
 ): Promise<ProjectListPage> {
-  const where = buildProjectWhere(filters, options);
+  const where = await buildProjectWhere(filters, options);
   const total = await prisma.project.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
   const page = Math.min(filters.page, totalPages);
