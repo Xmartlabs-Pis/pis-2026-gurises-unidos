@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import type { BeneficiaryCategoryOption } from '@/lib/project-display';
+import { INTENSITY_OPTIONS, type BeneficiaryCategoryOption } from '@/lib/project-display';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
@@ -45,6 +45,11 @@ export function BeneficiariesSection({
   const status = useWatch({ name: 'status' });
   const endYear = useWatch({ name: 'endYear' });
   const year = useWatch({ name: 'year' });
+  const intensity = useWatch<ProjectFormValues, 'intensity'>({ name: 'intensity' });
+  const directChildren = useWatch<ProjectFormValues, 'directChildrenAdolescents'>({
+    name: 'directChildrenAdolescents',
+  });
+  const hasDirectChildren = Number(directChildren) > 0;
 
   const visibleCategories = beneficiaryCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS);
   const extraCategories = beneficiaryCategories.slice(VISIBLE_BENEFICIARY_FIELDS);
@@ -115,6 +120,19 @@ export function BeneficiariesSection({
           Se guardan únicamente los beneficiarios del año seleccionado. Los cambios de otros años no
           se guardarán al salir.
         </p>
+      </div>
+      <div className="sm:col-span-2">
+        <SelectField
+          id="intensity"
+          name="intensity"
+          label="Intensidad"
+          options={INTENSITY_OPTIONS}
+          disabled={!hasDirectChildren}
+          description={
+            hasDirectChildren ? undefined : 'Disponible al cargar al menos un NNA directo.'
+          }
+        />
+        {!hasDirectChildren && <input type="hidden" name="intensity" value={intensity} />}
       </div>
       <BeneficiaryFields categories={visibleCategories} />
       {extraCategories.length > 0 && (

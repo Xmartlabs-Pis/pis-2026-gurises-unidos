@@ -11,6 +11,12 @@ export const INTENSITY_LABEL: Record<Intensity, string> = {
   low: 'Baja',
 };
 
+export const INTENSITY_DESCRIPTION: Record<Intensity, string> = {
+  high: 'Acompañamiento individual',
+  medium: 'Actividad semanal grupal',
+  low: 'Al menos una actividad',
+};
+
 export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
   publicSector: 'Sector Público',
   privateSector: 'Sector Privado',
@@ -23,9 +29,9 @@ export const STATUS_OPTIONS = [
 ] as const;
 
 export const INTENSITY_OPTIONS = [
-  { value: 'high', label: INTENSITY_LABEL.high },
-  { value: 'medium', label: INTENSITY_LABEL.medium },
-  { value: 'low', label: INTENSITY_LABEL.low },
+  { value: 'high', label: INTENSITY_LABEL.high, description: INTENSITY_DESCRIPTION.high },
+  { value: 'medium', label: INTENSITY_LABEL.medium, description: INTENSITY_DESCRIPTION.medium },
+  { value: 'low', label: INTENSITY_LABEL.low, description: INTENSITY_DESCRIPTION.low },
 ] as const;
 
 export const COUNTERPARTY_OPTIONS = [

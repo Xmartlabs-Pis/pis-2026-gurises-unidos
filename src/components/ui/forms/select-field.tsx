@@ -9,10 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type SelectOption = {
   value: string;
   label: string;
+  description?: string;
 };
 
 export function SelectField({
@@ -71,11 +73,20 @@ export function SelectField({
         </SelectTrigger>
         <SelectContent align="start">
           {clearLabel && <SelectItem value={null}>{clearLabel}</SelectItem>}
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
+          {options.map((option) =>
+            option.description ? (
+              <Tooltip key={option.value}>
+                <TooltipTrigger
+                  render={<SelectItem value={option.value}>{option.label}</SelectItem>}
+                />
+                <TooltipContent side="right">{option.description}</TooltipContent>
+              </Tooltip>
+            ) : (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            )
+          )}
         </SelectContent>
       </Select>
       {errorMessage ? (
