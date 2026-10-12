@@ -72,7 +72,7 @@ export default async function Home() {
   return (
     <>
       <section className="w-full">
-        <div className="mx-auto flex min-h-115.5 w-full flex-col gap-9 px-4 pt-13 pb-12 sm:px-6 lg:px-16">
+        <div className="mx-auto flex min-h-115.5 w-full max-w-360 flex-col gap-9 px-4 pt-13 pb-12 sm:px-6 lg:px-16">
           <div className="flex w-full flex-col gap-3 lg:h-48.5">
             <span className="bg-card text-primary flex h-6.5 w-42.5 items-center justify-center rounded-[20px] px-3 py-1.25 text-xs leading-4 font-medium tracking-normal">
               Informe de impacto · {year}
@@ -115,7 +115,7 @@ export default async function Home() {
             Nuestros proyectos
           </h2>
           <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-            Organizados por tematica
+            Organizados por temática
           </p>
         </div>
         <Suspense fallback={<TopicCarouselSkeleton />}>
@@ -123,7 +123,7 @@ export default async function Home() {
         </Suspense>
       </section>
       <section className="w-full">
-        <div className="mx-auto flex w-full flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
+        <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
           <div className="flex w-full flex-col items-center gap-8 lg:flex-row lg:gap-16">
             <div className="flex flex-col gap-4 text-left">
               <div className="flex max-w-105 flex-col gap-1">
@@ -157,7 +157,7 @@ export default async function Home() {
         </div>
       </section>
       <section className="w-full">
-        <div className="mx-auto flex min-h-77 w-full flex-col gap-7 px-5 py-8 sm:px-6 lg:px-14 lg:pt-12 lg:pb-14">
+        <div className="mx-auto flex min-h-77 w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-14 lg:pt-12 lg:pb-14">
           <div className="flex min-h-14 w-full max-w-93.75 flex-col gap-1">
             <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal">
               Cómo trabajamos
@@ -192,7 +192,7 @@ export default async function Home() {
         </div>
       </section>
       <section className="w-full">
-        <div className="mx-auto flex min-h-53.5 w-full flex-col gap-5 px-4 pt-12 pb-14 sm:px-6 lg:px-14">
+        <div className="mx-auto flex min-h-53.5 w-full max-w-360 flex-col gap-5 px-4 pt-12 pb-14 sm:px-6 lg:px-14">
           <div className="flex w-full max-w-126.5 flex-col gap-1">
             <h2 className="text-foreground text-xl leading-7 font-bold tracking-normal">
               Quienes nos acompañan

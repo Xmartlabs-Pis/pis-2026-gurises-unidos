@@ -20,10 +20,11 @@ type TopicCarouselProps = {
   year: number;
   topicId: number;
   topic: string;
+  total: number;
   initialPage: PublicProjectsPage;
 };
 
-export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarouselProps) {
+export function TopicCarousel({ year, topicId, topic, total, initialPage }: TopicCarouselProps) {
   const [projects, setProjects] = useState(initialPage.items);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
   const [failed, setFailed] = useState(false);
@@ -61,12 +62,12 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
   }, [api, failed, loadMore]);
 
   return (
-    <Carousel setApi={setApi} className="flex flex-col gap-4">
+    <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-4">
       <div className="flex flex-row justify-between pr-16">
         <div className="flex flex-row items-center gap-3">
           <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
           <p className="text-muted-foreground text-sm leading-5 font-normal">
-            {initialPage.total === 1 ? '1 proyecto' : `${initialPage.total} proyectos`}
+            {total === 1 ? '1 proyecto' : `${total} proyectos`}
           </p>
         </div>
         <div className="flex flex-row gap-2">
@@ -75,15 +76,15 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
         </div>
       </div>
       <CarouselContent>
-        {projects.map((p) => (
-          <CarouselItem key={p.id} className="basis-75 lg:basis-100">
+        {projects.map((project) => (
+          <CarouselItem key={project.id} className="basis-75 lg:basis-100">
             <ProjectCard
               variant="public-dark"
-              territory={p.department}
-              name={p.name}
-              description={p.description}
-              coverPhoto={p.coverPhoto}
-              reach={p.reach}
+              territory={project.department}
+              name={project.name}
+              description={project.description}
+              coverPhoto={project.coverPhoto}
+              reach={project.reach}
             />
           </CarouselItem>
         ))}

@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const SKELETON_CARDS = 5;
 
 export function CarouselCardSkeleton() {
-  return <Skeleton className="h-80 w-75 shrink-0 rounded-xl lg:w-100" />;
+  return <Skeleton className="h-full w-full rounded-xl" />;
 }
 
 export function TopicCarouselSkeleton() {
@@ -15,7 +15,9 @@ export function TopicCarouselSkeleton() {
       </div>
       <div className="flex flex-row gap-4 overflow-hidden">
         {Array.from({ length: SKELETON_CARDS }, (_, index) => (
-          <CarouselCardSkeleton key={index} />
+          <div key={index} className="h-80 w-75 shrink-0 lg:w-100">
+            <CarouselCardSkeleton />
+          </div>
         ))}
       </div>
     </div>
