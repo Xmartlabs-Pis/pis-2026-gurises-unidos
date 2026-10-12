@@ -17,6 +17,8 @@ import {
 import { forgotPasswordFormSchema, resetPasswordWithTokenSchema } from '@/lib/validation/password';
 import type { PasswordFormState } from '@/app/actions/password';
 
+const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+
 export async function requestPasswordReset(
   _prevState: PasswordFormState,
   formData: FormData
@@ -37,7 +39,7 @@ export async function requestPasswordReset(
         const token = await prisma.$transaction((tx) =>
           createUserToken(tx, user.id, 'passwordReset')
         );
-        const resetUrl = `${process.env.APP_URL}/reset-password?token=${token}`;
+        const resetUrl = `${APP_URL}/reset-password?token=${token}`;
 
         await sendEmail({
           to: user.email,
