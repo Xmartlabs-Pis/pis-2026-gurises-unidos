@@ -20,7 +20,6 @@ export function VisibilitySection() {
               id="showOnLanding"
               checked={field.value === 'true'}
               onCheckedChange={(checked) => field.onChange(String(checked))}
-              aria-label="Mostrar proyecto en la vista pública"
             />
             <label htmlFor="showOnLanding" className="cursor-pointer text-sm">
               Mostrar en la vista pública
