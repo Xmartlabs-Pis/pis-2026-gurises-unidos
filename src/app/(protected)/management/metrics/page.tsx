@@ -10,6 +10,7 @@ import {
 import { getCurrentYear, resolveYearParam } from '@/lib/metrics/year';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { ErrorScreen } from '@/components/error-screen';
+import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 
 export default async function MetricsPage({
   searchParams,
@@ -26,7 +27,11 @@ export default async function MetricsPage({
     getReferenceYear(currentYear),
   ]);
   const year = resolveYearParam((await searchParams).year, years, referenceYear);
-  const [values, initialMetrics] = await Promise.all([getMetricValues(year), getMetricSettings()]);
+  const [values, initialMetrics, initialTopics] = await Promise.all([
+    getMetricValues(year),
+    getMetricSettings(),
+    getTopicStatistics(year),
+  ]);
 
   return (
     <main className="bg-primary-foreground flex flex-1 flex-col px-6">
@@ -48,7 +53,13 @@ export default async function MetricsPage({
           </p>
           <MetricsYearSelect year={year} years={years} />
         </div>
-        <MetricsForm year={String(year)} values={values} initialMetrics={initialMetrics} />
+        <MetricsForm
+          key={year}
+          year={String(year)}
+          values={values}
+          initialMetrics={initialMetrics}
+          initialTopics={initialTopics}
+        />
       </div>
     </main>
   );

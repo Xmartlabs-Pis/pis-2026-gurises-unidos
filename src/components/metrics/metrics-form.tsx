@@ -10,19 +10,24 @@ import { formatNumber } from '@/lib/format';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
 import { notify } from '@/lib/notify';
+import type { TopicStatistic } from '@/lib/metrics/topic-statistics';
 
 export function MetricsForm({
   year,
   values,
   initialMetrics,
+  initialTopics,
 }: {
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];
+  initialTopics: TopicStatistic[];
 }) {
   const [metrics, setMetrics] = useState(initialMetrics);
+  const [topics, setTopics] = useState(initialTopics);
   const [isPending, startTransition] = useTransition();
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
+  const visibleTopics = topics.filter((topic) => topic.showPublicly);
 
   function saveChanges() {
     startTransition(async () => {
@@ -30,6 +35,7 @@ export function MetricsForm({
         const result = await saveMetricSettings({
           year: Number(year),
           metrics: metrics.map(({ key, showPublicly }) => ({ key, showPublicly })),
+          topics: topics.map(({ id, showPublicly }) => ({ id, showPublicly })),
         });
         if (!result.success) {
           notify.error({ title: result.message });
@@ -91,12 +97,70 @@ export function MetricsForm({
             </article>
           ))}
         </div>
+        <section aria-labelledby="topic-statistics-heading" className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="topic-statistics-heading" className="text-lg font-semibold">
+              Proyectos por temática
+            </h2>
+            <div className="flex items-center gap-3">
+              <Switch
+                id="topic-statistics-visibility"
+                checked={topics.length > 0 && topics.every((topic) => topic.showPublicly)}
+                disabled={isPending || topics.length === 0}
+                onCheckedChange={(showPublicly) =>
+                  setTopics((current) => current.map((topic) => ({ ...topic, showPublicly })))
+                }
+              />
+              <label htmlFor="topic-statistics-visibility" className="cursor-pointer text-sm">
+                Mostrar todas las temáticas
+              </label>
+            </div>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Seleccioná las temáticas cuyas estadísticas querés publicar. Se cuentan los proyectos
+            publicados con actividad registrada en {year}.
+          </p>
+          {topics.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No hay temáticas activas.</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {topics.map((topic) => (
+                <div
+                  key={topic.id}
+                  className="bg-card border-border-default flex items-center justify-between gap-4 rounded-xl border p-4"
+                >
+                  <label htmlFor={`topic-${topic.id}-visibility`} className="cursor-pointer">
+                    <span className="block font-medium">{topic.name}</span>
+                    <span className="text-muted-foreground text-sm">
+                      {formatNumber(topic.projectCount)}{' '}
+                      {topic.projectCount === 1 ? 'proyecto' : 'proyectos'}
+                    </span>
+                  </label>
+                  <Switch
+                    id={`topic-${topic.id}-visibility`}
+                    checked={topic.showPublicly}
+                    disabled={isPending}
+                    aria-label={`Mostrar estadísticas de ${topic.name} en el sitio público`}
+                    onCheckedChange={(showPublicly) =>
+                      setTopics((current) =>
+                        current.map((item) =>
+                          item.id === topic.id ? { ...item, showPublicly } : item
+                        )
+                      )
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
         <div className="flex w-full flex-wrap items-center justify-between gap-3 pt-2">
           <Button
             variant="ghost"
             className="h-9 w-fit flex-col gap-2.5 rounded-lg px-4 py-2"
             disabled={isPending}
             onClick={() => {
+              setTopics((current) => current.map((topic) => ({ ...topic, showPublicly: false })));
               setMetrics((current) =>
                 current.map((metric) => ({
                   ...metric,
@@ -150,6 +214,21 @@ export function MetricsForm({
               </dl>
             ) : (
               <p className="text-sm text-white/70">No hay métricas seleccionadas para mostrar.</p>
+            )}
+            {visibleTopics.length > 0 && (
+              <div className="flex flex-col gap-3 border-t border-white/20 pt-4">
+                <h3 className="text-sm font-medium text-white">Proyectos por temática</h3>
+                <dl className="flex flex-col gap-3">
+                  {visibleTopics.map((topic) => (
+                    <div key={topic.id} className="flex items-center gap-2.5">
+                      <dt className="order-2 text-sm text-white/70">{topic.name}</dt>
+                      <dd className="text-text-accent order-1 text-3xl font-bold">
+                        {formatNumber(topic.projectCount)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
             )}
           </div>
           <p className="text-muted-foreground text-center text-xs leading-relaxed">

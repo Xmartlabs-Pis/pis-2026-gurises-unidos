@@ -7,9 +7,14 @@ import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricYears } from '@/lib/metrics/queries';
+import { getTopicMetricKey } from '@/lib/metrics/topic-statistics';
 
 const METRIC_SETTINGS_SCHEMA = z.object({
   year: z.number().int(),
+  topics: z
+    .array(z.object({ id: z.number().int().positive(), showPublicly: z.boolean() }))
+    .refine((topics) => new Set(topics.map(({ id }) => id)).size === topics.length)
+    .default([]),
   metrics: z
     .array(
       z.object({
@@ -34,7 +39,7 @@ export async function saveMetricSettings(input: unknown) {
     return { success: false, message: 'La selección de métricas no es válida.' };
   }
 
-  const { year, metrics } = result.data;
+  const { year, metrics, topics } = result.data;
   const availableYears = await getMetricYears(new Date().getFullYear());
   if (!availableYears.includes(year)) {
     return { success: false, message: 'El año de referencia no es válido.' };
@@ -42,6 +47,13 @@ export async function saveMetricSettings(input: unknown) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      const selectedTopics = topics.length
+        ? await tx.topic.findMany({
+            where: { id: { in: topics.map(({ id }) => id) }, isActive: true },
+            select: { id: true, name: true },
+          })
+        : [];
+      if (selectedTopics.length !== topics.length) throw new Error('Invalid topic selection');
       await tx.publicSettings.upsert({
         where: { id: 1 },
         create: { id: 1, referenceYear: year, updatedBy: Number(session.user.id) },
@@ -59,6 +71,26 @@ export async function saveMetricSettings(input: unknown) {
             updatedBy: Number(session.user.id),
           },
           update: { showPublicly, updatedBy: Number(session.user.id) },
+        });
+        await logAudit(tx, {
+          authorId: Number(session.user.id),
+          action: 'update',
+          entity: 'metric',
+          entityId: metric.id,
+        });
+      }
+      for (const topic of selectedTopics) {
+        const showPublicly = topics.find(({ id }) => id === topic.id)!.showPublicly;
+        const metric = await tx.metric.upsert({
+          where: { key: getTopicMetricKey(topic.id) },
+          create: {
+            key: getTopicMetricKey(topic.id),
+            name: topic.name,
+            sortOrder: METRIC_DEFINITIONS.length + topic.id,
+            showPublicly,
+            updatedBy: Number(session.user.id),
+          },
+          update: { name: topic.name, showPublicly, updatedBy: Number(session.user.id) },
         });
         await logAudit(tx, {
           authorId: Number(session.user.id),
