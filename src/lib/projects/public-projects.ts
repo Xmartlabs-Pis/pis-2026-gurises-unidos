@@ -27,7 +27,7 @@ export async function getPublicProjectsPage(
     page: rawPage,
     pageSize: String(PUBLIC_PROJECTS_PAGE_SIZE),
   });
-  const result = await listProjects(filters);
+  const result = await listProjects(filters, { onlyVisibleOnLanding: true });
   const outOfRange = filters.page > result.page;
 
   return {

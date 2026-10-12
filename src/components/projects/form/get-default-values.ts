@@ -21,6 +21,7 @@ export function getDefaultValues(
     generalObjective: '',
     publicDescription: '',
     internalNotes: '',
+    showOnLanding: 'true',
     coverPhotoUrl: null,
     ...Object.fromEntries(categories.map(({ key }) => [key, '0'])),
   };

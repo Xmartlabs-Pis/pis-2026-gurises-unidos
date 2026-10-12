@@ -403,6 +403,7 @@ describe('updateProject persistence', () => {
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
+          showOnLanding: true,
         },
       });
       const values = toBeneficiaryValuesCreate({

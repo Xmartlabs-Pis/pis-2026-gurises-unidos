@@ -55,6 +55,10 @@ export const projectSchema = z
       .max(1000, 'Máx. 1000 caracteres')
       .optional()
       .transform((value) => value || null),
+    showOnLanding: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
     counterpartyType: z.enum(['publicSector', 'privateSector', 'internationalCooperation'], {
       error: 'Seleccioná una contraparte válida',
     }),
