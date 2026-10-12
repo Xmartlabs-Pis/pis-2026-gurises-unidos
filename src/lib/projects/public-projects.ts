@@ -21,8 +21,8 @@ export type PublicProjectsPage = {
 
 export async function getPublicProjectsPage(
   year: number,
-  rawPage: string | undefined,
-  topicId: number
+  topicId: number,
+  rawPage: string | undefined
 ): Promise<PublicProjectsPage> {
   const filters = parseProjectFilters({
     beneficiaryYear: String(year),

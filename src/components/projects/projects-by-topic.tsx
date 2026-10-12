@@ -1,13 +1,13 @@
 import { getPublicProjectsPage } from '@/lib/projects/public-projects';
-import { TopicCarousel } from '@/components/projects/public-topic-list';
+import { TopicCarousel } from '@/components/projects/topic-carousel';
 import { listProjectFilterOptions } from '@/lib/projects/list';
 
-export async function TopicCarousels({ year }: { year: number }) {
+export async function ProjectsByTopic({ year }: { year: number }) {
   const { topics } = await listProjectFilterOptions();
   const topicPages = await Promise.all(
     topics.map(async (topic) => ({
       topic,
-      page: await getPublicProjectsPage(year, '1', topic.id),
+      page: await getPublicProjectsPage(year, topic.id, '1'),
     }))
   );
 

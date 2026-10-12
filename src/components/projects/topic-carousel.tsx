@@ -4,6 +4,7 @@ import { loadPublicProjectsPage } from '@/app/actions/public-projects';
 import type { PublicProjectsPage } from '@/lib/projects/public-projects';
 import { ProjectCard } from '@/components/projects/project-card';
 import { CarouselCardSkeleton } from '@/components/projects/topic-carousel-skeleton';
+import { Button } from '@/components/ui/button';
 import {
   Carousel,
   CarouselContent,
@@ -25,6 +26,7 @@ type TopicCarouselProps = {
 export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarouselProps) {
   const [projects, setProjects] = useState(initialPage.items);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
+  const [failed, setFailed] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
   const pageRef = useRef(initialPage.page);
   const loadingRef = useRef(false);
@@ -32,20 +34,21 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
     loadingRef.current = true;
+    setFailed(false);
     try {
       const next = await loadPublicProjectsPage(year, topicId, pageRef.current + 1);
       pageRef.current = next.page;
       setProjects((current) => [...current, ...next.items]);
       setHasMore(next.hasMore);
     } catch {
-      setHasMore(false);
+      setFailed(true);
     } finally {
       loadingRef.current = false;
     }
   }, [year, topicId, hasMore]);
 
   useEffect(() => {
-    if (!api) return;
+    if (!api || failed) return;
     const onScroll = () => {
       const lastVisible = Math.max(...api.slidesInView());
       if (lastVisible >= api.slideNodes().length - LOAD_MORE_THRESHOLD) loadMore();
@@ -55,7 +58,7 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
     return () => {
       api.off('select', onScroll).off('slidesInView', onScroll);
     };
-  }, [api, loadMore]);
+  }, [api, failed, loadMore]);
 
   return (
     <Carousel setApi={setApi} className="flex flex-col gap-4">
@@ -86,7 +89,22 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
         ))}
         {hasMore && (
           <CarouselItem className="basis-75 lg:basis-100">
-            <CarouselCardSkeleton />
+            {failed ? (
+              <div className="bg-card flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border-2 px-6 text-center">
+                <p role="alert" className="text-muted-foreground text-sm">
+                  No se pudieron cargar más proyectos.
+                </p>
+                <Button
+                  variant="outline"
+                  className="h-9 border bg-white px-4 shadow-xs/10"
+                  onClick={loadMore}
+                >
+                  Reintentar
+                </Button>
+              </div>
+            ) : (
+              <CarouselCardSkeleton />
+            )}
           </CarouselItem>
         )}
       </CarouselContent>

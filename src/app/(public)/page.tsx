@@ -3,7 +3,7 @@ import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getReferenceYear } from '@/lib/metrics/queries';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
-import { TopicCarousels } from '@/components/projects/topic-carousels';
+import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { Suspense } from 'react';
 
@@ -119,7 +119,7 @@ export default async function Home() {
           </p>
         </div>
         <Suspense fallback={<TopicCarouselSkeleton />}>
-          <TopicCarousels year={year} />
+          <ProjectsByTopic year={year} />
         </Suspense>
       </section>
       <section className="w-full">

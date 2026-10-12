@@ -36,7 +36,7 @@ describe('getPublicProjectsPage', () => {
   test('maps rows to public projects and reports more pages', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, '1', TOPIC_ID);
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, '1');
 
     expect(result).toEqual({
       items: [
@@ -58,7 +58,7 @@ describe('getPublicProjectsPage', () => {
   test('filters projects by topic', async () => {
     mockProjects(1);
 
-    await getPublicProjectsPage(2025, '1', TOPIC_ID);
+    await getPublicProjectsPage(2025, TOPIC_ID, '1');
 
     expect(prismaMock.project.count).toHaveBeenCalledWith({
       where: expect.objectContaining({ topicId: TOPIC_ID }),
@@ -68,7 +68,7 @@ describe('getPublicProjectsPage', () => {
   test('reports no more pages on the last page', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, '2', TOPIC_ID);
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, '2');
 
     expect(result).toMatchObject({ page: 2, hasMore: false });
   });
@@ -76,7 +76,7 @@ describe('getPublicProjectsPage', () => {
   test('returns no items when the page is past the end', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, '9', TOPIC_ID);
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, '9');
 
     expect(result).toMatchObject({ items: [], hasMore: false });
   });
@@ -84,7 +84,7 @@ describe('getPublicProjectsPage', () => {
   test('falls back to the first page for an invalid page', async () => {
     mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
 
-    const result = await getPublicProjectsPage(2025, 'abc', TOPIC_ID);
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, 'abc');
 
     expect(result.page).toBe(1);
   });
