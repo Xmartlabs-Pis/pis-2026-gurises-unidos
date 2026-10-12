@@ -82,21 +82,22 @@ describe('changePassword (integration)', () => {
     const userId = await createUserFixture({ mustChangePassword: true });
     signInAs(userId);
     const before = await loadUser(userId);
+    const startedAt = new Date();
 
     const result = await changePassword({}, buildFormData());
 
     expect(result).toEqual({ success: true });
     const user = await loadUser(userId);
+    expect(user).toEqual({
+      ...before,
+      passwordHash: expect.any(String),
+      passwordChangedAt: expect.any(Date),
+      mustChangePassword: false,
+      updatedAt: expect.any(Date),
+    });
     expect(await verifyPassword(NEW_PASSWORD, user.passwordHash)).toBe(true);
     expect(await verifyPassword(CURRENT_PASSWORD, user.passwordHash)).toBe(false);
-    expect(user.mustChangePassword).toBe(false);
-    expect(user.passwordChangedAt?.getTime()).toBeGreaterThan(before.createdAt.getTime());
-    expect(user).toMatchObject({
-      firstName: before.firstName,
-      email: before.email,
-      role: before.role,
-      status: before.status,
-    });
+    expect(user.passwordChangedAt!.getTime()).toBeGreaterThanOrEqual(startedAt.getTime());
     expect(await auditLogsFor(userId)).toEqual([
       expect.objectContaining({ action: 'passwordChange', authorId: userId, entityId: userId }),
     ]);
@@ -173,9 +174,12 @@ describe('changePassword (integration)', () => {
   });
 
   test('rejects a request without a session', async () => {
+    const auditCountBefore = await prisma.auditLog.count();
+
     const result = await changePassword({}, buildFormData());
 
     expect(result).toEqual({ formError: INVALID_SESSION_MESSAGE });
+    expect(await prisma.auditLog.count()).toBe(auditCountBefore);
   });
 
   test('rejects a disabled user', async () => {
@@ -202,9 +206,11 @@ describe('changePassword (integration)', () => {
 
   test('rejects a session user that does not exist', async () => {
     signInAs(999_999);
+    const auditCountBefore = await prisma.auditLog.count();
 
     const result = await changePassword({}, buildFormData());
 
     expect(result).toEqual({ formError: INVALID_SESSION_MESSAGE });
+    expect(await prisma.auditLog.count()).toBe(auditCountBefore);
   });
 });
