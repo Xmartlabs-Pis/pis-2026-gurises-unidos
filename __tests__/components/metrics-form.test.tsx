@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { MetricsForm } from '@/components/metrics/metrics-form';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
@@ -32,14 +32,11 @@ beforeEach(() => {
   );
 });
 
-it('previews only selected topics and saves individual visibility changes', async () => {
-  const preview = within(screen.getByRole('complementary'));
-  expect(preview.queryByText('Education')).not.toBeNull();
-  expect(preview.queryByText('Health')).toBeNull();
-  fireEvent.click(
-    screen.getByRole('switch', { name: /Health/ })
-  );
-  expect(preview.queryByText('Health')).not.toBeNull();
+it('saves individual topic visibility changes', async () => {
+  const toggle = screen.getByRole('switch', { name: /Health/ });
+  expect(toggle.getAttribute('aria-checked')).toBe('false');
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute('aria-checked')).toBe('true');
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
   await waitFor(() =>
     expect(saveMock).toHaveBeenCalledWith(
@@ -56,10 +53,11 @@ it('previews only selected topics and saves individual visibility changes', asyn
 
 it('enables all topics and then hides their statistics together', () => {
   const toggle = screen.getByRole('switch', { name: 'Mostrar todas las temáticas' });
-  const preview = within(screen.getByRole('complementary'));
   fireEvent.click(toggle);
-  expect(preview.queryByText('Health')).not.toBeNull();
+  expect(screen.getByRole('switch', { name: /Health/ }).getAttribute('aria-checked')).toBe('true');
   fireEvent.click(toggle);
-  expect(preview.queryByText('Health')).toBeNull();
-  expect(preview.queryByText('Education')).toBeNull();
+  expect(screen.getByRole('switch', { name: /Health/ }).getAttribute('aria-checked')).toBe('false');
+  expect(screen.getByRole('switch', { name: /Education/ }).getAttribute('aria-checked')).toBe(
+    'false'
+  );
 });

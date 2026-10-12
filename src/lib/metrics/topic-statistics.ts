@@ -36,7 +36,7 @@ export async function getTopicStatistics(year: number) {
     id,
     name,
     projectCount: _count.projects,
-    showPublicly: visibility.get(getTopicMetricKey(id)) ?? false,
+    showPublicly: visibility.get(getTopicMetricKey(id)) ?? true,
   }));
 }
 

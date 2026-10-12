@@ -25,11 +25,11 @@ describe('getTopicStatistics', () => {
     ]);
   });
 
-  it('loads saved visibility, retains zero counts and hides unconfigured topics', async () => {
+  it('loads saved visibility, retains zero counts and shows unconfigured topics', async () => {
     expect(await getTopicStatistics(2025)).toEqual([
       { id: 1, name: 'Education', projectCount: 3, showPublicly: true },
       { id: 2, name: 'Health', projectCount: 0, showPublicly: false },
-      { id: 3, name: 'Participation', projectCount: 2, showPublicly: false },
+      { id: 3, name: 'Participation', projectCount: 2, showPublicly: true },
     ]);
   });
 
