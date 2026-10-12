@@ -176,6 +176,7 @@ describe('createProject', () => {
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
+        showOnLanding: true,
         coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
         createdBy: 7,
         topicId: 1,

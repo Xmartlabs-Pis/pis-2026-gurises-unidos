@@ -2,6 +2,7 @@
 
 import { InternalNotesSection } from './sections/internal-notes-section';
 import { PublicInfoSection } from './sections/public-info-section';
+import { VisibilitySection } from './sections/visibility-section';
 import { BeneficiariesSection } from './sections/beneficiaries-section';
 import { TerritorySection } from './sections/territory-section';
 import { BasicInfoSection } from './sections/basic-info-section';
@@ -218,6 +219,8 @@ export function ProjectForm({
             />
 
             <PublicInfoSection />
+
+            <VisibilitySection />
 
             <InternalNotesSection isEditing={isEditing} />
             {children}
