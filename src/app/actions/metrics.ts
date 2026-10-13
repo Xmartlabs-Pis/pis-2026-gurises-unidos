@@ -7,7 +7,6 @@ import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricYears } from '@/lib/metrics/queries';
-import { getTopicMetricKey } from '@/lib/metrics/topic-statistics';
 
 const METRIC_SETTINGS_SCHEMA = z.object({
   year: z.number().int(),
@@ -50,7 +49,7 @@ export async function saveMetricSettings(input: unknown) {
       const selectedTopics = topics.length
         ? await tx.topic.findMany({
             where: { id: { in: topics.map(({ id }) => id) }, isActive: true },
-            select: { id: true, name: true },
+            select: { id: true },
           })
         : [];
       if (selectedTopics.length !== topics.length) throw new Error('Invalid topic selection');
@@ -81,22 +80,15 @@ export async function saveMetricSettings(input: unknown) {
       }
       for (const topic of selectedTopics) {
         const showPublicly = topics.find(({ id }) => id === topic.id)!.showPublicly;
-        const metric = await tx.metric.upsert({
-          where: { key: getTopicMetricKey(topic.id) },
-          create: {
-            key: getTopicMetricKey(topic.id),
-            name: topic.name,
-            sortOrder: METRIC_DEFINITIONS.length + topic.id,
-            showPublicly,
-            updatedBy: Number(session.user.id),
-          },
-          update: { name: topic.name, showPublicly, updatedBy: Number(session.user.id) },
+        await tx.topic.update({
+          where: { id: topic.id },
+          data: { showPublicly },
         });
         await logAudit(tx, {
           authorId: Number(session.user.id),
           action: 'update',
-          entity: 'metric',
-          entityId: metric.id,
+          entity: 'topic',
+          entityId: topic.id,
         });
       }
     });

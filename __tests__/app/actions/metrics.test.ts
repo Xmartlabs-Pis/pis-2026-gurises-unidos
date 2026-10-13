@@ -9,6 +9,7 @@ const {
   revalidateMock,
   yearsMock,
   topicsMock,
+  topicUpdateMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   transactionMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   revalidateMock: vi.fn(),
   yearsMock: vi.fn(),
   topicsMock: vi.fn(),
+  topicUpdateMock: vi.fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
@@ -42,7 +44,7 @@ describe('saveMetricSettings', () => {
       callback({
         metric: { upsert: upsertMock },
         publicSettings: { upsert: settingsUpsertMock },
-        topic: { findMany: topicsMock },
+        topic: { findMany: topicsMock, update: topicUpdateMock },
       })
     );
   });
@@ -118,14 +120,14 @@ describe('saveMetricSettings', () => {
       ],
     });
     expect(result.success).toBe(true);
-    for (const [id, name, showPublicly] of [
-      [1, 'Education', true],
-      [2, 'Health', false],
+    for (const [id, showPublicly] of [
+      [1, true],
+      [2, false],
     ]) {
-      expect(upsertMock).toHaveBeenCalledWith(
+      expect(topicUpdateMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { key: `topic_projects_${id}` },
-          update: { name, showPublicly, updatedBy: 1 },
+          where: { id },
+          data: { showPublicly },
         })
       );
     }

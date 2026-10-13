@@ -1,6 +1,5 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
-import { getHiddenPublicTopicIds } from '@/lib/metrics/topic-statistics';
 
 export const PUBLIC_PROJECTS_PAGE_SIZE = 12;
 
@@ -73,9 +72,8 @@ function toPublicProject(row: PublicProjectRow): PublicProject {
 
 export async function getPublicTopics(year: number): Promise<PublicTopic[]> {
   const where = publicProjectWhere(year);
-  const hiddenTopicIds = await getHiddenPublicTopicIds();
   const topics = await prisma.topic.findMany({
-    where: { id: { notIn: hiddenTopicIds }, isActive: true, projects: { some: where } },
+    where: { showPublicly: true, isActive: true, projects: { some: where } },
     orderBy: { name: 'asc' },
     select: {
       id: true,
@@ -107,10 +105,8 @@ export async function getPublicProjectsPage(
   topicId: number,
   page: number
 ): Promise<PublicProjectsPage> {
-  const hiddenTopicIds = await getHiddenPublicTopicIds();
-  if (hiddenTopicIds.includes(topicId)) return { items: [], page, hasMore: false };
   const rows = await prisma.project.findMany({
-    where: { ...publicProjectWhere(year), topicId },
+    where: { ...publicProjectWhere(year), topicId, topic: { isActive: true, showPublicly: true } },
     orderBy: PUBLIC_PROJECT_ORDER,
     select: publicProjectSelect(year),
     skip: (page - 1) * PUBLIC_PROJECTS_PAGE_SIZE,

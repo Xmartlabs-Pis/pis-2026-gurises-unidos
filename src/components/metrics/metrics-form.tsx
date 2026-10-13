@@ -13,6 +13,7 @@ import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
 import { notify } from '@/lib/notify';
 import type { TopicStatistic } from '@/lib/metrics/topic-statistics';
+import { getVisibleTopics } from '@/lib/metrics/visible-topics';
 
 export function MetricsForm({
   year,
@@ -30,9 +31,7 @@ export function MetricsForm({
   const [isPending, startTransition] = useTransition();
   const availableTopics = topics.filter((topic) => topic.projectCount > 0);
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
-  const visibleTopics = topics
-    .filter((topic) => topic.showPublicly && topic.projectCount > 0)
-    .sort((first, second) => second.projectCount - first.projectCount);
+  const visibleTopics = getVisibleTopics(topics);
 
   function saveChanges() {
     startTransition(async () => {

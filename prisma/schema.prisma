@@ -48,6 +48,7 @@ enum AuditAction {
 }
 
 enum AuditEntity {
+  topic
   user
   project
   beneficiary
@@ -95,9 +96,10 @@ model User {
 }
 
 model Topic {
-  id       Int     @id @default(autoincrement())
-  name     String  @unique
-  isActive Boolean @default(true)
+  showPublicly Boolean @default(true)
+  id           Int     @id @default(autoincrement())
+  name         String  @unique
+  isActive     Boolean @default(true)
 
   projects Project[]
 }

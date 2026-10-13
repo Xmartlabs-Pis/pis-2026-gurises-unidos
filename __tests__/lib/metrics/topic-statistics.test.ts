@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { topicsMock, settingsMock } = vi.hoisted(() => ({
+const { topicsMock } = vi.hoisted(() => ({
   topicsMock: vi.fn(),
-  settingsMock: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
-  default: { topic: { findMany: topicsMock }, metric: { findMany: settingsMock } },
+  default: { topic: { findMany: topicsMock } },
 }));
 
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
@@ -15,13 +14,9 @@ describe('getTopicStatistics', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     topicsMock.mockResolvedValue([
-      { id: 1, name: 'Education', _count: { projects: 3 } },
-      { id: 2, name: 'Health', _count: { projects: 0 } },
-      { id: 3, name: 'Participation', _count: { projects: 2 } },
-    ]);
-    settingsMock.mockResolvedValue([
-      { key: 'topic_projects_1', showPublicly: true },
-      { key: 'topic_projects_2', showPublicly: false },
+      { id: 1, name: 'Education', showPublicly: true, _count: { projects: 3 } },
+      { id: 2, name: 'Health', showPublicly: false, _count: { projects: 0 } },
+      { id: 3, name: 'Participation', showPublicly: true, _count: { projects: 2 } },
     ]);
   });
 

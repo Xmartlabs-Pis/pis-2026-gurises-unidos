@@ -7,6 +7,7 @@ import { Suspense } from 'react';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
+import { getVisibleTopics } from '@/lib/metrics/visible-topics';
 
 const LEVELS = [
   {
@@ -71,9 +72,7 @@ export default async function Home() {
       increment: formatIncrement(values[metric.key], previousValues[metric.key], year - 1),
     }));
 
-  const visibleTopics = topics
-    .filter((topic) => topic.showPublicly && topic.projectCount > 0)
-    .sort((first, second) => second.projectCount - first.projectCount);
+  const visibleTopics = getVisibleTopics(topics);
   const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));
 
   return (
