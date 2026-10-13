@@ -40,27 +40,56 @@ export async function createUser(
     const userData = result.data;
     const passwordHash = await bcrypt.hash(userData.password, 10);
 
+    const restoreConfirmed = formData.get('confirmRestore') === 'true';
+    let outcome: 'created' | 'restored' | 'restoreConfirmationRequired';
+
     try {
-      await prisma.$transaction(async (tx) => {
+      outcome = await prisma.$transaction(async (tx) => {
+        const authorId = Number(session.user.id);
+        const profile = {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          role: userData.role,
+          status: 'active' as const,
+          passwordHash,
+          mustChangePassword: true,
+        };
+
+        const deletedUser = await tx.user.findFirst({
+          where: { documentId: userData.documentId, deletedAt: { not: null } },
+          select: { id: true },
+        });
+
+        if (deletedUser && !restoreConfirmed) {
+          return 'restoreConfirmationRequired';
+        }
+
+        if (deletedUser) {
+          await tx.user.update({
+            where: { id: deletedUser.id, deletedAt: { not: null } },
+            data: { ...profile, passwordChangedAt: new Date(), deletedAt: null },
+          });
+          await logAudit(tx, {
+            authorId,
+            action: 'creation',
+            entity: 'user',
+            entityId: deletedUser.id,
+            details: { restored: true },
+          });
+          return 'restored';
+        }
+
         const createdUser = await tx.user.create({
-          data: {
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            documentId: userData.documentId,
-            email: userData.email,
-            role: userData.role,
-            status: 'active',
-            passwordHash,
-            mustChangePassword: true,
-            createdBy: Number(session.user.id),
-          },
+          data: { ...profile, documentId: userData.documentId, createdBy: authorId },
         });
         await logAudit(tx, {
-          authorId: Number(session.user.id),
+          authorId,
           action: 'creation',
           entity: 'user',
           entityId: createdUser.id,
         });
+        return 'created';
       });
     } catch (error) {
       const isPrismaError = error instanceof Prisma.PrismaClientKnownRequestError;
@@ -90,6 +119,15 @@ export async function createUser(
         }
       }
       return { formError: 'No se pudo crear el usuario. Intentá de nuevo.', values };
+    }
+
+    if (outcome === 'restoreConfirmationRequired') {
+      return { restoreConfirmationRequired: true, values };
+    }
+
+    if (outcome === 'restored') {
+      revalidatePath('/management/users');
+      return { restored: true };
     }
 
     redirect('/management/users');

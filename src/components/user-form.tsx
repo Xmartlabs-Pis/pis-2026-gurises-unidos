@@ -1,13 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { startTransition, useActionState, useEffect, type SubmitEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type SubmitEvent,
+} from 'react';
 import { FormProvider, useController, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
 
 import { createUser } from '@/app/actions/users';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -88,7 +106,12 @@ const STATUS_OPTIONS = [
 
 export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   const isEditing = mode === 'edit';
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(createUser, initialState);
+  const lastSubmission = useRef<FormData | null>(null);
+  const [answeredRestoreState, setAnsweredRestoreState] = useState<UserFormState>();
+  const isRestoreDialogOpen =
+    Boolean(state.restoreConfirmationRequired) && answeredRestoreState !== state;
   const form = useForm<UserFormValues>({
     resolver: zodResolver(
       isEditing ? userEditFormSchema : userFormSchema
@@ -136,16 +159,40 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
     const submitter = event.nativeEvent.submitter;
     return handleSubmit(() => {
       if (isEditing) return;
+      const formData = submitter ? new FormData(formElement, submitter) : new FormData(formElement);
+      lastSubmission.current = formData;
       startTransition(() => {
-        formAction(submitter ? new FormData(formElement, submitter) : new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }
 
+  function handleCancelRestore() {
+    setAnsweredRestoreState(state);
+  }
+
+  function handleConfirmRestore() {
+    setAnsweredRestoreState(state);
+    if (!lastSubmission.current) return;
+
+    const formData = new FormData();
+    lastSubmission.current.forEach((value, key) => formData.append(key, value));
+    formData.set('confirmRestore', 'true');
+    startTransition(() => {
+      formAction(formData);
+    });
+  }
+
   useEffect(() => {
+    if (state.restored) {
+      notify.success({ title: 'La cuenta se restauró con los nuevos datos.' });
+      router.push('/management/users');
+      return;
+    }
+
     if (!state.formError) return;
     notify.error({ title: state.formError });
-  }, [state]);
+  }, [state, router]);
 
   return (
     <FormProvider {...form}>
@@ -358,6 +405,31 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
           </Button>
         </div>
       </form>
+
+      <AlertDialog
+        open={isRestoreDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCancelRestore();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Este documento pertenece a un usuario eliminado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Si continuás, se restaura esa cuenta en lugar de crear una nueva:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
+            <li>Se reemplazan su nombre, correo y rol por los que ingresaste.</li>
+            <li>Vuelve a tener acceso con la contraseña nueva y deberá cambiarla al ingresar.</li>
+            <li>Recupera los proyectos y el historial que tenía asociados.</li>
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRestore}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FormProvider>
   );
 }

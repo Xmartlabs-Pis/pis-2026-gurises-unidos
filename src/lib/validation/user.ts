@@ -9,6 +9,8 @@ export type UserFormState = {
   errors?: Record<string, string[]>;
   formError?: string;
   values?: Partial<Record<PreservedField, string>>;
+  restored?: boolean;
+  restoreConfirmationRequired?: boolean;
 };
 
 export function isValidUruguayanDocumentId(rawValue: string) {

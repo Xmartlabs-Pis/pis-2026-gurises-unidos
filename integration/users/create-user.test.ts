@@ -121,6 +121,74 @@ describe('createUser (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
+  test('asks for confirmation before restoring a deleted user and changes nothing', async () => {
+    await createTestUser(DOCUMENT_ID, { firstName: 'Old', deletedAt: new Date() });
+    signInAs(seed.adminId, 'admin');
+    const before = await countRows();
+
+    const result = await createUser({}, buildFormData());
+
+    expect(result).toMatchObject({ restoreConfirmationRequired: true, values: { email: EMAIL } });
+    expect(await countRows()).toEqual(before);
+    const user = await prisma.user.findUniqueOrThrow({ where: { documentId: DOCUMENT_ID } });
+    expect(user).toMatchObject({ firstName: 'Old', deletedAt: expect.any(Date) });
+  });
+
+  test('restores a deleted user with the same document id once confirmed', async () => {
+    const deletedUser = await createTestUser(DOCUMENT_ID, {
+      firstName: 'Old',
+      role: 'admin',
+      status: 'disabled',
+      deletedAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    signInAs(seed.adminId, 'admin');
+    const [usersBefore] = await countRows();
+
+    const result = await createUser(
+      {},
+      buildFormData({ documentId: '5.432.104-4', confirmRestore: 'true' })
+    );
+
+    expect(result).toEqual({ restored: true });
+    const user = await prisma.user.findUniqueOrThrow({ where: { documentId: DOCUMENT_ID } });
+    expect(user).toMatchObject({
+      id: deletedUser.id,
+      firstName: 'Created',
+      lastName: 'User',
+      email: EMAIL,
+      role: 'coordinator',
+      status: 'active',
+      mustChangePassword: true,
+      deletedAt: null,
+    });
+    expect(user.passwordChangedAt).toBeInstanceOf(Date);
+    expect(await verifyPassword(PASSWORD, user.passwordHash)).toBe(true);
+    expect(await prisma.user.count()).toBe(usersBefore);
+    expect(
+      await prisma.auditLog.findMany({ where: { entity: 'user', entityId: user.id } })
+    ).toEqual([
+      expect.objectContaining({
+        action: 'creation',
+        authorId: seed.adminId,
+        details: { restored: true },
+      }),
+    ]);
+  });
+
+  test('rejects restoring a deleted user when the email belongs to another user', async () => {
+    await createTestUser(DOCUMENT_ID, { deletedAt: new Date() });
+    await createTestUser(OTHER_DOCUMENT_ID, { email: EMAIL });
+    signInAs(seed.adminId, 'admin');
+    const before = await countRows();
+
+    const result = await createUser({}, buildFormData({ confirmRestore: 'true' }));
+
+    expect(result.formError).toBe('Ya existe un usuario con ese correo electrónico.');
+    expect(await countRows()).toEqual(before);
+    const user = await prisma.user.findUniqueOrThrow({ where: { documentId: DOCUMENT_ID } });
+    expect(user.deletedAt).not.toBeNull();
+  });
+
   test('returns field errors and preserves the values except the password', async () => {
     signInAs(seed.adminId, 'admin');
     const before = await countRows();
