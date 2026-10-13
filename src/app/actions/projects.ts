@@ -260,7 +260,7 @@ export async function updateProject(
           projectId
         );
         if (nameError) return nameError;
-        if (projectData.status === 'closed' && projectData.endYear !== null) {
+        if (projectData.status === 'inactive' && projectData.endYear !== null) {
           const laterBeneficiary = await tx.projectBeneficiary.findFirst({
             where: { projectId, year: { gt: projectData.endYear } },
             orderBy: { year: 'desc' },

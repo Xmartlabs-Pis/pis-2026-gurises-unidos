@@ -152,19 +152,19 @@ afterEach(() => {
 });
 
 test('marks the status received from the server as selected', () => {
-  renderList({ status: 'closed' });
+  renderList({ status: 'inactive' });
 
-  expect(screen.getByRole('tab', { name: 'Cerrados' }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('tab', { name: 'Inactivos' }).getAttribute('aria-selected')).toBe('true');
 });
 
 test('stores the selected status in the URL keeping the other filters', () => {
   mocks.searchParams = new URLSearchParams('beneficiaryYear=2025');
 
   renderList();
-  fireEvent.click(screen.getByRole('tab', { name: 'Cerrados' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Inactivos' }));
 
   expect(mocks.replace).toHaveBeenCalledWith(
-    '/dashboard/projects?beneficiaryYear=2025&status=closed',
+    '/dashboard/projects?beneficiaryYear=2025&status=inactive',
     { scroll: false }
   );
 });
@@ -208,11 +208,11 @@ test('loads the next page with the current filters when the end of the list is r
     buildPage([buildProject(2, 'Second page project')], 2, 2)
   );
 
-  renderList({ totalPages: 2, status: 'closed', beneficiaryYear: 2024 });
+  renderList({ totalPages: 2, status: 'inactive', beneficiaryYear: 2024 });
   await revealSentinel();
 
   expect(mocks.loadProjectsPage).toHaveBeenCalledWith(
-    { status: 'closed', beneficiaryYear: '2024' },
+    { status: 'inactive', beneficiaryYear: '2024' },
     2
   );
   expect(screen.getByText('Active project')).toBeTruthy();
@@ -311,10 +311,10 @@ test('keeps a filter changed while the search is still being typed', () => {
 
   renderList();
   typeSearch('cen');
-  fireEvent.click(screen.getByRole('tab', { name: 'Cerrados' }));
+  fireEvent.click(screen.getByRole('tab', { name: 'Inactivos' }));
   act(() => vi.runOnlyPendingTimers());
 
-  expect(mocks.replace).toHaveBeenLastCalledWith('/dashboard/projects?status=closed&search=cen', {
+  expect(mocks.replace).toHaveBeenLastCalledWith('/dashboard/projects?status=inactive&search=cen', {
     scroll: false,
   });
 });
@@ -391,7 +391,7 @@ test('restarts the loaded list when the filters change', async () => {
   await revealSentinel();
   expect(screen.getByText('Second page project')).toBeTruthy();
 
-  rerender(buildList({ search: 'closed', projects: [buildProject(9, 'Matching project')] }));
+  rerender(buildList({ search: 'inactive', projects: [buildProject(9, 'Matching project')] }));
 
   expect(screen.getByText('Matching project')).toBeTruthy();
   expect(screen.queryByText('Active project')).toBeNull();
@@ -439,12 +439,12 @@ test('keeps the department and topic when loading more projects', async () => {
 
 test('clears the menu filters and restores the default year while preserving status and search', async () => {
   mocks.searchParams = new URLSearchParams(
-    'departmentId=2&topicId=1&beneficiaryYear=2025&status=closed&search=Centro&page=3'
+    'departmentId=2&topicId=1&beneficiaryYear=2025&status=inactive&search=Centro&page=3'
   );
-  renderList({ departmentId: 2, topicId: 1, status: 'closed', search: 'Centro' });
+  renderList({ departmentId: 2, topicId: 1, status: 'inactive', search: 'Centro' });
   fireEvent.click(screen.getAllByRole('button', { name: 'Filtros de proyectos' })[0]);
   fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
-  expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=closed&search=Centro', {
+  expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=inactive&search=Centro', {
     scroll: false,
   });
 });

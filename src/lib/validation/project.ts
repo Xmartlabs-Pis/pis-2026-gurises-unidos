@@ -4,7 +4,7 @@ import { MAX_INT32 } from './ids';
 export const projectSchema = z
   .object({
     name: z.string().trim().max(100, 'Máx. 100 caracteres').min(1, 'El nombre es obligatorio'),
-    status: z.enum(['active', 'closed']),
+    status: z.enum(['active', 'inactive']),
     intensity: z.preprocess(
       (value) => (value === '' || value === undefined ? null : value),
       z.enum(['high', 'medium', 'low']).nullable()
@@ -67,12 +67,12 @@ export const projectSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.status !== 'closed') {
+    if (data.status !== 'inactive') {
       if (data.endYear !== null) {
         ctx.addIssue({
           code: 'custom',
           path: ['endYear'],
-          message: 'Solo los proyectos cerrados tienen año de fin',
+          message: 'Solo los proyectos inactivos tienen año de fin',
         });
       }
       return;
@@ -81,7 +81,7 @@ export const projectSchema = z
       ctx.addIssue({
         code: 'custom',
         path: ['endYear'],
-        message: 'El año de fin es obligatorio para proyectos cerrados',
+        message: 'El año de fin es obligatorio para proyectos inactivos',
       });
     } else if (data.endYear < data.startYear) {
       ctx.addIssue({

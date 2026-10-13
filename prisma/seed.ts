@@ -46,7 +46,7 @@ type BeneficiaryRecord = { year: number } & Partial<BeneficiaryCounts>;
 
 type SeedProject = {
   name: string;
-  status: 'active' | 'closed';
+  status: 'active' | 'inactive';
   intensity: 'high' | 'medium' | 'low';
   startYear: number;
   endYear?: number;
@@ -288,7 +288,7 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Mirada Joven',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2021,
     endYear: 2023,
@@ -305,7 +305,7 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Puentes Rurales',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'medium',
     startYear: 2020,
     endYear: 2024,
@@ -334,7 +334,7 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Semillero Deportivo',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2022,
     endYear: 2025,

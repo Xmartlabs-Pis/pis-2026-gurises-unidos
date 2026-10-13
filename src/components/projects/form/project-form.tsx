@@ -122,7 +122,7 @@ export function ProjectForm({
   const beneficiaryYearOptions = yearOptions.filter(
     ({ value }) =>
       Number(value) >= Number(values.startYear) &&
-      (values.status !== 'closed' || !values.endYear || Number(value) <= Number(values.endYear))
+      (values.status !== 'inactive' || !values.endYear || Number(value) <= Number(values.endYear))
   );
 
   useEffect(() => {

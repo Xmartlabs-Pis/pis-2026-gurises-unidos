@@ -61,7 +61,7 @@ const PROJECT_BASE_NAMES = [
 
 const PROJECT_DEPARTMENTS = ['Montevideo', 'Canelones', 'Salto', 'Rivera', 'Maldonado'];
 
-const STATUSES = ['active', 'closed'] as const;
+const STATUSES = ['active', 'inactive'] as const;
 const INTENSITIES = ['high', 'medium', 'low'] as const;
 const ZONES = ['city', 'inland', 'border', 'rural'] as const;
 
@@ -174,7 +174,7 @@ async function main() {
           counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
           startYear,
           endYear:
-            status === 'closed'
+            status === 'inactive'
               ? Math.min(startYear + 1 + (index % 3), new Date().getFullYear())
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],

@@ -78,7 +78,7 @@ it('parses an empty end year as null and bounds it to valid years', () => {
 
 const BASE_PROJECT = {
   name: 'Project',
-  status: 'closed',
+  status: 'inactive',
   intensity: 'high',
   counterpartyType: 'publicSector',
   startYear: '2020',
@@ -95,14 +95,14 @@ it.each([
     'El año de fin no puede ser anterior al año de inicio',
   ],
   [
-    'is closed without an end year',
+    'is inactive without an end year',
     { endYear: '' },
-    'El año de fin es obligatorio para proyectos cerrados',
+    'El año de fin es obligatorio para proyectos inactivos',
   ],
   [
-    'has an end year without being closed',
+    'has an end year without being inactive',
     { status: 'active' },
-    'Solo los proyectos cerrados tienen año de fin',
+    'Solo los proyectos inactivos tienen año de fin',
   ],
 ])('projectSchema rejects a project that %s', (_case, overrides, message) => {
   const result = projectSchema.safeParse({ ...BASE_PROJECT, ...overrides });
@@ -110,7 +110,7 @@ it.each([
   expect(result.error?.flatten().fieldErrors.endYear).toEqual([message]);
 });
 
-it('projectSchema accepts an end year equal to or after the start year, or none while not closed', () => {
+it('projectSchema accepts an end year equal to or after the start year, or none while not inactive', () => {
   expect(projectSchema.safeParse(BASE_PROJECT).success).toBe(true);
   expect(projectSchema.safeParse({ ...BASE_PROJECT, endYear: '2020' }).success).toBe(true);
   expect(projectSchema.safeParse({ ...BASE_PROJECT, status: 'active', endYear: '' }).success).toBe(

@@ -145,7 +145,7 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ status: 'closed', endYear: '2022', year: '2022', families: '99' })
+      buildFormData({ status: 'inactive', endYear: '2022', year: '2022', families: '99' })
     );
 
     expect(result.errors?.endYear).toEqual([
@@ -164,13 +164,13 @@ describe('updateProject (integration)', () => {
       updateProject(
         projectId,
         {},
-        buildFormData({ status: 'closed', endYear: String(BENEFICIARY_YEAR) })
+        buildFormData({ status: 'inactive', endYear: String(BENEFICIARY_YEAR) })
       ),
       projectId
     );
 
     const after = await loadProject(projectId);
-    expect(after).toMatchObject({ status: 'closed', endYear: BENEFICIARY_YEAR });
+    expect(after).toMatchObject({ status: 'inactive', endYear: BENEFICIARY_YEAR });
     expect(after.projectBeneficiaries).toEqual(before.projectBeneficiaries);
     expect(await auditLogsFor(projectId)).toEqual([
       expect.objectContaining({ entity: 'project', action: 'update' }),

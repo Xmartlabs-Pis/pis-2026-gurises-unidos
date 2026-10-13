@@ -181,8 +181,8 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('does not count a closed project with beneficiary data as active', async () => {
-    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'closed' });
+  it('does not count a inactive project with beneficiary data as active', async () => {
+    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'inactive' });
 
     expect(await getProjectDetail('12', '2026')).toMatchObject({
       status: 'success',
@@ -252,7 +252,7 @@ describe('getProjectDetail', () => {
   });
 
   it('returns zero active projects when all projects are inactive', async () => {
-    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'closed' });
+    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'inactive' });
     prismaMock.project.count.mockResolvedValue(0);
 
     expect(await getProjectDetail('12', '2026')).toMatchObject({
