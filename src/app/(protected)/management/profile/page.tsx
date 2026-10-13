@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
+import { PageHeader } from '@/components/layout/page-header';
 import { ProfileForm } from '@/components/profile-form';
 import prisma from '@/lib/prisma';
 
@@ -36,13 +37,12 @@ export default async function ProfilePage() {
 
   return (
     <div className="bg-primary-foreground flex w-full flex-1 flex-col">
-      <header className="flex w-full flex-col gap-1.5 px-4 pt-6 pb-2.5 sm:px-6">
-        <p className="text-muted-foreground text-sm leading-5">Cuenta</p>
-        <h1 className="text-popover-foreground text-3xl leading-9 font-bold">Mi perfil</h1>
-        <p className="text-muted-foreground text-sm leading-5">
-          Consultá y actualizá tus datos personales.
-        </p>
-      </header>
+      <PageHeader
+        className="w-full px-4 pt-6 pb-2.5 sm:px-6"
+        eyebrow="Cuenta"
+        title="Mi perfil"
+        description="Consultá y actualizá tus datos personales."
+      />
 
       <ProfileForm profile={profile} />
     </div>
