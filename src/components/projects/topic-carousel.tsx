@@ -63,7 +63,7 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
 
   return (
     <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-4">
-      <div className="flex flex-row justify-between pr-16">
+      <div className="flex flex-row justify-between">
         <div className="flex flex-row items-center gap-3">
           <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
           <p className="text-muted-foreground text-sm leading-5 font-normal">

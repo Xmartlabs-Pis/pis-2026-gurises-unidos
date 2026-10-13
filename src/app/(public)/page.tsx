@@ -109,18 +109,20 @@ export default async function Home() {
           </div>
         </div>
       </section>
-      <section className="flex flex-col gap-8 py-8 pl-5 lg:gap-12 lg:py-12 lg:pl-16">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-            Nuestros proyectos
-          </h2>
-          <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-            Organizados por temática
-          </p>
+      <section className="w-full">
+        <div className="mx-auto flex w-full max-w-360 flex-col gap-8 px-5 py-8 sm:px-6 lg:gap-12 lg:px-16 lg:py-12">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
+              Nuestros proyectos
+            </h2>
+            <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
+              Organizados por temática
+            </p>
+          </div>
+          <Suspense fallback={<TopicCarouselSkeleton />}>
+            <ProjectsByTopic year={year} />
+          </Suspense>
         </div>
-        <Suspense fallback={<TopicCarouselSkeleton />}>
-          <ProjectsByTopic year={year} />
-        </Suspense>
       </section>
       <section className="w-full">
         <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
