@@ -1,7 +1,6 @@
 import { vi } from 'vitest';
 
 export const prismaMock = {
-  metric: { findMany: vi.fn() },
   user: {
     findUnique: vi.fn(),
     findMany: vi.fn(),

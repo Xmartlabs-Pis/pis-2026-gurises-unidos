@@ -29,7 +29,6 @@ export function MetricsForm({
   const [metrics, setMetrics] = useState(initialMetrics);
   const [topics, setTopics] = useState(initialTopics);
   const [isPending, startTransition] = useTransition();
-  const availableTopics = topics.filter((topic) => topic.projectCount > 0);
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
   const visibleTopics = getVisibleTopics(topics);
 
@@ -127,17 +126,10 @@ export function MetricsForm({
               <div className="flex items-center gap-3">
                 <Switch
                   id="topic-statistics-visibility"
-                  checked={
-                    availableTopics.length > 0 &&
-                    availableTopics.every((topic) => topic.showPublicly)
-                  }
-                  disabled={isPending || availableTopics.length === 0}
+                  checked={topics.length > 0 && topics.every((topic) => topic.showPublicly)}
+                  disabled={isPending || topics.length === 0}
                   onCheckedChange={(showPublicly) =>
-                    setTopics((current) =>
-                      current.map((topic) =>
-                        topic.projectCount > 0 ? { ...topic, showPublicly } : topic
-                      )
-                    )
+                    setTopics((current) => current.map((topic) => ({ ...topic, showPublicly })))
                   }
                 />
                 <label htmlFor="topic-statistics-visibility" className="cursor-pointer text-sm">
@@ -169,7 +161,7 @@ export function MetricsForm({
                     <Switch
                       id={`topic-${topic.id}-visibility`}
                       checked={topic.showPublicly}
-                      disabled={isPending || topic.projectCount === 0}
+                      disabled={isPending}
                       aria-label={`Mostrar proyectos de ${topic.name} en el sitio público`}
                       onCheckedChange={(showPublicly) =>
                         setTopics((current) =>

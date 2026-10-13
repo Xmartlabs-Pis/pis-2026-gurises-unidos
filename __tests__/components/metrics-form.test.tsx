@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { MetricsForm } from '@/components/metrics/metrics-form';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
@@ -53,9 +53,18 @@ it('saves individual topic visibility changes', async () => {
   );
 });
 
-it('disables empty topics and leaves their visibility unchanged when enabling all', () => {
+it('allows enabling empty topics without showing them in the preview', () => {
   const emptyTopic = screen.getByRole('switch', { name: /Protection/ });
-  expect(emptyTopic.getAttribute('aria-disabled')).toBe('true');
+  expect(emptyTopic.getAttribute('aria-disabled')).not.toBe('true');
+  fireEvent.click(emptyTopic);
+  expect(emptyTopic.getAttribute('aria-checked')).toBe('true');
+  expect(within(screen.getByRole('complementary')).queryByText('Protection')).toBeNull();
+});
+
+it('includes empty topics when enabling or disabling all topics', () => {
+  const emptyTopic = screen.getByRole('switch', { name: /Protection/ });
+  fireEvent.click(screen.getByRole('switch', { name: 'Mostrar todas las temáticas' }));
+  expect(emptyTopic.getAttribute('aria-checked')).toBe('true');
   fireEvent.click(screen.getByRole('switch', { name: 'Mostrar todas las temáticas' }));
   expect(emptyTopic.getAttribute('aria-checked')).toBe('false');
 });
