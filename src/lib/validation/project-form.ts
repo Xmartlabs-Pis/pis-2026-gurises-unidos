@@ -4,6 +4,8 @@ import { DIRECT_CHILDREN_KEY } from '@/lib/project-display';
 import { INTENSITY_REQUIRED_MESSAGE, projectSchema } from './project';
 import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-beneficiary';
 
+export const MAX_STRATEGIC_LINES = 3;
+
 const baseProjectFormSchema = projectSchema.safeExtend({
   year: beneficiaryYear,
   topicId: z.coerce
@@ -19,7 +21,7 @@ const baseProjectFormSchema = projectSchema.safeExtend({
         .positive('Elegí líneas estratégicas válidas')
     )
     .min(1, 'Seleccioná al menos una línea estratégica')
-    .max(3, 'Podés seleccionar hasta 3 líneas estratégicas')
+    .max(MAX_STRATEGIC_LINES, `Podés seleccionar hasta ${MAX_STRATEGIC_LINES} líneas estratégicas`)
     .refine((ids) => new Set(ids).size === ids.length, 'No repitas líneas estratégicas'),
 });
 

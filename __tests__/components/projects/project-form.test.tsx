@@ -299,6 +299,7 @@ it('clears an invalid end year and advances beneficiaries to the start year', as
   render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -431,6 +432,7 @@ it.each(['create', 'edit'] as const)(
     const { container } = render(
       <ProjectForm
         beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+        strategicLines={[{ id: 1, name: 'Community Support' }]}
         mode={mode}
         currentYear={2026}
         topics={[{ id: 1, name: 'Education' }]}
@@ -442,6 +444,7 @@ it.each(['create', 'edit'] as const)(
           leadCoordinatorId: '2',
           departmentId: '3',
           counterpartyType: mode === 'edit' ? 'publicSector' : '',
+          strategicLineIds: ['1'],
         }}
         submitAction={submitAction}
       />

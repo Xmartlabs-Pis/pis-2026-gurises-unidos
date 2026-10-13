@@ -43,7 +43,7 @@ type ProjectFormProps = {
   coordinators: { id: number; firstName: string; lastName: string }[];
   departments: { id: number; name: string }[];
   topics: { id: number; name: string }[];
-  strategicLines?: { id: number; name: string }[];
+  strategicLines: { id: number; name: string }[];
   beneficiaryRecords?: (BeneficiaryCounts & { year: number })[];
   beneficiaryCategories: BeneficiaryCategoryOption[];
   currentYear: number;
@@ -56,7 +56,7 @@ export function ProjectForm({
   coordinators,
   departments,
   topics,
-  strategicLines = [],
+  strategicLines,
   beneficiaryRecords = [],
   beneficiaryCategories,
   currentYear,
@@ -159,8 +159,8 @@ export function ProjectForm({
   }
 
   useEffect(() => {
-    if (state.errors?.topicId) router.refresh();
-  }, [router, state.errors?.topicId]);
+    if (state.errors?.topicId || state.errors?.strategicLineIds) router.refresh();
+  }, [router, state.errors?.topicId, state.errors?.strategicLineIds]);
 
   useEffect(() => {
     if (state.formError) {
