@@ -19,6 +19,7 @@ vi.mock('@/lib/prisma', () => ({
 vi.mock('next/navigation', () => ({
   notFound: notFoundMock,
   redirect: redirectMock,
+  useRouter: () => ({ push: vi.fn() }),
 }));
 vi.mock('@/app/actions/users', () => ({
   createUser: vi.fn(async () => ({})),

@@ -2,6 +2,10 @@ import { render, screen } from '@testing-library/react';
 import { expect, test, vi } from 'vitest';
 import { UserForm } from '@/components/user-form';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock('@/app/actions/users', () => ({
   createUser: vi.fn(async () => ({})),
 }));
@@ -14,7 +18,7 @@ test('disables or hides unavailable user editing actions', () => {
   render(<UserForm mode="edit" />);
 
   const saveButton = screen.getByRole('button', {
-    name: 'Guardar usuario (próximamente)',
+    name: 'Guardar usuario',
   }) as HTMLButtonElement;
 
   expect(saveButton.disabled).toBe(true);

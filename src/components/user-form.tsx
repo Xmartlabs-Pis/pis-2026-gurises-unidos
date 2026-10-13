@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { startTransition, useActionState, useEffect, type SubmitEvent } from 'react';
 import { FormProvider, useController, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,7 +9,8 @@ import { cn } from 'cn';
 import { createUser } from '@/app/actions/users';
 
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+import { FormActions } from '@/components/ui/forms/form-actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
 import { SelectField } from '@/components/ui/forms/select-field';
@@ -87,6 +88,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
+  const router = useRouter();
   const isEditing = mode === 'edit';
   const [state, formAction, pending] = useActionState(createUser, initialState);
   const form = useForm<UserFormValues>({
@@ -150,7 +152,7 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   return (
     <FormProvider {...form}>
       <form onSubmit={onSubmit} noValidate className="flex min-w-0 flex-1 flex-col pt-6">
-        <div className={cn('mx-auto w-full px-6 pb-6', !isEditing && 'max-w-[1185px]')}>
+        <div className={cn('mx-auto w-full flex-1 px-6 pb-6', !isEditing && 'max-w-[1185px]')}>
           <div
             className={cn(
               'grid grid-cols-1 gap-6',
@@ -333,30 +335,12 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
           </div>
         </div>
 
-        {/* TODO: Use a shared component for this forms footer */}
-        <div className="bg-background sticky bottom-0 z-10 mt-auto grid shrink-0 grid-cols-2 gap-x-2 gap-y-3 border-t px-6 py-4 md:flex md:flex-wrap md:items-center md:justify-between">
-          <Link
-            href="/management/users"
-            aria-disabled={pending}
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'lg' }),
-              'col-span-1 h-auto min-h-9 w-full px-4 md:order-1 md:mr-auto md:h-9 md:w-auto',
-              pending && 'pointer-events-none opacity-50'
-            )}
-          >
-            Cancelar
-          </Link>
-          <Button
-            type={isEditing ? 'button' : 'submit'}
-            name="intent"
-            value="submit"
-            size="lg"
-            className="col-span-1 w-full px-4 md:order-3 md:w-auto"
-            disabled={pending || isEditing}
-          >
-            {isEditing ? 'Guardar usuario (próximamente)' : 'Guardar usuario'}
-          </Button>
-        </div>
+        <FormActions
+          onCancel={() => router.push('/management/users')}
+          submitLabel={'Guardar usuario'}
+          pending={pending}
+          disabled={isEditing}
+        />
       </form>
     </FormProvider>
   );
