@@ -9,7 +9,8 @@ vi.mock('@/lib/notify', () => ({ notify: { success: vi.fn(), error: vi.fn() } })
 
 const TOPICS = [
   { id: 1, name: 'Education', projectCount: 3, showPublicly: true },
-  { id: 2, name: 'Health', projectCount: 0, showPublicly: false },
+  { id: 2, name: 'Health', projectCount: 1, showPublicly: false },
+  { id: 3, name: 'Protection', projectCount: 0, showPublicly: false },
 ];
 
 beforeEach(() => {
@@ -45,10 +46,18 @@ it('saves individual topic visibility changes', async () => {
         topics: [
           { id: 1, showPublicly: true },
           { id: 2, showPublicly: true },
+          { id: 3, showPublicly: false },
         ],
       })
     )
   );
+});
+
+it('disables empty topics and leaves their visibility unchanged when enabling all', () => {
+  const emptyTopic = screen.getByRole('switch', { name: /Protection/ });
+  expect(emptyTopic.getAttribute('aria-disabled')).toBe('true');
+  fireEvent.click(screen.getByRole('switch', { name: 'Mostrar todas las temáticas' }));
+  expect(emptyTopic.getAttribute('aria-checked')).toBe('false');
 });
 
 it('enables all topics and then hides their statistics together', () => {

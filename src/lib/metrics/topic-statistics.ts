@@ -4,6 +4,16 @@ export function getTopicMetricKey(topicId: number) {
   return `topic_projects_${topicId}`;
 }
 
+export async function getHiddenPublicTopicIds() {
+  const settings = await prisma.metric.findMany({
+    where: { key: { startsWith: 'topic_projects_' }, showPublicly: false },
+    select: { key: true },
+  });
+  return settings
+    .map(({ key }) => Number(key.replace('topic_projects_', '')))
+    .filter((id) => Number.isSafeInteger(id) && id > 0);
+}
+
 export async function getTopicStatistics(year: number) {
   const [topics, settings] = await Promise.all([
     prisma.topic.findMany({
@@ -17,7 +27,6 @@ export async function getTopicStatistics(year: number) {
             projects: {
               where: {
                 deletedAt: null,
-                showOnLanding: true,
                 projectBeneficiaries: { some: { year } },
               },
             },

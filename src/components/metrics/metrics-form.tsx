@@ -28,9 +28,10 @@ export function MetricsForm({
   const [metrics, setMetrics] = useState(initialMetrics);
   const [topics, setTopics] = useState(initialTopics);
   const [isPending, startTransition] = useTransition();
+  const availableTopics = topics.filter((topic) => topic.projectCount > 0);
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
   const visibleTopics = topics
-    .filter((topic) => topic.showPublicly)
+    .filter((topic) => topic.showPublicly && topic.projectCount > 0)
     .sort((first, second) => second.projectCount - first.projectCount);
 
   function saveChanges() {
@@ -118,18 +119,26 @@ export function MetricsForm({
                   </TooltipTrigger>
                   <TooltipContent className="leading-relaxed">
                     Al guardar los cambios, activar o desactivar una temática mostrará u ocultará su
-                    cantidad de proyectos en la vista pública. Esta configuración no modifica los
-                    proyectos del dashboard.
+                    barra y su carrusel en la vista pública. Los proyectos ocultos individualmente
+                    siguen contando en la barra. Esta configuración no modifica los proyectos del
+                    dashboard.
                   </TooltipContent>
                 </Tooltip>
               </div>
               <div className="flex items-center gap-3">
                 <Switch
                   id="topic-statistics-visibility"
-                  checked={topics.length > 0 && topics.every((topic) => topic.showPublicly)}
-                  disabled={isPending || topics.length === 0}
+                  checked={
+                    availableTopics.length > 0 &&
+                    availableTopics.every((topic) => topic.showPublicly)
+                  }
+                  disabled={isPending || availableTopics.length === 0}
                   onCheckedChange={(showPublicly) =>
-                    setTopics((current) => current.map((topic) => ({ ...topic, showPublicly })))
+                    setTopics((current) =>
+                      current.map((topic) =>
+                        topic.projectCount > 0 ? { ...topic, showPublicly } : topic
+                      )
+                    )
                   }
                 />
                 <label htmlFor="topic-statistics-visibility" className="cursor-pointer text-sm">
@@ -139,7 +148,8 @@ export function MetricsForm({
             </div>
             <p className="text-muted-foreground text-sm">
               Seleccioná las temáticas que querés mostrar en el sitio público. Se cuentan los
-              proyectos publicados con actividad registrada en {year}.
+              proyectos con actividad registrada en {year}, incluidos los ocultos en el sitio
+              público.
             </p>
             {topics.length === 0 ? (
               <p className="text-muted-foreground text-sm">No hay temáticas activas.</p>
@@ -160,7 +170,7 @@ export function MetricsForm({
                     <Switch
                       id={`topic-${topic.id}-visibility`}
                       checked={topic.showPublicly}
-                      disabled={isPending}
+                      disabled={isPending || topic.projectCount === 0}
                       aria-label={`Mostrar proyectos de ${topic.name} en el sitio público`}
                       onCheckedChange={(showPublicly) =>
                         setTopics((current) =>

@@ -33,7 +33,7 @@ describe('getTopicStatistics', () => {
     ]);
   });
 
-  it('counts published, nondeleted projects once per topic in the reference year', async () => {
+  it('counts nondeleted projects including hidden projects once per topic in the reference year', async () => {
     await getTopicStatistics(2024);
     expect(topicsMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -44,7 +44,6 @@ describe('getTopicStatistics', () => {
               projects: {
                 where: {
                   deletedAt: null,
-                  showOnLanding: true,
                   projectBeneficiaries: { some: { year: 2024 } },
                 },
               },

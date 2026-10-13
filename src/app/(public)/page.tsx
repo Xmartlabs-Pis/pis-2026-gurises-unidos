@@ -72,7 +72,7 @@ export default async function Home() {
     }));
 
   const visibleTopics = topics
-    .filter((topic) => topic.showPublicly)
+    .filter((topic) => topic.showPublicly && topic.projectCount > 0)
     .sort((first, second) => second.projectCount - first.projectCount);
   const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));
 

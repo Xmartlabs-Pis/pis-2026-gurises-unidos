@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import { prismaMock } from '../../mocks/prisma';
 import {
   PUBLIC_PROJECTS_PAGE_SIZE,
@@ -7,6 +7,10 @@ import {
 } from '@/lib/projects/public-projects';
 
 const TOPIC_ID = 2;
+
+beforeEach(() => {
+  prismaMock.metric.findMany.mockResolvedValue([]);
+});
 
 function row(id: number) {
   return {
@@ -24,6 +28,25 @@ function rows(count: number) {
 }
 
 describe('getPublicTopics', () => {
+  test('excludes disabled topics and topics without visible projects', async () => {
+    prismaMock.metric.findMany.mockResolvedValue([{ key: 'topic_projects_3' }]);
+    prismaMock.topic.findMany.mockResolvedValue([]);
+    expect(await getPublicTopics(2025)).toEqual([]);
+    expect(prismaMock.topic.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { notIn: [3] },
+          projects: {
+            some: {
+              deletedAt: null,
+              showOnLanding: true,
+              projectBeneficiaries: { some: { year: 2025 } },
+            },
+          },
+        }),
+      })
+    );
+  });
   test('maps each topic to its total and first page of public projects', async () => {
     prismaMock.topic.findMany.mockResolvedValue([
       { id: 1, name: 'Education', _count: { projects: 20 }, projects: rows(12) },
@@ -70,7 +93,7 @@ describe('getPublicTopics', () => {
     };
     expect(prismaMock.topic.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true, projects: { some: where } },
+        where: { id: { notIn: [] }, isActive: true, projects: { some: where } },
         select: expect.objectContaining({
           _count: { select: { projects: { where } } },
           projects: expect.objectContaining({ where, take: PUBLIC_PROJECTS_PAGE_SIZE }),
@@ -81,6 +104,15 @@ describe('getPublicTopics', () => {
 });
 
 describe('getPublicProjectsPage', () => {
+  test('returns no cards for a disabled topic even when pagination is requested directly', async () => {
+    prismaMock.metric.findMany.mockResolvedValue([{ key: `topic_projects_${TOPIC_ID}` }]);
+    expect(await getPublicProjectsPage(2025, TOPIC_ID, 2)).toEqual({
+      items: [],
+      page: 2,
+      hasMore: false,
+    });
+    expect(prismaMock.project.findMany).not.toHaveBeenCalled();
+  });
   test('fetches one extra row to know whether more pages exist', async () => {
     prismaMock.project.findMany.mockResolvedValue(rows(PUBLIC_PROJECTS_PAGE_SIZE + 1));
 
