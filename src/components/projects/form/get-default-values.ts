@@ -10,7 +10,7 @@ export function getDefaultValues(
     name: '',
     status: 'active',
     topicId: '',
-    intensity: 'high',
+    intensity: '',
     counterpartyType: '',
     startYear: String(currentYear),
     endYear: '',
@@ -21,6 +21,7 @@ export function getDefaultValues(
     generalObjective: '',
     publicDescription: '',
     internalNotes: '',
+    showOnLanding: 'true',
     coverPhotoUrl: null,
     ...Object.fromEntries(categories.map(({ key }) => [key, '0'])),
   };

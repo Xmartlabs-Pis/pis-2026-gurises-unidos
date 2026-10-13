@@ -55,6 +55,7 @@ type SeedProject = {
   zone: 'city' | 'inland' | 'rural';
   localityNeighborhood: string;
   publicDescription: string;
+  showOnLanding?: boolean;
   beneficiaries: BeneficiaryRecord[];
 };
 
@@ -348,6 +349,22 @@ const SEED_PROJECTS: SeedProject[] = [
       { year: 2025, directChildrenAdolescents: 145, families: 52, communityLeaders: 4 },
     ],
   },
+  {
+    name: 'Puente Escolar',
+    status: 'active',
+    intensity: 'low',
+    startYear: 2025,
+    department: 'Montevideo',
+    topic: 'Education',
+    zone: 'city',
+    localityNeighborhood: 'Casavalle',
+    publicDescription:
+      'Apoyo a la continuidad educativa de niños y niñas, aún sin publicar en la landing.',
+    showOnLanding: false,
+    beneficiaries: [
+      { year: 2025, directChildrenAdolescents: 60, families: 25, communityLeaders: 3 },
+    ],
+  },
 ];
 
 type ProjectFixture = Required<
@@ -449,11 +466,12 @@ async function main() {
       });
 
       for (const [index, project] of SEED_PROJECTS.entries()) {
-        const { department, topic, beneficiaries, endYear, ...fields } = project;
+        const { department, topic, beneficiaries, endYear, showOnLanding, ...fields } = project;
         const fixture: ProjectFixture = {
           ...fields,
           counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
           endYear: endYear ?? null,
+          showOnLanding: showOnLanding ?? true,
           leadCoordinatorId: coordinator.id,
           departmentId: departmentIds.get(department)!,
           topicId: topicIds.get(topic)!,

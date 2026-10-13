@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useController, useFormContext } from 'react-hook-form';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import {
@@ -19,6 +20,7 @@ export function SelectField({
   id,
   name,
   label,
+  labelAddon,
   placeholder,
   clearLabel,
   options,
@@ -31,6 +33,7 @@ export function SelectField({
   id: string;
   name: string;
   label: string;
+  labelAddon?: ReactNode;
   placeholder?: string;
   clearLabel?: string;
   options: readonly SelectOption[];
@@ -44,12 +47,22 @@ export function SelectField({
   const { field, fieldState } = useController({ name, control });
   const errorMessage = messages?.[0] ?? fieldState.error?.message;
   const value = typeof field.value === 'string' && field.value ? field.value : null;
+  const fieldLabel = (
+    <FieldLabel htmlFor={id} className="text-foreground text-xs leading-4 font-medium">
+      {label}
+    </FieldLabel>
+  );
 
   return (
     <Field className="min-w-0 gap-1.5" data-invalid={Boolean(errorMessage)}>
-      <FieldLabel htmlFor={id} className="text-foreground text-xs leading-4 font-medium">
-        {label}
-      </FieldLabel>
+      {labelAddon ? (
+        <div className="flex items-center gap-1.5">
+          {fieldLabel}
+          {labelAddon}
+        </div>
+      ) : (
+        fieldLabel
+      )}
       <Select
         items={options}
         name={name}

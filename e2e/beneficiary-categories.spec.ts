@@ -35,6 +35,7 @@ test('adds a category that shows up in the project form and deletes it', async (
   await page.goto('/management/beneficiary-categories');
   await row.getByRole('button', { name: 'Eliminar' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Eliminar' }).click();
+  await expect(page.getByText(`${BENEFICIARY_CATEGORIES.length} categorías`)).toBeVisible();
   await expect(row).toHaveCount(0);
 
   await page.goto('/dashboard/projects/new');
