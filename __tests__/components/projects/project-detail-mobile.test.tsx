@@ -58,7 +58,7 @@ test('shows distribution values without bar tracks on mobile', () => {
   expect(screen.getByRole('meter', { name: 'NNA directos' }).className).toContain('sm:block');
 });
 
-test('shows custom beneficiary categories after the system rows', () => {
+test('shows every beneficiary category in the provided order', () => {
   render(
     <BeneficiaryDistribution
       data={[
@@ -70,12 +70,19 @@ test('shows custom beneficiary categories after the system rows', () => {
   );
 
   const rows = screen.getAllByRole('listitem');
-  expect(rows).toHaveLength(5);
-  expect(rows[4].textContent).toBe('Voluntarios7');
+  expect(rows.map((row) => row.textContent)).toEqual([
+    'NNA directos80',
+    'NNA indirectos20',
+    'Jóvenes (18 a 29)10',
+    'Familias25',
+    'Instituciones coordinadas5',
+    'Referentes comunitarios12',
+    'Personal de servicios básicos18',
+    'Voluntarios7',
+  ]);
   expect(screen.getByRole('meter', { name: 'Voluntarios' }).getAttribute('aria-valuenow')).toBe(
     '7'
   );
-  expect(screen.queryByText('Referentes comunitarios')).toBeNull();
 });
 
 test('keeps the public card horizontal and separates contribution rows on mobile', () => {

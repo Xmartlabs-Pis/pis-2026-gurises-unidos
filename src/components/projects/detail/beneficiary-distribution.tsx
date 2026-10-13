@@ -1,13 +1,16 @@
 import { formatNumber } from '@/lib/format';
 import type { ProjectDetail } from '@/lib/projects/detail';
-import { isSystemBeneficiaryKey } from '@/lib/project-display';
+import { isSystemBeneficiaryKey, type SystemBeneficiaryKey } from '@/lib/project-display';
 
-const DISTRIBUTION_ROWS = [
-  { key: 'directChildrenAdolescents', label: 'NNA directos', color: 'bg-beneficiary-children' },
-  { key: 'families', label: 'Familias', color: 'bg-beneficiary-families' },
-  { key: 'basicServiceStaff', label: 'Docentes y educadores', color: 'bg-beneficiary-staff' },
-  { key: 'coordinatedInstitutions', label: 'Instituciones', color: 'bg-beneficiary-institutions' },
-];
+const BENEFICIARY_COLORS: Record<SystemBeneficiaryKey, string> = {
+  directChildrenAdolescents: 'bg-beneficiary-children',
+  indirectChildrenAdolescents: 'bg-beneficiary-children',
+  youth18To29: 'bg-beneficiary-staff',
+  families: 'bg-beneficiary-families',
+  coordinatedInstitutions: 'bg-beneficiary-institutions',
+  communityLeaders: 'bg-beneficiary-families',
+  basicServiceStaff: 'bg-beneficiary-staff',
+};
 
 export function BeneficiaryDistribution({
   data,
@@ -16,14 +19,7 @@ export function BeneficiaryDistribution({
   data: ProjectDetail['distribution'];
   year: number;
 }) {
-  const values = new Map<string, number | null>(data.map(({ key, value }) => [key, value]));
-  const rows = [
-    ...DISTRIBUTION_ROWS,
-    ...data
-      .filter(({ key }) => !isSystemBeneficiaryKey(key))
-      .map(({ key, label }) => ({ key, label, color: 'bg-beneficiary-custom' })),
-  ];
-  const maximum = Math.max(...rows.map(({ key }) => values.get(key) ?? 0), 1);
+  const maximum = Math.max(...data.map(({ value }) => value ?? 0), 1);
 
   return (
     <section className="border-border bg-card rounded-[14px] border p-4 sm:p-5">
@@ -31,8 +27,10 @@ export function BeneficiaryDistribution({
       <p className="text-muted-foreground mt-4 text-xs">Conteo por categoría · {year}</p>
 
       <ul className="mt-4 space-y-3.5 sm:space-y-4">
-        {rows.map(({ key, label, color }) => {
-          const value = values.get(key) ?? null;
+        {data.map(({ key, label, value }) => {
+          const color = isSystemBeneficiaryKey(key)
+            ? BENEFICIARY_COLORS[key]
+            : 'bg-beneficiary-custom';
 
           return (
             <li key={key}>

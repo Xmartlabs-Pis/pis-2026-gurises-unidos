@@ -64,6 +64,34 @@ function ProjectMetadata({
   );
 }
 
+function ProjectDescriptions({
+  generalObjective,
+  publicDescription,
+}: {
+  generalObjective: string | null;
+  publicDescription: string | null;
+}) {
+  const descriptions = [
+    { label: 'Objetivo general', value: generalObjective },
+    { label: 'Descripción pública', value: publicDescription },
+  ].filter(({ value }) => value !== null);
+
+  if (descriptions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-4">
+      {descriptions.map(({ label, value }) => (
+        <section key={label} className="min-w-0 flex-1 basis-80">
+          <h2 className="text-sm font-semibold">{label}</h2>
+          <p className="text-muted-foreground mt-1 text-sm leading-5">{value}</p>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function ProjectDetailHeader({
   project,
   selectedYear,
@@ -74,7 +102,6 @@ export function ProjectDetailHeader({
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
-  const description = project.generalObjective ?? project.publicDescription;
 
   return (
     <section className="border-border pb-1 sm:border-b sm:pb-5">
@@ -105,21 +132,16 @@ export function ProjectDetailHeader({
         </div>
       </div>
 
-      <div className="flex flex-col">
-        {description && (
-          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
-            {description}
-          </p>
-        )}
-        <div className="order-2 sm:order-1">
-          <ProjectMetadata
-            territory={territory}
-            coordinator={coordinator}
-            period={period}
-            strategicLines={strategicLines}
-          />
-        </div>
-      </div>
+      <ProjectMetadata
+        territory={territory}
+        coordinator={coordinator}
+        period={period}
+        strategicLines={strategicLines}
+      />
+      <ProjectDescriptions
+        generalObjective={project.generalObjective}
+        publicDescription={project.publicDescription}
+      />
 
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
         <span className="text-muted-foreground text-sm">Año de los datos</span>
