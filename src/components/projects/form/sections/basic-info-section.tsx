@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { INTENSITY_OPTIONS, STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
+import { STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
@@ -76,29 +76,21 @@ export function BasicInfoSection({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField
-          id="intensity"
-          name="intensity"
-          label="Intensidad"
-          options={INTENSITY_OPTIONS}
+          id="startYear"
+          name="startYear"
+          label="Año de inicio"
+          options={startYearOptions}
         />
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-          <SelectField
-            id="startYear"
-            name="startYear"
-            label="Año de inicio"
-            options={startYearOptions}
-          />
-          <SelectField
-            id="endYear"
-            name="endYear"
-            label="Año de fin"
-            placeholder="Seleccionar..."
-            clearLabel="Sin año de fin"
-            options={endYearOptions}
-            disabled={status !== 'closed'}
-            required={status === 'closed'}
-          />
-        </div>
+        <SelectField
+          id="endYear"
+          name="endYear"
+          label="Año de fin"
+          placeholder="Seleccionar..."
+          clearLabel="Sin año de fin"
+          options={endYearOptions}
+          disabled={status !== 'closed'}
+          required={status === 'closed'}
+        />
       </div>
       <SelectField
         id="counterpartyType"

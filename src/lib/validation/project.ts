@@ -5,7 +5,10 @@ export const projectSchema = z
   .object({
     name: z.string().trim().max(100, 'Máx. 100 caracteres').min(1, 'El nombre es obligatorio'),
     status: z.enum(['active', 'closed']),
-    intensity: z.enum(['high', 'medium', 'low']),
+    intensity: z.preprocess(
+      (value) => (value === '' || value === undefined ? null : value),
+      z.enum(['high', 'medium', 'low']).nullable()
+    ),
     startYear: z.coerce
       .number()
       .int()
@@ -88,5 +91,7 @@ export const projectSchema = z
       });
     }
   });
+
+export const INTENSITY_REQUIRED_MESSAGE = 'Elegí una intensidad';
 
 export type ProjectFormState = { errors?: Record<string, string[]>; formError?: string };

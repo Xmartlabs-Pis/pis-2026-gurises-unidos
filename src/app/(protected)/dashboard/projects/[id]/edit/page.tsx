@@ -112,8 +112,12 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
             <span className={project.status === 'active' ? 'text-status-success' : undefined}>
               {STATUS_LABEL[project.status]}
             </span>
-            <span className="text-muted-foreground">•</span>
-            <span>{INTENSITY_LABEL[project.intensity]} intensidad</span>
+            {project.intensity && (
+              <>
+                <span className="text-muted-foreground">•</span>
+                <span>{INTENSITY_LABEL[project.intensity]} intensidad</span>
+              </>
+            )}
           </div>
         </div>
         <ProjectForm
