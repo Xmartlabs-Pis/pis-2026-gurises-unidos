@@ -237,14 +237,14 @@ describe.each([
     ['is before the start year', { status: 'inactive', endYear: '2018' }],
     ['is set on a project that is not inactive', { status: 'active', endYear: '2020' }],
     ['is before the first project year', { status: 'inactive', endYear: '1988' }],
-    ['is missing on a inactive project', { status: 'inactive', endYear: '' }],
+    ['is missing on an inactive project', { status: 'inactive', endYear: '' }],
   ])('rejects an end year that %s before writing', async (_case, overrides) => {
     const result = await submit(formData(overrides));
     expect(result.errors?.endYear?.length).toBeGreaterThan(0);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
-  it('accepts an end year equal to the start year on a inactive project', async () => {
+  it('accepts an end year equal to the start year on an inactive project', async () => {
     await expect(
       submit(formData({ status: 'inactive', endYear: '2019', year: '2019' }))
     ).rejects.toThrow('Redirect: /dashboard/projects/10');
@@ -256,7 +256,7 @@ describe.each([
     async (year) => {
       const result = await submit(formData({ status: 'inactive', endYear: '2022', year }));
       expect(result).toEqual({
-        errors: { year: ['El año de beneficiarios no puede ser posterior al año de cierre'] },
+        errors: { year: ['El año de beneficiarios no puede ser posterior al año de fin'] },
       });
       expect(mocks.transaction).not.toHaveBeenCalled();
       expect(mocks.redirect).not.toHaveBeenCalled();
@@ -354,7 +354,7 @@ it('creates the project and beneficiaries with audit entries in one transaction'
 });
 
 describe('updateProject persistence', () => {
-  it('rejects closing before an existing beneficiary year without writing', async () => {
+  it('rejects marking as inactive before an existing beneficiary year without writing', async () => {
     mocks.findLaterBeneficiary.mockResolvedValue({ year: 2024 });
     const result = await updateProject(
       10,
@@ -364,7 +364,7 @@ describe('updateProject persistence', () => {
     expect(result).toEqual({
       errors: {
         endYear: [
-          'El año de cierre no puede ser anterior a 2024, que tiene beneficiarios registrados',
+          'El año de fin no puede ser anterior a 2024, que tiene beneficiarios registrados',
         ],
       },
     });

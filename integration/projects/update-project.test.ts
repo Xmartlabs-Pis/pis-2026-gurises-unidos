@@ -137,7 +137,7 @@ describe('updateProject (integration)', () => {
     }
   );
 
-  test('rejects closing before stored beneficiary years without changing any data', async () => {
+  test('rejects marking as inactive before stored beneficiary years without changing any data', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
     const before = await loadProject(projectId);
@@ -149,13 +149,13 @@ describe('updateProject (integration)', () => {
     );
 
     expect(result.errors?.endYear).toEqual([
-      'El año de cierre no puede ser anterior a 2024, que tiene beneficiarios registrados',
+      'El año de fin no puede ser anterior a 2024, que tiene beneficiarios registrados',
     ]);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 
-  test('allows closing in the last stored beneficiary year and preserves its records', async () => {
+  test('allows marking as inactive in the last stored beneficiary year and preserves its records', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
     const before = await loadProject(projectId);

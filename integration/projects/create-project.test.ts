@@ -170,7 +170,7 @@ describe('createProject (integration)', () => {
     ]);
   });
 
-  test('stores a inactive project with its end year', async () => {
+  test('stores an inactive project with its end year', async () => {
     signInAs(seed.adminId);
 
     const projectId = await expectRedirectToNewProject(
@@ -311,7 +311,7 @@ describe('createProject (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
-  test('rejects beneficiaries after the end year of a inactive project', async () => {
+  test('rejects beneficiaries after the end year of an inactive project', async () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
@@ -321,7 +321,7 @@ describe('createProject (integration)', () => {
     );
 
     expect(result.errors?.year).toEqual([
-      'El año de beneficiarios no puede ser posterior al año de cierre',
+      'El año de beneficiarios no puede ser posterior al año de fin',
     ]);
     expect(await countRows()).toEqual(before);
   });

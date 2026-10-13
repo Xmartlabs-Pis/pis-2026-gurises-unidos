@@ -76,7 +76,7 @@ test('searches projects by name', async ({ page }) => {
   await expect(cards.getByRole('heading', { level: 2 })).toHaveText(E2E_INACTIVE_PROJECT.name);
 });
 
-test('shows the end year on a inactive project detail', async ({ page }) => {
+test('shows the end year on an inactive project detail', async ({ page }) => {
   await page.goto('/dashboard/projects?status=inactive&beneficiaryYear=all');
 
   await projectCards(page).filter({ hasText: E2E_INACTIVE_PROJECT.name }).click();

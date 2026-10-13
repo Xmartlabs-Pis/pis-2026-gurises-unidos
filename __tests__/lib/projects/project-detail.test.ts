@@ -181,7 +181,7 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('does not count a inactive project with beneficiary data as active', async () => {
+  it('does not count an inactive project with beneficiary data as active', async () => {
     prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'inactive' });
 
     expect(await getProjectDetail('12', '2026')).toMatchObject({

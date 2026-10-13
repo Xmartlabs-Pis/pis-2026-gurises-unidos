@@ -205,7 +205,7 @@ it('disables the end year unless the project is inactive', () => {
   expect(endYear.textContent).toContain('2022');
 });
 
-it('submits the end year of a inactive project', async () => {
+it('submits the end year of an inactive project', async () => {
   const submitAction = vi.fn().mockResolvedValue({});
   const { container } = render(
     <ProjectForm
@@ -261,7 +261,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
   expect(routerRefreshMock).toHaveBeenCalledOnce();
 });
 
-it('limits the start year to the closing year and restores later years when reopened', async () => {
+it('limits the start year to the end year and restores later years when reactivated', async () => {
   renderFormWith({ status: 'inactive', startYear: '2020', endYear: '2022', year: '2020' });
   fireEvent.click(screen.getByLabelText('Año de inicio'));
   expect(await screen.findByRole('option', { name: '2022' })).toBeTruthy();
@@ -275,7 +275,7 @@ it('limits the start year to the closing year and restores later years when reop
   expect(await screen.findByRole('option', { name: '2026' })).toBeTruthy();
 });
 
-it('limits the closing year to years at or after the start year', async () => {
+it('limits the end year to years at or after the start year', async () => {
   renderFormWith({ status: 'inactive', startYear: '2020', endYear: '2022' });
   fireEvent.click(screen.getByLabelText('Año de fin'));
   expect(await screen.findByRole('option', { name: '2020' })).toBeTruthy();
@@ -283,7 +283,7 @@ it('limits the closing year to years at or after the start year', async () => {
   expect(screen.queryByRole('option', { name: '2019' })).toBeNull();
 });
 
-it('clears an invalid closing year and advances beneficiaries to the start year', async () => {
+it('clears an invalid end year and advances beneficiaries to the start year', async () => {
   render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
@@ -325,7 +325,7 @@ it('clears an invalid closing year and advances beneficiaries to the start year'
     screen.queryByText('El año de beneficiarios no puede ser anterior al año de inicio')
   ).toBeNull();
   expect(
-    screen.queryByText('El año de beneficiarios no puede ser posterior al año de cierre')
+    screen.queryByText('El año de beneficiarios no puede ser posterior al año de fin')
   ).toBeNull();
   fireEvent.click(screen.getByLabelText('Año de beneficiarios'));
   expect(await screen.findByRole('option', { name: '2024' })).toBeTruthy();

@@ -270,7 +270,7 @@ export async function updateProject(
             return {
               errors: {
                 endYear: [
-                  `El año de cierre no puede ser anterior a ${laterBeneficiary.year}, que tiene beneficiarios registrados`,
+                  `El año de fin no puede ser anterior a ${laterBeneficiary.year}, que tiene beneficiarios registrados`,
                 ],
               },
             };
