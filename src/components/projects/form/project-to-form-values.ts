@@ -25,6 +25,7 @@ export function projectToFormValues(
     generalObjective: project.generalObjective ?? '',
     publicDescription: project.publicDescription ?? '',
     internalNotes: project.internalNotes ?? '',
+    showOnLanding: String(project.showOnLanding),
     coverPhotoUrl: project.coverPhoto,
     topicId: String(project.topicId),
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),

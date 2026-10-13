@@ -66,21 +66,19 @@ function PublicProjectCard({
   const styles = PUBLIC_VARIANT_STYLES[variant];
 
   return (
-    <article
-      className={`${styles.card} flex flex-col overflow-hidden rounded-xl border-t-4 sm:border-t-0`}
-    >
-      <div className={`${styles.image} relative hidden h-54.5 w-full sm:block`}>
+    <article className={`${styles.card} flex h-full flex-col overflow-hidden rounded-xl`}>
+      <div className={`${styles.image} relative h-54.5 w-full`}>
         {coverPhoto && (
           <Image
             src={coverPhoto}
             alt={`Portada de ${name}`}
             fill
-            sizes="(min-width: 1024px) 33vw, 50vw"
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             className="object-cover"
           />
         )}
       </div>
-      <div className="flex flex-col gap-2 px-5 py-4">
+      <div className="flex flex-1 flex-col gap-2 px-5 py-4">
         <div className="flex items-center gap-2">
           <span className={`${styles.dot} size-1.5 rounded-full`} />
           <span className={`${styles.territory} text-xs leading-4 font-normal tracking-normal`}>
@@ -93,7 +91,7 @@ function PublicProjectCard({
             {description}
           </p>
         )}
-        <div className="flex items-baseline gap-2">
+        <div className="mt-auto flex items-baseline gap-2">
           <span className={`${styles.reach} text-xl leading-7 font-bold tracking-normal`}>
             {formatNumber(reach)}
           </span>

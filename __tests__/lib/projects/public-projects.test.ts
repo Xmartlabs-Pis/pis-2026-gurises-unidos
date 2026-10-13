@@ -1,78 +1,122 @@
 import { describe, expect, test } from 'vitest';
 import { prismaMock } from '../../mocks/prisma';
-import { PUBLIC_PROJECTS_PAGE_SIZE, getPublicProjectsPage } from '@/lib/projects/public-projects';
-import { beneficiaryValueRows } from '../../mocks/beneficiary-values';
+import {
+  PUBLIC_PROJECTS_PAGE_SIZE,
+  getPublicProjectsPage,
+  getPublicTopics,
+} from '@/lib/projects/public-projects';
 
-const ROW = {
-  id: 1,
-  name: 'Centro comunitario',
-  publicDescription: null,
-  coverPhoto: '/images/project-placeholders/1.webp',
-  department: { id: 1, name: 'Montevideo' },
-  projectBeneficiaries: [
-    {
-      year: 2025,
-      values: beneficiaryValueRows({
-        directChildrenAdolescents: 10,
-        indirectChildrenAdolescents: 5,
-        youth18To29: 0,
-        families: 0,
-        coordinatedInstitutions: 0,
-        communityLeaders: 0,
-        basicServiceStaff: 0,
-      }),
-    },
-  ],
-};
+const TOPIC_ID = 2;
 
-function mockProjects(total: number) {
-  prismaMock.project.count.mockResolvedValue(total);
-  prismaMock.project.findMany.mockResolvedValue([ROW] as never);
+function row(id: number) {
+  return {
+    id,
+    name: `Proyecto ${id}`,
+    publicDescription: null,
+    coverPhoto: '/images/project-placeholders/1.webp',
+    department: { name: 'Montevideo' },
+    projectBeneficiaries: [{ values: [{ value: 10 }, { value: 5 }] }],
+  };
 }
 
-describe('getPublicProjectsPage', () => {
-  test('maps rows to public projects and reports more pages', async () => {
-    mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
+function rows(count: number) {
+  return Array.from({ length: count }, (_, index) => row(index + 1));
+}
 
-    const result = await getPublicProjectsPage(2025, '1');
+describe('getPublicTopics', () => {
+  test('maps each topic to its total and first page of public projects', async () => {
+    prismaMock.topic.findMany.mockResolvedValue([
+      { id: 1, name: 'Education', _count: { projects: 20 }, projects: rows(12) },
+      { id: 3, name: 'Health', _count: { projects: 1 }, projects: [row(30)] },
+    ]);
 
-    expect(result).toEqual({
-      items: [
-        {
-          id: 1,
-          name: 'Centro comunitario',
-          department: 'Montevideo',
-          description: '',
-          coverPhoto: '/images/project-placeholders/1.webp',
-          reach: 15,
-        },
-      ],
-      page: 1,
-      hasMore: true,
+    const topics = await getPublicTopics(2025);
+
+    expect(topics).toHaveLength(2);
+    expect(topics[0]).toMatchObject({
+      id: 1,
+      name: 'Education',
+      total: 20,
+      initialPage: { page: 1, hasMore: true },
+    });
+    expect(topics[0].initialPage.items).toHaveLength(12);
+    expect(topics[1]).toMatchObject({
+      total: 1,
+      initialPage: {
+        items: [
+          {
+            id: 30,
+            name: 'Proyecto 30',
+            department: 'Montevideo',
+            description: '',
+            coverPhoto: '/images/project-placeholders/1.webp',
+            reach: 15,
+          },
+        ],
+        hasMore: false,
+      },
     });
   });
 
+  test('only loads active topics with public projects for the year', async () => {
+    prismaMock.topic.findMany.mockResolvedValue([]);
+
+    await getPublicTopics(2025);
+
+    const where = {
+      deletedAt: null,
+      showOnLanding: true,
+      projectBeneficiaries: { some: { year: 2025 } },
+    };
+    expect(prismaMock.topic.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { isActive: true, projects: { some: where } },
+        select: expect.objectContaining({
+          _count: { select: { projects: { where } } },
+          projects: expect.objectContaining({ where, take: PUBLIC_PROJECTS_PAGE_SIZE }),
+        }),
+      })
+    );
+  });
+});
+
+describe('getPublicProjectsPage', () => {
+  test('fetches one extra row to know whether more pages exist', async () => {
+    prismaMock.project.findMany.mockResolvedValue(rows(PUBLIC_PROJECTS_PAGE_SIZE + 1));
+
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, 2);
+
+    expect(result.items).toHaveLength(PUBLIC_PROJECTS_PAGE_SIZE);
+    expect(result).toMatchObject({ page: 2, hasMore: true });
+    expect(prismaMock.project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          showOnLanding: true,
+          projectBeneficiaries: { some: { year: 2025 } },
+          topicId: TOPIC_ID,
+        },
+        skip: PUBLIC_PROJECTS_PAGE_SIZE,
+        take: PUBLIC_PROJECTS_PAGE_SIZE + 1,
+      })
+    );
+    expect(prismaMock.project.count).not.toHaveBeenCalled();
+  });
+
   test('reports no more pages on the last page', async () => {
-    mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
+    prismaMock.project.findMany.mockResolvedValue(rows(3));
 
-    const result = await getPublicProjectsPage(2025, '2');
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, 3);
 
-    expect(result).toMatchObject({ page: 2, hasMore: false });
+    expect(result.items).toHaveLength(3);
+    expect(result.hasMore).toBe(false);
   });
 
-  test('returns no items when the page is past the end', async () => {
-    mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
+  test('reports zero reach for a project without beneficiary values', async () => {
+    prismaMock.project.findMany.mockResolvedValue([{ ...row(1), projectBeneficiaries: [] }]);
 
-    const result = await getPublicProjectsPage(2025, '9');
+    const result = await getPublicProjectsPage(2025, TOPIC_ID, 1);
 
-    expect(result).toMatchObject({ items: [], hasMore: false });
-  });
-
-  test('falls back to the first page for an invalid page', async () => {
-    mockProjects(PUBLIC_PROJECTS_PAGE_SIZE * 2);
-
-    const result = await getPublicProjectsPage(2025, 'abc');
-
-    expect(result.page).toBe(1);
+    expect(result.items[0].reach).toBe(0);
   });
 });

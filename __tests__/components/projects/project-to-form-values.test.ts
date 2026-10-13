@@ -17,6 +17,7 @@ const PROJECT = {
   generalObjective: null,
   publicDescription: null,
   internalNotes: null,
+  showOnLanding: true,
   coverPhoto: '/cover.png',
   createdAt: new Date('2024-01-01'),
   createdBy: 1,
