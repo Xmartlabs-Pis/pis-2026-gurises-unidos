@@ -8,6 +8,8 @@ const {
   auditMock,
   revalidateMock,
   yearsMock,
+  topicsMock,
+  topicUpdateMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   transactionMock: vi.fn(),
@@ -16,6 +18,8 @@ const {
   auditMock: vi.fn(),
   revalidateMock: vi.fn(),
   yearsMock: vi.fn(),
+  topicsMock: vi.fn(),
+  topicUpdateMock: vi.fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
@@ -37,7 +41,11 @@ describe('saveMetricSettings', () => {
     upsertMock.mockResolvedValue({ id: 1 });
     yearsMock.mockResolvedValue([2026, 2025, 2024]);
     transactionMock.mockImplementation(async (callback) =>
-      callback({ metric: { upsert: upsertMock }, publicSettings: { upsert: settingsUpsertMock } })
+      callback({
+        metric: { upsert: upsertMock },
+        publicSettings: { upsert: settingsUpsertMock },
+        topic: { findMany: topicsMock, update: topicUpdateMock },
+      })
     );
   });
 
@@ -97,5 +105,61 @@ describe('saveMetricSettings', () => {
     transactionMock.mockRejectedValue(new Error('Database unavailable'));
     expect((await saveMetricSettings(SETTINGS)).success).toBe(false);
     expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
+  it('persists both enabled and disabled topic statistics', async () => {
+    topicsMock.mockResolvedValue([
+      { id: 1, name: 'Education' },
+      { id: 2, name: 'Health' },
+    ]);
+    const result = await saveMetricSettings({
+      ...SETTINGS,
+      topics: [
+        { id: 1, showPublicly: true },
+        { id: 2, showPublicly: false },
+      ],
+    });
+    expect(result.success).toBe(true);
+    for (const [id, showPublicly] of [
+      [1, true],
+      [2, false],
+    ]) {
+      expect(topicUpdateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id },
+          data: { showPublicly },
+        })
+      );
+    }
+  });
+
+  it('rejects unavailable topics before writing settings', async () => {
+    topicsMock.mockResolvedValue([]);
+    expect(
+      (
+        await saveMetricSettings({
+          ...SETTINGS,
+          topics: [{ id: 99, showPublicly: true }],
+        })
+      ).success
+    ).toBe(false);
+    expect(upsertMock).not.toHaveBeenCalled();
+    expect(settingsUpsertMock).not.toHaveBeenCalled();
+    expect(revalidateMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate topic selections', async () => {
+    expect(
+      (
+        await saveMetricSettings({
+          ...SETTINGS,
+          topics: [
+            { id: 1, showPublicly: true },
+            { id: 1, showPublicly: false },
+          ],
+        })
+      ).success
+    ).toBe(false);
+    expect(transactionMock).not.toHaveBeenCalled();
   });
 });

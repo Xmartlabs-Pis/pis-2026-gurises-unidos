@@ -3,9 +3,11 @@ import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getReferenceYear } from '@/lib/metrics/queries';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
+import { Suspense } from 'react';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
-import { Suspense } from 'react';
+import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
+import { getVisibleTopics } from '@/lib/metrics/visible-topics';
 
 const LEVELS = [
   {
@@ -49,11 +51,12 @@ const PARTNERS = [
 
 export default async function Home() {
   const year = await getReferenceYear();
-  const [values, previousValues, settings, departmentBeneficiaries] = await Promise.all([
+  const [values, previousValues, settings, departmentBeneficiaries, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
     getDepartmentBeneficiaries(year),
+    getTopicStatistics(year),
   ]);
   const departmentBubbles = departmentBeneficiaries
     .slice(0, MAX_DEPARTMENT_BUBBLES)
@@ -68,6 +71,9 @@ export default async function Home() {
       description: metric.name,
       increment: formatIncrement(values[metric.key], previousValues[metric.key], year - 1),
     }));
+
+  const visibleTopics = getVisibleTopics(topics);
+  const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));
 
   return (
     <>
@@ -109,9 +115,57 @@ export default async function Home() {
           </div>
         </div>
       </section>
-      <section className="w-full">
-        <div className="mx-auto flex w-full max-w-360 flex-col gap-8 px-5 py-8 sm:px-6 lg:gap-12 lg:px-16 lg:py-12">
-          <div className="flex flex-col gap-2">
+      {visibleTopics.length > 0 && (
+        <section aria-labelledby="public-topic-statistics-heading" className="w-full">
+          <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 pt-2 pb-6 sm:px-6 lg:px-16">
+            <div className="flex flex-col gap-1">
+              <h2
+                id="public-topic-statistics-heading"
+                className="text-foreground text-2xl leading-8 font-bold sm:text-3xl sm:leading-9"
+              >
+                Proyectos por temática
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Proyectos con actividad registrada en {year}
+              </p>
+            </div>
+            <dl className="grid w-full max-w-246 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-5 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-x-6">
+              {visibleTopics.map((topic) => (
+                <div
+                  key={topic.id}
+                  className="col-span-full grid grid-cols-subgrid items-center gap-y-2"
+                >
+                  <dt className="text-foreground text-sm leading-5 font-medium">{topic.name}</dt>
+                  <dd className="contents">
+                    <div
+                      aria-hidden="true"
+                      className="bg-card col-span-2 row-start-2 h-3 overflow-hidden rounded-full sm:col-span-1 sm:col-start-2 sm:row-start-1"
+                    >
+                      <div
+                        className="bg-primary h-full rounded-full"
+                        style={{ width: `${(topic.projectCount / maxTopicProjectCount) * 100}%` }}
+                      />
+                    </div>
+                    <span className="col-start-2 row-start-1 flex items-baseline gap-2 whitespace-nowrap sm:col-start-3">
+                      <span className="text-primary text-2xl leading-8 font-bold tabular-nums">
+                        {formatNumber(topic.projectCount)}
+                      </span>
+                      <span className="text-foreground text-sm leading-5">
+                        {topic.projectCount === 1 ? 'proyecto' : 'proyectos'}
+                      </span>
+                    </span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
+      )}
+      <section id="projects" className="w-full scroll-mt-4">
+        <div
+          className={`mx-auto flex min-h-71 w-full max-w-360 flex-col gap-4 px-4 pb-18 sm:px-6 lg:px-14 ${visibleTopics.length > 0 ? 'pt-6' : 'pt-18'}`}
+        >
+          <div className="flex w-full max-w-75.75 flex-col gap-1 lg:h-15">
             <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
               Nuestros proyectos
             </h2>

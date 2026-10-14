@@ -73,7 +73,7 @@ function toPublicProject(row: PublicProjectRow): PublicProject {
 export async function getPublicTopics(year: number): Promise<PublicTopic[]> {
   const where = publicProjectWhere(year);
   const topics = await prisma.topic.findMany({
-    where: { isActive: true, projects: { some: where } },
+    where: { showPublicly: true, isActive: true, projects: { some: where } },
     orderBy: { name: 'asc' },
     select: {
       id: true,
@@ -106,7 +106,7 @@ export async function getPublicProjectsPage(
   page: number
 ): Promise<PublicProjectsPage> {
   const rows = await prisma.project.findMany({
-    where: { ...publicProjectWhere(year), topicId },
+    where: { ...publicProjectWhere(year), topicId, topic: { isActive: true, showPublicly: true } },
     orderBy: PUBLIC_PROJECT_ORDER,
     select: publicProjectSelect(year),
     skip: (page - 1) * PUBLIC_PROJECTS_PAGE_SIZE,

@@ -10,7 +10,6 @@ export async function ProjectsByTopic({ year }: { year: number }) {
       year={year}
       topicId={topic.id}
       topic={topic.name}
-      total={topic.total}
       initialPage={topic.initialPage}
     />
   ));

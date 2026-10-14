@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/projects/public-projects', () => ({ getPublicTopics: mocks.getPublicTopics }));
 vi.mock('@/components/projects/topic-carousel', () => ({ TopicCarousel: () => null }));
 
-test('renders one carousel per public topic with its total and first page', async () => {
+test('renders one carousel per public topic with its first page', async () => {
   const initialPage = { items: [], page: 1, hasMore: true };
   mocks.getPublicTopics.mockResolvedValue([
     { id: 1, name: 'Education', total: 20, initialPage },
@@ -19,12 +19,11 @@ test('renders one carousel per public topic with its total and first page', asyn
   const carousels = (await ProjectsByTopic({ year: 2025 })) as ReactElement<{
     topic: string;
     topicId: number;
-    total: number;
   }>[];
 
   expect(mocks.getPublicTopics).toHaveBeenCalledWith(2025);
-  expect(carousels.map(({ props }) => [props.topicId, props.topic, props.total])).toEqual([
-    [1, 'Education', 20],
-    [3, 'Health', 2],
+  expect(carousels.map(({ props }) => [props.topicId, props.topic])).toEqual([
+    [1, 'Education'],
+    [3, 'Health'],
   ]);
 });
