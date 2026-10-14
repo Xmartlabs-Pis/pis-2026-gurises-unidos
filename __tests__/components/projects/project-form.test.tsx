@@ -195,17 +195,17 @@ function renderFormWith(initialValues: Record<string, string>) {
   );
 }
 
-it('disables the end year unless the project is closed', () => {
+it('disables the end year unless the project is inactive', () => {
   renderFormWith({ status: 'active' });
   expect((screen.getByLabelText('Año de fin') as HTMLButtonElement).disabled).toBe(true);
   cleanup();
-  renderFormWith({ status: 'closed', startYear: '2020', endYear: '2022' });
+  renderFormWith({ status: 'inactive', startYear: '2020', endYear: '2022' });
   const endYear = screen.getByLabelText('Año de fin') as HTMLButtonElement;
   expect(endYear.disabled).toBe(false);
   expect(endYear.textContent).toContain('2022');
 });
 
-it('submits the end year of a closed project', async () => {
+it('submits the end year of an inactive project', async () => {
   const submitAction = vi.fn().mockResolvedValue({});
   const { container } = render(
     <ProjectForm
@@ -219,7 +219,7 @@ it('submits the end year of a closed project', async () => {
         name: 'Project',
         leadCoordinatorId: '2',
         departmentId: '3',
-        status: 'closed',
+        status: 'inactive',
         startYear: '2020',
         endYear: '2022',
         topicId: '1',
@@ -261,8 +261,8 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
   expect(routerRefreshMock).toHaveBeenCalledOnce();
 });
 
-it('limits the start year to the closing year and restores later years when reopened', async () => {
-  renderFormWith({ status: 'closed', startYear: '2020', endYear: '2022', year: '2020' });
+it('limits the start year to the end year and restores later years when reactivated', async () => {
+  renderFormWith({ status: 'inactive', startYear: '2020', endYear: '2022', year: '2020' });
   fireEvent.click(screen.getByLabelText('Año de inicio'));
   expect(await screen.findByRole('option', { name: '2022' })).toBeTruthy();
   expect(screen.queryByRole('option', { name: '2023' })).toBeNull();
@@ -275,15 +275,15 @@ it('limits the start year to the closing year and restores later years when reop
   expect(await screen.findByRole('option', { name: '2026' })).toBeTruthy();
 });
 
-it('limits the closing year to years at or after the start year', async () => {
-  renderFormWith({ status: 'closed', startYear: '2020', endYear: '2022' });
+it('limits the end year to years at or after the start year', async () => {
+  renderFormWith({ status: 'inactive', startYear: '2020', endYear: '2022' });
   fireEvent.click(screen.getByLabelText('Año de fin'));
   expect(await screen.findByRole('option', { name: '2020' })).toBeTruthy();
   expect(screen.getByRole('option', { name: '2026' })).toBeTruthy();
   expect(screen.queryByRole('option', { name: '2019' })).toBeNull();
 });
 
-it('clears an invalid closing year and advances beneficiaries to the start year', async () => {
+it('clears an invalid end year and advances beneficiaries to the start year', async () => {
   render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
@@ -293,7 +293,7 @@ it('clears an invalid closing year and advances beneficiaries to the start year'
       departments={[]}
       initialValues={{
         counterpartyType: 'publicSector',
-        status: 'closed',
+        status: 'inactive',
         startYear: '2024',
         endYear: '2022',
         year: '2020',
@@ -319,13 +319,13 @@ it('clears an invalid closing year and advances beneficiaries to the start year'
     expect((screen.getByLabelText('Familias') as HTMLInputElement).value).toBe('7');
   });
   expect(
-    await screen.findByText('El año de fin es obligatorio para proyectos cerrados')
+    await screen.findByText('El año de fin es obligatorio para proyectos inactivos')
   ).toBeTruthy();
   expect(
     screen.queryByText('El año de beneficiarios no puede ser anterior al año de inicio')
   ).toBeNull();
   expect(
-    screen.queryByText('El año de beneficiarios no puede ser posterior al año de cierre')
+    screen.queryByText('El año de beneficiarios no puede ser posterior al año de fin')
   ).toBeNull();
   fireEvent.click(screen.getByLabelText('Año de beneficiarios'));
   expect(await screen.findByRole('option', { name: '2024' })).toBeTruthy();

@@ -19,14 +19,14 @@ export function BasicInfoSection({
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
   const startYearOptions = yearOptions.filter(
-    ({ value }) => status !== 'closed' || !endYear || Number(value) <= Number(endYear)
+    ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
   );
   const endYearOptions = yearOptions.filter(
     ({ value }) => !startYear || Number(value) >= Number(startYear)
   );
 
   useEffect(() => {
-    if (status === 'closed' && startYear && endYear && Number(endYear) < Number(startYear)) {
+    if (status === 'inactive' && startYear && endYear && Number(endYear) < Number(startYear)) {
       setValue('endYear', '', { shouldValidate: true });
     }
   }, [status, startYear, endYear, setValue]);
@@ -48,7 +48,7 @@ export function BasicInfoSection({
           label="Estado"
           options={STATUS_OPTIONS}
           onValueChange={(value) => {
-            if (value !== 'closed') {
+            if (value !== 'inactive') {
               setValue('endYear', '');
               clearErrors('endYear');
             }
@@ -88,8 +88,8 @@ export function BasicInfoSection({
           placeholder="Seleccionar..."
           clearLabel="Sin año de fin"
           options={endYearOptions}
-          disabled={status !== 'closed'}
-          required={status === 'closed'}
+          disabled={status !== 'inactive'}
+          required={status === 'inactive'}
         />
       </div>
       <SelectField

@@ -47,9 +47,9 @@ export const E2E_ACTIVE_PROJECT = {
   coverPhoto: PROJECT_PLACEHOLDERS[0],
 } as const;
 
-export const E2E_CLOSED_PROJECT = {
-  name: 'E2E closed project',
-  status: 'closed',
+export const E2E_INACTIVE_PROJECT = {
+  name: 'E2E inactive project',
+  status: 'inactive',
   intensity: 'low',
   counterpartyType: 'privateSector',
   startYear: 2023,
@@ -58,4 +58,4 @@ export const E2E_CLOSED_PROJECT = {
   coverPhoto: PROJECT_PLACEHOLDERS[1],
 } as const;
 
-export const E2E_PROJECTS = [E2E_ACTIVE_PROJECT, E2E_CLOSED_PROJECT] as const;
+export const E2E_PROJECTS = [E2E_ACTIVE_PROJECT, E2E_INACTIVE_PROJECT] as const;

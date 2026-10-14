@@ -23,7 +23,7 @@ export const projectFiltersSchema = z
       .optional()
       .catch(undefined)
       .transform((value) => value?.slice(0, PROJECT_SEARCH_MAX_LENGTH) || undefined),
-    status: z.enum(['active', 'closed']).optional().catch(undefined),
+    status: z.enum(['active', 'inactive']).optional().catch(undefined),
     intensity: z.enum(['high', 'medium', 'low']).optional().catch(undefined),
     leadCoordinatorId: optionalPositiveInt,
     departmentId: optionalPositiveInt,

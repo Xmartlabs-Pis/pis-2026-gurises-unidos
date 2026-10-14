@@ -2,7 +2,7 @@ import { CounterpartyType, ProjectStatus, Intensity } from '@/generated/prisma/e
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: 'Activo',
-  closed: 'Cerrado',
+  inactive: 'Inactivo',
 };
 
 export const INTENSITY_LABEL: Record<Intensity, string> = {
@@ -29,7 +29,7 @@ export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
 
 export const STATUS_OPTIONS = [
   { value: 'active', label: STATUS_LABEL.active },
-  { value: 'closed', label: STATUS_LABEL.closed },
+  { value: 'inactive', label: STATUS_LABEL.inactive },
 ] as const;
 
 export const INTENSITY_OPTIONS = [

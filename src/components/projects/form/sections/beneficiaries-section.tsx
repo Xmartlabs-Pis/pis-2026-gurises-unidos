@@ -105,7 +105,7 @@ export function BeneficiariesSection({
       return;
     }
     if (
-      status === 'closed' &&
+      status === 'inactive' &&
       endYear &&
       Number(endYear) >= Number(startYear) &&
       Number(year) > Number(endYear)

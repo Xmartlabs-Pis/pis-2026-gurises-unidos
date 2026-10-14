@@ -260,7 +260,7 @@ export async function updateProject(
           projectId
         );
         if (nameError) return nameError;
-        if (projectData.status === 'closed' && projectData.endYear !== null) {
+        if (projectData.status === 'inactive' && projectData.endYear !== null) {
           const laterBeneficiary = await tx.projectBeneficiary.findFirst({
             where: { projectId, year: { gt: projectData.endYear } },
             orderBy: { year: 'desc' },
@@ -270,7 +270,7 @@ export async function updateProject(
             return {
               errors: {
                 endYear: [
-                  `El año de cierre no puede ser anterior a ${laterBeneficiary.year}, que tiene beneficiarios registrados`,
+                  `El año de fin no puede ser anterior a ${laterBeneficiary.year}, que tiene beneficiarios registrados`,
                 ],
               },
             };

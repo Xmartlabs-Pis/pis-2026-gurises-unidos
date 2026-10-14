@@ -170,15 +170,15 @@ describe('createProject (integration)', () => {
     ]);
   });
 
-  test('stores a closed project with its end year', async () => {
+  test('stores an inactive project with its end year', async () => {
     signInAs(seed.adminId);
 
     const projectId = await expectRedirectToNewProject(
       createProject(
         {},
         buildFormData({
-          name: 'Closed on creation',
-          status: 'closed',
+          name: 'Inactive on creation',
+          status: 'inactive',
           endYear: '2023',
           year: '2022',
         })
@@ -186,7 +186,7 @@ describe('createProject (integration)', () => {
     );
 
     expect(await loadProject(projectId)).toMatchObject({
-      status: 'closed',
+      status: 'inactive',
       endYear: 2023,
       projectBeneficiaries: [expect.objectContaining({ year: 2022 })],
     });
@@ -311,17 +311,17 @@ describe('createProject (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
-  test('rejects beneficiaries after the end year of a closed project', async () => {
+  test('rejects beneficiaries after the end year of an inactive project', async () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
     const result = await createProject(
       {},
-      buildFormData({ status: 'closed', endYear: '2023', year: '2024' })
+      buildFormData({ status: 'inactive', endYear: '2023', year: '2024' })
     );
 
     expect(result.errors?.year).toEqual([
-      'El año de beneficiarios no puede ser posterior al año de cierre',
+      'El año de beneficiarios no puede ser posterior al año de fin',
     ]);
     expect(await countRows()).toEqual(before);
   });
@@ -359,12 +359,12 @@ describe('createProject (integration)', () => {
 
     const result = await createProject(
       {},
-      buildFormData({ name: '', status: 'closed', endYear: '', year: '2019' })
+      buildFormData({ name: '', status: 'inactive', endYear: '', year: '2019' })
     );
 
     expect(result.errors).toMatchObject({
       name: ['El nombre es obligatorio'],
-      endYear: ['El año de fin es obligatorio para proyectos cerrados'],
+      endYear: ['El año de fin es obligatorio para proyectos inactivos'],
     });
     expect(await countRows()).toEqual(before);
   });

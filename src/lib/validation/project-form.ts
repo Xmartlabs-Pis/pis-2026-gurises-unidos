@@ -23,9 +23,9 @@ export function buildProjectFormSchema(keys: readonly string[]) {
       path: ['year'],
     })
     .refine(
-      (data) => data.status !== 'closed' || data.endYear === null || data.year <= data.endYear,
+      (data) => data.status !== 'inactive' || data.endYear === null || data.year <= data.endYear,
       {
-        message: 'El año de beneficiarios no puede ser posterior al año de cierre',
+        message: 'El año de beneficiarios no puede ser posterior al año de fin',
         path: ['year'],
       }
     )

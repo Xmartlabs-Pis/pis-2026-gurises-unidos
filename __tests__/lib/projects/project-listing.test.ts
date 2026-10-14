@@ -57,7 +57,7 @@ const PROJECTS = [
   {
     id: 2,
     name: 'Escuela rural',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2021,
     zone: 'rural',
@@ -157,9 +157,9 @@ describe('AC1: paginated listing with each project data', () => {
 
 describe('AC2: filters', () => {
   test('by status', async () => {
-    await listWith({ status: 'closed' });
+    await listWith({ status: 'inactive' });
 
-    expect(findManyArgs().where).toEqual({ deletedAt: null, status: 'closed' });
+    expect(findManyArgs().where).toEqual({ deletedAt: null, status: 'inactive' });
   });
 
   test('by lead coordinator', async () => {
@@ -255,7 +255,7 @@ describe('AC2: filters', () => {
     prismaMock.project.count.mockResolvedValue(1);
     prismaMock.project.findMany.mockResolvedValue([PROJECTS[1]]);
 
-    const result = await listProjects(parseProjectFilters({ status: 'closed', page: '4' }));
+    const result = await listProjects(parseProjectFilters({ status: 'inactive', page: '4' }));
 
     expect(result).toMatchObject({ page: 1, total: 1, totalPages: 1 });
     expect(result.items.map((item) => item.name)).toEqual(['Escuela rural']);
@@ -291,7 +291,7 @@ describe('AC3: no projects', () => {
   });
 
   test('returns an empty page when no project matches the filters', async () => {
-    const result = await listWith({ status: 'closed', leadCoordinatorId: '3' }, []);
+    const result = await listWith({ status: 'inactive', leadCoordinatorId: '3' }, []);
 
     expect(result.items).toEqual([]);
     expect(result.total).toBe(0);
@@ -333,7 +333,7 @@ describe('parseProjectFilters', () => {
   });
 
   test('uses the first value of repeated params', () => {
-    expect(parseProjectFilters({ status: ['closed', 'active'] }).status).toBe('closed');
+    expect(parseProjectFilters({ status: ['inactive', 'active'] }).status).toBe('inactive');
   });
 
   test('parses the beneficiary year and ignores invalid ones', () => {

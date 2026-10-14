@@ -23,7 +23,7 @@ enum UserStatus {
 
 enum ProjectStatus {
   active
-  closed
+  inactive
 }
 
 enum Intensity {
