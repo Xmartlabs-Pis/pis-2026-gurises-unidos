@@ -122,7 +122,7 @@ model Project {
   name                 String           @db.VarChar(100)
   searchName           String?          @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
   status               ProjectStatus
-  intensity            Intensity
+  intensity            Intensity?
   counterpartyType     CounterpartyType
   startYear            Int
   endYear              Int?

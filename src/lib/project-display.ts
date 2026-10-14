@@ -11,6 +11,16 @@ export const INTENSITY_LABEL: Record<Intensity, string> = {
   low: 'Baja',
 };
 
+export const INTENSITY_DESCRIPTION: Record<Intensity, string> = {
+  high: 'Acompañamiento individual',
+  medium: 'Actividad semanal grupal',
+  low: 'Al menos una actividad',
+};
+
+export function getIntensityLabel(intensity: Intensity | null) {
+  return intensity ? INTENSITY_LABEL[intensity] : '—';
+}
+
 export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
   publicSector: 'Sector Público',
   privateSector: 'Sector Privado',
@@ -45,6 +55,8 @@ export const SYSTEM_BENEFICIARY_KEYS = [
 ] as const;
 
 export type SystemBeneficiaryKey = (typeof SYSTEM_BENEFICIARY_KEYS)[number];
+
+export const DIRECT_CHILDREN_KEY: SystemBeneficiaryKey = 'directChildrenAdolescents';
 
 export function isSystemBeneficiaryKey(key: string): key is SystemBeneficiaryKey {
   return (SYSTEM_BENEFICIARY_KEYS as readonly string[]).includes(key);

@@ -1,6 +1,7 @@
 'use client';
 
-import { startTransition, useActionState, useEffect, useState, type SubmitEvent } from 'react';
+import { startTransition, useActionState, useEffect, type SubmitEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { UserRole, UserStatus } from '@/generated/prisma/enums';
@@ -34,12 +35,9 @@ type Profile = ProfileFormValues & {
 };
 
 export function ProfileForm({ profile }: { profile: Profile }) {
-  // Use a key to reset the form when the cancel button is clicked
-  const [formKey, setFormKey] = useState(0);
+  const router = useRouter();
 
-  return (
-    <ProfileFormFields key={formKey} profile={profile} onCancel={() => setFormKey((k) => k + 1)} />
-  );
+  return <ProfileFormFields profile={profile} onCancel={() => router.back()} />;
 }
 
 function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: () => void }) {
@@ -77,8 +75,8 @@ function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: 
 
   return (
     <FormProvider {...form}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col pt-6">
-        <div className="mx-auto w-full flex-1 px-4 pb-6 sm:px-6">
+      <div className="bg-primary-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col pt-6">
+        <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_425px]">
             <div className="flex min-w-0 flex-col gap-5">
               <form id={PROFILE_FORM_ID} onSubmit={onSubmit} noValidate>

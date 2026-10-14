@@ -176,7 +176,7 @@ export function ProjectForm({
       <form
         noValidate
         className={cn(
-          'text-foreground flex min-h-0 min-w-0 flex-1 flex-col',
+          'text-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col',
           isEditing ? 'bg-surface-page' : 'bg-muted/30'
         )}
         aria-busy={pending}
@@ -187,7 +187,7 @@ export function ProjectForm({
         )}
         <div
           className={cn(
-            'grid flex-1 content-start items-start',
+            'mx-auto grid w-full max-w-[1185px] flex-1 content-start items-start',
             isEditing
               ? 'lg:grid-cols-[minmax(0,152fr)_minmax(0,85fr)]'
               : 'lg:grid-cols-[minmax(0,16fr)_minmax(0,9fr)]'

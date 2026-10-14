@@ -44,17 +44,8 @@ function toSearchNamePattern(search: string) {
     .replace(/[\\%_]/g, '\\$&');
 }
 
-export type ListProjectsOptions = { onlyVisibleOnLanding?: boolean };
-
-export function buildProjectWhere(
-  filters: ProjectFilters,
-  { onlyVisibleOnLanding }: ListProjectsOptions = {}
-): Prisma.ProjectWhereInput {
+export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereInput {
   const where: Prisma.ProjectWhereInput = { deletedAt: null };
-
-  if (onlyVisibleOnLanding) {
-    where.showOnLanding = true;
-  }
 
   if (filters.search) {
     where.searchName = { contains: toSearchNamePattern(filters.search) };
@@ -94,11 +85,8 @@ function toListItem({ projectBeneficiaries, ...project }: ProjectListRow): Proje
   };
 }
 
-export async function listProjects(
-  filters: ProjectFilters,
-  options?: ListProjectsOptions
-): Promise<ProjectListPage> {
-  const where = buildProjectWhere(filters, options);
+export async function listProjects(filters: ProjectFilters): Promise<ProjectListPage> {
+  const where = buildProjectWhere(filters);
   const total = await prisma.project.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / filters.pageSize));
   const page = Math.min(filters.page, totalPages);
