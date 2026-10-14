@@ -97,28 +97,26 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   return (
     <div className="bg-surface-page flex min-h-0 w-full flex-1 flex-col">
       <BreadcrumbResourceLabel label={project.name} />
-      <div className="w-full px-4 pt-6 pb-2.5 sm:px-6">
-        <div className="mx-auto flex w-full max-w-[1185px] min-w-0 flex-col items-start gap-1.5 md:px-6">
-          <p className="text-muted-foreground text-sm">Editar proyecto</p>
-          <h1 className="text-3xl leading-9 font-bold">{project.name}</h1>
-          <div className="text-muted-foreground flex items-center gap-1.5 text-sm leading-5">
-            <span
-              className={
-                project.status === 'active'
-                  ? 'bg-status-success size-2 rounded-full'
-                  : 'bg-muted-foreground size-2 rounded-full'
-              }
-            />
-            <span className={project.status === 'active' ? 'text-status-success' : undefined}>
-              {STATUS_LABEL[project.status]}
-            </span>
-            {project.intensity && (
-              <>
-                <span className="text-muted-foreground">•</span>
-                <span>{INTENSITY_LABEL[project.intensity]} intensidad</span>
-              </>
-            )}
-          </div>
+      <div className="mx-auto flex w-full max-w-[1185px] min-w-0 flex-col items-start gap-1.5 px-4 pt-6 pb-2.5 sm:px-6">
+        <p className="text-muted-foreground text-sm">Editar proyecto</p>
+        <h1 className="text-3xl leading-9 font-bold">{project.name}</h1>
+        <div className="text-muted-foreground flex items-center gap-1.5 text-sm leading-5">
+          <span
+            className={
+              project.status === 'active'
+                ? 'bg-status-success size-2 rounded-full'
+                : 'bg-muted-foreground size-2 rounded-full'
+            }
+          />
+          <span className={project.status === 'active' ? 'text-status-success' : undefined}>
+            {STATUS_LABEL[project.status]}
+          </span>
+          {project.intensity && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span>{INTENSITY_LABEL[project.intensity]} intensidad</span>
+            </>
+          )}
         </div>
       </div>
       <ProjectForm
