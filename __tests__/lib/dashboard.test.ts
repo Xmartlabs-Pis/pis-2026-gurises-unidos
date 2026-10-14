@@ -12,6 +12,8 @@ vi.mock('@/lib/metrics/queries', () => ({ getMetricValues: vi.fn() }));
 function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
   return {
     children_reached: 0,
+    direct_children_reached: 0,
+    indirect_children_reached: 0,
     families: 0,
     teachers: 0,
     institutions: 0,

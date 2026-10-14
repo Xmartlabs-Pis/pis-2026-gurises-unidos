@@ -44,6 +44,8 @@ describe('getMetricValues', () => {
 
     expect(await getMetricValues(year)).toEqual({
       children_reached: 140,
+      direct_children_reached: 100,
+      indirect_children_reached: 40,
       families: 20,
       teachers: 12,
       institutions: 5,
@@ -64,11 +66,29 @@ describe('getMetricValues', () => {
     mockBeneficiarySums({});
     vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([]);
 
-    expect(Object.values(await getMetricValues(2027))).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(Object.values(await getMetricValues(2027))).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   });
 });
 
 describe('getMetricSettings', () => {
+  it('inherits legacy visibility until each child metric has its own setting', async () => {
+    vi.mocked(prisma.metric.findMany).mockResolvedValue([
+      { key: 'children_reached', showPublicly: false },
+      { key: 'direct_children_reached', showPublicly: true },
+    ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
+
+    const settings = await getMetricSettings(true);
+
+    expect(settings.find((metric) => metric.key === 'direct_children_reached')?.showPublicly).toBe(
+      true
+    );
+    expect(
+      settings.find((metric) => metric.key === 'indirect_children_reached')?.showPublicly
+    ).toBe(false);
+    expect(settings.some((metric) => metric.key === 'children_reached')).toBe(false);
+    expect(settings).toHaveLength(7);
+  });
+
   it('loads saved visibility and uses defaults for metrics without a saved setting', async () => {
     vi.mocked(prisma.metric.findMany).mockResolvedValue([
       { key: 'children_reached', showPublicly: true },

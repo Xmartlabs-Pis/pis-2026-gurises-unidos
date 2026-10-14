@@ -30,7 +30,7 @@ export default async function MetricsPage({
   const year = resolveYearParam((await searchParams).year, years, referenceYear);
   const [values, initialMetrics, initialTopics] = await Promise.all([
     getMetricValues(year),
-    getMetricSettings(),
+    getMetricSettings(true),
     getTopicStatistics(year),
   ]);
 

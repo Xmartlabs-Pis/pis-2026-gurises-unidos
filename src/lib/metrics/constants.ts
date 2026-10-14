@@ -7,9 +7,15 @@ export const METRIC_DEFINITIONS: {
   showPublicly: boolean;
 }[] = [
   {
-    key: 'children_reached',
-    name: 'NNA alcanzados',
-    description: 'Niños, niñas y adolescentes alcanzados con acciones directas e indirectas.',
+    key: 'direct_children_reached',
+    name: 'NNA directos',
+    description: 'Niños, niñas y adolescentes alcanzados con acciones directas.',
+    showPublicly: true,
+  },
+  {
+    key: 'indirect_children_reached',
+    name: 'NNA indirectos',
+    description: 'Niños, niñas y adolescentes alcanzados con acciones indirectas.',
     showPublicly: true,
   },
   {
