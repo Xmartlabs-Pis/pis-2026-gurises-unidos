@@ -26,9 +26,9 @@ test('sets and removes params keeping the others', () => {
   mocks.searchParams = new URLSearchParams('status=active&topicId=1');
   const { result } = renderHook(() => useUrlFilters());
 
-  act(() => result.current.updateFilters({ status: 'closed', topicId: null }));
+  act(() => result.current.updateFilters({ status: 'inactive', topicId: null }));
 
-  expect(mocks.replace).toHaveBeenCalledWith('/list?status=closed', { scroll: false });
+  expect(mocks.replace).toHaveBeenCalledWith('/list?status=inactive', { scroll: false });
 });
 
 test('navigates to the bare path when no param is left', () => {
@@ -44,9 +44,9 @@ test('drops reset keys on every update', () => {
   mocks.searchParams = new URLSearchParams('page=3&status=active');
   const { result } = renderHook(() => useUrlFilters({ resetKeys: ['page'] }));
 
-  act(() => result.current.updateFilters({ status: 'closed' }));
+  act(() => result.current.updateFilters({ status: 'inactive' }));
 
-  expect(mocks.replace).toHaveBeenCalledWith('/list?status=closed', { scroll: false });
+  expect(mocks.replace).toHaveBeenCalledWith('/list?status=inactive', { scroll: false });
 });
 
 test('clears the given keys only', () => {
@@ -61,10 +61,10 @@ test('clears the given keys only', () => {
 test('chains consecutive updates before the url catches up', () => {
   const { result } = renderHook(() => useUrlFilters());
 
-  act(() => result.current.updateFilters({ status: 'closed' }));
+  act(() => result.current.updateFilters({ status: 'inactive' }));
   act(() => result.current.updateFilters({ topicId: '2' }));
 
-  expect(mocks.replace).toHaveBeenLastCalledWith('/list?status=closed&topicId=2', {
+  expect(mocks.replace).toHaveBeenLastCalledWith('/list?status=inactive&topicId=2', {
     scroll: false,
   });
 });

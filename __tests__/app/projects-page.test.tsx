@@ -59,7 +59,7 @@ describe('ProjectsPage url params', () => {
 
   it('keeps valid filters without redirecting', async () => {
     const props = await renderProjects({
-      status: 'closed',
+      status: 'inactive',
       beneficiaryYear: '2025',
       departmentId: '2',
       topicId: '1',
@@ -68,7 +68,7 @@ describe('ProjectsPage url params', () => {
 
     expect(mocks.redirect).not.toHaveBeenCalled();
     expect(props).toMatchObject({
-      status: 'closed',
+      status: 'inactive',
       beneficiaryYear: 2025,
       departmentId: 2,
       topicId: 1,
@@ -89,9 +89,9 @@ describe('ProjectsPage url params', () => {
     [{ beneficiaryYear: 'abc' }, '/dashboard/projects'],
     [{ beneficiaryYear: '2010' }, '/dashboard/projects'],
     [{ departmentId: '999', topicId: '1' }, '/dashboard/projects?topicId=1'],
-    [{ status: ['closed', 'active'] }, '/dashboard/projects?status=closed'],
+    [{ status: ['inactive', 'active'] }, '/dashboard/projects?status=inactive'],
     [{ search: '   ' }, '/dashboard/projects'],
-    [{ page: '3', status: 'closed' }, '/dashboard/projects?status=closed'],
+    [{ page: '3', status: 'inactive' }, '/dashboard/projects?status=inactive'],
   ])('redirects %j to %s', async (params, expected) => {
     await expect(renderProjects(params)).rejects.toThrow(`NEXT_REDIRECT:${expected}`);
     expect(mocks.listProjects).not.toHaveBeenCalled();

@@ -45,7 +45,7 @@ describe('isCanonical', () => {
   it.each([
     [{ status: 'active', sasasasa: 'abcd' }],
     [{ status: 'dsfhj' }],
-    [{ status: ['active', 'closed'] }],
+    [{ status: ['active', 'inactive'] }],
   ])('rejects %j', (raw) => {
     expect(isCanonical(raw, { status: 'active' })).toBe(false);
   });
