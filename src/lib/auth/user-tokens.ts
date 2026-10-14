@@ -22,6 +22,8 @@ export async function createUserToken(
   userId: number,
   type: UserTokenType
 ) {
+  await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+
   const now = new Date();
 
   await tx.userToken.updateMany({
@@ -73,7 +75,7 @@ export async function findValidUserToken(
 
 export async function consumeUserToken(tx: Prisma.TransactionClient, tokenId: number) {
   const { count } = await tx.userToken.updateMany({
-    where: { id: tokenId, usedAt: null, revokedAt: null },
+    where: { id: tokenId, usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
     data: { usedAt: new Date() },
   });
 

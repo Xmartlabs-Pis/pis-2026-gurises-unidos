@@ -4,7 +4,7 @@ import { after } from 'next/server';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { sendEmail } from '@/lib/email/client';
-import { hashPassword } from '@/lib/credentials';
+import { hashPassword, verifyPassword } from '@/lib/credentials';
 import { logAudit } from '@/lib/audit-log';
 import PasswordResetEmail from '@/emails/password-reset-email';
 import { RESET_TOKEN_ERROR_MESSAGES } from '@/lib/auth/password-reset';
@@ -86,22 +86,30 @@ export async function resetPasswordWithToken(
     return { formError: RESET_TOKEN_ERROR_MESSAGES.invalid };
   }
 
+  if (await verifyPassword(newPassword, lookup.user.passwordHash)) {
+    return { errors: { newPassword: ['La nueva contraseña debe ser distinta a la actual.'] } };
+  }
+
   const userId = lookup.user.id;
   const passwordHash = await hashPassword(newPassword);
 
-  let consumed: boolean;
+  let result: 'ok' | 'tokenUnavailable' | 'userInactive';
 
   try {
-    consumed = await prisma.$transaction(
+    result = await prisma.$transaction(
       async (tx) => {
         if (!(await consumeUserToken(tx, lookup.tokenId))) {
-          return false;
+          return 'tokenUnavailable';
         }
 
-        await tx.user.update({
-          where: { id: userId },
+        const { count } = await tx.user.updateMany({
+          where: { id: userId, status: 'active', deletedAt: null },
           data: { passwordHash, passwordChangedAt: new Date(), mustChangePassword: false },
         });
+
+        if (count === 0) {
+          return 'userInactive';
+        }
 
         await logAudit(tx, {
           authorId: userId,
@@ -110,7 +118,7 @@ export async function resetPasswordWithToken(
           entityId: userId,
         });
 
-        return true;
+        return 'ok';
       },
       { maxWait: 10_000, timeout: 30_000 }
     );
@@ -119,8 +127,13 @@ export async function resetPasswordWithToken(
     return { formError: 'No se pudo restablecer la contraseña. Intentá de nuevo.' };
   }
 
-  if (!consumed) {
-    return { formError: RESET_TOKEN_ERROR_MESSAGES.used };
+  if (result === 'userInactive') {
+    return { formError: RESET_TOKEN_ERROR_MESSAGES.invalid };
+  }
+
+  if (result === 'tokenUnavailable') {
+    const current = await findValidUserToken(token, 'passwordReset');
+    return { formError: RESET_TOKEN_ERROR_MESSAGES[current.valid ? 'used' : current.reason] };
   }
 
   redirect('/login?passwordChanged=1');
