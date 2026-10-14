@@ -23,6 +23,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/app/actions/users', () => ({
   createUser: vi.fn(async () => ({})),
+  updateUser: vi.fn(async () => ({})),
 }));
 vi.mock('@/app/actions/password', () => ({
   resetPassword: vi.fn(async () => ({})),
