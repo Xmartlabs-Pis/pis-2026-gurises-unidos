@@ -93,6 +93,17 @@ describe('updateUser', () => {
     expect(revalidatePathMock).toHaveBeenCalledWith('/management/users');
   });
 
+  test('redirects without saving when nothing changed', async () => {
+    const tx = setupTransaction();
+
+    await expect(updateUser(TARGET_ID, EMPTY_STATE, buildFormData())).rejects.toThrow(
+      'NEXT_REDIRECT:/management/users'
+    );
+
+    expect(tx.user.update).not.toHaveBeenCalled();
+    expect(logAuditMock).not.toHaveBeenCalled();
+  });
+
   test('rejects an empty required field without touching the database', async () => {
     const result = await updateUser(TARGET_ID, EMPTY_STATE, buildFormData({ firstName: '' }));
 
