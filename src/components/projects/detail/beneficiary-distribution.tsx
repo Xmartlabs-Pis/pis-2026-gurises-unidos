@@ -4,11 +4,11 @@ import { isSystemBeneficiaryKey, type SystemBeneficiaryKey } from '@/lib/project
 
 const BENEFICIARY_COLORS: Record<SystemBeneficiaryKey, string> = {
   directChildrenAdolescents: 'bg-beneficiary-children',
-  indirectChildrenAdolescents: 'bg-beneficiary-children',
-  youth18To29: 'bg-beneficiary-staff',
+  indirectChildrenAdolescents: 'bg-beneficiary-indirect-children',
+  youth18To29: 'bg-beneficiary-youth',
   families: 'bg-beneficiary-families',
   coordinatedInstitutions: 'bg-beneficiary-institutions',
-  communityLeaders: 'bg-beneficiary-families',
+  communityLeaders: 'bg-beneficiary-community-leaders',
   basicServiceStaff: 'bg-beneficiary-staff',
 };
 

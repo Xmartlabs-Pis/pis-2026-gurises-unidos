@@ -58,6 +58,27 @@ test('shows distribution values without bar tracks on mobile', () => {
   expect(screen.getByRole('meter', { name: 'NNA directos' }).className).toContain('sm:block');
 });
 
+test('uses a distinct color for each system beneficiary category', () => {
+  render(<BeneficiaryDistribution data={BENEFICIARIES} year={2026} />);
+
+  const colors = BENEFICIARIES.map(({ label }) =>
+    Array.from(screen.getByRole('meter', { name: label }).firstElementChild?.classList ?? []).find(
+      (className) => className.startsWith('bg-beneficiary-')
+    )
+  );
+
+  expect(colors).toEqual([
+    'bg-beneficiary-children',
+    'bg-beneficiary-indirect-children',
+    'bg-beneficiary-youth',
+    'bg-beneficiary-families',
+    'bg-beneficiary-institutions',
+    'bg-beneficiary-community-leaders',
+    'bg-beneficiary-staff',
+  ]);
+  expect(new Set(colors).size).toBe(BENEFICIARIES.length);
+});
+
 test('shows every beneficiary category in the provided order', () => {
   render(
     <BeneficiaryDistribution
