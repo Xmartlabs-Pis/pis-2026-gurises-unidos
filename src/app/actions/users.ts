@@ -322,7 +322,12 @@ export async function updateUser(
         action: 'update',
         entity: 'user',
         entityId: targetId,
-        details: { changedFields },
+        details: {
+          changedFields,
+          ...(changedFields.includes('role') && {
+            changes: [{ field: 'role', from: target.role, to: userData.role }],
+          }),
+        },
       });
 
       return null;
