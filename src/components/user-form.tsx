@@ -70,8 +70,8 @@ const INFO_ROWS = [
 
 const STATUS_DESCRIPTIONS = {
   active:
-    'La persona no podrá iniciar sesión hasta que la vuelvas a habilitar. Se conservan sus datos.',
-  disabled: 'La persona podrá volver a iniciar sesión con su contraseña actual.',
+    'Si lo deshabilitás, la persona no podrá iniciar sesión hasta que la vuelvas a habilitar. Se conservan sus datos.',
+  disabled: 'Si lo habilitás, la persona podrá volver a iniciar sesión con su contraseña actual.',
   pendingInvitation:
     'La persona todavía no aceptó la invitación. El estado se podrá modificar cuando la acepte.',
 };
