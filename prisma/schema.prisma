@@ -121,7 +121,7 @@ model Project {
   id                   Int              @id @default(autoincrement())
   name                 String           @db.VarChar(100)
   status               ProjectStatus
-  intensity            Intensity
+  intensity            Intensity?
   counterpartyType     CounterpartyType
   startYear            Int
   endYear              Int?
@@ -133,6 +133,7 @@ model Project {
   publicDescription    String?          @db.VarChar(1000)
   coverPhoto           String?
   internalNotes        String?          @db.VarChar(1000)
+  showOnLanding        Boolean          @default(true)
   createdAt            DateTime         @default(now())
   createdBy            Int?
   updatedAt            DateTime?        @updatedAt

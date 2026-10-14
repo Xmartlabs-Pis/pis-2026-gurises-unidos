@@ -12,14 +12,19 @@ import {
 } from '@/lib/projects/project-placeholders';
 import { parseId } from '@/lib/validation/ids';
 import { logAudit } from '@/lib/audit-log';
-import type { ProjectFormState } from '@/lib/validation/project';
+import { INTENSITY_REQUIRED_MESSAGE, type ProjectFormState } from '@/lib/validation/project';
 import {
   buildProjectFormSchema,
   readProjectFormData,
   splitProjectFormData,
 } from '@/lib/validation/project-form';
 import type { Prisma } from '@/generated/prisma/client';
-import { formCategoryValuesWhere, toBeneficiaryValuesCreate } from '@/lib/project-display';
+import type { Intensity } from '@/generated/prisma/enums';
+import {
+  DIRECT_CHILDREN_KEY,
+  formCategoryValuesWhere,
+  toBeneficiaryValuesCreate,
+} from '@/lib/project-display';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { DUPLICATE_PROJECT_MESSAGE } from '@/lib/projects/map-project-db-error';
@@ -84,6 +89,31 @@ async function validateUniqueName(
   return duplicate ? { errors: { name: [DUPLICATE_PROJECT_MESSAGE] } } : null;
 }
 
+async function hasDirectChildrenInOtherYears(
+  tx: Prisma.TransactionClient,
+  projectId: number,
+  year: number
+) {
+  const value = await tx.projectBeneficiaryValue.findFirst({
+    where: {
+      beneficiary: { projectId, year: { not: year } },
+      category: { key: DIRECT_CHILDREN_KEY },
+      value: { gt: 0 },
+    },
+    select: { value: true },
+  });
+  return value !== null;
+}
+
+function resolveIntensity(
+  intensity: Intensity | null,
+  hasDirectChildren: boolean
+): { intensity: Intensity | null } | { error: ProjectFormState } {
+  if (!hasDirectChildren) return { intensity: null };
+  if (!intensity) return { error: { errors: { intensity: [INTENSITY_REQUIRED_MESSAGE] } } };
+  return { intensity };
+}
+
 const STALE_CATEGORIES_MESSAGE =
   'Las categorías de beneficiarios cambiaron. Recargá la página e intentá de nuevo.';
 
@@ -117,7 +147,13 @@ export async function createProject(
   const user = await requireUser();
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
-  const { keys, projectData, beneficiaryData } = parsed;
+  const { keys, beneficiaryData } = parsed;
+  const resolved = resolveIntensity(
+    parsed.projectData.intensity,
+    beneficiaryData.counts[DIRECT_CHILDREN_KEY] > 0
+  );
+  if ('error' in resolved) return resolved.error;
+  const projectData = { ...parsed.projectData, intensity: resolved.intensity };
   const submittedPlaceholder = formData.get('projectPlaceholder');
   const coverPhoto = isProjectPlaceholder(submittedPlaceholder)
     ? submittedPlaceholder
@@ -240,11 +276,18 @@ export async function updateProject(
             };
           }
         }
-        const fields = changedFields(projectData, previous);
+        const resolved = resolveIntensity(
+          projectData.intensity,
+          beneficiaryData.counts[DIRECT_CHILDREN_KEY] > 0 ||
+            (await hasDirectChildrenInOtherYears(tx, projectId, beneficiaryData.year))
+        );
+        if ('error' in resolved) return resolved.error;
+        const nextProjectData = { ...projectData, intensity: resolved.intensity };
+        const fields = changedFields(nextProjectData, previous);
         if (fields.length) {
           await tx.project.update({
             where: { id: projectId },
-            data: projectData,
+            data: nextProjectData,
           });
           await logAudit(tx, {
             authorId: user.id,
