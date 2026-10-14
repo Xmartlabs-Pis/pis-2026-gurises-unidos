@@ -38,7 +38,7 @@ export default async function ProfilePage() {
   return (
     <div className="bg-primary-foreground flex w-full flex-1 flex-col">
       <PageHeader
-        className="w-full px-4 pt-6 pb-2.5 sm:px-6"
+        className="mx-auto h-30 w-full max-w-[1185px] px-6 pt-6 pb-2.5"
         eyebrow="Cuenta"
         title="Mi perfil"
         description="Consultá y actualizá tus datos personales."

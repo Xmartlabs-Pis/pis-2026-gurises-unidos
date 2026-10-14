@@ -151,8 +151,8 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="flex min-w-0 flex-1 flex-col pt-6">
-        <div className={cn('mx-auto w-full flex-1 px-6 pb-6', !isEditing && 'max-w-[1185px]')}>
+      <form onSubmit={onSubmit} noValidate className="flex w-full min-w-0 flex-1 flex-col pt-6">
+        <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
           <div
             className={cn(
               'grid grid-cols-1 gap-6',
