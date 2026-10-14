@@ -371,6 +371,7 @@ type ProjectFixture = Required<
   Omit<
     Prisma.ProjectUncheckedCreateInput,
     | 'id'
+    | 'searchName'
     | 'createdAt'
     | 'updatedAt'
     | 'projectCoordinators'

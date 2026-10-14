@@ -195,12 +195,21 @@ describe('AC2: filters', () => {
     expect(findManyArgs().where).toEqual({ deletedAt: null, departmentId: 2 });
   });
 
-  test('by name, case-insensitive', async () => {
-    await listWith({ search: 'CENTRO' });
+  test('by name, ignoring case and accents', async () => {
+    await listWith({ search: 'ÓÑÁS Ü' });
 
     expect(findManyArgs().where).toEqual({
       deletedAt: null,
-      name: { contains: 'CENTRO', mode: 'insensitive' },
+      searchName: { contains: 'onas u' },
+    });
+  });
+
+  test('by name, matching LIKE wildcards literally', async () => {
+    await listWith({ search: '100%_\\' });
+
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      searchName: { contains: '100\\%\\_\\\\' },
     });
   });
 
@@ -385,7 +394,7 @@ test('combines topic and department with the other project filters', async () =>
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',
-    name: { contains: 'Centro', mode: 'insensitive' },
+    searchName: { contains: 'centro' },
   });
 });
 

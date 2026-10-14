@@ -36,11 +36,19 @@ export type ProjectListPage = {
   totalPages: number;
 };
 
+function toSearchNamePattern(search: string) {
+  return search
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[\\%_]/g, '\\$&');
+}
+
 export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereInput {
   const where: Prisma.ProjectWhereInput = { deletedAt: null };
 
   if (filters.search) {
-    where.name = { contains: filters.search, mode: 'insensitive' };
+    where.searchName = { contains: toSearchNamePattern(filters.search) };
   }
   if (filters.status) {
     where.status = filters.status;
