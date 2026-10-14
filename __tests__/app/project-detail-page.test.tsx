@@ -45,7 +45,6 @@ const DETAIL = {
     comparisonYear: 2025,
     availableYears: [2026, 2025],
     hasData: true,
-    hasHistoricalData: true,
     canEdit: true,
     metrics: {
       childrenReached: {

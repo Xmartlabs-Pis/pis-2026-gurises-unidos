@@ -77,7 +77,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
             gte: FIRST_PROJECT_YEAR,
             lte: currentYear,
           },
-          values: { some: { value: { gt: 0 } } },
+          values: {
+            some: {
+              value: { gt: 0 },
+              category: { isActive: true },
+            },
+          },
         },
         orderBy: { year: 'desc' },
         select: { year: true },
@@ -89,7 +94,8 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
     return { status: 'notFound' as const };
   }
 
-  const recordedYears = project.projectBeneficiaries.map((record) => record.year);
+  const { projectBeneficiaries, ...projectData } = project;
+  const recordedYears = projectBeneficiaries.map((record) => record.year);
   const fallbackYear = recordedYears[0] ?? currentYear;
   const selectedYear = year !== undefined && recordedYears.includes(year) ? year : fallbackYear;
   const comparisonYear = selectedYear - 1;
@@ -123,8 +129,17 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       getActiveBeneficiaryCategories(),
     ]);
 
-  const currentCounts = currentRecord && toBeneficiaryCounts(currentRecord.values);
-  const previousCounts = previousRecord && toBeneficiaryCounts(previousRecord.values);
+  const activeCategoryKeys = new Set<string>(categories.map(({ key }) => key));
+  const currentCounts =
+    currentRecord &&
+    toBeneficiaryCounts(
+      currentRecord.values.filter(({ category }) => activeCategoryKeys.has(category.key))
+    );
+  const previousCounts =
+    previousRecord &&
+    toBeneficiaryCounts(
+      previousRecord.values.filter(({ category }) => activeCategoryKeys.has(category.key))
+    );
   const current = currentCounts && sumBeneficiaries(currentCounts) > 0 ? currentCounts : null;
   const previous = previousCounts && sumBeneficiaries(previousCounts) > 0 ? previousCounts : null;
 
@@ -141,7 +156,6 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
     getPeopleReached(previous)
   ).percentageChange;
 
-  const { projectBeneficiaries: beneficiaryRecords, ...projectData } = project;
   const hasData = current !== null;
 
   return {
@@ -152,7 +166,6 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       comparisonYear,
       availableYears,
       hasData,
-      hasHistoricalData: beneficiaryRecords.length > 0,
       canEdit: canEditProject(user, project),
       metrics: {
         childrenReached,

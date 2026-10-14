@@ -132,7 +132,6 @@ describe('getProjectDetail', () => {
       comparisonYear: 2025,
       availableYears: [2026, 2025],
       hasData: true,
-      hasHistoricalData: true,
       canEdit: true,
       metrics: {
         childrenReached: {
@@ -175,7 +174,12 @@ describe('getProjectDetail', () => {
           projectBeneficiaries: {
             where: {
               year: { gte: FIRST_PROJECT_YEAR, lte: 2026 },
-              values: { some: { value: { gt: 0 } } },
+              values: {
+                some: {
+                  value: { gt: 0 },
+                  category: { isActive: true },
+                },
+              },
             },
             orderBy: { year: 'desc' },
             select: { year: true },
@@ -235,7 +239,6 @@ describe('getProjectDetail', () => {
       status: 'success',
       data: {
         hasData: false,
-        hasHistoricalData: false,
         institutionalContribution: {
           activeProjects: { projectCount: 1, totalCount: 10 },
         },
@@ -365,7 +368,33 @@ describe('getProjectDetail', () => {
         selectedYear: 2026,
         availableYears: [2026],
         hasData: false,
-        hasHistoricalData: false,
+      },
+    });
+  });
+
+  it('ignores a recorded year with values only in an inactive category', async () => {
+    prismaMock.project.findFirst.mockResolvedValue({
+      ...PROJECT,
+      projectBeneficiaries: [],
+    });
+    prismaMock.projectBeneficiary.findUnique.mockImplementation(async ({ where }) => {
+      if (where.projectId_year.year === 2026) {
+        return { values: beneficiaryValueRows({ customInactive: 50 }) };
+      }
+
+      return null;
+    });
+
+    expect(await getProjectDetail('12')).toMatchObject({
+      status: 'success',
+      data: {
+        selectedYear: 2026,
+        availableYears: [2026],
+        hasData: false,
+        metrics: {
+          childrenReached: { value: null },
+          annualGrowth: null,
+        },
       },
     });
   });
@@ -385,7 +414,6 @@ describe('getProjectDetail', () => {
       data: {
         availableYears: [2026],
         hasData: false,
-        hasHistoricalData: false,
         metrics: {
           childrenReached: {
             value: null,
