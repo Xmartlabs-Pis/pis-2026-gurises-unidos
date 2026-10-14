@@ -2,6 +2,7 @@
 
 import { after } from 'next/server';
 import { redirect } from 'next/navigation';
+import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { sendEmail } from '@/lib/email/client';
 import { hashPassword, verifyPassword } from '@/lib/credentials';
@@ -26,7 +27,7 @@ export async function requestPasswordReset(
   const parsed = forgotPasswordFormSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
-    return { errors: parsed.error.flatten().fieldErrors };
+    return { errors: z.flattenError(parsed.error).fieldErrors };
   }
 
   const user = await prisma.user.findFirst({
@@ -68,7 +69,7 @@ export async function resetPasswordWithToken(
   const parsed = resetPasswordWithTokenSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
-    const { token, ...errors } = parsed.error.flatten().fieldErrors;
+    const { token, ...errors } = z.flattenError(parsed.error).fieldErrors;
     if (token) {
       return { formError: RESET_TOKEN_ERROR_MESSAGES.invalid };
     }
@@ -116,6 +117,7 @@ export async function resetPasswordWithToken(
           action: 'passwordReset',
           entity: 'user',
           entityId: userId,
+          details: { method: 'email' },
         });
 
         return 'ok';

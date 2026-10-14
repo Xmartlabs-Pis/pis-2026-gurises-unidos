@@ -12,16 +12,25 @@ type SendEmailInput = {
   react: ReactNode;
 };
 
+function maskEmail(email: string) {
+  const [local, domain] = email.split('@');
+  return `${local.slice(0, 1)}***@${domain}`;
+}
+
 export async function sendEmail({ to, subject, react }: SendEmailInput) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const recipient = isProduction ? maskEmail(to) : to;
+
   if (!resend) {
-    const body =
-      process.env.NODE_ENV === 'production' ? '' : await render(react, { plainText: true });
-    console.info(`[email] RESEND_API_KEY not set, email not sent to ${to}: ${subject}\n${body}`);
+    const body = isProduction ? '' : await render(react, { plainText: true });
+    console.info(
+      `[email] RESEND_API_KEY not set, email not sent to ${recipient}: ${subject}\n${body}`
+    );
     return;
   }
 
   const { error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, react });
   if (error) {
-    console.error(`[email] Error sending email to ${to}: ${error.message}`);
+    console.error(`[email] Error sending email to ${recipient}: ${error.message}`);
   }
 }
