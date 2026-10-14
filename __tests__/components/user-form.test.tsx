@@ -14,14 +14,14 @@ vi.mock('@/app/actions/password', () => ({
   resetPassword: vi.fn(async () => ({})),
 }));
 
-test('disables or hides unavailable user editing actions', () => {
+test('enables save and hides the draft action when editing a user', () => {
   render(<UserForm mode="edit" />);
 
   const saveButton = screen.getByRole('button', {
     name: 'Guardar usuario',
   }) as HTMLButtonElement;
 
-  expect(saveButton.disabled).toBe(true);
+  expect(saveButton.disabled).toBe(false);
   expect(screen.queryByRole('button', { name: 'Guardar borrador' })).toBeNull();
 });
 

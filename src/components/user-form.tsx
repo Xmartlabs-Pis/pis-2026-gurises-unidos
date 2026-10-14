@@ -339,7 +339,6 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
           onCancel={() => router.push('/management/users')}
           submitLabel={'Guardar usuario'}
           pending={pending}
-          disabled={isEditing}
         />
       </form>
     </FormProvider>
