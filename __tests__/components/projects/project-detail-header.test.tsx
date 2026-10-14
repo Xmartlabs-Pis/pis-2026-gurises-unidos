@@ -13,6 +13,7 @@ const PROJECT: ProjectDetail['project'] = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: 2020,
   endYear: null,
   strategicLines: [
