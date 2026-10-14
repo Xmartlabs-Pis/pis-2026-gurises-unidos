@@ -8,7 +8,7 @@ const TOKEN_TTL_MINUTES: Record<UserTokenType, number> = {
   passwordReset: PASSWORD_RESET_TOKEN_TTL_MINUTES,
 };
 
-export type UserTokenFailureReason = 'invalid' | 'expired' | 'used';
+export type UserTokenFailureReason = 'invalid' | 'expired' | 'used' | 'replaced';
 
 export type UserTokenLookup =
   { valid: true; tokenId: number; user: User } | { valid: false; reason: UserTokenFailureReason };
@@ -25,8 +25,8 @@ export async function createUserToken(
   const now = new Date();
 
   await tx.userToken.updateMany({
-    where: { userId, type, usedAt: null },
-    data: { usedAt: now },
+    where: { userId, type, usedAt: null, revokedAt: null },
+    data: { revokedAt: now },
   });
 
   const token = randomBytes(32).toString('base64url');
@@ -60,6 +60,10 @@ export async function findValidUserToken(
     return { valid: false, reason: 'used' };
   }
 
+  if (userToken.revokedAt) {
+    return { valid: false, reason: 'replaced' };
+  }
+
   if (userToken.expiresAt <= new Date()) {
     return { valid: false, reason: 'expired' };
   }
@@ -69,7 +73,7 @@ export async function findValidUserToken(
 
 export async function consumeUserToken(tx: Prisma.TransactionClient, tokenId: number) {
   const { count } = await tx.userToken.updateMany({
-    where: { id: tokenId, usedAt: null },
+    where: { id: tokenId, usedAt: null, revokedAt: null },
     data: { usedAt: new Date() },
   });
 
