@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { MAX_INT32 } from './ids';
-import { projectSchema } from './project';
+import { DIRECT_CHILDREN_KEY } from '@/lib/project-display';
+import { INTENSITY_REQUIRED_MESSAGE, projectSchema } from './project';
 import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-beneficiary';
 
 const baseProjectFormSchema = projectSchema.safeExtend({
@@ -27,6 +28,12 @@ export function buildProjectFormSchema(keys: readonly string[]) {
         message: 'El año de beneficiarios no puede ser posterior al año de cierre',
         path: ['year'],
       }
+    )
+    .refine(
+      (data) =>
+        data.intensity !== null ||
+        !(Number((data as Record<string, unknown>)[DIRECT_CHILDREN_KEY]) > 0),
+      { message: INTENSITY_REQUIRED_MESSAGE, path: ['intensity'] }
     );
 }
 

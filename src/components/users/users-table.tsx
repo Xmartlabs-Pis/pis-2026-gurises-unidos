@@ -15,7 +15,7 @@ import { fullName, formatDate, type User } from '@/lib/users/format';
 export function UsersTable({ users, currentUserId }: { users: User[]; currentUserId: number }) {
   return (
     <>
-      <div className="flex max-h-130 flex-col gap-3 overflow-y-auto xl:hidden">
+      <div className="flex flex-col gap-3 xl:hidden">
         {users.length === 0 && (
           <p className="text-muted-foreground rounded-[14px] border py-12 text-center">
             No se encontraron usuarios
@@ -39,10 +39,10 @@ export function UsersTable({ users, currentUserId }: { users: User[]; currentUse
         ))}
       </div>
 
-      <div className="hidden w-full overflow-auto rounded-[14px] border xl:block xl:max-h-130">
+      <div className="hidden min-h-0 w-full flex-1 overflow-auto rounded-[14px] border xl:block xl:max-h-fit [&_[data-slot=table-container]]:overflow-visible">
         <Table className="table-fixed">
-          <TableHeader>
-            <TableRow className="bg-muted">
+          <TableHeader className="[&_th]:bg-muted [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:shadow-[inset_0_-1px_0_0_var(--border)] [&_tr]:border-b-0">
+            <TableRow className="hover:bg-transparent">
               <TableHead className="text-muted-foreground h-10 w-56 px-4 py-2.5">Nombre</TableHead>
               <TableHead className="text-muted-foreground h-10 w-32 px-4 py-2.5">
                 Correo electrónico

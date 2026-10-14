@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   findLaterBeneficiary: vi.fn(),
   upsertBeneficiary: vi.fn(),
   deleteBeneficiaryValues: vi.fn(),
+  findDirectChildrenValue: vi.fn(),
   audit: vi.fn(),
   queryRaw: vi.fn(),
   revalidatePath: vi.fn(),
@@ -66,7 +67,10 @@ const TX = {
     findUnique: mocks.findBeneficiary,
     upsert: mocks.upsertBeneficiary,
   },
-  projectBeneficiaryValue: { deleteMany: mocks.deleteBeneficiaryValues },
+  projectBeneficiaryValue: {
+    deleteMany: mocks.deleteBeneficiaryValues,
+    findFirst: mocks.findDirectChildrenValue,
+  },
   auditLog: { create: mocks.audit },
 };
 const VALID_DATA = {
@@ -128,7 +132,12 @@ beforeEach(() => {
   mocks.findBeneficiary.mockResolvedValue({ values: [] });
   mocks.findLaterBeneficiary.mockResolvedValue(null);
   mocks.upsertBeneficiary.mockResolvedValue({ id: 20 });
+  mocks.findDirectChildrenValue.mockResolvedValue(null);
 });
+
+function savedProjectData() {
+  return [...mocks.createProject.mock.calls, ...mocks.updateProject.mock.calls][0][0].data;
+}
 
 describe.each([
   ['createProject', (data: FormData) => createProject({}, data)],
@@ -142,6 +151,17 @@ describe.each([
       expect(mocks.transaction).not.toHaveBeenCalled();
     }
   );
+
+  it('requires intensity when direct children or adolescents are submitted', async () => {
+    const result = await submit(formData({ intensity: '' }));
+    expect(result.errors?.intensity).toEqual(['Elegí una intensidad']);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it('clears intensity when the project has no direct children or adolescents', async () => {
+    await expect(submit(formData({ directChildrenAdolescents: '0' }))).rejects.toThrow('Redirect:');
+    expect(savedProjectData()).toMatchObject({ intensity: null });
+  });
 
   it('rejects a name that matches another project in the same year ignoring case', async () => {
     mocks.findDuplicateProject.mockResolvedValue({ id: 99 });
@@ -523,6 +543,34 @@ describe('updateProject persistence', () => {
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it('keeps intensity when another year has direct children or adolescents', async () => {
+    mocks.findDirectChildrenValue.mockResolvedValue({ value: 5 });
+    await expect(
+      updateProject(10, {}, formData({ directChildrenAdolescents: '0' }))
+    ).rejects.toThrow('Redirect: /dashboard/projects/10');
+    expect(mocks.findDirectChildrenValue).toHaveBeenCalledWith({
+      where: {
+        beneficiary: { projectId: 10, year: { not: 2024 } },
+        category: { key: 'directChildrenAdolescents' },
+        value: { gt: 0 },
+      },
+      select: { value: true },
+    });
+    expect(savedProjectData()).toMatchObject({ intensity: 'medium' });
+  });
+
+  it('requires intensity when only another year has direct children or adolescents', async () => {
+    mocks.findDirectChildrenValue.mockResolvedValue({ value: 5 });
+    const result = await updateProject(
+      10,
+      {},
+      formData({ directChildrenAdolescents: '0', intensity: '' })
+    );
+    expect(result).toEqual({ errors: { intensity: ['Elegí una intensidad'] } });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
   });
 
   it('defaults omitted counts to zero and the beneficiary year to the current year', async () => {

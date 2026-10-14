@@ -6,10 +6,15 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import type { BeneficiaryCategoryOption } from '@/lib/project-display';
+import {
+  DIRECT_CHILDREN_KEY,
+  INTENSITY_OPTIONS,
+  type BeneficiaryCategoryOption,
+} from '@/lib/project-display';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
+import { IntensityInfo } from '../intensity-info';
 import type { ProjectFormValues } from '../project-form-values';
 import type { SectionProps } from './section-props';
 
@@ -45,6 +50,13 @@ export function BeneficiariesSection({
   const status = useWatch({ name: 'status' });
   const endYear = useWatch({ name: 'endYear' });
   const year = useWatch({ name: 'year' });
+  const intensity = useWatch<ProjectFormValues, 'intensity'>({ name: 'intensity' });
+  const directChildren = useWatch({ name: DIRECT_CHILDREN_KEY });
+  const hasDirectChildren =
+    Number(directChildren) > 0 ||
+    beneficiaryRecords.some(
+      (record) => String(record.year) !== year && record[DIRECT_CHILDREN_KEY] > 0
+    );
 
   const visibleCategories = beneficiaryCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS);
   const extraCategories = beneficiaryCategories.slice(VISIBLE_BENEFICIARY_FIELDS);
@@ -81,6 +93,12 @@ export function BeneficiariesSection({
   );
 
   useEffect(() => {
+    if (!hasDirectChildren && intensity) {
+      setValue('intensity', '', { shouldValidate: true });
+    }
+  }, [hasDirectChildren, intensity, setValue]);
+
+  useEffect(() => {
     if (!startYear || !year) return;
     if (Number(year) < Number(startYear)) {
       selectYear(startYear);
@@ -115,6 +133,21 @@ export function BeneficiariesSection({
           Se guardan únicamente los beneficiarios del año seleccionado. Los cambios de otros años no
           se guardarán al salir.
         </p>
+      </div>
+      <div className="sm:col-span-2">
+        <SelectField
+          id="intensity"
+          name="intensity"
+          label="Intensidad"
+          labelAddon={<IntensityInfo />}
+          placeholder="Seleccionar intensidad..."
+          options={INTENSITY_OPTIONS}
+          disabled={!hasDirectChildren}
+          required={hasDirectChildren}
+          description={
+            hasDirectChildren ? undefined : 'Disponible al cargar al menos un NNA directo.'
+          }
+        />
       </div>
       <BeneficiaryFields categories={visibleCategories} />
       {extraCategories.length > 0 && (

@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatNumber } from '@/lib/format';
-import { INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
+import { STATUS_LABEL, getIntensityLabel } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectListItem } from '@/lib/projects/list';
 
@@ -150,7 +150,7 @@ function InternalProjectCard({
               Intensidad
             </p>
             <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
-              {INTENSITY_LABEL[intensity]}
+              {getIntensityLabel(intensity)}
             </p>
           </CardDescription>
         </div>

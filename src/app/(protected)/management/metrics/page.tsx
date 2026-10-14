@@ -10,6 +10,7 @@ import {
 import { getCurrentYear, resolveYearParam } from '@/lib/metrics/year';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { ErrorScreen } from '@/components/error-screen';
+import { PageHeader } from '@/components/layout/page-header';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 
 export default async function MetricsPage({
@@ -35,17 +36,12 @@ export default async function MetricsPage({
 
   return (
     <main className="bg-primary-foreground flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-[1185px] flex-col gap-1.5 px-6 pt-6 pb-2.5">
-        <p className="text-muted-foreground w-fit font-sans text-sm leading-5 font-normal tracking-normal">
-          Gestión de métricas
-        </p>
-        <h1 className="text-foreground w-fit font-sans text-3xl leading-9 font-bold tracking-normal">
-          Indicadores institucionales {year}
-        </h1>
-        <p className="text-muted-foreground w-fit font-sans text-sm leading-5 font-normal tracking-normal">
-          Estas cifras se publican automáticamente en el sitio público de Gurises Unidos.
-        </p>
-      </header>
+      <PageHeader
+        className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
+        eyebrow="Gestión de métricas"
+        title={`Indicadores institucionales ${year}`}
+        description="Estas cifras se publican automáticamente en el sitio público de Gurises Unidos."
+      />
       <div className="flex w-full flex-1 flex-col gap-4 pt-1.5">
         <div className="mx-auto flex w-full max-w-[1185px] flex-col gap-2 px-6">
           <p className="text-muted-foreground font-sans text-sm leading-5 font-normal tracking-normal">

@@ -123,7 +123,7 @@ model Project {
   id                   Int              @id @default(autoincrement())
   name                 String           @db.VarChar(100)
   status               ProjectStatus
-  intensity            Intensity
+  intensity            Intensity?
   counterpartyType     CounterpartyType
   startYear            Int
   endYear              Int?
