@@ -44,7 +44,7 @@ export function BeneficiariesSection({
   'isEditing' | 'yearOptions' | 'beneficiaryRecords' | 'beneficiaryCategories'
 >) {
   const { getValues, setValue } = useFormContext<ProjectFormValues>();
-  const beneficiaryDrafts = useRef<Record<string, Partial<ProjectFormValues>>>({});
+  const beneficiaryDrafts = useRef<Record<string, Partial<Record<string, string>>>>({});
 
   const startYear = useWatch({ name: 'startYear' });
   const status = useWatch({ name: 'status' });
@@ -80,7 +80,7 @@ export function BeneficiariesSection({
       const counts = Object.fromEntries(
         beneficiaryCategories.map(({ key }) => [key, String(record?.[key] ?? 0)])
       );
-      const nextCounts: Partial<Record<string, string | null>> = {
+      const nextCounts = {
         ...counts,
         ...beneficiaryDrafts.current[beneficiaryYear],
       };

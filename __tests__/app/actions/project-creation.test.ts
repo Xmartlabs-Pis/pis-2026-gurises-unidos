@@ -56,6 +56,7 @@ const VALID_FIELDS: FormDataInput = {
   coordinatedInstitutions: '1',
   communityLeaders: '4',
   basicServiceStaff: '6',
+  strategicLineIds: '1',
 };
 
 function buildFormData(overrides: FormDataInput = {}): FormData {
@@ -76,9 +77,11 @@ function setupTransaction({ projectId = 42, beneficiaryId = 9 } = {}) {
   transactionMock.mockImplementation(async (callback) =>
     callback({
       $queryRaw: vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) =>
-        strings.join('').includes('"BeneficiaryCategory"')
-          ? (values[0] as string[]).map((key) => ({ key }))
-          : []
+        strings.join('').includes('"StrategicLine"')
+          ? (values[0] as number[]).map((id) => ({ id }))
+          : strings.join('').includes('"BeneficiaryCategory"')
+            ? (values[0] as string[]).map((key) => ({ key }))
+            : []
       ),
       user: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
       topic: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
@@ -180,6 +183,7 @@ describe('createProject', () => {
         coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
         createdBy: 7,
         topicId: 1,
+        strategicLines: { connect: [{ id: 1 }] },
       },
     });
     expect(beneficiaryCreate).toHaveBeenCalledWith({

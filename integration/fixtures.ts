@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { STRATEGIC_LINES } from '../prisma/fixtures';
 import {
   E2E_ADMIN,
   E2E_COORDINATOR,
@@ -14,6 +15,7 @@ export type SeedData = {
   disabledCoordinatorId: number;
   departmentIds: number[];
   topicIds: number[];
+  strategicLineIds: number[];
 };
 
 async function userId(documentId: string) {
@@ -35,19 +37,39 @@ async function topicIds() {
   });
 }
 
+async function strategicLineIds() {
+  const lines = await prisma.strategicLine.findMany({
+    where: { name: { in: [...STRATEGIC_LINES] } },
+  });
+  return STRATEGIC_LINES.map((name) => {
+    const line = lines.find((candidate) => candidate.name === name);
+    if (!line) throw new Error(`Seeded strategic line "${name}" not found, run the e2e seed`);
+    return line.id;
+  });
+}
+
 export async function loadSeedData(): Promise<SeedData> {
-  const [adminId, coordinatorId, disabledCoordinatorId, ...rest] = await Promise.all([
+  const [
+    adminId,
+    coordinatorId,
+    disabledCoordinatorId,
+    primaryDepartmentId,
+    secondaryDepartmentId,
+    strategicLines,
+  ] = await Promise.all([
     userId(E2E_ADMIN.documentId),
     userId(E2E_COORDINATOR.documentId),
     userId(E2E_DISABLED_COORDINATOR.documentId),
     departmentId(E2E_DEPARTMENT),
     departmentId(E2E_SECONDARY_DEPARTMENT),
+    strategicLineIds(),
   ]);
   return {
     adminId,
     coordinatorId,
     disabledCoordinatorId,
-    departmentIds: rest,
+    departmentIds: [primaryDepartmentId, secondaryDepartmentId],
     topicIds: await topicIds(),
+    strategicLineIds: strategicLines,
   };
 }

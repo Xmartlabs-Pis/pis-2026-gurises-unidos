@@ -71,6 +71,25 @@ async function validateRelations(
   return null;
 }
 
+async function validateStrategicLines(
+  tx: Prisma.TransactionClient,
+  strategicLineIds: number[]
+): Promise<ProjectFormState | null> {
+  const validLines = await tx.$queryRaw<{ id: number }[]>`
+    SELECT "id" FROM "StrategicLine"
+    WHERE "id" = ANY(${strategicLineIds}) AND "isActive"
+    ORDER BY "id"
+    FOR SHARE
+  `;
+
+  if (validLines.length !== strategicLineIds.length) {
+    return {
+      errors: { strategicLineIds: ['Elegí líneas estratégicas activas'] },
+    };
+  }
+  return null;
+}
+
 async function validateUniqueName(
   tx: Prisma.TransactionClient,
   name: string,
@@ -154,6 +173,7 @@ export async function createProject(
   );
   if ('error' in resolved) return resolved.error;
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
+  const { strategicLineIds } = parsed;
   const submittedPlaceholder = formData.get('projectPlaceholder');
   const coverPhoto = isProjectPlaceholder(submittedPlaceholder)
     ? submittedPlaceholder
@@ -172,11 +192,14 @@ export async function createProject(
           projectData.topicId
         );
         if (error) return { error };
+        const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
+        if (strategicLinesError) return { error: strategicLinesError };
         const nameError = await validateUniqueName(tx, projectData.name, projectData.startYear);
         if (nameError) return { error: nameError };
         const project = await tx.project.create({
           data: {
             ...projectData,
+            strategicLines: { connect: strategicLineIds.map((id) => ({ id })) },
             coverPhoto,
             createdBy: user.id,
           },
@@ -230,17 +253,21 @@ export async function updateProject(
   if (!parseId(projectId)) return { formError: 'El proyecto no es válido.' };
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
-  const { keys, projectData, beneficiaryData } = parsed;
+  const { keys, projectData, beneficiaryData, strategicLineIds } = parsed;
   try {
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
         await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
         const previous = await tx.project.findFirst({
           where: { id: projectId, deletedAt: null },
+          include: { strategicLines: { select: { id: true } } },
         });
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
         if (!canEditProject(user, previous))
           return { formError: 'No tenés permiso para editar este proyecto.' };
+        const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
+        const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
+        if (strategicLinesError) return strategicLinesError;
         await lockTopics(tx, [previous.topicId, projectData.topicId]);
         if (!(await lockBeneficiaryCategories(tx, keys))) {
           return { formError: STALE_CATEGORIES_MESSAGE };
@@ -283,11 +310,22 @@ export async function updateProject(
         );
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
-        const fields = changedFields(nextProjectData, previous);
+        const strategicLinesChanged =
+          currentStrategicLineIds.length !== strategicLineIds.length ||
+          currentStrategicLineIds.some((id) => !strategicLineIds.includes(id));
+        const fields = [
+          ...changedFields(nextProjectData, previous),
+          ...(strategicLinesChanged ? ['strategicLines'] : []),
+        ];
         if (fields.length) {
           await tx.project.update({
             where: { id: projectId },
-            data: nextProjectData,
+            data: {
+              ...nextProjectData,
+              ...(strategicLinesChanged
+                ? { strategicLines: { set: strategicLineIds.map((id) => ({ id })) } }
+                : {}),
+            },
           });
           await logAudit(tx, {
             authorId: user.id,

@@ -8,26 +8,33 @@ import { getRandomProjectPlaceholder } from '@/lib/projects/project-placeholders
 export default async function NewProjectPage() {
   await requireUser();
 
-  const [coordinators, departments, topics, beneficiaryCategories] = await Promise.all([
-    prisma.user.findMany({
-      where: { role: 'coordinator', status: 'active', deletedAt: null },
-      orderBy: { firstName: 'asc' },
-      select: { id: true, firstName: true, lastName: true },
-    }),
-    prisma.department.findMany({
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true },
-    }),
-    prisma.topic.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-      select: { id: true, name: true },
-    }),
-    getActiveBeneficiaryCategories(),
-  ]);
+  const [coordinators, departments, topics, strategicLines, beneficiaryCategories] =
+    await Promise.all([
+      prisma.user.findMany({
+        where: { role: 'coordinator', status: 'active', deletedAt: null },
+        orderBy: { firstName: 'asc' },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+      prisma.department.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      }),
+      prisma.topic.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      }),
+      prisma.strategicLine.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      }),
+      getActiveBeneficiaryCategories(),
+    ]);
 
   return (
     <ProjectForm
+      strategicLines={strategicLines}
       topics={topics}
       beneficiaryCategories={beneficiaryCategories}
       currentYear={new Date().getFullYear()}

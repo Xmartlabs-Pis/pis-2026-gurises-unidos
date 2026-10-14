@@ -4,7 +4,10 @@ import { getDefaultValues } from './get-default-values';
 import type { ProjectFormValues } from './project-form-values';
 
 export function projectToFormValues(
-  project: Project & { projectBeneficiaries: (BeneficiaryCounts & { year: number })[] },
+  project: Project & {
+    projectBeneficiaries: (BeneficiaryCounts & { year: number })[];
+    strategicLines?: { id: number }[];
+  },
   currentYear: number,
   categories: BeneficiaryCategoryOption[]
 ): ProjectFormValues {
@@ -28,6 +31,7 @@ export function projectToFormValues(
     showOnLanding: String(project.showOnLanding),
     coverPhotoUrl: project.coverPhoto,
     topicId: String(project.topicId),
+    strategicLineIds: project.strategicLines?.map(({ id }) => String(id)) ?? [],
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),
   };
 }

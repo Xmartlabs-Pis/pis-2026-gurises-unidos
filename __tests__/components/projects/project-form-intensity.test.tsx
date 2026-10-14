@@ -26,12 +26,14 @@ function renderForm(props: Partial<ComponentProps<typeof ProjectForm>> = {}) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       topics={[{ id: 1, name: 'Education' }]}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       currentYear={2026}
       mode="edit"
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
         counterpartyType: 'publicSector',
+        strategicLineIds: ['1'],
         name: 'Existing project',
         topicId: '1',
         status: 'active',
@@ -78,6 +80,7 @@ it('submits no intensity while the project has no direct children or adolescents
   const { container, submitAction } = renderForm({
     initialValues: {
       counterpartyType: 'publicSector',
+      strategicLineIds: ['1'],
       name: 'Existing project',
       topicId: '1',
       status: 'active',
