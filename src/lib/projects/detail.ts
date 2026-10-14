@@ -40,7 +40,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       intensity: true,
       startYear: true,
       endYear: true,
-      strategicLines: true,
+      strategicLines: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       leadCoordinatorId: true,
       generalObjective: true,
       publicDescription: true,

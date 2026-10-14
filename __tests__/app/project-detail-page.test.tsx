@@ -30,7 +30,7 @@ const DETAIL = {
       intensity: 'high',
       startYear: 2024,
       endYear: null,
-      strategicLines: [{ id: 1, name: 'Formación', isActive: true }],
+      strategicLines: [{ id: 1, name: 'Formación' }],
       leadCoordinatorId: 7,
       zone: 'city',
       localityNeighborhood: 'Casavalle',

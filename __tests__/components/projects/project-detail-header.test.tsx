@@ -16,8 +16,8 @@ const PROJECT: ProjectDetail['project'] = {
   startYear: 2020,
   endYear: null,
   strategicLines: [
-    { id: 1, name: 'Formación', isActive: true },
-    { id: 2, name: 'Participación', isActive: true },
+    { id: 1, name: 'Formación' },
+    { id: 2, name: 'Participación' },
   ],
   leadCoordinatorId: 7,
   zone: 'city',
