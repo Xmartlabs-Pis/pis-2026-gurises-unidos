@@ -39,7 +39,6 @@ function ProjectMetadata({
     { label: 'Territorio:', value: territory },
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
-    { label: 'Líneas estratégicas:', value: strategicLines },
   ];
 
   return (
@@ -53,6 +52,13 @@ function ProjectMetadata({
           <dd className="text-foreground/80 sm:text-foreground/65">{value}</dd>
         </div>
       ))}
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline">
+        <span aria-hidden="true" className="hidden sm:inline">
+          •
+        </span>
+        <dt className="whitespace-nowrap">Líneas estratégicas:</dt>
+        <dd className="text-foreground/80 sm:text-foreground/65">{strategicLines}</dd>
+      </div>
     </dl>
   );
 }
