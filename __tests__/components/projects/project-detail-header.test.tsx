@@ -101,11 +101,11 @@ test('shows the end year of a finished project', () => {
   expect(screen.getByText('2020–2023')).toBeDefined();
 });
 
-test('shows only the general objective in the header', () => {
+test('shows only the general objective text in the header', () => {
   renderHeader(null);
 
-  expect(screen.getByRole('heading', { name: 'Objetivo general' })).toBeDefined();
   expect(screen.getByText('Support adolescents and families.')).toBeDefined();
+  expect(screen.queryByRole('heading', { name: 'Objetivo general' })).toBeNull();
   expect(screen.queryByRole('heading', { name: 'Descripción pública' })).toBeNull();
   expect(screen.queryByText('Community support project.')).toBeNull();
 });
@@ -113,7 +113,7 @@ test('shows only the general objective in the header', () => {
 test('places the general objective before metadata in the mobile reading order', () => {
   const { container } = renderHeader(null);
   const content = container.textContent ?? '';
-  const objectivePosition = content.indexOf('Objetivo general');
+  const objectivePosition = content.indexOf('Support adolescents and families.');
   const metadataPosition = content.indexOf('Territorio:');
 
   expect(objectivePosition).toBeGreaterThanOrEqual(0);

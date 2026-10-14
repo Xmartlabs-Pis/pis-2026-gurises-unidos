@@ -70,10 +70,7 @@ function ProjectGeneralObjective({ generalObjective }: { generalObjective: strin
   }
 
   return (
-    <section className="mt-4">
-      <h2 className="text-sm font-semibold">Objetivo general</h2>
-      <p className="text-muted-foreground mt-1 text-sm leading-5">{generalObjective}</p>
-    </section>
+    <p className="text-muted-foreground mt-3 max-w-4xl text-sm leading-5">{generalObjective}</p>
   );
 }
 
