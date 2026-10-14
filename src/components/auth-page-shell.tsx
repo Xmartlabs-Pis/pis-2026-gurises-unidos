@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import icon from '@/app/icon.png';
-import { version } from '@/lib/version';
 
 type AuthPageShellProps = {
   title: string;
@@ -37,17 +36,11 @@ export function AuthPageShell({ title, description, children }: AuthPageShellPro
           <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
             Plataforma interna de gestión de Gurises Unidos.
           </p>
-          <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
-            Versión v{version}
-          </p>
         </footer>
       </div>
       <footer className="bg-background flex flex-col gap-0.5 p-6 pt-5 lg:hidden">
         <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
           Plataforma interna de gestión de Gurises Unidos.
-        </p>
-        <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
-          Versión v{version}
         </p>
       </footer>
     </div>
