@@ -17,11 +17,12 @@ import { UserStatsCards } from '@/components/users/user-stats-cards';
 import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
 import { getUserList, getUserStats, parseUserListFilters } from '@/lib/users/list';
+import { redirectToCanonical, type RawSearchParams } from '@/lib/url-filters';
 
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<RawSearchParams>;
 }) {
   const session = await auth();
 
@@ -29,7 +30,14 @@ export default async function UsersPage({
     return <ErrorScreen code={403} />;
   }
 
-  const filters = parseUserListFilters(await searchParams);
+  const rawParams = await searchParams;
+  const filters = parseUserListFilters(rawParams);
+  redirectToCanonical('/management/users', rawParams, {
+    q: filters.search,
+    role: filters.role,
+    status: filters.status,
+    sort: filters.sortBy === 'name' ? undefined : filters.sortBy,
+  });
   const [users, stats] = await Promise.all([getUserList(filters), getUserStats()]);
 
   const hasOnlyCurrentAdmin = stats.total <= 1;

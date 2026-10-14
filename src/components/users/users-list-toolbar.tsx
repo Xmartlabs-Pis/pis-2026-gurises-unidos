@@ -1,7 +1,5 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
@@ -13,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useUrlFilters } from '@/hooks/use-url-filters';
 import {
   ROLE_FILTER_LABELS,
   STATUS_FILTER_LABELS,
@@ -24,6 +23,15 @@ import { formatUserCount } from '@/lib/users/format';
 import type { UserListFilters } from '@/lib/users/list';
 
 const SEARCH_DEBOUNCE_MS = 300;
+const DEFAULT_SORT: SortBy = 'name';
+
+function toFilterParam(value: string | null) {
+  return value === 'all' ? null : value;
+}
+
+function toSortParam(value: string | null) {
+  return value === DEFAULT_SORT ? null : value;
+}
 
 export function UsersListToolbar({
   filters,
@@ -32,40 +40,21 @@ export function UsersListToolbar({
   filters: UserListFilters;
   filteredCount: number;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [search, setSearch] = useState(filters.search ?? '');
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { searchText, changeSearch, updateFilters, clearFilters } = useUrlFilters({
+    search: filters.search,
+    searchKey: 'q',
+    debounceMs: SEARCH_DEBOUNCE_MS,
+  });
 
   const roleFilter = filters.role ?? 'all';
   const statusFilter = filters.status ?? 'all';
-  const sortBy = filters.sortBy ?? 'name';
-
-  function updateParams(updates: Record<string, string | null>) {
-    const params = new URLSearchParams(window.location.search);
-    for (const [key, value] of Object.entries(updates)) {
-      if (value && value !== 'all') params.set(key, value);
-      else params.delete(key);
-    }
-    const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-  }
-
-  function handleSearchChange(value: string) {
-    setSearch(value);
-    clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(
-      () => updateParams({ q: value.trim() || null }),
-      SEARCH_DEBOUNCE_MS
-    );
-  }
-
-  function clearFilters() {
-    updateParams({ role: null, status: null, sort: null });
-  }
+  const sortBy = filters.sortBy ?? DEFAULT_SORT;
 
   const roleSelect = (
-    <Select value={roleFilter} onValueChange={(value) => updateParams({ role: value })}>
+    <Select
+      value={roleFilter}
+      onValueChange={(value) => updateFilters({ role: toFilterParam(value) })}
+    >
       <SelectTrigger>
         <SelectValue>{(value: string) => ROLE_FILTER_LABELS[value]}</SelectValue>
       </SelectTrigger>
@@ -78,7 +67,10 @@ export function UsersListToolbar({
   );
 
   const statusSelect = (
-    <Select value={statusFilter} onValueChange={(value) => updateParams({ status: value })}>
+    <Select
+      value={statusFilter}
+      onValueChange={(value) => updateFilters({ status: toFilterParam(value) })}
+    >
       <SelectTrigger>
         <SelectValue>{(value: string) => STATUS_FILTER_LABELS[value]}</SelectValue>
       </SelectTrigger>
@@ -92,7 +84,7 @@ export function UsersListToolbar({
   );
 
   const sortSelect = (
-    <Select value={sortBy} onValueChange={(value) => updateParams({ sort: value })}>
+    <Select value={sortBy} onValueChange={(value) => updateFilters({ sort: toSortParam(value) })}>
       <SelectTrigger>
         <SelectValue>{(value: SortBy) => SORT_LABELS[value]}</SelectValue>
       </SelectTrigger>
@@ -106,7 +98,7 @@ export function UsersListToolbar({
   );
 
   const mobileSortSelect = (
-    <Select value={sortBy} onValueChange={(value) => updateParams({ sort: value })}>
+    <Select value={sortBy} onValueChange={(value) => updateFilters({ sort: toSortParam(value) })}>
       <SelectTrigger>
         <SelectValue>{(value: SortBy) => SORT_VALUE_LABELS[value]}</SelectValue>
       </SelectTrigger>
@@ -128,8 +120,8 @@ export function UsersListToolbar({
           </InputGroupAddon>
           <InputGroupInput
             placeholder="Buscar por nombre o correo..."
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            value={searchText}
+            onChange={(e) => changeSearch(e.target.value)}
           />
         </InputGroup>
 
@@ -154,7 +146,7 @@ export function UsersListToolbar({
               <SheetTitle className="text-lg">Filtros</SheetTitle>
               <button
                 type="button"
-                onClick={clearFilters}
+                onClick={() => clearFilters(['role', 'status', 'sort'])}
                 className="text-muted-foreground text-sm"
               >
                 Limpiar
