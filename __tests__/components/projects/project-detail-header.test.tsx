@@ -15,6 +15,10 @@ const PROJECT: ProjectDetail['project'] = {
   intensity: 'high',
   startYear: 2020,
   endYear: null,
+  strategicLines: [
+    { id: 1, name: 'Formación', isActive: true },
+    { id: 2, name: 'Participación', isActive: true },
+  ],
   leadCoordinatorId: 7,
   zone: 'city',
   localityNeighborhood: 'Casavalle',
@@ -41,6 +45,8 @@ test('shows an ongoing project period until the present', () => {
   renderHeader(null);
 
   expect(screen.getByText('2020–actualidad')).toBeDefined();
+  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Formación, Participación')).toBeDefined();
 });
 
 test('shows the end year of a finished project', () => {

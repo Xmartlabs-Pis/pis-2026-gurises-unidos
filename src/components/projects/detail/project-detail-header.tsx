@@ -28,15 +28,18 @@ function ProjectMetadata({
   territory,
   coordinator,
   period,
+  strategicLines,
 }: {
   territory: string;
   coordinator: string;
   period: string;
+  strategicLines: string;
 }) {
   const rows = [
     { label: 'Territorio:', value: territory },
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
+    { label: 'Líneas estratégicas:', value: strategicLines },
   ];
 
   return (
@@ -65,6 +68,7 @@ export function ProjectDetailHeader({
     .join(' — ');
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
+  const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
   const description = project.generalObjective ?? project.publicDescription;
 
   return (
@@ -103,7 +107,12 @@ export function ProjectDetailHeader({
           </p>
         )}
         <div className="order-2 sm:order-1">
-          <ProjectMetadata territory={territory} coordinator={coordinator} period={period} />
+          <ProjectMetadata
+            territory={territory}
+            coordinator={coordinator}
+            period={period}
+            strategicLines={strategicLines}
+          />
         </div>
       </div>
 
