@@ -35,9 +35,9 @@ export default async function UsersPage({
   const hasOnlyCurrentAdmin = stats.total <= 1;
 
   return (
-    <div className="bg-primary-foreground flex w-full flex-1 flex-col">
-      <div className="mx-auto w-full max-w-296">
-        <div className="flex w-full flex-col items-start justify-between gap-3 px-4 pt-6 pb-2.5 sm:flex-row sm:px-6">
+    <div className="bg-primary-foreground flex w-full flex-1 flex-col xl:min-h-0 xl:overflow-hidden">
+      <div className="mx-auto flex w-full max-w-296 flex-1 flex-col xl:min-h-0">
+        <div className="flex w-full shrink-0 flex-col items-start justify-between gap-3 px-4 pt-6 pb-2.5 sm:flex-row sm:px-6">
           <PageHeader
             className="mx-auto w-full max-w-[1185px]"
             eyebrow="Administración"
@@ -76,10 +76,14 @@ export default async function UsersPage({
             </Empty>
           </div>
         ) : (
-          <div className="flex w-full flex-col gap-5 px-4 pt-6 pb-8 sm:px-6">
-            <UserStatsCards stats={stats} />
+          <div className="flex w-full flex-1 flex-col gap-5 px-4 pt-6 pb-8 sm:px-6 xl:min-h-0">
+            <div className="shrink-0">
+              <UserStatsCards stats={stats} />
+            </div>
 
-            <UsersListToolbar filters={filters} filteredCount={users.length} />
+            <div className="shrink-0">
+              <UsersListToolbar filters={filters} filteredCount={users.length} />
+            </div>
 
             <UsersTable users={users} currentUserId={Number(session.user.id)} />
           </div>
