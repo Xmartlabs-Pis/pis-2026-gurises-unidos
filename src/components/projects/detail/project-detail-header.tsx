@@ -117,13 +117,19 @@ export function ProjectDetailHeader({
         </div>
       </div>
 
-      <ProjectMetadata
-        territory={territory}
-        coordinator={coordinator}
-        period={period}
-        strategicLines={strategicLines}
-      />
-      <ProjectGeneralObjective generalObjective={project.generalObjective} />
+      <div className="flex flex-col">
+        <div className="order-1 sm:order-2">
+          <ProjectGeneralObjective generalObjective={project.generalObjective} />
+        </div>
+        <div className="order-2 sm:order-1">
+          <ProjectMetadata
+            territory={territory}
+            coordinator={coordinator}
+            period={period}
+            strategicLines={strategicLines}
+          />
+        </div>
+      </div>
 
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
         <span className="text-muted-foreground text-sm">Año de los datos</span>
