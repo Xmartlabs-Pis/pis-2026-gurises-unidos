@@ -64,31 +64,16 @@ function ProjectMetadata({
   );
 }
 
-function ProjectDescriptions({
-  generalObjective,
-  publicDescription,
-}: {
-  generalObjective: string | null;
-  publicDescription: string | null;
-}) {
-  const descriptions = [
-    { label: 'Objetivo general', value: generalObjective },
-    { label: 'Descripción pública', value: publicDescription },
-  ].filter(({ value }) => value !== null);
-
-  if (descriptions.length === 0) {
+function ProjectGeneralObjective({ generalObjective }: { generalObjective: string | null }) {
+  if (!generalObjective) {
     return null;
   }
 
   return (
-    <div className="mt-4 flex flex-wrap gap-4">
-      {descriptions.map(({ label, value }) => (
-        <section key={label} className="min-w-0 flex-1 basis-80">
-          <h2 className="text-sm font-semibold">{label}</h2>
-          <p className="text-muted-foreground mt-1 text-sm leading-5">{value}</p>
-        </section>
-      ))}
-    </div>
+    <section className="mt-4">
+      <h2 className="text-sm font-semibold">Objetivo general</h2>
+      <p className="text-muted-foreground mt-1 text-sm leading-5">{generalObjective}</p>
+    </section>
   );
 }
 
@@ -138,10 +123,7 @@ export function ProjectDetailHeader({
         period={period}
         strategicLines={strategicLines}
       />
-      <ProjectDescriptions
-        generalObjective={project.generalObjective}
-        publicDescription={project.publicDescription}
-      />
+      <ProjectGeneralObjective generalObjective={project.generalObjective} />
 
       <div className="mt-4 flex items-center justify-between gap-3 md:hidden">
         <span className="text-muted-foreground text-sm">Año de los datos</span>

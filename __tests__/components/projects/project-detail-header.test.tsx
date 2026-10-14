@@ -101,11 +101,11 @@ test('shows the end year of a finished project', () => {
   expect(screen.getByText('2020–2023')).toBeDefined();
 });
 
-test('shows the general objective and public description separately', () => {
+test('shows only the general objective in the header', () => {
   renderHeader(null);
 
   expect(screen.getByRole('heading', { name: 'Objetivo general' })).toBeDefined();
   expect(screen.getByText('Support adolescents and families.')).toBeDefined();
-  expect(screen.getByRole('heading', { name: 'Descripción pública' })).toBeDefined();
-  expect(screen.getByText('Community support project.')).toBeDefined();
+  expect(screen.queryByRole('heading', { name: 'Descripción pública' })).toBeNull();
+  expect(screen.queryByText('Community support project.')).toBeNull();
 });
