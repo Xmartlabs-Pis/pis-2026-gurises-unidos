@@ -27,7 +27,9 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
         <AppSidebar user={session.user} />
         <SidebarInset className="min-h-0 min-w-0">
           <Topbar />
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto">{children}</div>
+          <div className="bg-surface-page flex min-h-0 flex-1 flex-col overflow-auto *:flex-1">
+            {children}
+          </div>
         </SidebarInset>
       </TopbarProvider>
     </SidebarProvider>
