@@ -98,7 +98,7 @@ describe('getMetricSettings', () => {
     expect(settings.filter((metric) => metric.showPublicly).map((metric) => metric.key)).toEqual([
       'direct_children_reached',
       'indirect_children_reached',
-      'teachers',
+      'departments',
       'active_projects',
     ]);
     expect(settings).toHaveLength(7);

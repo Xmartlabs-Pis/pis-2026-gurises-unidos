@@ -100,4 +100,16 @@ it('toggles direct and indirect children independently in the preview', () => {
   expect(preview.queryByText('NNA indirectos')).toBeNull();
   expect(screen.getByLabelText('NNA directos')).toHaveProperty('value', '100');
   expect(screen.getByLabelText('NNA indirectos')).toHaveProperty('value', '40');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Restablecer valores' }));
+
+  expect(within(directCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
+  expect(within(indirectCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
+  expect(preview.getByText('NNA directos')).toBeDefined();
+  expect(preview.getByText('NNA indirectos')).toBeDefined();
+  expect(preview.getByText('Departamentos')).toBeDefined();
+  expect(preview.getByText('Proyectos con actividad')).toBeDefined();
+  expect(preview.queryByText('Familias acompañadas')).toBeNull();
+  expect(preview.queryByText('Funcionarios de servicios básicos')).toBeNull();
+  expect(preview.queryByText('Instituciones vinculadas')).toBeNull();
 });

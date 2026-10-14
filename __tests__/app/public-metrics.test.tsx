@@ -12,6 +12,9 @@ vi.mock('@/lib/metrics/queries', () => ({
 vi.mock('@/lib/projects/department-beneficiaries', () => ({
   getDepartmentBeneficiaries: vi.fn(async () => []),
 }));
+vi.mock('@/lib/metrics/topic-statistics', () => ({
+  getTopicStatistics: vi.fn(async () => []),
+}));
 vi.mock('@/components/projects/projects-by-topic', () => ({ ProjectsByTopic: () => null }));
 
 beforeEach(() => {

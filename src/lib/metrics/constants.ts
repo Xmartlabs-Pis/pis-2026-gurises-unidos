@@ -22,13 +22,13 @@ export const METRIC_DEFINITIONS: {
     key: 'families',
     name: 'Familias acompañadas',
     description: 'Familias con acompañamiento directo durante el año.',
-    showPublicly: true,
+    showPublicly: false,
   },
   {
     key: 'teachers',
     name: 'Funcionarios de servicios básicos',
     description: 'Funcionarios de servicios básicos formados por la organización.',
-    showPublicly: true,
+    showPublicly: false,
   },
   {
     key: 'institutions',
@@ -40,7 +40,7 @@ export const METRIC_DEFINITIONS: {
     key: 'departments',
     name: 'Departamentos',
     description: 'Departamentos con presencia de la organización.',
-    showPublicly: false,
+    showPublicly: true,
   },
   {
     key: 'active_projects',
