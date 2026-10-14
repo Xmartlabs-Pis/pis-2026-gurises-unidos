@@ -2,25 +2,14 @@ import prisma from '@/lib/prisma';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 
-export async function getMetricSettings(splitChildren = false) {
+export async function getMetricSettings() {
   const savedMetrics = await prisma.metric.findMany({
     select: { key: true, showPublicly: true },
   });
-  const definitions = splitChildren
-    ? METRIC_DEFINITIONS
-    : [
-        {
-          key: 'children_reached' as const,
-          name: 'NNA alcanzados',
-          description: 'Niños, niñas y adolescentes alcanzados con acciones directas e indirectas.',
-          showPublicly: true,
-        },
-        ...METRIC_DEFINITIONS.slice(2),
-      ];
   const childrenVisibility = savedMetrics.find(
     (metric) => metric.key === 'children_reached'
   )?.showPublicly;
-  return definitions.map((metric) => ({
+  return METRIC_DEFINITIONS.map((metric) => ({
     ...metric,
     showPublicly:
       savedMetrics.find((saved) => saved.key === metric.key)?.showPublicly ??

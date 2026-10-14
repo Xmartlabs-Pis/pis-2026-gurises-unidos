@@ -77,7 +77,7 @@ describe('getMetricSettings', () => {
       { key: 'direct_children_reached', showPublicly: true },
     ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
 
-    const settings = await getMetricSettings(true);
+    const settings = await getMetricSettings();
 
     expect(settings.find((metric) => metric.key === 'direct_children_reached')?.showPublicly).toBe(
       true
@@ -85,7 +85,7 @@ describe('getMetricSettings', () => {
     expect(
       settings.find((metric) => metric.key === 'indirect_children_reached')?.showPublicly
     ).toBe(false);
-    expect(settings.some((metric) => metric.key === 'children_reached')).toBe(false);
+    expect(settings.map((metric) => metric.key)).not.toContain('children_reached');
     expect(settings).toHaveLength(7);
   });
 
@@ -96,11 +96,12 @@ describe('getMetricSettings', () => {
     ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
     const settings = await getMetricSettings();
     expect(settings.filter((metric) => metric.showPublicly).map((metric) => metric.key)).toEqual([
-      'children_reached',
+      'direct_children_reached',
+      'indirect_children_reached',
       'teachers',
       'active_projects',
     ]);
-    expect(settings).toHaveLength(6);
+    expect(settings).toHaveLength(7);
   });
 });
 
