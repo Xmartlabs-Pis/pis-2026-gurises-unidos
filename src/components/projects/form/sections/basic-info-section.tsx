@@ -17,7 +17,7 @@ export function BasicInfoSection({
   topics,
   strategicLines,
 }: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'topics' | 'strategicLines'>) {
-  const { control, clearErrors, setValue } = useFormContext<ProjectFormValues>();
+  const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
     label: name,
