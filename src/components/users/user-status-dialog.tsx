@@ -16,7 +16,7 @@ import { notify } from '@/lib/notify';
 import { fullName, type User } from '@/lib/users/format';
 
 type UserStatusDialogProps = {
-  user: User;
+  user: Pick<User, 'id' | 'firstName' | 'lastName' | 'status'>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -71,11 +71,7 @@ export function UserStatusDialog({ user, open, onOpenChange }: UserStatusDialogP
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            variant={isDisabling ? 'destructive' : 'default'}
-            disabled={isPending}
-            onClick={handleConfirm}
-          >
+          <AlertDialogAction disabled={isPending} onClick={handleConfirm}>
             {isDisabling ? 'Deshabilitar' : 'Habilitar'}
           </AlertDialogAction>
         </AlertDialogFooter>
