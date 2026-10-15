@@ -43,7 +43,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
         topicId: '1',
         status: 'active',
         leadCoordinatorId: '2',
-        departmentId: '3',
+        departmentIds: ['3'],
         startYear: '2020',
         year: '2024',
         families: '30',
@@ -159,7 +159,7 @@ it('sends one selected topic and preserves it after a failed save', async () => 
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentId: '3',
+        departmentIds: ['3'],
         topicId: '1',
       }}
       submitAction={submitAction}
@@ -195,7 +195,7 @@ function renderFormWith(initialValues: Record<string, string>) {
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentId: '3',
+        departmentIds: ['3'],
         ...initialValues,
       }}
       submitAction={vi.fn()}
@@ -228,7 +228,7 @@ it('submits the end year of an inactive project', async () => {
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentId: '3',
+        departmentIds: ['3'],
         status: 'inactive',
         startYear: '2020',
         endYear: '2022',
@@ -260,7 +260,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentId: '3',
+        departmentIds: ['3'],
         topicId: '1',
       }}
       submitAction={submitAction}
@@ -371,7 +371,7 @@ function renderWithManyCategories(
         strategicLineIds: ['1'],
         topicId: '1',
         leadCoordinatorId: '2',
-        departmentId: '3',
+        departmentIds: ['3'],
         startYear: '2020',
         ...initialValues,
       }}
@@ -442,7 +442,7 @@ it.each(['create', 'edit'] as const)(
           name: 'Project',
           topicId: '1',
           leadCoordinatorId: '2',
-          departmentId: '3',
+          departmentIds: ['3'],
           counterpartyType: mode === 'edit' ? 'publicSector' : '',
           strategicLineIds: ['1'],
         }}

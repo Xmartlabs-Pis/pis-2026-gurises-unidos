@@ -92,13 +92,7 @@ test('keeps the public card horizontal and separates contribution rows on mobile
           activeProjects: { projectCount: 1, totalCount: 27 },
           territories: {
             count: 1,
-            items: [
-              {
-                department: { id: 1, name: 'Montevideo' },
-                zone: 'city',
-                localityNeighborhood: null,
-              },
-            ],
+            items: ['Montevideo'],
           },
         }}
       />

@@ -7,17 +7,18 @@ export async function getDepartmentBeneficiaries(year: number) {
     where: { year },
     select: {
       ...BENEFICIARY_VALUES_SELECT,
-      project: { select: { department: { select: { name: true } } } },
+      project: { select: { departments: { select: { name: true } } } },
     },
   });
 
   const totalsByDepartment = new Map<string, BeneficiaryCounts>();
   for (const { values, project } of records) {
-    const department = project.department.name;
     const counts = toBeneficiaryCounts(values);
-    const totals = totalsByDepartment.get(department) ?? toBeneficiaryCounts([]);
-    for (const [key, value] of Object.entries(counts)) totals[key] = (totals[key] ?? 0) + value;
-    totalsByDepartment.set(department, totals);
+    for (const { name: department } of project.departments) {
+      const totals = totalsByDepartment.get(department) ?? toBeneficiaryCounts([]);
+      for (const [key, value] of Object.entries(counts)) totals[key] = (totals[key] ?? 0) + value;
+      totalsByDepartment.set(department, totals);
+    }
   }
 
   return [...totalsByDepartment]

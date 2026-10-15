@@ -4,6 +4,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectDetail } from '@/lib/projects/detail';
+import { getLocationLabel } from '@/lib/projects/location';
 import { ProjectYearSelector } from './project-year-selector';
 
 type ProjectDetailHeaderProps = {
@@ -69,9 +70,7 @@ export function ProjectDetailHeader({
   years,
   canEdit,
 }: ProjectDetailHeaderProps) {
-  const territory = [project.department.name, project.localityNeighborhood]
-    .filter(Boolean)
-    .join(' — ');
+  const territory = getLocationLabel(project);
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');

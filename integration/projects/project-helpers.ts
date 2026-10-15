@@ -28,6 +28,7 @@ export async function loadProject(id: number) {
     where: { id },
     include: {
       strategicLines: { select: { id: true } },
+      departments: { select: { id: true }, orderBy: { id: 'asc' } },
       projectBeneficiaries: {
         orderBy: { year: 'asc' },
         include: BENEFICIARY_VALUES_SELECT,

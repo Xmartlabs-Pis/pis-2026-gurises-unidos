@@ -15,6 +15,7 @@ import {
   toBeneficiaryCounts,
 } from '@/lib/projects/beneficiary-values';
 import { parseProjectDetailInput } from '@/lib/validation/project-detail';
+import { PROJECT_LOCATION_SELECT } from '@/lib/projects/location';
 
 export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown) {
   const user = await requireUser();
@@ -51,18 +52,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       publicDescription: true,
       coverPhoto: true,
       zone: true,
-      localityNeighborhood: true,
+      ...PROJECT_LOCATION_SELECT,
       leadCoordinator: {
         select: {
           id: true,
           firstName: true,
           lastName: true,
-        },
-      },
-      department: {
-        select: {
-          id: true,
-          name: true,
         },
       },
       topic: {
@@ -157,6 +152,10 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
   ).percentageChange;
 
   const hasData = current !== null;
+  const territoryNames =
+    project.geographicScope === 'international'
+      ? project.countries
+      : project.departments.map(({ name }) => name);
 
   return {
     status: 'success' as const,
@@ -189,14 +188,8 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
           totalCount: activeProjectCount,
         },
         territories: {
-          count: 1,
-          items: [
-            {
-              department: project.department,
-              zone: project.zone,
-              localityNeighborhood: project.localityNeighborhood,
-            },
-          ],
+          count: territoryNames.length,
+          items: territoryNames,
         },
       },
     },

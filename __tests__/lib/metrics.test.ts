@@ -37,9 +37,9 @@ describe('getMetricValues', () => {
       coordinatedInstitutions: 5,
     });
     vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([
-      { projectId: 1, project: { departmentId: 1 } },
-      { projectId: 2, project: { departmentId: 1 } },
-      { projectId: 3, project: { departmentId: 2 } },
+      { projectId: 1, project: { departments: [{ id: 1 }] } },
+      { projectId: 2, project: { departments: [{ id: 1 }, { id: 2 }] } },
+      { projectId: 3, project: { departments: [] } },
     ] as unknown as Awaited<ReturnType<typeof prisma.projectBeneficiary.findMany>>);
 
     expect(await getMetricValues(year)).toEqual({

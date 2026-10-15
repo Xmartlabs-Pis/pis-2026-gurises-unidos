@@ -70,11 +70,14 @@ function buildProject(
     intensity: 'medium',
     startYear: 2025,
     zone: 'city',
-    localityNeighborhood: null,
+    geographicScope: 'national',
+    countries: [],
+    cities: [],
+    neighborhoods: [],
     publicDescription: null,
     coverPhoto: null,
     leadCoordinator: { id: 1, firstName: 'Carlos', lastName: 'Coordinator' },
-    department: { id: 1, name: 'Montevideo' },
+    departments: [{ id: 1, name: 'Montevideo' }],
     beneficiaries,
   };
 }
