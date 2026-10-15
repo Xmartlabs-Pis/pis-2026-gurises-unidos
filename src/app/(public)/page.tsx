@@ -92,6 +92,8 @@ export default async function Home() {
             </p>
           </div>
           <div
+            role="group"
+            aria-label={`Impacto ${year}`}
             className={`lg:bg-card grid w-full grid-cols-2 gap-3 lg:gap-0 lg:rounded-xl ${getStatsColumnsClass(stats.length)}`}
           >
             {stats.map((stat) => (
