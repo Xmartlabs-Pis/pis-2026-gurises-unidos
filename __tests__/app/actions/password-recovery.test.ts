@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { makeUser } from '../../fixtures/user';
 
 const {
   afterCallbacks,
-  findFirstMock,
+  findUniqueMock,
   transactionMock,
   sendEmailMock,
   createUserTokenMock,
@@ -14,7 +14,7 @@ const {
   logAuditMock,
 } = vi.hoisted(() => ({
   afterCallbacks: [] as Array<() => Promise<void>>,
-  findFirstMock: vi.fn(),
+  findUniqueMock: vi.fn(),
   transactionMock: vi.fn(),
   sendEmailMock: vi.fn(),
   createUserTokenMock: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('next/server', () => ({
 }));
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }));
 vi.mock('@/lib/prisma', () => ({
-  default: { user: { findFirst: findFirstMock }, $transaction: transactionMock },
+  default: { user: { findUnique: findUniqueMock }, $transaction: transactionMock },
 }));
 vi.mock('@/lib/email/client', () => ({ sendEmail: sendEmailMock }));
 vi.mock('@/lib/audit-log', () => ({ logAudit: logAuditMock }));
@@ -79,26 +79,31 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
 describe('requestPasswordReset', () => {
   test('returns field errors for an invalid email without looking up users', async () => {
     const result = await requestPasswordReset({}, buildFormData({ email: 'not-an-email' }));
 
     expect(result.errors?.email).toBeDefined();
-    expect(findFirstMock).not.toHaveBeenCalled();
+    expect(findUniqueMock).not.toHaveBeenCalled();
   });
 
   test('looks up only active, non-deleted users by normalized email', async () => {
-    findFirstMock.mockResolvedValue(null);
+    findUniqueMock.mockResolvedValue(null);
 
     await requestPasswordReset({}, buildFormData({ email: '  Ana@Example.com ' }));
 
-    expect(findFirstMock).toHaveBeenCalledWith({
+    expect(findUniqueMock).toHaveBeenCalledWith({
       where: { email: 'ana@example.com', deletedAt: null, status: 'active' },
     });
   });
 
   test('returns the same response whether the email exists or not', async () => {
-    findFirstMock.mockResolvedValueOnce(makeUser({ id: 7 })).mockResolvedValueOnce(null);
+    findUniqueMock.mockResolvedValueOnce(makeUser({ id: 7 })).mockResolvedValueOnce(null);
 
     const existing = await requestPasswordReset({}, buildFormData({ email: 'user7@example.com' }));
     const missing = await requestPasswordReset({}, buildFormData({ email: 'nobody@example.com' }));
@@ -108,7 +113,7 @@ describe('requestPasswordReset', () => {
   });
 
   test('does not create a token or send an email when no eligible user matches', async () => {
-    findFirstMock.mockResolvedValue(null);
+    findUniqueMock.mockResolvedValue(null);
 
     await requestPasswordReset({}, buildFormData({ email: 'nobody@example.com' }));
 
@@ -118,8 +123,9 @@ describe('requestPasswordReset', () => {
   });
 
   test('sends the reset link after responding when the user exists', async () => {
+    vi.stubEnv('AUTH_URL', 'http://159.89.90.10:3001');
     const user = makeUser({ id: 7, email: 'user7@example.com' });
-    findFirstMock.mockResolvedValue(user);
+    findUniqueMock.mockResolvedValue(user);
     transactionMock.mockImplementation(async (callback) => callback({}));
     createUserTokenMock.mockResolvedValue('raw-token');
 
@@ -133,12 +139,62 @@ describe('requestPasswordReset', () => {
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const { to, react } = sendEmailMock.mock.calls[0][0];
     expect(to).toBe('user7@example.com');
-    expect(react.props.resetUrl).toMatch(/\/reset-password\?token=raw-token$/);
+    expect(react.props.resetUrl).toBe('http://159.89.90.10:3001/reset-password?token=raw-token');
     expect(react.props.expiresInMinutes).toBe(60);
   });
 
+  test.each(['http://159.89.90.10:3001/', 'http://159.89.90.10:3001/api/auth'])(
+    'builds the reset link from the origin of AUTH_URL %s',
+    async (authUrl) => {
+      vi.stubEnv('AUTH_URL', authUrl);
+      findUniqueMock.mockResolvedValue(makeUser({ id: 7 }));
+      transactionMock.mockImplementation(async (callback) => callback({}));
+      createUserTokenMock.mockResolvedValue('raw-token');
+
+      await requestPasswordReset({}, buildFormData({ email: 'user7@example.com' }));
+      await runAfterCallbacks();
+
+      expect(sendEmailMock.mock.calls[0][0].react.props.resetUrl).toBe(
+        'http://159.89.90.10:3001/reset-password?token=raw-token'
+      );
+    }
+  );
+
+  test('falls back to localhost outside production when AUTH_URL is not set', async () => {
+    vi.stubEnv('AUTH_URL', '');
+    vi.stubEnv('NODE_ENV', 'development');
+    findUniqueMock.mockResolvedValue(makeUser({ id: 7 }));
+    transactionMock.mockImplementation(async (callback) => callback({}));
+    createUserTokenMock.mockResolvedValue('raw-token');
+
+    await requestPasswordReset({}, buildFormData({ email: 'user7@example.com' }));
+    await runAfterCallbacks();
+
+    expect(sendEmailMock.mock.calls[0][0].react.props.resetUrl).toBe(
+      'http://localhost:3000/reset-password?token=raw-token'
+    );
+  });
+
+  test('logs an error and sends nothing in production when AUTH_URL is not set', async () => {
+    vi.stubEnv('AUTH_URL', '');
+    vi.stubEnv('NODE_ENV', 'production');
+    findUniqueMock.mockResolvedValue(makeUser({ id: 7 }));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await requestPasswordReset({}, buildFormData({ email: 'user7@example.com' }));
+    await runAfterCallbacks();
+
+    expect(result).toEqual({ success: true });
+    expect(consoleError).toHaveBeenCalledWith(
+      'Failed to send password reset email',
+      expect.objectContaining({ message: 'AUTH_URL is not set' })
+    );
+    expect(createUserTokenMock).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
   test('logs and swallows failures while sending the email', async () => {
-    findFirstMock.mockResolvedValue(makeUser({ id: 7 }));
+    findUniqueMock.mockResolvedValue(makeUser({ id: 7 }));
     transactionMock.mockRejectedValue(new Error('db down'));
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 

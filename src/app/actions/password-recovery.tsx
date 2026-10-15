@@ -18,7 +18,21 @@ import {
 import { forgotPasswordFormSchema, resetPasswordWithTokenSchema } from '@/lib/validation/password';
 import type { PasswordFormState } from '@/app/actions/password';
 
-const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+const DEV_APP_URL = 'http://localhost:3000';
+
+function getAppUrl() {
+  const appUrl = process.env.AUTH_URL;
+
+  if (appUrl) {
+    return appUrl;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_URL is not set');
+  }
+
+  return DEV_APP_URL;
+}
 
 export async function requestPasswordReset(
   _prevState: PasswordFormState,
@@ -30,17 +44,18 @@ export async function requestPasswordReset(
     return { errors: z.flattenError(parsed.error).fieldErrors };
   }
 
-  const user = await prisma.user.findFirst({
+  const user = await prisma.user.findUnique({
     where: { email: parsed.data.email, deletedAt: null, status: 'active' },
   });
 
   if (user) {
     after(async () => {
       try {
+        const resetUrl = new URL('/reset-password', getAppUrl());
         const token = await prisma.$transaction((tx) =>
           createUserToken(tx, user.id, 'passwordReset')
         );
-        const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+        resetUrl.searchParams.set('token', token);
 
         await sendEmail({
           to: user.email,
@@ -48,7 +63,7 @@ export async function requestPasswordReset(
           react: (
             <PasswordResetEmail
               firstName={user.firstName}
-              resetUrl={resetUrl}
+              resetUrl={resetUrl.toString()}
               expiresInMinutes={PASSWORD_RESET_TOKEN_TTL_MINUTES}
             />
           ),
