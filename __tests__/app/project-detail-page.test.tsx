@@ -30,6 +30,7 @@ const DETAIL = {
       intensity: 'high',
       startYear: 2024,
       endYear: null,
+      strategicLines: [{ id: 1, name: 'Formación' }],
       leadCoordinatorId: 7,
       zone: 'city',
       localityNeighborhood: 'Casavalle',
@@ -117,6 +118,8 @@ test('renders the selected project year and its main sections', async () => {
 
   expect(getProjectDetailMock).toHaveBeenCalledWith('42', '2026');
   expect(screen.getByRole('heading', { level: 1, name: 'El Resorte' })).toBeDefined();
+  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Formación')).toBeDefined();
   expect(screen.getByRole('region', { name: 'Métricas del proyecto' })).toBeDefined();
   expect(screen.getByRole('heading', { name: 'Distribución de beneficiarios' })).toBeDefined();
   expect(screen.getByRole('heading', { name: 'Contribución institucional' })).toBeDefined();
