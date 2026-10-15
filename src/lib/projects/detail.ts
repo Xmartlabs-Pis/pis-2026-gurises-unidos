@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/auth/require-user';
-import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
+import { FIRST_PROJECT_YEAR, sumBeneficiaries } from '@/lib/project-display';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import {
   calculatePercentage,
@@ -77,6 +77,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
             gte: FIRST_PROJECT_YEAR,
             lte: currentYear,
           },
+          values: {
+            some: {
+              value: { gt: 0 },
+              category: { isActive: true },
+            },
+          },
         },
         orderBy: { year: 'desc' },
         select: { year: true },
@@ -88,16 +94,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
     return { status: 'notFound' as const };
   }
 
-  const selectedYear = year ?? project.projectBeneficiaries[0]?.year ?? currentYear;
+  const { projectBeneficiaries, ...projectData } = project;
+  const recordedYears = projectBeneficiaries.map((record) => record.year);
+  const fallbackYear = recordedYears[0] ?? currentYear;
+  const selectedYear = year !== undefined && recordedYears.includes(year) ? year : fallbackYear;
   const comparisonYear = selectedYear - 1;
-
-  const availableYears = [
-    ...new Set([
-      currentYear,
-      selectedYear,
-      ...project.projectBeneficiaries.map((record) => record.year),
-    ]),
-  ].sort((a, b) => b - a);
+  const availableYears = recordedYears.length > 0 ? recordedYears : [fallbackYear];
 
   const [currentRecord, previousRecord, nationalChildrenReached, activeProjectCount, categories] =
     await Promise.all([
@@ -127,8 +129,19 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       getActiveBeneficiaryCategories(),
     ]);
 
-  const current = currentRecord && toBeneficiaryCounts(currentRecord.values);
-  const previous = previousRecord && toBeneficiaryCounts(previousRecord.values);
+  const activeCategoryKeys = new Set<string>(categories.map(({ key }) => key));
+  const currentCounts =
+    currentRecord &&
+    toBeneficiaryCounts(
+      currentRecord.values.filter(({ category }) => activeCategoryKeys.has(category.key))
+    );
+  const previousCounts =
+    previousRecord &&
+    toBeneficiaryCounts(
+      previousRecord.values.filter(({ category }) => activeCategoryKeys.has(category.key))
+    );
+  const current = currentCounts && sumBeneficiaries(currentCounts) > 0 ? currentCounts : null;
+  const previous = previousCounts && sumBeneficiaries(previousCounts) > 0 ? previousCounts : null;
 
   const childrenReached = compareMetric(getChildrenReached(current), getChildrenReached(previous));
 
@@ -143,7 +156,6 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
     getPeopleReached(previous)
   ).percentageChange;
 
-  const { projectBeneficiaries: recordedYears, ...projectData } = project;
   const hasData = current !== null;
 
   return {
@@ -154,7 +166,6 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       comparisonYear,
       availableYears,
       hasData,
-      hasHistoricalData: recordedYears.length > 0,
       canEdit: canEditProject(user, project),
       metrics: {
         childrenReached,

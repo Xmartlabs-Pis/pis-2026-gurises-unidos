@@ -82,10 +82,10 @@ describe('saveMetricSettings', () => {
       create: { id: 1, referenceYear: 2025, updatedBy: 1 },
       update: { referenceYear: 2025, updatedBy: 1 },
     });
-    expect(upsertMock).toHaveBeenCalledTimes(6);
+    expect(upsertMock).toHaveBeenCalledTimes(7);
     expect(upsertMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { key: 'children_reached' },
+        where: { key: 'direct_children_reached' },
         update: { showPublicly: true, updatedBy: 1 },
       })
     );
@@ -95,7 +95,13 @@ describe('saveMetricSettings', () => {
         update: { showPublicly: false, updatedBy: 1 },
       })
     );
-    expect(auditMock).toHaveBeenCalledTimes(6);
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { key: 'indirect_children_reached' },
+        update: { showPublicly: false, updatedBy: 1 },
+      })
+    );
+    expect(auditMock).toHaveBeenCalledTimes(7);
     expect(revalidateMock).toHaveBeenCalledWith('/management/metrics');
     expect(revalidateMock).toHaveBeenCalledWith('/');
     expect(revalidateMock).toHaveBeenCalledTimes(2);
