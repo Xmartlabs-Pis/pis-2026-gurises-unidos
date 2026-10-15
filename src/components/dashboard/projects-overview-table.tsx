@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatNumber } from '@/lib/format';
-import { INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
+import { STATUS_LABEL, getIntensityLabel } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { DashboardProjectRow } from '@/lib/dashboard/queries';
 
@@ -44,7 +44,7 @@ export function ProjectsOverviewTable({ projects, total, year }: ProjectsOvervie
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-sm">Intensidad</span>
                         <span className="text-foreground text-sm">
-                          {INTENSITY_LABEL[project.intensity]}
+                          {getIntensityLabel(project.intensity)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -96,7 +96,7 @@ export function ProjectsOverviewTable({ projects, total, year }: ProjectsOvervie
                         </Badge>
                       </TableCell>
                       <TableCell className="text-foreground px-4 py-3">
-                        {INTENSITY_LABEL[project.intensity]}
+                        {getIntensityLabel(project.intensity)}
                       </TableCell>
                       <TableCell className="text-foreground px-4 py-3 text-right font-medium">
                         {formatNumber(project.beneficiaries)}

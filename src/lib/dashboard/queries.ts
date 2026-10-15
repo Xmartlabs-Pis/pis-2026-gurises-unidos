@@ -14,7 +14,7 @@ export type DashboardProjectRow = {
   id: number;
   name: string;
   status: ProjectStatus;
-  intensity: Intensity;
+  intensity: Intensity | null;
   beneficiaries: number;
 };
 

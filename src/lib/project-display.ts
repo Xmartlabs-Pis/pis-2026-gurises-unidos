@@ -2,7 +2,7 @@ import { CounterpartyType, ProjectStatus, Intensity } from '@/generated/prisma/e
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: 'Activo',
-  closed: 'Cerrado',
+  inactive: 'Inactivo',
 };
 
 export const INTENSITY_LABEL: Record<Intensity, string> = {
@@ -10,6 +10,16 @@ export const INTENSITY_LABEL: Record<Intensity, string> = {
   medium: 'Media',
   low: 'Baja',
 };
+
+export const INTENSITY_DESCRIPTION: Record<Intensity, string> = {
+  high: 'Acompañamiento individual',
+  medium: 'Actividad semanal grupal',
+  low: 'Al menos una actividad',
+};
+
+export function getIntensityLabel(intensity: Intensity | null) {
+  return intensity ? INTENSITY_LABEL[intensity] : '—';
+}
 
 export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
   publicSector: 'Sector Público',
@@ -19,7 +29,7 @@ export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
 
 export const STATUS_OPTIONS = [
   { value: 'active', label: STATUS_LABEL.active },
-  { value: 'closed', label: STATUS_LABEL.closed },
+  { value: 'inactive', label: STATUS_LABEL.inactive },
 ] as const;
 
 export const INTENSITY_OPTIONS = [
@@ -46,6 +56,8 @@ export const SYSTEM_BENEFICIARY_KEYS = [
 
 export type SystemBeneficiaryKey = (typeof SYSTEM_BENEFICIARY_KEYS)[number];
 
+export const DIRECT_CHILDREN_KEY: SystemBeneficiaryKey = 'directChildrenAdolescents';
+
 export function isSystemBeneficiaryKey(key: string): key is SystemBeneficiaryKey {
   return (SYSTEM_BENEFICIARY_KEYS as readonly string[]).includes(key);
 }
@@ -69,6 +81,11 @@ export const ZONE_OPTIONS = [
   { value: 'inland', label: 'Interior' },
   { value: 'border', label: 'Frontera' },
   { value: 'rural', label: 'Rural' },
+] as const;
+
+export const GEOGRAPHIC_SCOPE_OPTIONS = [
+  { value: 'national', label: 'Nacional' },
+  { value: 'international', label: 'Internacional' },
 ] as const;
 
 export const FIRST_PROJECT_YEAR = 1989;

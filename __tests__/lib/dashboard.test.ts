@@ -12,6 +12,8 @@ vi.mock('@/lib/metrics/queries', () => ({ getMetricValues: vi.fn() }));
 function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
   return {
     children_reached: 0,
+    direct_children_reached: 0,
+    indirect_children_reached: 0,
     families: 0,
     teachers: 0,
     institutions: 0,
@@ -137,7 +139,7 @@ describe('getDashboardOverview', () => {
       {
         id: 2,
         name: 'Talleres',
-        status: 'closed',
+        status: 'inactive',
         intensity: 'low',
         projectBeneficiaries: [
           {
@@ -154,7 +156,7 @@ describe('getDashboardOverview', () => {
 
     expect(projects).toEqual([
       { id: 1, name: 'Playground', status: 'active', intensity: 'high', beneficiaries: 42 },
-      { id: 2, name: 'Talleres', status: 'closed', intensity: 'low', beneficiaries: 5 },
+      { id: 2, name: 'Talleres', status: 'inactive', intensity: 'low', beneficiaries: 5 },
     ]);
     expect(projectsTotal).toBe(47);
   });

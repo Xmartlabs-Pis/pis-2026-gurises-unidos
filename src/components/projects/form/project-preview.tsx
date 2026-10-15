@@ -19,7 +19,7 @@ export function ProjectPreview({
   return (
     <aside
       aria-label="Vista previa de la tarjeta pública"
-      className="bg-muted/30 min-w-0 lg:sticky lg:top-15"
+      className="bg-muted/30 min-w-0 lg:sticky lg:top-2"
     >
       <div className="bg-surface-page flex min-h-12 flex-wrap items-center justify-between gap-2 border-b px-5 py-3">
         <p className="text-muted-foreground text-xs leading-4">

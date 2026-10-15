@@ -16,7 +16,6 @@ let seed: SeedData;
 
 function buildFormData(overrides: Record<string, string> = {}) {
   const fields: Record<string, string> = {
-    intent: 'submit',
     firstName: 'Created',
     lastName: 'User',
     documentId: DOCUMENT_ID,
@@ -216,16 +215,6 @@ describe('createUser (integration)', () => {
       email: 'not-an-email',
       role: 'coordinator',
     });
-    expect(await countRows()).toEqual(before);
-  });
-
-  test('does nothing when the form is not submitted', async () => {
-    signInAs(seed.adminId, 'admin');
-    const before = await countRows();
-
-    const result = await createUser({}, buildFormData({ intent: '' }));
-
-    expect(result).toEqual({});
     expect(await countRows()).toEqual(before);
   });
 

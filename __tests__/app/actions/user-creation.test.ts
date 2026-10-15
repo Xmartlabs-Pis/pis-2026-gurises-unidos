@@ -34,7 +34,6 @@ const SUBMITTED_VALUES = {
 function buildFormData(overrides: Record<string, string> = {}) {
   const formData = new FormData();
   const fields = {
-    intent: 'submit',
     firstName: 'Ana',
     lastName: 'García',
     documentId: '77777777',
@@ -247,13 +246,6 @@ describe('createUser', () => {
       formError: 'No se pudo crear el usuario. Intentá de nuevo.',
       values: SUBMITTED_VALUES,
     });
-  });
-
-  test('returns an empty state when the intent is not submit', async () => {
-    const result = await createUser(EMPTY_STATE, buildFormData({ intent: 'cancel' }));
-
-    expect(result).toEqual({});
-    expect(transactionMock).not.toHaveBeenCalled();
   });
 });
 

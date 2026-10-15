@@ -8,44 +8,41 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/actions/users', () => ({
   createUser: vi.fn(async () => ({})),
+  updateUser: vi.fn(async () => ({})),
+  updateUserStatus: vi.fn(async () => ({})),
 }));
 
 vi.mock('@/app/actions/password', () => ({
   resetPassword: vi.fn(async () => ({})),
 }));
 
-test('disables or hides unavailable user editing actions', () => {
-  render(<UserForm mode="edit" />);
+const EDITED_USER = {
+  id: 7,
+  firstName: 'Ana',
+  lastName: 'García',
+  documentId: '77777777',
+  email: 'ana@example.com',
+  role: 'admin' as const,
+  status: 'disabled' as const,
+  information: {
+    createdAt: '01/01/2026',
+    lastAccess: '05/03/2026',
+    createdBy: 'Mario Pérez',
+    updatedAt: '18/09/2026',
+  },
+};
 
-  const saveButton = screen.getByRole('button', {
-    name: 'Guardar usuario (próximamente)',
-  }) as HTMLButtonElement;
+test('enables saving when editing a user', () => {
+  render(<UserForm mode="edit" initialValues={EDITED_USER} />);
 
-  expect(saveButton.disabled).toBe(true);
+  const saveButton = screen.getByRole('button', { name: 'Guardar usuario' }) as HTMLButtonElement;
+
+  expect(saveButton.disabled).toBe(false);
   expect(screen.queryByRole('button', { name: 'Guardar borrador' })).toBeNull();
 });
 
 test('prefills the user edit form and information', () => {
-  render(
-    <UserForm
-      mode="edit"
-      initialValues={{
-        id: 7,
-        firstName: 'Ana',
-        lastName: 'García',
-        documentId: '77777777',
-        email: 'ana@example.com',
-        role: 'admin',
-        status: 'disabled',
-        information: {
-          createdAt: '01/01/2026',
-          lastAccess: '05/03/2026',
-          createdBy: 'Mario Pérez',
-          updatedAt: '18/09/2026',
-        },
-      }}
-    />
-  );
+  render(<UserForm mode="edit" initialValues={EDITED_USER} />);
 
   expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Ana');
   expect((screen.getByLabelText('Apellido') as HTMLInputElement).value).toBe('García');
@@ -54,9 +51,8 @@ test('prefills the user edit form and information', () => {
     'ana@example.com'
   );
   expect(screen.getByLabelText('Rol').textContent).toContain('Administrador');
-  expect(screen.getByRole('radio', { name: 'Deshabilitado' }).getAttribute('aria-checked')).toBe(
-    'true'
-  );
+  expect(screen.getByText('Deshabilitado')).toBeDefined();
+  expect(screen.getByRole('button', { name: 'Habilitar usuario' })).toBeDefined();
   expect(screen.getByText('01/01/2026')).toBeDefined();
   expect(screen.getByText('05/03/2026')).toBeDefined();
   expect(screen.getByText('Mario Pérez')).toBeDefined();
@@ -64,4 +60,12 @@ test('prefills the user edit form and information', () => {
   expect(
     (screen.getByRole('button', { name: 'Restablecer contraseña' }) as HTMLButtonElement).disabled
   ).toBe(false);
+});
+
+test('locks the status of a user with a pending invitation', () => {
+  render(<UserForm mode="edit" initialValues={{ ...EDITED_USER, status: 'pendingInvitation' }} />);
+
+  expect(screen.getByText('Invitación pendiente')).toBeDefined();
+  expect(screen.queryByRole('button', { name: 'Habilitar usuario' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Deshabilitar usuario' })).toBeNull();
 });

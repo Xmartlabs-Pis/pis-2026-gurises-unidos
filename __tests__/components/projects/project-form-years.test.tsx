@@ -49,6 +49,7 @@ it('loads only the selected year and retains unsaved drafts when switching years
   render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[]}
       currentYear={2026}
       topics={[]}
       coordinators={[]}

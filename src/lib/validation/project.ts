@@ -4,8 +4,11 @@ import { MAX_INT32 } from './ids';
 export const projectSchema = z
   .object({
     name: z.string().trim().max(100, 'Máx. 100 caracteres').min(1, 'El nombre es obligatorio'),
-    status: z.enum(['active', 'closed']),
-    intensity: z.enum(['high', 'medium', 'low']),
+    status: z.enum(['active', 'inactive']),
+    intensity: z.preprocess(
+      (value) => (value === '' || value === undefined ? null : value),
+      z.enum(['high', 'medium', 'low']).nullable()
+    ),
     startYear: z.coerce
       .number()
       .int()
@@ -25,18 +28,7 @@ export const projectSchema = z
       .int()
       .positive('Elegí un coordinador')
       .max(MAX_INT32),
-    departmentId: z.coerce
-      .number({ error: 'Elegí un departamento' })
-      .int()
-      .positive('Elegí un departamento')
-      .max(MAX_INT32),
     zone: z.enum(['city', 'inland', 'border', 'rural']),
-    localityNeighborhood: z
-      .string()
-      .trim()
-      .max(100, 'Máx. 100 caracteres')
-      .optional()
-      .transform((value) => value || null),
     generalObjective: z
       .string()
       .trim()
@@ -64,12 +56,12 @@ export const projectSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.status !== 'closed') {
+    if (data.status !== 'inactive') {
       if (data.endYear !== null) {
         ctx.addIssue({
           code: 'custom',
           path: ['endYear'],
-          message: 'Solo los proyectos cerrados tienen año de fin',
+          message: 'Solo los proyectos inactivos tienen año de fin',
         });
       }
       return;
@@ -78,7 +70,7 @@ export const projectSchema = z
       ctx.addIssue({
         code: 'custom',
         path: ['endYear'],
-        message: 'El año de fin es obligatorio para proyectos cerrados',
+        message: 'El año de fin es obligatorio para proyectos inactivos',
       });
     } else if (data.endYear < data.startYear) {
       ctx.addIssue({
@@ -88,5 +80,7 @@ export const projectSchema = z
       });
     }
   });
+
+export const INTENSITY_REQUIRED_MESSAGE = 'Elegí una intensidad';
 
 export type ProjectFormState = { errors?: Record<string, string[]>; formError?: string };

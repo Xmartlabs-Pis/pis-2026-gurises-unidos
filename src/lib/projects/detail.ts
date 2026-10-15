@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/auth/require-user';
-import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
+import { FIRST_PROJECT_YEAR, sumBeneficiaries } from '@/lib/project-display';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import {
   calculatePercentage,
@@ -15,6 +15,7 @@ import {
   toBeneficiaryCounts,
 } from '@/lib/projects/beneficiary-values';
 import { parseProjectDetailInput } from '@/lib/validation/project-detail';
+import { PROJECT_LOCATION_SELECT, getTerritoryNames } from '@/lib/projects/location';
 
 export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown) {
   const user = await requireUser();
@@ -40,23 +41,23 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       intensity: true,
       startYear: true,
       endYear: true,
+      strategicLines: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       leadCoordinatorId: true,
       generalObjective: true,
       publicDescription: true,
       coverPhoto: true,
       zone: true,
-      localityNeighborhood: true,
+      ...PROJECT_LOCATION_SELECT,
       leadCoordinator: {
         select: {
           id: true,
           firstName: true,
           lastName: true,
-        },
-      },
-      department: {
-        select: {
-          id: true,
-          name: true,
         },
       },
       topic: {
@@ -71,6 +72,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
             gte: FIRST_PROJECT_YEAR,
             lte: currentYear,
           },
+          values: {
+            some: {
+              value: { gt: 0 },
+              category: { isActive: true },
+            },
+          },
         },
         orderBy: { year: 'desc' },
         select: { year: true },
@@ -82,16 +89,12 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
     return { status: 'notFound' as const };
   }
 
-  const selectedYear = year ?? project.projectBeneficiaries[0]?.year ?? currentYear;
+  const { projectBeneficiaries, ...projectData } = project;
+  const recordedYears = projectBeneficiaries.map((record) => record.year);
+  const fallbackYear = recordedYears[0] ?? currentYear;
+  const selectedYear = year !== undefined && recordedYears.includes(year) ? year : fallbackYear;
   const comparisonYear = selectedYear - 1;
-
-  const availableYears = [
-    ...new Set([
-      currentYear,
-      selectedYear,
-      ...project.projectBeneficiaries.map((record) => record.year),
-    ]),
-  ].sort((a, b) => b - a);
+  const availableYears = recordedYears.length > 0 ? recordedYears : [fallbackYear];
 
   const [currentRecord, previousRecord, nationalChildrenReached, activeProjectCount, categories] =
     await Promise.all([
@@ -121,8 +124,19 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       getActiveBeneficiaryCategories(),
     ]);
 
-  const current = currentRecord && toBeneficiaryCounts(currentRecord.values);
-  const previous = previousRecord && toBeneficiaryCounts(previousRecord.values);
+  const activeCategoryKeys = new Set<string>(categories.map(({ key }) => key));
+  const currentCounts =
+    currentRecord &&
+    toBeneficiaryCounts(
+      currentRecord.values.filter(({ category }) => activeCategoryKeys.has(category.key))
+    );
+  const previousCounts =
+    previousRecord &&
+    toBeneficiaryCounts(
+      previousRecord.values.filter(({ category }) => activeCategoryKeys.has(category.key))
+    );
+  const current = currentCounts && sumBeneficiaries(currentCounts) > 0 ? currentCounts : null;
+  const previous = previousCounts && sumBeneficiaries(previousCounts) > 0 ? previousCounts : null;
 
   const childrenReached = compareMetric(getChildrenReached(current), getChildrenReached(previous));
 
@@ -137,8 +151,8 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
     getPeopleReached(previous)
   ).percentageChange;
 
-  const { projectBeneficiaries: recordedYears, ...projectData } = project;
   const hasData = current !== null;
+  const territoryNames = getTerritoryNames(project);
 
   return {
     status: 'success' as const,
@@ -148,7 +162,6 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       comparisonYear,
       availableYears,
       hasData,
-      hasHistoricalData: recordedYears.length > 0,
       canEdit: canEditProject(user, project),
       metrics: {
         childrenReached,
@@ -172,14 +185,8 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
           totalCount: activeProjectCount,
         },
         territories: {
-          count: 1,
-          items: [
-            {
-              department: project.department,
-              zone: project.zone,
-              localityNeighborhood: project.localityNeighborhood,
-            },
-          ],
+          count: territoryNames.length,
+          items: territoryNames,
         },
       },
     },

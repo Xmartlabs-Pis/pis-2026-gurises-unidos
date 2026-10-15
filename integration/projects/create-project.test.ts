@@ -26,13 +26,16 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     startYear: '2020',
     endYear: '',
     leadCoordinatorId: String(seed.coordinatorId),
-    departmentId: String(seed.departmentIds[0]),
+    geographicScope: 'national',
+    departmentIds: [String(seed.departmentIds[0])],
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     zone: 'rural',
-    localityNeighborhood: 'Barrio Sur',
     generalObjective: 'Objective',
     publicDescription: 'Public description',
     internalNotes: '',
     topicId: String(seed.topicIds[0]),
+    strategicLineIds: [String(seed.strategicLineIds[0])],
     projectPlaceholder: PROJECT_PLACEHOLDERS[2],
     year: String(BENEFICIARY_YEAR),
     directChildrenAdolescents: '10',
@@ -60,7 +63,7 @@ async function createProjectFixture(name: string, startYear = 2020) {
       counterpartyType: 'publicSector',
       startYear,
       leadCoordinatorId: seed.coordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
       createdBy: seed.adminId,
       topicId: seed.topicIds[0],
@@ -118,10 +121,13 @@ describe('createProject (integration)', () => {
       startYear: 2020,
       endYear: null,
       leadCoordinatorId: seed.coordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: [{ id: seed.departmentIds[0] }],
       topicId: seed.topicIds[0],
+      geographicScope: 'national',
+      countries: [],
+      cities: ['Colonia del Sacramento'],
+      neighborhoods: ['Barrio Sur'],
       zone: 'rural',
-      localityNeighborhood: 'Barrio Sur',
       generalObjective: 'Objective',
       publicDescription: 'Public description',
       internalNotes: null,
@@ -170,15 +176,15 @@ describe('createProject (integration)', () => {
     ]);
   });
 
-  test('stores a closed project with its end year', async () => {
+  test('stores an inactive project with its end year', async () => {
     signInAs(seed.adminId);
 
     const projectId = await expectRedirectToNewProject(
       createProject(
         {},
         buildFormData({
-          name: 'Closed on creation',
-          status: 'closed',
+          name: 'Inactive on creation',
+          status: 'inactive',
           endYear: '2023',
           year: '2022',
         })
@@ -186,7 +192,7 @@ describe('createProject (integration)', () => {
     );
 
     expect(await loadProject(projectId)).toMatchObject({
-      status: 'closed',
+      status: 'inactive',
       endYear: 2023,
       projectBeneficiaries: [expect.objectContaining({ year: 2022 })],
     });
@@ -311,29 +317,60 @@ describe('createProject (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
-  test('rejects beneficiaries after the end year of a closed project', async () => {
+  test('rejects beneficiaries after the end year of an inactive project', async () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
     const result = await createProject(
       {},
-      buildFormData({ status: 'closed', endYear: '2023', year: '2024' })
+      buildFormData({ status: 'inactive', endYear: '2023', year: '2024' })
     );
 
     expect(result.errors?.year).toEqual([
-      'El año de beneficiarios no puede ser posterior al año de cierre',
+      'El año de beneficiarios no puede ser posterior al año de fin',
     ]);
     expect(await countRows()).toEqual(before);
   });
 
-  test('returns a form error when the department does not exist', async () => {
+  test('returns a field error when the department does not exist', async () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
-    const result = await createProject({}, buildFormData({ departmentId: '999999' }));
+    const result = await createProject({}, buildFormData({ departmentIds: ['999999'] }));
 
-    expect(result.formError).toBe('El coordinador o el departamento seleccionado no existe.');
+    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
     expect(await countRows()).toEqual(before);
+  });
+
+  test('persists an international project with several countries only', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+      )
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: ['Argentina', 'Brasil'],
+      cities: [],
+      neighborhoods: [],
+      departments: [],
+    });
+  });
+
+  test('persists several departments for a national project', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ departmentIds: seed.departmentIds.map(String) }))
+    );
+
+    expect((await loadProject(projectId)).departments).toEqual(
+      [...seed.departmentIds].sort((a, b) => a - b).map((id) => ({ id }))
+    );
   });
 
   test('rolls back the project when a later step of the creation fails', async () => {
@@ -359,12 +396,12 @@ describe('createProject (integration)', () => {
 
     const result = await createProject(
       {},
-      buildFormData({ name: '', status: 'closed', endYear: '', year: '2019' })
+      buildFormData({ name: '', status: 'inactive', endYear: '', year: '2019' })
     );
 
     expect(result.errors).toMatchObject({
       name: ['El nombre es obligatorio'],
-      endYear: ['El año de fin es obligatorio para proyectos cerrados'],
+      endYear: ['El año de fin es obligatorio para proyectos inactivos'],
     });
     expect(await countRows()).toEqual(before);
   });

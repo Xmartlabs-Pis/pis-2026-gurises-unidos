@@ -30,6 +30,8 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
     include: {
+      strategicLines: { select: { id: true } },
+      departments: { select: { id: true } },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
         select: { id: true, year: true, ...BENEFICIARY_VALUES_SELECT },
@@ -44,49 +46,61 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   if (!canEditProject(user, project)) return <ErrorScreen code={403} />;
   const currentYear = new Date().getFullYear();
 
-  const [coordinators, departments, history, topics, beneficiaryCategories, fieldLabels] =
-    await Promise.all([
-      prisma.user.findMany({
-        where: {
-          OR: [
-            { role: 'coordinator', status: 'active', deletedAt: null },
-            { id: project.leadCoordinatorId },
-          ],
-        },
-        orderBy: { firstName: 'asc' },
-        select: { id: true, firstName: true, lastName: true },
-      }),
-      prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
-      prisma.auditLog.findMany({
-        where: {
-          OR: [
-            { entity: 'project', entityId: project.id },
-            {
-              entity: 'beneficiary',
-              entityId: { in: project.projectBeneficiaries.map((b) => b.id) },
-            },
-          ],
-        },
-        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-        select: {
-          id: true,
-          action: true,
-          entity: true,
-          details: true,
-          occurredAt: true,
-          author: { select: { firstName: true, lastName: true } },
-        },
-      }),
-      prisma.topic.findMany({
-        where: {
-          OR: [{ isActive: true }, ...(project.topicId !== null ? [{ id: project.topicId }] : [])],
-        },
-        orderBy: { name: 'asc' },
-        select: { id: true, name: true },
-      }),
-      getActiveBeneficiaryCategories(),
-      getBeneficiaryCategoryLabels(),
-    ]);
+  const [
+    coordinators,
+    departments,
+    history,
+    topics,
+    strategicLines,
+    beneficiaryCategories,
+    fieldLabels,
+  ] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        OR: [
+          { role: 'coordinator', status: 'active', deletedAt: null },
+          { id: project.leadCoordinatorId },
+        ],
+      },
+      orderBy: { firstName: 'asc' },
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.auditLog.findMany({
+      where: {
+        OR: [
+          { entity: 'project', entityId: project.id },
+          {
+            entity: 'beneficiary',
+            entityId: { in: project.projectBeneficiaries.map((b) => b.id) },
+          },
+        ],
+      },
+      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        details: true,
+        occurredAt: true,
+        author: { select: { firstName: true, lastName: true } },
+      },
+    }),
+    prisma.topic.findMany({
+      where: {
+        OR: [{ isActive: true }, ...(project.topicId !== null ? [{ id: project.topicId }] : [])],
+      },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+    prisma.strategicLine.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    }),
+    getActiveBeneficiaryCategories(),
+    getBeneficiaryCategoryLabels(),
+  ]);
 
   const beneficiaryRecords = project.projectBeneficiaries.map(({ year, values }) => ({
     year,
@@ -95,48 +109,51 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const submitAction = updateProject.bind(null, project.id);
 
   return (
-    <div className="bg-surface-page flex min-h-0 flex-1 flex-col">
+    <div className="bg-surface-page flex min-h-0 w-full flex-1 flex-col">
       <BreadcrumbResourceLabel label={project.name} />
-      <div className="mx-auto flex min-h-0 w-[1185px] max-w-full min-w-0 flex-1 flex-col">
-        <div className="flex flex-col items-start gap-1.5 px-4 pt-6 pb-2.5 sm:px-6">
-          <p className="text-muted-foreground text-sm">Editar proyecto</p>
-          <h1 className="text-3xl leading-9 font-bold">{project.name}</h1>
-          <div className="text-muted-foreground flex items-center gap-1.5 text-sm leading-5">
-            <span
-              className={
-                project.status === 'active'
-                  ? 'bg-status-success size-2 rounded-full'
-                  : 'bg-muted-foreground size-2 rounded-full'
-              }
-            />
-            <span className={project.status === 'active' ? 'text-status-success' : undefined}>
-              {STATUS_LABEL[project.status]}
-            </span>
-            <span className="text-muted-foreground">•</span>
-            <span>{INTENSITY_LABEL[project.intensity]} intensidad</span>
-          </div>
-        </div>
-        <ProjectForm
-          key={project.id}
-          mode="edit"
-          initialValues={projectToFormValues(
-            { ...project, projectBeneficiaries: beneficiaryRecords },
-            currentYear,
-            beneficiaryCategories
+      <div className="mx-auto flex w-full max-w-[1185px] min-w-0 flex-col items-start gap-1.5 px-4 pt-6 pb-2.5 sm:px-6">
+        <p className="text-muted-foreground text-sm">Editar proyecto</p>
+        <h1 className="text-3xl leading-9 font-bold">{project.name}</h1>
+        <div className="text-muted-foreground flex items-center gap-1.5 text-sm leading-5">
+          <span
+            className={
+              project.status === 'active'
+                ? 'bg-status-success size-2 rounded-full'
+                : 'bg-muted-foreground size-2 rounded-full'
+            }
+          />
+          <span className={project.status === 'active' ? 'text-status-success' : undefined}>
+            {STATUS_LABEL[project.status]}
+          </span>
+          {project.intensity && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span>{INTENSITY_LABEL[project.intensity]} intensidad</span>
+            </>
           )}
-          beneficiaryRecords={beneficiaryRecords}
-          beneficiaryCategories={beneficiaryCategories}
-          topics={topics}
-          currentYear={currentYear}
-          coordinators={coordinators}
-          departments={departments}
-          cancelHref={`/dashboard/projects/${project.id}`}
-          submitAction={submitAction}
-        >
-          <ProjectHistory entries={history} fieldLabels={fieldLabels} />
-          <DeleteProjectSection projectId={project.id} />
-        </ProjectForm>
+        </div>
       </div>
+      <ProjectForm
+        key={project.id}
+        mode="edit"
+        initialValues={projectToFormValues(
+          { ...project, projectBeneficiaries: beneficiaryRecords },
+          currentYear,
+          beneficiaryCategories
+        )}
+        beneficiaryRecords={beneficiaryRecords}
+        strategicLines={strategicLines}
+        beneficiaryCategories={beneficiaryCategories}
+        topics={topics}
+        currentYear={currentYear}
+        coordinators={coordinators}
+        departments={departments}
+        cancelHref={`/dashboard/projects/${project.id}`}
+        submitAction={submitAction}
+      >
+        <ProjectHistory entries={history} fieldLabels={fieldLabels} />
+        <DeleteProjectSection projectId={project.id} />
+      </ProjectForm>
     </div>
   );
 }

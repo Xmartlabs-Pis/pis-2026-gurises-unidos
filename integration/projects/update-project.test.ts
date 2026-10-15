@@ -19,13 +19,16 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     counterpartyType: 'publicSector',
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
-    departmentId: String(seed.departmentIds[0]),
+    geographicScope: 'national',
+    departmentIds: [String(seed.departmentIds[0])],
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     zone: 'rural',
-    localityNeighborhood: 'Barrio Sur',
     generalObjective: 'Objective',
     publicDescription: '',
     internalNotes: '',
     topicId: String(seed.topicIds[0]),
+    strategicLineIds: [String(seed.strategicLineIds[0])],
     year: String(BENEFICIARY_YEAR),
     directChildrenAdolescents: '10',
     indirectChildrenAdolescents: '5',
@@ -52,12 +55,14 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       counterpartyType: 'publicSector',
       startYear: 2020,
       leadCoordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
-      localityNeighborhood: 'Barrio Sur',
+      cities: ['Colonia del Sacramento'],
+      neighborhoods: ['Barrio Sur'],
       generalObjective: 'Objective',
       createdBy: seed.adminId,
       topicId: seed.topicIds[0],
+      strategicLines: { connect: { id: seed.strategicLineIds[0] } },
       projectBeneficiaries: {
         create: {
           year: BENEFICIARY_YEAR,
@@ -137,7 +142,7 @@ describe('updateProject (integration)', () => {
     }
   );
 
-  test('rejects closing before stored beneficiary years without changing any data', async () => {
+  test('rejects marking as inactive before stored beneficiary years without changing any data', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
     const before = await loadProject(projectId);
@@ -145,17 +150,17 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ status: 'closed', endYear: '2022', year: '2022', families: '99' })
+      buildFormData({ status: 'inactive', endYear: '2022', year: '2022', families: '99' })
     );
 
     expect(result.errors?.endYear).toEqual([
-      'El año de cierre no puede ser anterior a 2024, que tiene beneficiarios registrados',
+      'El año de fin no puede ser anterior a 2024, que tiene beneficiarios registrados',
     ]);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 
-  test('allows closing in the last stored beneficiary year and preserves its records', async () => {
+  test('allows marking as inactive in the last stored beneficiary year and preserves its records', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
     const before = await loadProject(projectId);
@@ -164,13 +169,13 @@ describe('updateProject (integration)', () => {
       updateProject(
         projectId,
         {},
-        buildFormData({ status: 'closed', endYear: String(BENEFICIARY_YEAR) })
+        buildFormData({ status: 'inactive', endYear: String(BENEFICIARY_YEAR) })
       ),
       projectId
     );
 
     const after = await loadProject(projectId);
-    expect(after).toMatchObject({ status: 'closed', endYear: BENEFICIARY_YEAR });
+    expect(after).toMatchObject({ status: 'inactive', endYear: BENEFICIARY_YEAR });
     expect(after.projectBeneficiaries).toEqual(before.projectBeneficiaries);
     expect(await auditLogsFor(projectId)).toEqual([
       expect.objectContaining({ entity: 'project', action: 'update' }),
@@ -189,7 +194,7 @@ describe('updateProject (integration)', () => {
         buildFormData({
           name: 'Renamed project',
           zone: 'city',
-          departmentId: String(seed.departmentIds[1]),
+          departmentIds: [String(seed.departmentIds[1])],
           topicId: String(newTopicId),
         })
       ),
@@ -200,7 +205,7 @@ describe('updateProject (integration)', () => {
     expect(project).toMatchObject({
       name: 'Renamed project',
       zone: 'city',
-      departmentId: seed.departmentIds[1],
+      departments: [{ id: seed.departmentIds[1] }],
       status: 'active',
       startYear: 2020,
     });
@@ -210,7 +215,7 @@ describe('updateProject (integration)', () => {
         entity: 'project',
         action: 'update',
         authorId: seed.adminId,
-        details: { changedFields: ['name', 'departmentId', 'zone', 'topicId'] },
+        details: { changedFields: ['name', 'zone', 'topicId', 'departments'] },
       }),
     ]);
   });
@@ -411,10 +416,10 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ name: 'Should not persist', departmentId: '999999', families: '99' })
+      buildFormData({ name: 'Should not persist', departmentIds: ['999999'], families: '99' })
     );
 
-    expect(result.formError).toBe('El coordinador o el departamento seleccionado no existe.');
+    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });

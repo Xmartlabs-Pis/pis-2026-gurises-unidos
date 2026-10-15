@@ -8,7 +8,7 @@ import {
   E2E_ACTIVE_PROJECT,
   E2E_ADMIN,
   E2E_BENEFICIARY_YEAR,
-  E2E_CLOSED_PROJECT,
+  E2E_INACTIVE_PROJECT,
   E2E_COORDINATOR,
   E2E_DEPARTMENT,
   E2E_DISABLED_COORDINATOR,
@@ -97,7 +97,7 @@ async function main() {
           data: {
             ...E2E_ACTIVE_PROJECT,
             leadCoordinatorId: coordinator.id,
-            departmentId: department.id,
+            departments: { connect: { id: department.id } },
             topicId: topic.id,
             createdBy: admin.id,
           },
@@ -105,9 +105,9 @@ async function main() {
 
         await tx.project.create({
           data: {
-            ...E2E_CLOSED_PROJECT,
+            ...E2E_INACTIVE_PROJECT,
             leadCoordinatorId: coordinator.id,
-            departmentId: department.id,
+            departments: { connect: { id: department.id } },
             topicId: topic.id,
             createdBy: admin.id,
           },

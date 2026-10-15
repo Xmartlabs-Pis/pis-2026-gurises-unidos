@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
+import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
 import { ADMIN, BENEFICIARY_CATEGORIES, STRATEGIC_LINES } from './fixtures';
 import {
@@ -61,7 +62,7 @@ const PROJECT_BASE_NAMES = [
 
 const PROJECT_DEPARTMENTS = ['Montevideo', 'Canelones', 'Salto', 'Rivera', 'Maldonado'];
 
-const STATUSES = ['active', 'closed'] as const;
+const STATUSES = ['active', 'inactive'] as const;
 const INTENSITIES = ['high', 'medium', 'low'] as const;
 const ZONES = ['city', 'inland', 'border', 'rural'] as const;
 
@@ -174,14 +175,14 @@ async function main() {
           counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
           startYear,
           endYear:
-            status === 'closed'
+            status === 'inactive'
               ? Math.min(startYear + 1 + (index % 3), new Date().getFullYear())
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
-          departmentId: departments.get(departmentName)!,
           topicId: topicIds[index % topicIds.length],
           zone: ZONES[index % ZONES.length],
-          localityNeighborhood: index % 3 === 0 ? null : `Barrio ${index + 1}`,
+          cities: index % 3 === 0 ? [] : [`Ciudad ${index + 1}`],
+          neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
@@ -193,9 +194,15 @@ async function main() {
           where: { name, startYear, deletedAt: null },
           select: { id: true },
         });
+        const projectDepartments = [{ id: departments.get(departmentName)! }];
         const project = existing
-          ? await tx.project.update({ where: { id: existing.id }, data })
-          : await tx.project.create({ data });
+          ? await tx.project.update({
+              where: { id: existing.id },
+              data: { ...data, departments: { set: projectDepartments } },
+            })
+          : await tx.project.create({
+              data: { ...data, departments: { connect: projectDepartments } },
+            });
 
         const yearCount = index % 7 === 0 ? 0 : 1 + (index % 4);
 
@@ -219,17 +226,20 @@ async function main() {
         }
       }
 
-      await tx.metric.upsert({
-        where: { key: 'children_reached' },
-        update: {},
-        create: {
-          key: 'children_reached',
-          name: 'Children reached',
-          showPublicly: true,
-          sortOrder: 1,
-          updatedBy: admin.id,
-        },
-      });
+      for (const [index, metric] of METRIC_DEFINITIONS.entries()) {
+        await tx.metric.upsert({
+          where: { key: metric.key },
+          update: {},
+          create: {
+            key: metric.key,
+            name: metric.name,
+            showPublicly: metric.showPublicly,
+            showPubliclyDraft: metric.showPublicly,
+            sortOrder: index + 1,
+            updatedBy: admin.id,
+          },
+        });
+      }
     },
     { maxWait: 20_000, timeout: 120_000 }
   );

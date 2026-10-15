@@ -4,7 +4,11 @@ import { getDefaultValues } from './get-default-values';
 import type { ProjectFormValues } from './project-form-values';
 
 export function projectToFormValues(
-  project: Project & { projectBeneficiaries: (BeneficiaryCounts & { year: number })[] },
+  project: Project & {
+    projectBeneficiaries: (BeneficiaryCounts & { year: number })[];
+    strategicLines?: { id: number }[];
+    departments?: { id: number }[];
+  },
   currentYear: number,
   categories: BeneficiaryCategoryOption[]
 ): ProjectFormValues {
@@ -14,20 +18,24 @@ export function projectToFormValues(
     ...defaults,
     name: project.name,
     status: project.status,
-    intensity: project.intensity,
+    intensity: project.intensity ?? '',
     counterpartyType: project.counterpartyType,
     startYear: String(project.startYear),
     endYear: project.endYear === null ? '' : String(project.endYear),
     leadCoordinatorId: String(project.leadCoordinatorId),
-    departmentId: String(project.departmentId),
+    geographicScope: project.geographicScope,
+    departmentIds: project.departments?.map(({ id }) => String(id)) ?? [],
+    countries: project.countries,
+    cities: project.cities,
+    neighborhoods: project.neighborhoods,
     zone: project.zone,
-    localityNeighborhood: project.localityNeighborhood ?? '',
     generalObjective: project.generalObjective ?? '',
     publicDescription: project.publicDescription ?? '',
     internalNotes: project.internalNotes ?? '',
     showOnLanding: String(project.showOnLanding),
     coverPhotoUrl: project.coverPhoto,
     topicId: String(project.topicId),
+    strategicLineIds: project.strategicLines?.map(({ id }) => String(id)) ?? [],
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),
   };
 }

@@ -43,17 +43,21 @@ export async function getMetricValues(year: number) {
       where,
       select: {
         projectId: true,
-        project: { select: { departmentId: true } },
+        project: { select: { departments: { select: { id: true } } } },
       },
     }),
   ]);
 
   return {
     children_reached: totals.directChildrenAdolescents + totals.indirectChildrenAdolescents,
+    direct_children_reached: totals.directChildrenAdolescents,
+    indirect_children_reached: totals.indirectChildrenAdolescents,
     families: totals.families,
     teachers: totals.basicServiceStaff,
     institutions: totals.coordinatedInstitutions,
-    departments: new Set(projectRecords.map(({ project }) => project.departmentId)).size,
+    departments: new Set(
+      projectRecords.flatMap(({ project }) => project.departments.map(({ id }) => id))
+    ).size,
     active_projects: projectRecords.length,
   };
 }

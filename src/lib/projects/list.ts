@@ -2,6 +2,7 @@ import prisma from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
 import { sumBeneficiaries, type BeneficiaryCounts } from '@/lib/project-display';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { PROJECT_LOCATION_SELECT } from '@/lib/projects/location';
 import type { ProjectFilters } from '@/lib/validation/project-filters';
 
 const PROJECT_LIST_SELECT = {
@@ -11,11 +12,10 @@ const PROJECT_LIST_SELECT = {
   intensity: true,
   startYear: true,
   zone: true,
-  localityNeighborhood: true,
+  ...PROJECT_LOCATION_SELECT,
   publicDescription: true,
   coverPhoto: true,
   leadCoordinator: { select: { id: true, firstName: true, lastName: true } },
-  department: { select: { id: true, name: true } },
   projectBeneficiaries: {
     orderBy: { year: 'desc' },
     select: { year: true, ...BENEFICIARY_VALUES_SELECT },
@@ -36,11 +36,19 @@ export type ProjectListPage = {
   totalPages: number;
 };
 
+function toSearchNamePattern(search: string) {
+  return search
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[\\%_]/g, '\\$&');
+}
+
 export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereInput {
   const where: Prisma.ProjectWhereInput = { deletedAt: null };
 
   if (filters.search) {
-    where.name = { contains: filters.search, mode: 'insensitive' };
+    where.searchName = { contains: toSearchNamePattern(filters.search) };
   }
   if (filters.status) {
     where.status = filters.status;
@@ -52,7 +60,7 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
     where.leadCoordinatorId = filters.leadCoordinatorId;
   }
   if (filters.departmentId) {
-    where.departmentId = filters.departmentId;
+    where.departments = { some: { id: filters.departmentId } };
   }
   if (filters.topicId) {
     where.topicId = filters.topicId;

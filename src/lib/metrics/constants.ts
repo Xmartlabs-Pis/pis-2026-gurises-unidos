@@ -7,22 +7,28 @@ export const METRIC_DEFINITIONS: {
   showPublicly: boolean;
 }[] = [
   {
-    key: 'children_reached',
-    name: 'NNA alcanzados',
-    description: 'Niños, niñas y adolescentes alcanzados con acciones directas e indirectas.',
+    key: 'direct_children_reached',
+    name: 'NNA directos',
+    description: 'Niños, niñas y adolescentes alcanzados con acciones directas.',
+    showPublicly: true,
+  },
+  {
+    key: 'indirect_children_reached',
+    name: 'NNA indirectos',
+    description: 'Niños, niñas y adolescentes alcanzados con acciones indirectas.',
     showPublicly: true,
   },
   {
     key: 'families',
     name: 'Familias acompañadas',
     description: 'Familias con acompañamiento directo durante el año.',
-    showPublicly: true,
+    showPublicly: false,
   },
   {
     key: 'teachers',
     name: 'Funcionarios de servicios básicos',
     description: 'Funcionarios de servicios básicos formados por la organización.',
-    showPublicly: true,
+    showPublicly: false,
   },
   {
     key: 'institutions',
@@ -34,7 +40,7 @@ export const METRIC_DEFINITIONS: {
     key: 'departments',
     name: 'Departamentos',
     description: 'Departamentos con presencia de la organización.',
-    showPublicly: false,
+    showPublicly: true,
   },
   {
     key: 'active_projects',

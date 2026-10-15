@@ -23,13 +23,18 @@ enum UserStatus {
 
 enum ProjectStatus {
   active
-  closed
+  inactive
 }
 
 enum Intensity {
   high
   medium
   low
+}
+
+enum GeographicScope {
+  national
+  international
 }
 
 enum Zone {
@@ -53,12 +58,17 @@ enum AuditEntity {
   beneficiary
   beneficiaryCategory
   metric
+  topic
 }
 
 enum CounterpartyType {
   publicSector
   privateSector
   internationalCooperation
+}
+
+enum UserTokenType {
+  passwordReset
 }
 
 // ---------- TABLES ----------
@@ -92,12 +102,15 @@ model User {
   beneficiaryCategories BeneficiaryCategory[]
   reportsGenerated      Report[]
   auditLogs             AuditLog[]
+
+  tokens UserToken[]
 }
 
 model Topic {
-  id       Int     @id @default(autoincrement())
-  name     String  @unique
-  isActive Boolean @default(true)
+  id           Int     @id @default(autoincrement())
+  name         String  @unique
+  isActive     Boolean @default(true)
+  showPublicly Boolean @default(true)
 
   projects Project[]
 }
@@ -118,31 +131,34 @@ model Department {
 }
 
 model Project {
-  id                   Int              @id @default(autoincrement())
-  name                 String           @db.VarChar(100)
-  status               ProjectStatus
-  intensity            Intensity
-  counterpartyType     CounterpartyType
-  startYear            Int
-  endYear              Int?
-  leadCoordinatorId    Int
-  departmentId         Int
-  localityNeighborhood String?          @db.VarChar(100)
-  zone                 Zone
-  generalObjective     String?          @db.VarChar(500)
-  publicDescription    String?          @db.VarChar(1000)
-  coverPhoto           String?
-  internalNotes        String?          @db.VarChar(1000)
-  showOnLanding        Boolean          @default(true)
-  createdAt            DateTime         @default(now())
-  createdBy            Int?
-  updatedAt            DateTime?        @updatedAt
-  deletedAt            DateTime?
-  deletedBy            Int?
-  topicId              Int
+  id                Int              @id @default(autoincrement())
+  name              String           @db.VarChar(100)
+  searchName        String?          @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
+  status            ProjectStatus
+  intensity         Intensity?
+  counterpartyType  CounterpartyType
+  startYear         Int
+  endYear           Int?
+  leadCoordinatorId Int
+  geographicScope   GeographicScope  @default(national)
+  countries         String[]         @default([])
+  cities            String[]         @default([])
+  neighborhoods     String[]         @default([])
+  zone              Zone
+  generalObjective  String?          @db.VarChar(500)
+  publicDescription String?          @db.VarChar(1000)
+  coverPhoto        String?
+  internalNotes     String?          @db.VarChar(1000)
+  showOnLanding     Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  createdBy         Int?
+  updatedAt         DateTime?        @updatedAt
+  deletedAt         DateTime?
+  deletedBy         Int?
+  topicId           Int
 
   leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
-  department      Department      @relation(fields: [departmentId], references: [id])
+  departments     Department[]
   creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
   deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
   topic           Topic           @relation(fields: [topicId], references: [id], onDelete: Restrict)
@@ -246,4 +262,19 @@ model AuditLog {
   occurredAt DateTime    @default(now())
 
   author User @relation(fields: [authorId], references: [id])
+}
+
+model UserToken {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  type      UserTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }

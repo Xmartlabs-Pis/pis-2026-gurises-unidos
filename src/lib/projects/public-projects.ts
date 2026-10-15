@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
+import { getTerritoryLabel } from '@/lib/projects/location';
 
 export const PUBLIC_PROJECTS_PAGE_SIZE = 12;
 
@@ -11,7 +12,7 @@ const PUBLIC_PROJECT_ORDER = [
 export type PublicProject = {
   id: number;
   name: string;
-  department: string;
+  territory: string;
   description: string;
   coverPhoto: string | null;
   reach: number;
@@ -44,7 +45,9 @@ function publicProjectSelect(year: number) {
     name: true,
     publicDescription: true,
     coverPhoto: true,
-    department: { select: { name: true } },
+    geographicScope: true,
+    countries: true,
+    departments: { select: { name: true }, orderBy: { name: 'asc' } },
     projectBeneficiaries: {
       where: { year },
       take: 1,
@@ -63,7 +66,7 @@ function toPublicProject(row: PublicProjectRow): PublicProject {
   return {
     id: row.id,
     name: row.name,
-    department: row.department.name,
+    territory: getTerritoryLabel(row),
     description: row.publicDescription ?? '',
     coverPhoto: row.coverPhoto,
     reach: values.reduce((sum, { value }) => sum + value, 0),
@@ -73,7 +76,7 @@ function toPublicProject(row: PublicProjectRow): PublicProject {
 export async function getPublicTopics(year: number): Promise<PublicTopic[]> {
   const where = publicProjectWhere(year);
   const topics = await prisma.topic.findMany({
-    where: { isActive: true, projects: { some: where } },
+    where: { showPublicly: true, isActive: true, projects: { some: where } },
     orderBy: { name: 'asc' },
     select: {
       id: true,
@@ -106,7 +109,7 @@ export async function getPublicProjectsPage(
   page: number
 ): Promise<PublicProjectsPage> {
   const rows = await prisma.project.findMany({
-    where: { ...publicProjectWhere(year), topicId },
+    where: { ...publicProjectWhere(year), topicId, topic: { isActive: true, showPublicly: true } },
     orderBy: PUBLIC_PROJECT_ORDER,
     select: publicProjectSelect(year),
     skip: (page - 1) * PUBLIC_PROJECTS_PAGE_SIZE,

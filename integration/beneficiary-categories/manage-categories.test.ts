@@ -29,9 +29,11 @@ function projectFormData(fields: Record<string, string>) {
     counterpartyType: 'publicSector',
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
-    departmentId: String(seed.departmentIds[0]),
+    geographicScope: 'national',
+    departmentIds: String(seed.departmentIds[0]),
     zone: 'rural',
     topicId: String(seed.topicIds[0]),
+    strategicLineIds: String(seed.strategicLineIds[0]),
     year: String(BENEFICIARY_YEAR),
     ...fields,
   })) {
@@ -49,10 +51,11 @@ async function createProjectFixture() {
       counterpartyType: 'publicSector',
       startYear: 2020,
       leadCoordinatorId: seed.coordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
       createdBy: seed.adminId,
       topicId: seed.topicIds[0],
+      strategicLines: { connect: { id: seed.strategicLineIds[0] } },
     },
   });
   projectIds.push(project.id);

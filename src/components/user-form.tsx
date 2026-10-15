@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   startTransition,
@@ -10,11 +9,11 @@ import {
   useState,
   type SubmitEvent,
 } from 'react';
-import { FormProvider, useController, useForm, type Resolver } from 'react-hook-form';
+import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
 
-import { createUser } from '@/app/actions/users';
+import { createUser, updateUser } from '@/app/actions/users';
 
 import {
   AlertDialog,
@@ -27,19 +26,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FieldDescription, FieldError, FieldGroup } from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
+import { FormActions } from '@/components/ui/forms/form-actions';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FieldDescription, FieldGroup } from '@/components/ui/field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ResetPasswordDialog } from '@/components/users/reset-password-dialog';
+import { UserStatusDialog } from '@/components/users/user-status-dialog';
 
 import { Copy } from 'lucide-react';
 
 import { userEditFormSchema, userFormSchema, type UserFormState } from '@/lib/validation/user';
 import { generateTemporaryPassword } from '@/lib/users';
+import { STATUS_CLASSNAMES, STATUS_LABELS } from '@/lib/users/constants';
 import { copyText } from '@/lib/clipboard';
 import { notify } from '@/lib/notify';
 
@@ -51,7 +51,6 @@ type UserFormValues = {
   documentId: string;
   email: string;
   role: 'admin' | 'coordinator';
-  status: 'active' | 'pendingInvitation' | 'disabled';
   password: string;
 };
 
@@ -86,28 +85,19 @@ const INFO_ROWS = [
   { key: 'updatedAt', label: 'Última modificación' },
 ] as const;
 
-const STATUS_OPTIONS = [
-  {
-    value: 'active',
-    label: 'Activo',
-    className: 'bg-status-active text-status-active-foreground',
-  },
-  {
-    value: 'pendingInvitation',
-    label: 'Invitación pendiente',
-    className: 'bg-status-pending text-status-pending-foreground',
-  },
-  {
-    value: 'disabled',
-    label: 'Deshabilitado',
-    variant: 'secondary' as const,
-  },
-];
+const STATUS_DESCRIPTIONS = {
+  active:
+    'Si lo deshabilitás, la persona no podrá iniciar sesión hasta que la vuelvas a habilitar. Se conservan sus datos.',
+  disabled: 'Si lo habilitás, la persona podrá volver a iniciar sesión con su contraseña actual.',
+  pendingInvitation:
+    'La persona todavía no aceptó la invitación. El estado se podrá modificar cuando la acepte.',
+};
 
 export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
-  const isEditing = mode === 'edit';
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(createUser, initialState);
+  const isEditing = mode === 'edit';
+  const action = isEditing && initialValues ? updateUser.bind(null, initialValues.id) : createUser;
+  const [state, formAction, pending] = useActionState(action, initialState);
   const lastSubmission = useRef<FormData | null>(null);
   const [answeredRestoreState, setAnsweredRestoreState] = useState<UserFormState>();
   const isRestoreDialogOpen =
@@ -122,19 +112,17 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
       documentId: initialValues?.documentId ?? '',
       email: initialValues?.email ?? '',
       role: initialValues?.role ?? 'coordinator',
-      status: initialValues?.status ?? 'active',
       password: '',
     },
     mode: 'onChange',
   });
   const {
-    control,
     handleSubmit,
     setValue,
     getValues,
     formState: { errors },
   } = form;
-  const statusField = useController({ name: 'status', control });
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   function handleGeneratePassword() {
     const generated = generateTemporaryPassword();
@@ -158,7 +146,6 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
     const formElement = event.currentTarget;
     const submitter = event.nativeEvent.submitter;
     return handleSubmit(() => {
-      if (isEditing) return;
       const formData = submitter ? new FormData(formElement, submitter) : new FormData(formElement);
       lastSubmission.current = formData;
       startTransition(() => {
@@ -196,8 +183,12 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="flex min-w-0 flex-1 flex-col pt-6">
-        <div className={cn('mx-auto w-full px-6 pb-6', !isEditing && 'max-w-[1185px]')}>
+      <form
+        onSubmit={onSubmit}
+        noValidate
+        className="bg-primary-foreground flex w-full min-w-0 flex-1 flex-col pt-6"
+      >
+        <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
           <div
             className={cn(
               'grid grid-cols-1 gap-6',
@@ -259,41 +250,43 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
                 </CardContent>
               </Card>
 
-              {isEditing && (
+              {isEditing && initialValues && (
                 <Card className="gap-4 pt-5 pb-5">
                   <CardHeader className="px-6">
                     <CardTitle className="leading-6 font-semibold">Estado</CardTitle>
+                    <CardAction>
+                      <Badge className={STATUS_CLASSNAMES[initialValues.status]}>
+                        <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                        {STATUS_LABELS[initialValues.status]}
+                      </Badge>
+                    </CardAction>
                   </CardHeader>
                   <CardContent className="px-6">
-                    <RadioGroup
-                      name="status"
-                      value={statusField.field.value}
-                      onValueChange={statusField.field.onChange}
-                      className="gap-3.5"
-                    >
-                      {STATUS_OPTIONS.map((status) => (
-                        <Label
-                          key={status.value}
-                          htmlFor={`status-${status.value}`}
-                          className="w-fit gap-2.5 font-normal"
-                        >
-                          <RadioGroupItem
-                            value={status.value}
-                            id={`status-${status.value}`}
-                            className="border-input bg-background data-checked:border-input data-checked:bg-background data-checked:[&_[data-slot=radio-group-indicator]>span]:bg-foreground size-4 border shadow-[0_1px_2px_0_rgb(0_0_0/0.1)] [&_[data-slot=radio-group-indicator]>span]:size-[6.67px]"
-                          />
-                          <Badge
-                            variant={status.variant}
-                            className={cn('px-2.5', status.className)}
+                    <FieldGroup className="gap-4">
+                      {initialValues.status !== 'pendingInvitation' && (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="lg"
+                            className="w-fit px-4"
+                            onClick={() => setStatusDialogOpen(true)}
                           >
-                            {status.label}
-                          </Badge>
-                        </Label>
-                      ))}
-                    </RadioGroup>
-                    <FieldError className="text-xs leading-4">
-                      {statusField.fieldState.error?.message}
-                    </FieldError>
+                            {initialValues.status === 'active'
+                              ? 'Deshabilitar usuario'
+                              : 'Habilitar usuario'}
+                          </Button>
+                          <UserStatusDialog
+                            user={initialValues}
+                            open={statusDialogOpen}
+                            onOpenChange={setStatusDialogOpen}
+                          />
+                        </>
+                      )}
+                      <FieldDescription className="text-xs leading-4">
+                        {STATUS_DESCRIPTIONS[initialValues.status]}
+                      </FieldDescription>
+                    </FieldGroup>
                   </CardContent>
                 </Card>
               )}
@@ -380,30 +373,11 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
           </div>
         </div>
 
-        {/* TODO: Use a shared component for this forms footer */}
-        <div className="bg-background sticky bottom-0 z-10 mt-auto grid shrink-0 grid-cols-2 gap-x-2 gap-y-3 border-t px-6 py-4 md:flex md:flex-wrap md:items-center md:justify-between">
-          <Link
-            href="/management/users"
-            aria-disabled={pending}
-            className={cn(
-              buttonVariants({ variant: 'ghost', size: 'lg' }),
-              'col-span-1 h-auto min-h-9 w-full px-4 md:order-1 md:mr-auto md:h-9 md:w-auto',
-              pending && 'pointer-events-none opacity-50'
-            )}
-          >
-            Cancelar
-          </Link>
-          <Button
-            type={isEditing ? 'button' : 'submit'}
-            name="intent"
-            value="submit"
-            size="lg"
-            className="col-span-1 w-full px-4 md:order-3 md:w-auto"
-            disabled={pending || isEditing}
-          >
-            {isEditing ? 'Guardar usuario (próximamente)' : 'Guardar usuario'}
-          </Button>
-        </div>
+        <FormActions
+          onCancel={() => router.push('/management/users')}
+          submitLabel={'Guardar usuario'}
+          pending={pending}
+        />
       </form>
 
       <AlertDialog

@@ -59,5 +59,5 @@ export async function login(
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_EXPIRATION_COOKIE);
-  await signOut({ redirectTo: '/login' });
+  await signOut({ redirectTo: '/' });
 }

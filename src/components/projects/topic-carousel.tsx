@@ -20,11 +20,10 @@ type TopicCarouselProps = {
   year: number;
   topicId: number;
   topic: string;
-  total: number;
   initialPage: PublicProjectsPage;
 };
 
-export function TopicCarousel({ year, topicId, topic, total, initialPage }: TopicCarouselProps) {
+export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarouselProps) {
   const [projects, setProjects] = useState(initialPage.items);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
   const [failed, setFailed] = useState(false);
@@ -66,9 +65,6 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
       <div className="flex flex-row justify-between">
         <div className="flex flex-row items-center gap-3">
           <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
-          <p className="text-muted-foreground text-sm leading-5 font-normal">
-            {total === 1 ? '1 proyecto' : `${total} proyectos`}
-          </p>
         </div>
         <div className="flex flex-row gap-2">
           <CarouselPrevious className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
@@ -80,7 +76,7 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
           <CarouselItem key={project.id} className="basis-75 lg:basis-100">
             <ProjectCard
               variant="public-dark"
-              territory={project.department}
+              territory={project.territory}
               name={project.name}
               description={project.description}
               coverPhoto={project.coverPhoto}

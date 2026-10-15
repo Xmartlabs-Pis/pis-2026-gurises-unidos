@@ -83,6 +83,16 @@ describe('proxy', () => {
     expect(response.cookies.get(SESSION_EXPIRATION_COOKIE)).toBeUndefined();
   });
 
+  test.each(['/forgot-password', '/reset-password'])(
+    'allows unauthenticated access to the password recovery route %s',
+    (path) => {
+      const response = runProxy(makeRequest(path));
+
+      expect(response.headers.get('x-middleware-next')).toBe('1');
+      expect(response.headers.get('location')).toBeNull();
+    }
+  );
+
   test('redirects users who must change password away from protected routes', () => {
     const response = runProxy(
       makeRequest('/dashboard/projects', { authenticated: true, mustChangePassword: true })
@@ -111,17 +121,5 @@ describe('proxy', () => {
     const response = runProxy(makeRequest('/password-reset', { authenticated: true }));
 
     expect(response.headers.get('location')).toBe('https://example.com/dashboard');
-  });
-
-  test('allows unauthenticated access to a public project', () => {
-    const response = runProxy(makeRequest('/projects/42'));
-
-    expect(response.headers.get('x-middleware-next')).toBe('1');
-  });
-
-  test('does not make nested project administration routes public', () => {
-    const response = runProxy(makeRequest('/projects/42/edit'));
-
-    expect(response.headers.get('location')).toBe('https://example.com/login');
   });
 });

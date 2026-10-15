@@ -49,21 +49,27 @@ const PROJECTS = [
     intensity: 'high',
     startYear: 2018,
     zone: 'city',
-    localityNeighborhood: 'Cerro',
+    geographicScope: 'national',
+    countries: [],
+    cities: ['Montevideo'],
+    neighborhoods: ['Cerro'],
     leadCoordinator: CARLOS,
-    department: MONTEVIDEO,
+    departments: [MONTEVIDEO],
     projectBeneficiaries: [toBeneficiaryRow(RECORD_2025), toBeneficiaryRow(RECORD_2024)],
   },
   {
     id: 2,
     name: 'Escuela rural',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2021,
     zone: 'rural',
-    localityNeighborhood: null,
+    geographicScope: 'national',
+    countries: [],
+    cities: [],
+    neighborhoods: [],
     leadCoordinator: DIANA,
-    department: CANELONES,
+    departments: [CANELONES],
     projectBeneficiaries: [],
   },
 ];
@@ -90,9 +96,12 @@ describe('AC1: paginated listing with each project data', () => {
       intensity: 'high',
       startYear: 2018,
       zone: 'city',
-      localityNeighborhood: 'Cerro',
+      geographicScope: 'national',
+      countries: [],
+      cities: ['Montevideo'],
+      neighborhoods: ['Cerro'],
       leadCoordinator: CARLOS,
-      department: MONTEVIDEO,
+      departments: [MONTEVIDEO],
       beneficiaries: [
         { ...RECORD_2025, total: 31 },
         { ...RECORD_2024, total: 10 },
@@ -157,9 +166,9 @@ describe('AC1: paginated listing with each project data', () => {
 
 describe('AC2: filters', () => {
   test('by status', async () => {
-    await listWith({ status: 'closed' });
+    await listWith({ status: 'inactive' });
 
-    expect(findManyArgs().where).toEqual({ deletedAt: null, status: 'closed' });
+    expect(findManyArgs().where).toEqual({ deletedAt: null, status: 'inactive' });
   });
 
   test('by lead coordinator', async () => {
@@ -192,15 +201,27 @@ describe('AC2: filters', () => {
   test('by department', async () => {
     await listWith({ departmentId: '2' });
 
-    expect(findManyArgs().where).toEqual({ deletedAt: null, departmentId: 2 });
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      departments: { some: { id: 2 } },
+    });
   });
 
-  test('by name, case-insensitive', async () => {
-    await listWith({ search: 'CENTRO' });
+  test('by name, ignoring case and accents', async () => {
+    await listWith({ search: 'ÓÑÁS Ü' });
 
     expect(findManyArgs().where).toEqual({
       deletedAt: null,
-      name: { contains: 'CENTRO', mode: 'insensitive' },
+      searchName: { contains: 'onas u' },
+    });
+  });
+
+  test('by name, matching LIKE wildcards literally', async () => {
+    await listWith({ search: '100%_\\' });
+
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      searchName: { contains: '100\\%\\_\\\\' },
     });
   });
 
@@ -222,7 +243,7 @@ describe('AC2: filters', () => {
       where: {
         deletedAt: null,
         status: 'active',
-        departmentId: 1,
+        departments: { some: { id: 1 } },
         projectBeneficiaries: { some: { year: 2025 } },
       },
     });
@@ -246,7 +267,7 @@ describe('AC2: filters', () => {
     prismaMock.project.count.mockResolvedValue(1);
     prismaMock.project.findMany.mockResolvedValue([PROJECTS[1]]);
 
-    const result = await listProjects(parseProjectFilters({ status: 'closed', page: '4' }));
+    const result = await listProjects(parseProjectFilters({ status: 'inactive', page: '4' }));
 
     expect(result).toMatchObject({ page: 1, total: 1, totalPages: 1 });
     expect(result.items.map((item) => item.name)).toEqual(['Escuela rural']);
@@ -282,7 +303,7 @@ describe('AC3: no projects', () => {
   });
 
   test('returns an empty page when no project matches the filters', async () => {
-    const result = await listWith({ status: 'closed', leadCoordinatorId: '3' }, []);
+    const result = await listWith({ status: 'inactive', leadCoordinatorId: '3' }, []);
 
     expect(result.items).toEqual([]);
     expect(result.total).toBe(0);
@@ -324,7 +345,7 @@ describe('parseProjectFilters', () => {
   });
 
   test('uses the first value of repeated params', () => {
-    expect(parseProjectFilters({ status: ['closed', 'active'] }).status).toBe('closed');
+    expect(parseProjectFilters({ status: ['inactive', 'active'] }).status).toBe('inactive');
   });
 
   test('parses the beneficiary year and ignores invalid ones', () => {
@@ -381,11 +402,11 @@ test('combines topic and department with the other project filters', async () =>
   expect(findManyArgs().where).toEqual({
     deletedAt: null,
     topicId: 2,
-    departmentId: 3,
+    departments: { some: { id: 3 } },
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',
-    name: { contains: 'Centro', mode: 'insensitive' },
+    searchName: { contains: 'centro' },
   });
 });
 

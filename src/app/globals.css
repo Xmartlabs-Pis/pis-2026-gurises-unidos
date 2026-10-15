@@ -14,9 +14,12 @@
   --status-warning: #ff9500;
   --history-marker: #ff9500;
   --beneficiary-children: #f5970c;
+  --beneficiary-indirect-children: #ef6f6c;
+  --beneficiary-youth: #ec4899;
   --beneficiary-families: #59bff0;
   --beneficiary-staff: #9c66ff;
   --beneficiary-institutions: #c5d900;
+  --beneficiary-community-leaders: #14b8a6;
   --beneficiary-custom: #94a3b8;
   --surface-highlight: #fff5e6;
   --background: oklch(1 0 0);
@@ -67,9 +70,12 @@
   --color-surface-brand-deep: var(--surface-brand-deep);
   --color-text-accent: var(--text-accent);
   --color-beneficiary-children: var(--beneficiary-children);
+  --color-beneficiary-indirect-children: var(--beneficiary-indirect-children);
+  --color-beneficiary-youth: var(--beneficiary-youth);
   --color-beneficiary-families: var(--beneficiary-families);
   --color-beneficiary-staff: var(--beneficiary-staff);
   --color-beneficiary-institutions: var(--beneficiary-institutions);
+  --color-beneficiary-community-leaders: var(--beneficiary-community-leaders);
   --color-beneficiary-custom: var(--beneficiary-custom);
   --color-surface-highlight: var(--surface-highlight);
   --font-sans: var(--font-mulish);

@@ -5,15 +5,19 @@ import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
 const PROJECT = {
   id: 10,
   name: 'Project',
+  searchName: 'project',
   status: 'active' as const,
   intensity: 'high' as const,
   counterpartyType: 'publicSector' as const,
   startYear: 2024,
   endYear: null,
   leadCoordinatorId: 2,
-  departmentId: 3,
+  geographicScope: 'national' as const,
+  countries: [],
+  cities: ['Las Piedras'],
+  neighborhoods: ['Centro'],
+  departments: [{ id: 3 }, { id: 5 }],
   zone: 'city' as const,
-  localityNeighborhood: null,
   generalObjective: null,
   publicDescription: null,
   internalNotes: null,
@@ -80,3 +84,31 @@ it.each(['publicSector', 'privateSector', 'internationalCooperation'] as const)(
     expect(values.counterpartyType).toBe(counterpartyType);
   }
 );
+
+it('loads the stored location into form values', () => {
+  expect(projectToFormValues(PROJECT, 2026, BENEFICIARY_CATEGORY_OPTIONS)).toMatchObject({
+    geographicScope: 'national',
+    departmentIds: ['3', '5'],
+    countries: [],
+    cities: ['Las Piedras'],
+    neighborhoods: ['Centro'],
+  });
+  expect(
+    projectToFormValues(
+      {
+        ...PROJECT,
+        geographicScope: 'international',
+        countries: ['Argentina'],
+        cities: [],
+        neighborhoods: [],
+        departments: [],
+      },
+      2026,
+      BENEFICIARY_CATEGORY_OPTIONS
+    )
+  ).toMatchObject({
+    geographicScope: 'international',
+    countries: ['Argentina'],
+    departmentIds: [],
+  });
+});
