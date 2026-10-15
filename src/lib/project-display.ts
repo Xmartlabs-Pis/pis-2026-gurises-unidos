@@ -83,6 +83,11 @@ export const ZONE_OPTIONS = [
   { value: 'rural', label: 'Rural' },
 ] as const;
 
+export const GEOGRAPHIC_SCOPE_OPTIONS = [
+  { value: 'national', label: 'Nacional' },
+  { value: 'international', label: 'Internacional' },
+] as const;
+
 export const FIRST_PROJECT_YEAR = 1989;
 export const PREVIEW_TOPIC_FALLBACK = 'Educación';
 export const PREVIEW_LOCATION_FALLBACK = 'Montevideo';

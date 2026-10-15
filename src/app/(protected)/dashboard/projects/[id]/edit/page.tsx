@@ -31,6 +31,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     where: { id: projectId, deletedAt: null },
     include: {
       strategicLines: { select: { id: true } },
+      departments: { select: { id: true } },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
         select: { id: true, year: true, ...BENEFICIARY_VALUES_SELECT },

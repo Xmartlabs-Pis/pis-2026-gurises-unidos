@@ -28,18 +28,7 @@ export const projectSchema = z
       .int()
       .positive('Elegí un coordinador')
       .max(MAX_INT32),
-    departmentId: z.coerce
-      .number({ error: 'Elegí un departamento' })
-      .int()
-      .positive('Elegí un departamento')
-      .max(MAX_INT32),
     zone: z.enum(['city', 'inland', 'border', 'rural']),
-    localityNeighborhood: z
-      .string()
-      .trim()
-      .max(100, 'Máx. 100 caracteres')
-      .optional()
-      .transform((value) => value || null),
     generalObjective: z
       .string()
       .trim()

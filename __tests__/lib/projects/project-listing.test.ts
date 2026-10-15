@@ -49,9 +49,12 @@ const PROJECTS = [
     intensity: 'high',
     startYear: 2018,
     zone: 'city',
-    localityNeighborhood: 'Cerro',
+    geographicScope: 'national',
+    countries: [],
+    cities: ['Montevideo'],
+    neighborhoods: ['Cerro'],
     leadCoordinator: CARLOS,
-    department: MONTEVIDEO,
+    departments: [MONTEVIDEO],
     projectBeneficiaries: [toBeneficiaryRow(RECORD_2025), toBeneficiaryRow(RECORD_2024)],
   },
   {
@@ -61,9 +64,12 @@ const PROJECTS = [
     intensity: 'low',
     startYear: 2021,
     zone: 'rural',
-    localityNeighborhood: null,
+    geographicScope: 'national',
+    countries: [],
+    cities: [],
+    neighborhoods: [],
     leadCoordinator: DIANA,
-    department: CANELONES,
+    departments: [CANELONES],
     projectBeneficiaries: [],
   },
 ];
@@ -90,9 +96,12 @@ describe('AC1: paginated listing with each project data', () => {
       intensity: 'high',
       startYear: 2018,
       zone: 'city',
-      localityNeighborhood: 'Cerro',
+      geographicScope: 'national',
+      countries: [],
+      cities: ['Montevideo'],
+      neighborhoods: ['Cerro'],
       leadCoordinator: CARLOS,
-      department: MONTEVIDEO,
+      departments: [MONTEVIDEO],
       beneficiaries: [
         { ...RECORD_2025, total: 31 },
         { ...RECORD_2024, total: 10 },
@@ -192,7 +201,10 @@ describe('AC2: filters', () => {
   test('by department', async () => {
     await listWith({ departmentId: '2' });
 
-    expect(findManyArgs().where).toEqual({ deletedAt: null, departmentId: 2 });
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      departments: { some: { id: 2 } },
+    });
   });
 
   test('by name, ignoring case and accents', async () => {
@@ -231,7 +243,7 @@ describe('AC2: filters', () => {
       where: {
         deletedAt: null,
         status: 'active',
-        departmentId: 1,
+        departments: { some: { id: 1 } },
         projectBeneficiaries: { some: { year: 2025 } },
       },
     });
@@ -390,7 +402,7 @@ test('combines topic and department with the other project filters', async () =>
   expect(findManyArgs().where).toEqual({
     deletedAt: null,
     topicId: 2,
-    departmentId: 3,
+    departments: { some: { id: 3 } },
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',

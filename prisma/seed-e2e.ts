@@ -97,7 +97,7 @@ async function main() {
           data: {
             ...E2E_ACTIVE_PROJECT,
             leadCoordinatorId: coordinator.id,
-            departmentId: department.id,
+            departments: { connect: { id: department.id } },
             topicId: topic.id,
             createdBy: admin.id,
           },
@@ -107,7 +107,7 @@ async function main() {
           data: {
             ...E2E_INACTIVE_PROJECT,
             leadCoordinatorId: coordinator.id,
-            departmentId: department.id,
+            departments: { connect: { id: department.id } },
             topicId: topic.id,
             createdBy: admin.id,
           },

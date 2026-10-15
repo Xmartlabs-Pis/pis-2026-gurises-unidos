@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   findProject: vi.fn(),
   findDuplicateProject: vi.fn(),
   findTopic: vi.fn(),
+  countDepartments: vi.fn(),
   transaction: vi.fn(),
   createProject: vi.fn(),
   updateProject: vi.fn(),
@@ -65,6 +66,7 @@ const TX = {
   },
   user: { findFirst: mocks.findCoordinator },
   topic: { findFirst: mocks.findTopic },
+  department: { count: mocks.countDepartments },
   projectBeneficiary: {
     findFirst: mocks.findLaterBeneficiary,
     create: mocks.createBeneficiary,
@@ -85,9 +87,11 @@ const VALID_DATA = {
   counterpartyType: 'publicSector',
   startYear: '2019',
   leadCoordinatorId: '2',
-  departmentId: '3',
+  geographicScope: 'national',
+  departmentIds: '3',
+  cities: 'City',
+  neighborhoods: 'Neighborhood',
   zone: 'city',
-  localityNeighborhood: 'Neighborhood',
   generalObjective: 'Objective',
   publicDescription: 'Description',
   internalNotes: 'Team notes',
@@ -130,10 +134,14 @@ beforeEach(() => {
     leadCoordinatorId: 2,
     topicId: 1,
     strategicLines: [{ id: 1 }],
+    departments: [{ id: 3 }],
   });
   mocks.findTopic.mockResolvedValue({ id: 2 });
   mocks.findDuplicateProject.mockResolvedValue(null);
   mocks.queryRaw.mockImplementation(lockedCategoryRows);
+  mocks.countDepartments.mockImplementation(
+    async ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
+  );
   mocks.redirect.mockImplementation((path: string) => {
     throw new Error(`Redirect: ${path}`);
   });
@@ -187,6 +195,16 @@ describe.each([
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
+  it('rejects departments that do not exist before writing', async () => {
+    mocks.countDepartments.mockResolvedValue(1);
+    expect(await submit(formData({ departmentIds: ['3', '999'] }))).toEqual({
+      errors: { departmentIds: ['Elegí departamentos válidos'] },
+    });
+    expect(mocks.countDepartments).toHaveBeenCalledWith({ where: { id: { in: [3, 999] } } });
+    expect(mocks.createProject).not.toHaveBeenCalled();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
   it('rejects a name that matches another project in the same year ignoring case', async () => {
     mocks.findDuplicateProject.mockResolvedValue({ id: 99 });
     const result = await submit(formData());
@@ -211,7 +229,7 @@ describe.each([
   it.each([
     ['name', ''],
     ['status', 'invalid'],
-    ['departmentId', '0'],
+    ['departmentIds', '0'],
     ['leadCoordinatorId', '0'],
     ['startYear', '1800'],
     ['year', '1800'],
@@ -224,7 +242,7 @@ describe.each([
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
-  it.each(['leadCoordinatorId', 'departmentId'])(
+  it.each(['leadCoordinatorId', '_DepartmentToProject_A_fkey'])(
     'handles an invalid %s reference',
     async (field) => {
       mocks.transaction.mockRejectedValue(databaseError('P2003', { field_name: field }));
@@ -455,10 +473,12 @@ describe('updateProject persistence', () => {
           startYear: 2019,
           endYear: null,
           leadCoordinatorId: 2,
-          departmentId: 3,
           topicId: 1,
+          geographicScope: 'national',
+          countries: [],
+          cities: ['City'],
+          neighborhoods: ['Neighborhood'],
           zone: 'city',
-          localityNeighborhood: 'Neighborhood',
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
@@ -530,7 +550,7 @@ describe('updateProject persistence', () => {
           generalObjective: '',
           publicDescription: '',
           internalNotes: '',
-          localityNeighborhood: '',
+          cities: undefined,
           families: '',
         })
       )
@@ -541,7 +561,8 @@ describe('updateProject persistence', () => {
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
-        localityNeighborhood: null,
+        cities: [],
+        neighborhoods: [],
       }),
     });
     expect(mocks.upsertBeneficiary).toHaveBeenCalledWith(
@@ -690,6 +711,7 @@ function unchangedRecords() {
     ...projectData,
     topicId: 1,
     strategicLines: [{ id: 1 }],
+    departments: [{ id: 3 }],
   });
   mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows(beneficiaryData.counts) });
 }
@@ -804,6 +826,73 @@ describe('project review regressions', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
+  it('replaces the departments and audits a departments-only change', async () => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ departmentIds: ['3', '4'] }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.updateProject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ departments: { set: [{ id: 3 }, { id: 4 }] } }),
+      })
+    );
+    expect(mocks.audit).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        authorId: 7,
+        action: 'update',
+        entity: 'project',
+        entityId: 10,
+        details: { changedFields: ['departments'] },
+      },
+    });
+  });
+
+  it('audits changed cities without rewriting the departments', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ cities: ['City', 'Other city'] }))
+    ).rejects.toThrow('Redirect:');
+    const { data } = mocks.updateProject.mock.calls[0][0];
+    expect(data).toMatchObject({ cities: ['City', 'Other city'] });
+    expect(data).not.toHaveProperty('departments');
+    expect(mocks.audit).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ details: { changedFields: ['cities'] } }),
+      })
+    );
+  });
+
+  it('clears the national location when the project becomes international', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          cities: [],
+          neighborhoods: [],
+          departments: { set: [] },
+        }),
+      })
+    );
+    expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(
+      expect.arrayContaining([
+        'geographicScope',
+        'countries',
+        'cities',
+        'neighborhoods',
+        'departments',
+      ])
+    );
+  });
+
   it('saves one topic and audits a topic-only change', async () => {
     unchangedRecords();
     await expect(updateProject(10, {}, formData({ topicId: '2' }))).rejects.toThrow('Redirect:');
@@ -876,6 +965,7 @@ describe('project review regressions', () => {
       ...projectData,
       topicId: 2,
       strategicLines: [{ id: 1 }],
+      departments: [{ id: 3 }],
     });
     await expect(updateProject(10, {}, formData({ topicId: '2' }))).rejects.toThrow('Redirect:');
     expect(mocks.findTopic).toHaveBeenCalledWith({ where: { id: 2 }, select: { id: true } });

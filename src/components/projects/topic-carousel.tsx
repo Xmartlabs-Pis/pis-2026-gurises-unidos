@@ -76,7 +76,7 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
           <CarouselItem key={project.id} className="basis-75 lg:basis-100">
             <ProjectCard
               variant="public-dark"
-              territory={project.department}
+              territory={project.territory}
               name={project.name}
               description={project.description}
               coverPhoto={project.coverPhoto}

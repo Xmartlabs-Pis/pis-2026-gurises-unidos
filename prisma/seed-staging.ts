@@ -179,10 +179,10 @@ async function main() {
               ? Math.min(startYear + 1 + (index % 3), new Date().getFullYear())
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
-          departmentId: departments.get(departmentName)!,
           topicId: topicIds[index % topicIds.length],
           zone: ZONES[index % ZONES.length],
-          localityNeighborhood: index % 3 === 0 ? null : `Barrio ${index + 1}`,
+          cities: index % 3 === 0 ? [] : [`Ciudad ${index + 1}`],
+          neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
@@ -194,9 +194,15 @@ async function main() {
           where: { name, startYear, deletedAt: null },
           select: { id: true },
         });
+        const projectDepartments = [{ id: departments.get(departmentName)! }];
         const project = existing
-          ? await tx.project.update({ where: { id: existing.id }, data })
-          : await tx.project.create({ data });
+          ? await tx.project.update({
+              where: { id: existing.id },
+              data: { ...data, departments: { set: projectDepartments } },
+            })
+          : await tx.project.create({
+              data: { ...data, departments: { connect: projectDepartments } },
+            });
 
         const yearCount = index % 7 === 0 ? 0 : 1 + (index % 4);
 
