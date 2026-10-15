@@ -17,7 +17,7 @@ function maskEmail(email: string) {
   return `${local.slice(0, 1)}***@${domain}`;
 }
 
-export async function sendEmail({ to, subject, react }: SendEmailInput) {
+export async function sendEmail({ to, subject, react }: SendEmailInput): Promise<boolean> {
   const isProduction = process.env.NODE_ENV === 'production';
   const recipient = isProduction ? maskEmail(to) : to;
 
@@ -26,11 +26,14 @@ export async function sendEmail({ to, subject, react }: SendEmailInput) {
     console.info(
       `[email] RESEND_API_KEY not set, email not sent to ${recipient}: ${subject}\n${body}`
     );
-    return;
+    return !isProduction;
   }
 
   const { error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, react });
   if (error) {
     console.error(`[email] Error sending email to ${recipient}: ${error.message}`);
+    return false;
   }
+
+  return true;
 }

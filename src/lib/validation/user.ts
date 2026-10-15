@@ -58,14 +58,3 @@ export const userEditFormSchema = z.object({
   email: emailSchema,
   role: z.enum(['admin', 'coordinator']),
 });
-
-export const userFormSchema = userEditFormSchema.extend({
-  password: z
-    .string()
-    .min(1, 'La contraseña es obligatoria.')
-    .min(8, 'La contraseña debe tener al menos 8 caracteres.')
-    .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula.')
-    .regex(/[a-z]/, 'La contraseña debe tener al menos una minúscula.')
-    .regex(/[0-9]/, 'La contraseña debe tener al menos un número.')
-    .max(72, 'La contraseña no puede superar los 72 caracteres.'),
-});

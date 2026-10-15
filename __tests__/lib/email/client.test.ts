@@ -44,7 +44,7 @@ describe('sendEmail without RESEND_API_KEY', () => {
     vi.stubEnv('NODE_ENV', 'development');
     const sendEmail = await loadSendEmail();
 
-    await sendEmail(EMAIL);
+    await expect(sendEmail(EMAIL)).resolves.toBe(true);
 
     const message = String(consoleInfo.mock.calls[0][0]);
     expect(message).toContain('ana.perez@example.com');
@@ -57,7 +57,7 @@ describe('sendEmail without RESEND_API_KEY', () => {
     vi.stubEnv('NODE_ENV', 'production');
     const sendEmail = await loadSendEmail();
 
-    await sendEmail(EMAIL);
+    await expect(sendEmail(EMAIL)).resolves.toBe(false);
 
     const message = String(consoleInfo.mock.calls[0][0]);
     expect(message).toContain('a***@example.com');
@@ -73,7 +73,7 @@ describe('sendEmail with RESEND_API_KEY', () => {
     sendMock.mockResolvedValue({ error: null });
     const sendEmail = await loadSendEmail();
 
-    await sendEmail(EMAIL);
+    await expect(sendEmail(EMAIL)).resolves.toBe(true);
 
     expect(sendMock).toHaveBeenCalledWith({ from: 'Test <test@example.com>', ...EMAIL });
     expect(consoleError).not.toHaveBeenCalled();
@@ -85,7 +85,7 @@ describe('sendEmail with RESEND_API_KEY', () => {
     sendMock.mockResolvedValue({ error: { message: 'domain not verified' } });
     const sendEmail = await loadSendEmail();
 
-    await expect(sendEmail(EMAIL)).resolves.toBeUndefined();
+    await expect(sendEmail(EMAIL)).resolves.toBe(false);
 
     const message = String(consoleError.mock.calls[0][0]);
     expect(message).toContain('a***@example.com');
