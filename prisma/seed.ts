@@ -53,7 +53,8 @@ type SeedProject = {
   department: string;
   topics: string[];
   zone: 'city' | 'inland' | 'rural';
-  localityNeighborhood: string;
+  cities: string[];
+  neighborhoods: string[];
   publicDescription: string;
   showOnLanding?: boolean;
   beneficiaries: BeneficiaryRecord[];
@@ -68,7 +69,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Montevideo',
     topics: ['Community'],
     zone: 'city',
-    localityNeighborhood: 'Cerro Norte',
+    cities: ['Montevideo'],
+    neighborhoods: ['Cerro Norte'],
     publicDescription:
       'Espacios lúdicos seguros para el desarrollo integral de niños y niñas en zonas vulnerables.',
     beneficiaries: [
@@ -103,7 +105,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Canelones',
     topics: ['Education'],
     zone: 'inland',
-    localityNeighborhood: 'Las Piedras',
+    cities: ['Las Piedras'],
+    neighborhoods: [],
     publicDescription:
       'Acompañamiento educativo para fortalecer el vínculo con la escuela y mejorar trayectorias.',
     beneficiaries: [
@@ -138,7 +141,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Montevideo',
     topics: ['Education', 'Community'],
     zone: 'city',
-    localityNeighborhood: 'Casavalle',
+    cities: ['Montevideo'],
+    neighborhoods: ['Casavalle'],
     publicDescription:
       'Talleres de expresión artística que fortalecen identidad y habilidades socioemocionales.',
     beneficiaries: [
@@ -167,7 +171,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Salto',
     topics: ['Health'],
     zone: 'inland',
-    localityNeighborhood: 'Barrio Artigas',
+    cities: ['Salto'],
+    neighborhoods: ['Barrio Artigas'],
     publicDescription:
       'Promoción de la salud integral con equipos barriales y centros de salud de referencia.',
     beneficiaries: [
@@ -197,7 +202,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Maldonado',
     topics: ['Protection'],
     zone: 'city',
-    localityNeighborhood: 'Maldonado Nuevo',
+    cities: ['Maldonado'],
+    neighborhoods: ['Maldonado Nuevo'],
     publicDescription:
       'Fortalecimiento de entornos protectores con familias, escuelas e instituciones locales.',
     beneficiaries: [
@@ -219,7 +225,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Paysandú',
     topics: ['Community'],
     zone: 'city',
-    localityNeighborhood: 'Barrio Obrero',
+    cities: ['Paysandú'],
+    neighborhoods: ['Barrio Obrero'],
     publicDescription:
       'Liderazgo juvenil y participación comunitaria a través de proyectos impulsados por jóvenes.',
     beneficiaries: [
@@ -240,7 +247,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Rivera',
     topics: ['Education'],
     zone: 'rural',
-    localityNeighborhood: 'Paraje Cerros Blancos',
+    cities: ['Paraje Cerros Blancos'],
+    neighborhoods: [],
     publicDescription:
       'Propuestas educativas en escuelas rurales para reducir la desvinculación escolar.',
     beneficiaries: [
@@ -266,7 +274,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Tacuarembó',
     topics: ['Health'],
     zone: 'inland',
-    localityNeighborhood: 'Barrio Ferrocarril',
+    cities: ['Tacuarembó'],
+    neighborhoods: ['Barrio Ferrocarril'],
     publicDescription:
       'Huertas y espacios de alimentación saludable con participación de familias del barrio.',
     beneficiaries: [
@@ -281,7 +290,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Colonia',
     topics: ['Protection', 'Health'],
     zone: 'city',
-    localityNeighborhood: 'Barrio Sur',
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     publicDescription:
       'Acompañamiento a familias con niños y niñas de 0 a 3 años en situación de vulnerabilidad.',
     beneficiaries: [],
@@ -295,7 +305,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Montevideo',
     topics: ['Education'],
     zone: 'city',
-    localityNeighborhood: 'Malvín Norte',
+    cities: ['Montevideo'],
+    neighborhoods: ['Malvín Norte'],
     publicDescription:
       'Talleres de comunicación audiovisual para adolescentes, finalizados en 2023.',
     beneficiaries: [
@@ -312,7 +323,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Tacuarembó',
     topics: ['Community'],
     zone: 'rural',
-    localityNeighborhood: 'Paso de los Toros',
+    cities: ['Paso de los Toros'],
+    neighborhoods: [],
     publicDescription:
       'Articulación de instituciones y referentes comunitarios en zonas rurales aisladas.',
     beneficiaries: [
@@ -341,7 +353,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Canelones',
     topics: ['Health'],
     zone: 'inland',
-    localityNeighborhood: 'Barros Blancos',
+    cities: ['Barros Blancos'],
+    neighborhoods: [],
     publicDescription:
       'Actividad física y deporte comunitario como herramienta de inclusión para adolescentes.',
     beneficiaries: [
@@ -357,7 +370,8 @@ const SEED_PROJECTS: SeedProject[] = [
     department: 'Montevideo',
     topics: ['Education'],
     zone: 'city',
-    localityNeighborhood: 'Casavalle',
+    cities: ['Montevideo'],
+    neighborhoods: ['Casavalle'],
     publicDescription:
       'Apoyo a la continuidad educativa de niños y niñas, aún sin publicar en la landing.',
     showOnLanding: false,
@@ -378,6 +392,7 @@ type ProjectFixture = Required<
     | 'projectBeneficiaries'
     | 'topics'
     | 'strategicLines'
+    | 'departments'
   >
 >;
 
@@ -475,7 +490,8 @@ async function main() {
           endYear: endYear ?? null,
           showOnLanding: showOnLanding ?? true,
           leadCoordinatorId: coordinator.id,
-          departmentId: departmentIds.get(department)!,
+          geographicScope: 'national',
+          countries: [],
           generalObjective: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
           internalNotes: null,
@@ -488,13 +504,24 @@ async function main() {
           where: { name: fixture.name, startYear: fixture.startYear, deletedAt: null },
           select: { id: true },
         });
+        const projectDepartments = [{ id: departmentIds.get(department)! }];
         const topicRefs = topics.map((name) => ({ id: topicIds.get(name)! }));
         const saved = existing
           ? await tx.project.update({
               where: { id: existing.id },
-              data: { ...fixture, topics: { set: topicRefs } },
+              data: {
+                ...fixture,
+                departments: { set: projectDepartments },
+                topics: { set: topicRefs },
+              },
             })
-          : await tx.project.create({ data: { ...fixture, topics: { connect: topicRefs } } });
+          : await tx.project.create({
+              data: {
+                ...fixture,
+                departments: { connect: projectDepartments },
+                topics: { connect: topicRefs },
+              },
+            });
 
         for (const { year, ...counts } of beneficiaries) {
           await tx.projectBeneficiaryValue.deleteMany({

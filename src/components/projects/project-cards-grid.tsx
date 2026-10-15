@@ -7,6 +7,7 @@ import { ProjectCard } from '@/components/projects/project-card';
 import { ProjectCardSkeleton } from '@/components/projects/projects-card-listing-skeleton';
 import { loadProjectsPage } from '@/app/actions/projects';
 import type { ProjectListItem } from '@/lib/projects/list';
+import { getTerritoryLabel } from '@/lib/projects/location';
 
 const LOAD_MORE_MARGIN = '400px';
 const LOADING_SKELETONS = 3;
@@ -97,7 +98,7 @@ export function ProjectCardsGrid({
               id={p.id}
               name={p.name}
               status={p.status}
-              territory={p.department}
+              territory={getTerritoryLabel(p)}
               coordinator={`${p.leadCoordinator.firstName} ${p.leadCoordinator.lastName}`}
               intensity={p.intensity}
               year={latestBeneficiaries?.year ?? p.startYear}

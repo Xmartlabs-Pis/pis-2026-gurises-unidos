@@ -8,13 +8,16 @@ import {
 
 const TOPIC_ID = 2;
 
-function row(id: number) {
+function row(id: number, location: object = {}) {
   return {
     id,
     name: `Proyecto ${id}`,
     publicDescription: null,
     coverPhoto: '/images/project-placeholders/1.webp',
-    department: { name: 'Montevideo' },
+    geographicScope: 'national',
+    countries: [],
+    departments: [{ name: 'Montevideo' }],
+    ...location,
     projectBeneficiaries: [{ values: [{ value: 10 }, { value: 5 }] }],
   };
 }
@@ -65,7 +68,7 @@ describe('getPublicTopics', () => {
           {
             id: 30,
             name: 'Proyecto 30',
-            department: 'Montevideo',
+            territory: 'Montevideo',
             description: '',
             coverPhoto: '/images/project-placeholders/1.webp',
             reach: 15,
@@ -74,6 +77,31 @@ describe('getPublicTopics', () => {
         hasMore: false,
       },
     });
+  });
+
+  test('shows the departments or countries of each project as its territory', async () => {
+    prismaMock.topic.findMany.mockResolvedValue([
+      {
+        id: 1,
+        name: 'Education',
+        _count: { projects: 2 },
+        projects: [
+          row(1, { departments: [{ name: 'Canelones' }, { name: 'Montevideo' }] }),
+          row(2, {
+            geographicScope: 'international',
+            countries: ['Argentina', 'Brasil'],
+            departments: [],
+          }),
+        ],
+      },
+    ]);
+
+    const [topic] = await getPublicTopics(2025);
+
+    expect(topic.initialPage.items.map(({ territory }) => territory)).toEqual([
+      'Canelones, Montevideo',
+      'Argentina, Brasil',
+    ]);
   });
 
   test('only loads active topics with public projects for the year', async () => {

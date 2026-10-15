@@ -19,9 +19,11 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     counterpartyType: 'publicSector',
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
-    departmentId: String(seed.departmentIds[0]),
+    geographicScope: 'national',
+    departmentIds: [String(seed.departmentIds[0])],
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     zone: 'rural',
-    localityNeighborhood: 'Barrio Sur',
     generalObjective: 'Objective',
     publicDescription: '',
     internalNotes: '',
@@ -53,9 +55,10 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       counterpartyType: 'publicSector',
       startYear: 2020,
       leadCoordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
-      localityNeighborhood: 'Barrio Sur',
+      cities: ['Colonia del Sacramento'],
+      neighborhoods: ['Barrio Sur'],
       generalObjective: 'Objective',
       createdBy: seed.adminId,
       topics: { connect: { id: seed.topicIds[0] } },
@@ -191,7 +194,7 @@ describe('updateProject (integration)', () => {
         buildFormData({
           name: 'Renamed project',
           zone: 'city',
-          departmentId: String(seed.departmentIds[1]),
+          departmentIds: [String(seed.departmentIds[1])],
           topicIds: newTopicIds.map(String),
         })
       ),
@@ -202,7 +205,7 @@ describe('updateProject (integration)', () => {
     expect(project).toMatchObject({
       name: 'Renamed project',
       zone: 'city',
-      departmentId: seed.departmentIds[1],
+      departments: [{ id: seed.departmentIds[1] }],
       status: 'active',
       startYear: 2020,
     });
@@ -212,7 +215,7 @@ describe('updateProject (integration)', () => {
         entity: 'project',
         action: 'update',
         authorId: seed.adminId,
-        details: { changedFields: ['name', 'departmentId', 'zone', 'topics'] },
+        details: { changedFields: ['name', 'zone', 'topics', 'departments'] },
       }),
     ]);
   });
@@ -413,10 +416,10 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ name: 'Should not persist', departmentId: '999999', families: '99' })
+      buildFormData({ name: 'Should not persist', departmentIds: ['999999'], families: '99' })
     );
 
-    expect(result.formError).toBe('El coordinador o el departamento seleccionado no existe.');
+    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });

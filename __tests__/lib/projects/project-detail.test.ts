@@ -48,16 +48,16 @@ const PROJECT = {
   publicDescription: 'Community project',
   coverPhoto: '/images/project-placeholders/2.webp',
   zone: 'city',
-  localityNeighborhood: 'Casavalle',
+  geographicScope: 'national',
+  countries: [],
+  cities: ['Montevideo'],
+  neighborhoods: ['Casavalle'],
   leadCoordinator: {
     id: 2,
     firstName: 'Ana',
     lastName: 'Garcia',
   },
-  department: {
-    id: 1,
-    name: 'Montevideo',
-  },
+  departments: [{ id: 1, name: 'Montevideo' }],
   topics: [],
   projectBeneficiaries: [{ year: 2026 }, { year: 2025 }],
 };
@@ -161,7 +161,7 @@ describe('getProjectDetail', () => {
         },
         territories: {
           count: 1,
-          items: [{ department: { id: 1, name: 'Montevideo' } }],
+          items: ['Montevideo'],
         },
       },
     });

@@ -179,9 +179,9 @@ async function main() {
               ? Math.min(startYear + 1 + (index % 3), new Date().getFullYear())
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
-          departmentId: departments.get(departmentName)!,
           zone: ZONES[index % ZONES.length],
-          localityNeighborhood: index % 3 === 0 ? null : `Barrio ${index + 1}`,
+          cities: index % 3 === 0 ? [] : [`Ciudad ${index + 1}`],
+          neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
@@ -193,15 +193,26 @@ async function main() {
           where: { name, startYear, deletedAt: null },
           select: { id: true },
         });
+        const projectDepartments = [{ id: departments.get(departmentName)! }];
         const topics = [topicIds[index % topicIds.length]];
         if (index % 4 === 0) topics.push(topicIds[(index + 1) % topicIds.length]);
         const topicRefs = topics.map((id) => ({ id }));
         const project = existing
           ? await tx.project.update({
               where: { id: existing.id },
-              data: { ...data, topics: { set: topicRefs } },
+              data: {
+                ...data,
+                departments: { set: projectDepartments },
+                topics: { set: topicRefs },
+              },
             })
-          : await tx.project.create({ data: { ...data, topics: { connect: topicRefs } } });
+          : await tx.project.create({
+              data: {
+                ...data,
+                departments: { connect: projectDepartments },
+                topics: { connect: topicRefs },
+              },
+            });
 
         const yearCount = index % 7 === 0 ? 0 : 1 + (index % 4);
 

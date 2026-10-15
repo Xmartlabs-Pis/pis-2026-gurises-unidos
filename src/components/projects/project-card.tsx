@@ -13,7 +13,7 @@ type InternalProjectCardProps = {
   id: number;
   name: string;
   status: ProjectListItem['status'];
-  territory: ProjectListItem['department'];
+  territory: string;
   coordinator: string;
   intensity: ProjectListItem['intensity'];
   year: number;
@@ -134,7 +134,7 @@ function InternalProjectCard({
               Territorio
             </p>
             <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
-              {territory.name}
+              {territory}
             </p>
           </CardDescription>
           <CardDescription className="flex flex-row justify-between">

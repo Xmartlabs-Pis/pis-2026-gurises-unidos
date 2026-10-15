@@ -26,9 +26,11 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     startYear: '2020',
     endYear: '',
     leadCoordinatorId: String(seed.coordinatorId),
-    departmentId: String(seed.departmentIds[0]),
+    geographicScope: 'national',
+    departmentIds: [String(seed.departmentIds[0])],
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     zone: 'rural',
-    localityNeighborhood: 'Barrio Sur',
     generalObjective: 'Objective',
     publicDescription: 'Public description',
     internalNotes: '',
@@ -61,7 +63,7 @@ async function createProjectFixture(name: string, startYear = 2020) {
       counterpartyType: 'publicSector',
       startYear,
       leadCoordinatorId: seed.coordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
       createdBy: seed.adminId,
       topics: { connect: { id: seed.topicIds[0] } },
@@ -119,10 +121,13 @@ describe('createProject (integration)', () => {
       startYear: 2020,
       endYear: null,
       leadCoordinatorId: seed.coordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: [{ id: seed.departmentIds[0] }],
       topics: [{ id: seed.topicIds[0] }],
+      geographicScope: 'national',
+      countries: [],
+      cities: ['Colonia del Sacramento'],
+      neighborhoods: ['Barrio Sur'],
       zone: 'rural',
-      localityNeighborhood: 'Barrio Sur',
       generalObjective: 'Objective',
       publicDescription: 'Public description',
       internalNotes: null,
@@ -343,14 +348,45 @@ describe('createProject (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
-  test('returns a form error when the department does not exist', async () => {
+  test('returns a field error when the department does not exist', async () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
-    const result = await createProject({}, buildFormData({ departmentId: '999999' }));
+    const result = await createProject({}, buildFormData({ departmentIds: ['999999'] }));
 
-    expect(result.formError).toBe('El coordinador o el departamento seleccionado no existe.');
+    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
     expect(await countRows()).toEqual(before);
+  });
+
+  test('persists an international project with several countries only', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+      )
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: ['Argentina', 'Brasil'],
+      cities: [],
+      neighborhoods: [],
+      departments: [],
+    });
+  });
+
+  test('persists several departments for a national project', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ departmentIds: seed.departmentIds.map(String) }))
+    );
+
+    expect((await loadProject(projectId)).departments).toEqual(
+      [...seed.departmentIds].sort((a, b) => a - b).map((id) => ({ id }))
+    );
   });
 
   test('rolls back the project when a later step of the creation fails', async () => {

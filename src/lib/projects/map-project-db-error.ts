@@ -17,7 +17,7 @@ export function mapProjectDbError(error: unknown): ProjectFormState | null {
   }
   if (error.code === 'P2003') {
     const constraint = String(error.meta?.field_name ?? error.meta?.constraint ?? '');
-    if (constraint.includes('leadCoordinatorId') || constraint.includes('departmentId'))
+    if (constraint.includes('leadCoordinatorId') || constraint.includes('_DepartmentToProject'))
       return { formError: 'El coordinador o el departamento seleccionado no existe.' };
     if (constraint.includes('ProjectToTopic'))
       return { errors: { topicIds: [TOPICS_ERROR_MESSAGE] } };

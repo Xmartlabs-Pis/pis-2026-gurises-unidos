@@ -1,13 +1,14 @@
 import type { BeneficiaryFieldName } from '@/lib/project-display';
 import type { ProjectFormData } from '@/lib/validation/project-form';
 
+type ProjectFormListField =
+  'topicIds' | 'strategicLineIds' | 'departmentIds' | 'countries' | 'cities' | 'neighborhoods';
+
 export type ProjectFormValues = Omit<
   { [K in keyof ProjectFormData]: string },
-  'topicIds' | 'strategicLineIds'
+  ProjectFormListField
 > & {
   coverPhotoUrl: string | null;
-  topicIds: string[];
-  strategicLineIds: string[];
-} & {
+} & { [K in ProjectFormListField]: string[] } & {
   [K in BeneficiaryFieldName]?: string;
 };

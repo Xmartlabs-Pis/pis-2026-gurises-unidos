@@ -88,6 +88,17 @@ async function validateStrategicLines(
   return null;
 }
 
+async function validateDepartments(
+  tx: Prisma.TransactionClient,
+  departmentIds: number[]
+): Promise<ProjectFormState | null> {
+  if (departmentIds.length === 0) return null;
+  const count = await tx.department.count({ where: { id: { in: departmentIds } } });
+  return count === departmentIds.length
+    ? null
+    : { errors: { departmentIds: ['Elegí departamentos válidos'] } };
+}
+
 async function validateUniqueName(
   tx: Prisma.TransactionClient,
   name: string,
@@ -153,8 +164,23 @@ async function parseProjectForm(formData: FormData) {
   return { keys, ...splitProjectFormData(parsed.data, keys) };
 }
 
+function isSameValue(value: unknown, previous: unknown) {
+  if (Array.isArray(value) && Array.isArray(previous)) {
+    return (
+      value.length === previous.length && value.every((item, index) => item === previous[index])
+    );
+  }
+  return value === previous;
+}
+
+function hasSameIds(ids: number[], previousIds: number[]) {
+  return ids.length === previousIds.length && ids.every((id) => previousIds.includes(id));
+}
+
 function changedFields<T extends object>(data: T, previous: T) {
-  return (Object.keys(data) as (keyof T & string)[]).filter((key) => data[key] !== previous[key]);
+  return (Object.keys(data) as (keyof T & string)[]).filter(
+    (key) => !isSameValue(data[key], previous[key])
+  );
 }
 
 export async function createProject(
@@ -171,7 +197,7 @@ export async function createProject(
   );
   if ('error' in resolved) return resolved.error;
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
-  const { topicIds, strategicLineIds } = parsed;
+  const { topicIds, strategicLineIds, departmentIds } = parsed;
   const submittedPlaceholder = formData.get('projectPlaceholder');
   const coverPhoto = isProjectPlaceholder(submittedPlaceholder)
     ? submittedPlaceholder
@@ -188,6 +214,8 @@ export async function createProject(
         if (error) return { error };
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
         if (strategicLinesError) return { error: strategicLinesError };
+        const departmentsError = await validateDepartments(tx, departmentIds);
+        if (departmentsError) return { error: departmentsError };
         const nameError = await validateUniqueName(tx, projectData.name, projectData.startYear);
         if (nameError) return { error: nameError };
         const project = await tx.project.create({
@@ -195,6 +223,7 @@ export async function createProject(
             ...projectData,
             topics: { connect: topicIds.map((id) => ({ id })) },
             strategicLines: { connect: strategicLineIds.map((id) => ({ id })) },
+            departments: { connect: departmentIds.map((id) => ({ id })) },
             coverPhoto,
             createdBy: user.id,
           },
@@ -248,7 +277,7 @@ export async function updateProject(
   if (!parseId(projectId)) return { formError: 'El proyecto no es válido.' };
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
-  const { keys, projectData, beneficiaryData, topicIds, strategicLineIds } = parsed;
+  const { keys, projectData, beneficiaryData, topicIds, strategicLineIds, departmentIds } = parsed;
   try {
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
@@ -258,6 +287,7 @@ export async function updateProject(
           include: {
             topics: { select: { id: true } },
             strategicLines: { select: { id: true } },
+            departments: { select: { id: true } },
           },
         });
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
@@ -267,6 +297,8 @@ export async function updateProject(
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
         if (strategicLinesError) return strategicLinesError;
+        const departmentsError = await validateDepartments(tx, departmentIds);
+        if (departmentsError) return departmentsError;
         await lockTopics(tx, [...currentTopicIds, ...topicIds]);
         if (!(await lockBeneficiaryCategories(tx, keys))) {
           return { formError: STALE_CATEGORIES_MESSAGE };
@@ -309,16 +341,17 @@ export async function updateProject(
         );
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
-        const topicsChanged =
-          currentTopicIds.length !== topicIds.length ||
-          currentTopicIds.some((id) => !topicIds.includes(id));
-        const strategicLinesChanged =
-          currentStrategicLineIds.length !== strategicLineIds.length ||
-          currentStrategicLineIds.some((id) => !strategicLineIds.includes(id));
+        const topicsChanged = !hasSameIds(topicIds, currentTopicIds);
+        const strategicLinesChanged = !hasSameIds(strategicLineIds, currentStrategicLineIds);
+        const departmentsChanged = !hasSameIds(
+          departmentIds,
+          previous.departments.map(({ id }) => id)
+        );
         const fields = [
           ...changedFields(nextProjectData, previous),
           ...(topicsChanged ? ['topics'] : []),
           ...(strategicLinesChanged ? ['strategicLines'] : []),
+          ...(departmentsChanged ? ['departments'] : []),
         ];
         if (fields.length) {
           await tx.project.update({
@@ -328,6 +361,9 @@ export async function updateProject(
               ...(topicsChanged ? { topics: { set: topicIds.map((id) => ({ id })) } } : {}),
               ...(strategicLinesChanged
                 ? { strategicLines: { set: strategicLineIds.map((id) => ({ id })) } }
+                : {}),
+              ...(departmentsChanged
+                ? { departments: { set: departmentIds.map((id) => ({ id })) } }
                 : {}),
             },
           });

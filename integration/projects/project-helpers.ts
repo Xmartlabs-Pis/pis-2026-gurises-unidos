@@ -29,6 +29,7 @@ export async function loadProject(id: number) {
     include: {
       topics: { orderBy: { id: 'asc' }, select: { id: true } },
       strategicLines: { select: { id: true } },
+      departments: { select: { id: true }, orderBy: { id: 'asc' } },
       projectBeneficiaries: {
         orderBy: { year: 'asc' },
         include: BENEFICIARY_VALUES_SELECT,

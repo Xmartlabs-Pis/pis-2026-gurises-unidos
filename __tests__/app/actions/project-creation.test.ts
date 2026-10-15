@@ -32,7 +32,7 @@ import { toBeneficiaryValuesCreate } from '@/lib/project-display';
 
 const EMPTY_STATE: ProjectFormState = {};
 
-type FormDataInput = Record<string, string | undefined>;
+type FormDataInput = Record<string, string | string[] | undefined>;
 
 const VALID_FIELDS: FormDataInput = {
   name: 'Community Center',
@@ -42,9 +42,9 @@ const VALID_FIELDS: FormDataInput = {
   counterpartyType: 'publicSector',
   startYear: '2020',
   leadCoordinatorId: '1',
-  departmentId: '2',
+  geographicScope: 'national',
+  departmentIds: '2',
   zone: 'city',
-  localityNeighborhood: '',
   generalObjective: '',
   publicDescription: '',
   internalNotes: '',
@@ -63,14 +63,14 @@ function buildFormData(overrides: FormDataInput = {}): FormData {
   const fields = { ...VALID_FIELDS, ...overrides };
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
-    if (value !== undefined) {
-      formData.append(key, value);
+    for (const item of [value].flat()) {
+      if (item !== undefined) formData.append(key, item);
     }
   }
   return formData;
 }
 
-function setupTransaction({ projectId = 42, beneficiaryId = 9 } = {}) {
+function setupTransaction({ projectId = 42, beneficiaryId = 9, existingDepartments = 99 } = {}) {
   const projectCreate = vi.fn().mockResolvedValue({ id: projectId });
   const beneficiaryCreate = vi.fn().mockResolvedValue({ id: beneficiaryId });
 
@@ -85,6 +85,11 @@ function setupTransaction({ projectId = 42, beneficiaryId = 9 } = {}) {
       ),
       user: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
       topic: { count: vi.fn().mockResolvedValue(1) },
+      department: {
+        count: vi.fn(async ({ where }: { where: { id: { in: number[] } } }) =>
+          Math.min(where.id.in.length, existingDepartments)
+        ),
+      },
       project: { create: projectCreate, findFirst: vi.fn().mockResolvedValue(null) },
       projectBeneficiary: { create: beneficiaryCreate },
     })
@@ -173,9 +178,11 @@ describe('createProject', () => {
         startYear: 2020,
         endYear: null,
         leadCoordinatorId: 1,
-        departmentId: 2,
+        geographicScope: 'national',
+        countries: [],
+        cities: [],
+        neighborhoods: [],
         zone: 'city',
-        localityNeighborhood: null,
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
@@ -184,6 +191,7 @@ describe('createProject', () => {
         createdBy: 7,
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
+        departments: { connect: [{ id: 2 }] },
       },
     });
     expect(beneficiaryCreate).toHaveBeenCalledWith({
@@ -296,6 +304,82 @@ describe('createProject', () => {
     });
   });
 
+  test('creates a national project with several departments, cities and neighborhoods', async () => {
+    const { projectCreate } = setupTransaction();
+
+    await expect(
+      createProject(
+        EMPTY_STATE,
+        buildFormData({
+          departmentIds: ['2', '5'],
+          cities: ['Las Piedras', 'Pando'],
+          neighborhoods: ['Centro', 'Barrio Obrero'],
+        })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        geographicScope: 'national',
+        countries: [],
+        cities: ['Las Piedras', 'Pando'],
+        neighborhoods: ['Centro', 'Barrio Obrero'],
+        departments: { connect: [{ id: 2 }, { id: 5 }] },
+      }),
+    });
+  });
+
+  test('creates an international project with several countries and no national values', async () => {
+    const { projectCreate } = setupTransaction();
+
+    await expect(
+      createProject(
+        EMPTY_STATE,
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          cities: ['Pando'],
+        })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        geographicScope: 'international',
+        countries: ['Argentina', 'Brasil'],
+        cities: [],
+        neighborhoods: [],
+        departments: { connect: [] },
+      }),
+    });
+  });
+
+  test('requires a department for a national project without accessing the database', async () => {
+    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: undefined }));
+
+    expect(result.errors?.departmentIds).toEqual(['Seleccioná al menos un departamento']);
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('requires a country for an international project without accessing the database', async () => {
+    const result = await createProject(
+      EMPTY_STATE,
+      buildFormData({ geographicScope: 'international' })
+    );
+
+    expect(result.errors?.countries).toEqual(['Ingresá al menos un país']);
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects departments that do not exist before creating the project', async () => {
+    const { projectCreate } = setupTransaction({ existingDepartments: 1 });
+
+    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: ['2', '999'] }));
+
+    expect(result).toEqual({ errors: { departmentIds: ['Elegí departamentos válidos'] } });
+    expect(projectCreate).not.toHaveBeenCalled();
+  });
+
   test('reports a message when the coordinator or department foreign key is invalid', async () => {
     transactionMock.mockRejectedValue(
       knownRequestError('P2003', { field_name: 'Project_leadCoordinatorId_fkey (index)' })
@@ -345,7 +429,6 @@ describe('createProject', () => {
 
   const TEXT_LIMITS = [
     { field: 'name', limit: 100 },
-    { field: 'localityNeighborhood', limit: 100 },
     { field: 'generalObjective', limit: 500 },
     { field: 'publicDescription', limit: 1000 },
     { field: 'internalNotes', limit: 1000 },
