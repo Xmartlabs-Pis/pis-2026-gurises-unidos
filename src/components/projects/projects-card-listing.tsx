@@ -23,7 +23,6 @@ import { ScrollToTopButton } from '@/components/scroll-to-top-button';
 import { useUrlFilters } from '@/hooks/use-url-filters';
 
 const ALL_YEARS = 'all';
-const SEARCH_DEBOUNCE_MS = 400;
 
 type YearFilterValue = number | typeof ALL_YEARS;
 
@@ -58,7 +57,6 @@ export function ProjectsCardList({
 }: ProjectsCardListProps) {
   const { searchText, changeSearch, updateFilters, clearFilters, isPending } = useUrlFilters({
     search,
-    debounceMs: SEARCH_DEBOUNCE_MS,
     resetKeys: ['page'],
   });
 

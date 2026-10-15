@@ -22,7 +22,6 @@ import {
 import { formatUserCount } from '@/lib/users/format';
 import type { UserListFilters } from '@/lib/users/list';
 
-const SEARCH_DEBOUNCE_MS = 300;
 const DEFAULT_SORT: SortBy = 'name';
 
 function toFilterParam(value: string | null) {
@@ -43,7 +42,6 @@ export function UsersListToolbar({
   const { searchText, changeSearch, updateFilters, clearFilters } = useUrlFilters({
     search: filters.search,
     searchKey: 'q',
-    debounceMs: SEARCH_DEBOUNCE_MS,
   });
 
   const roleFilter = filters.role ?? 'all';
