@@ -27,7 +27,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     generalObjective: 'Objective',
     publicDescription: '',
     internalNotes: '',
-    topicId: String(seed.topicIds[0]),
+    topicIds: [String(seed.topicIds[0])],
     strategicLineIds: [String(seed.strategicLineIds[0])],
     year: String(BENEFICIARY_YEAR),
     directChildrenAdolescents: '10',
@@ -61,7 +61,7 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       neighborhoods: ['Barrio Sur'],
       generalObjective: 'Objective',
       createdBy: seed.adminId,
-      topicId: seed.topicIds[0],
+      topics: { connect: { id: seed.topicIds[0] } },
       strategicLines: { connect: { id: seed.strategicLineIds[0] } },
       projectBeneficiaries: {
         create: {
@@ -182,10 +182,10 @@ describe('updateProject (integration)', () => {
     ]);
   });
 
-  test('persists changed fields and topic and audits only what changed', async () => {
+  test('persists changed fields and topics and audits only what changed', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
-    const newTopicId = seed.topicIds[1];
+    const newTopicIds = [seed.topicIds[1], seed.topicIds[2]];
 
     await expectRedirectToProject(
       updateProject(
@@ -195,7 +195,7 @@ describe('updateProject (integration)', () => {
           name: 'Renamed project',
           zone: 'city',
           departmentIds: [String(seed.departmentIds[1])],
-          topicId: String(newTopicId),
+          topicIds: newTopicIds.map(String),
         })
       ),
       projectId
@@ -209,13 +209,13 @@ describe('updateProject (integration)', () => {
       status: 'active',
       startYear: 2020,
     });
-    expect(project.topicId).toBe(newTopicId);
+    expect(project.topics).toEqual([...newTopicIds].sort((a, b) => a - b).map((id) => ({ id })));
     expect(await auditLogsFor(projectId)).toEqual([
       expect.objectContaining({
         entity: 'project',
         action: 'update',
         authorId: seed.adminId,
-        details: { changedFields: ['name', 'zone', 'topicId', 'departments'] },
+        details: { changedFields: ['name', 'zone', 'topics', 'departments'] },
       }),
     ]);
   });
@@ -401,10 +401,10 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ name: 'Should not persist', topicId: String(unknownTopicId) })
+      buildFormData({ name: 'Should not persist', topicIds: [String(unknownTopicId)] })
     );
 
-    expect(result.errors?.topicId).toEqual(['Elegí una temática válida']);
+    expect(result.errors?.topicIds).toEqual(['Elegí temáticas válidas']);
     expect(await loadProject(projectId)).toEqual(before);
   });
 

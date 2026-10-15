@@ -72,7 +72,7 @@ beforeAll(async () => {
   const project = await database.project.create({
     data: {
       name: 'Original project',
-      topicId,
+      topics: { connect: { id: topicId } },
       status: 'active',
       intensity: 'high',
       counterpartyType: 'publicSector',
@@ -125,7 +125,7 @@ it.skipIf(!TEST_DATABASE_URL)(
       zone: 'city',
       year: '2026',
       families: '35',
-      topicId: String(topicId),
+      topicIds: String(topicId),
       strategicLineIds: String(strategicLineId),
       coverPhoto: '/forged-cover.png',
     }).forEach(([key, value]) => data.append(key, value));
@@ -150,10 +150,11 @@ it.skipIf(!TEST_DATABASE_URL)(
     );
     const saved = await database!.project.findUniqueOrThrow({
       where: { id: projectId },
+      include: { topics: { select: { id: true } } },
     });
     expect(saved.name).toBe('Changed project');
     expect(saved.coverPhoto).toBe('/existing-cover.png');
-    expect(saved.topicId).toBe(topicId);
+    expect(saved.topics).toEqual([{ id: topicId }]);
     expect(
       await database!.projectBeneficiary.findUnique({
         where: { projectId_year: { projectId, year: 2025 } },

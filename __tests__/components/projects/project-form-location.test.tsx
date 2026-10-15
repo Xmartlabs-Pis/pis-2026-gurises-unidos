@@ -32,7 +32,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
         counterpartyType: 'publicSector',
         name: 'Project',
         strategicLineIds: ['1'],
-        topicId: '1',
+        topicIds: ['1'],
         leadCoordinatorId: '2',
         startYear: '2020',
         ...initialValues,

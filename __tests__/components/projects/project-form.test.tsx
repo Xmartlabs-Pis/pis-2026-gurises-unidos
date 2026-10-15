@@ -40,7 +40,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
         counterpartyType: 'publicSector',
         name: 'Existing project',
         strategicLineIds: ['1'],
-        topicId: '1',
+        topicIds: ['1'],
         status: 'active',
         leadCoordinatorId: '2',
         departmentIds: ['3'],
@@ -141,7 +141,7 @@ it('shows and submits the selected project placeholder during creation', () => {
   );
 });
 
-it('sends one selected topic and preserves it after a failed save', async () => {
+it('sends multiple selected topics and preserves them after a failed save', async () => {
   const submitAction = vi.fn().mockResolvedValue({ formError: 'No se pudo guardar' });
   const { container } = render(
     <ProjectForm
@@ -160,7 +160,7 @@ it('sends one selected topic and preserves it after a failed save', async () => 
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
-        topicId: '1',
+        topicIds: ['1'],
       }}
       submitAction={submitAction}
     />
@@ -168,17 +168,35 @@ it('sends one selected topic and preserves it after a failed save', async () => 
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
-  expect(submitAction.mock.calls[0][1].getAll('topicId')).toEqual(['1']);
-  expect(screen.getByLabelText('Temática').textContent).toContain('Education');
-  fireEvent.click(screen.getByLabelText('Temática'));
+  expect(submitAction.mock.calls[0][1].getAll('topicIds')).toEqual(['1']);
+  expect(screen.getByLabelText('Temáticas').textContent).toContain('Education');
+  fireEvent.click(screen.getByLabelText('Temáticas'));
   fireEvent.keyDown(await screen.findByRole('option', { name: 'Health' }), { key: 'Enter' });
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
-  expect(submitAction.mock.calls[1][1].getAll('topicId')).toEqual(['2']);
-  expect(screen.getByLabelText('Temática').textContent).toContain('Health');
-  fireEvent.click(screen.getByLabelText('Temática'));
-  expect(screen.queryByRole('option', { name: 'Sin temática' })).toBeNull();
+  expect(submitAction.mock.calls[1][1].getAll('topicIds')).toEqual(['1', '2']);
+  expect(screen.getByLabelText('Temáticas').textContent).toContain('Education, Health');
+});
+
+it('disables the topics field and explains why when there are no topics', () => {
+  render(
+    <ProjectForm
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      submitAction={vi.fn()}
+    />
+  );
+  expect(screen.getByLabelText('Temáticas')).toHaveProperty('disabled', true);
+  expect(
+    screen.getByText(
+      'No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos.'
+    )
+  ).toBeTruthy();
 });
 
 function renderFormWith(initialValues: Record<string, string>) {
@@ -232,7 +250,7 @@ it('submits the end year of an inactive project', async () => {
         status: 'inactive',
         startYear: '2020',
         endYear: '2022',
-        topicId: '1',
+        topicIds: ['1'],
       }}
       submitAction={submitAction}
     />
@@ -245,7 +263,7 @@ it('submits the end year of an inactive project', async () => {
 
 it('refreshes the topic list after a selected topic becomes invalid', async () => {
   const submitAction = vi.fn().mockResolvedValue({
-    errors: { topicId: ['Elegí una temática válida'] },
+    errors: { topicIds: ['Elegí temáticas válidas'] },
   });
   const { container } = render(
     <ProjectForm
@@ -261,7 +279,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
-        topicId: '1',
+        topicIds: ['1'],
       }}
       submitAction={submitAction}
     />
@@ -369,7 +387,7 @@ function renderWithManyCategories(
         counterpartyType: 'publicSector',
         name: 'Existing project',
         strategicLineIds: ['1'],
-        topicId: '1',
+        topicIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
         startYear: '2020',
@@ -440,7 +458,7 @@ it.each(['create', 'edit'] as const)(
         departments={[{ id: 3, name: 'Montevideo' }]}
         initialValues={{
           name: 'Project',
-          topicId: '1',
+          topicIds: ['1'],
           leadCoordinatorId: '2',
           departmentIds: ['3'],
           counterpartyType: mode === 'edit' ? 'publicSector' : '',

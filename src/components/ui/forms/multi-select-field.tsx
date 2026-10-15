@@ -45,6 +45,7 @@ export function MultiSelectField({
     : [];
   const errorMessage = fieldState.error?.message;
   const isMaxSelected = maxSelected !== undefined && selectedValues.length >= maxSelected;
+  const isEmpty = options.length === 0;
 
   return (
     <Field className="min-w-0 gap-1.5" data-invalid={Boolean(errorMessage)}>
@@ -63,6 +64,7 @@ export function MultiSelectField({
           }
         }}
         required={required}
+        disabled={isEmpty}
         items={options}
       >
         <SelectTrigger
@@ -93,11 +95,6 @@ export function MultiSelectField({
               {option.label}
             </SelectItem>
           ))}
-          {options.length === 0 && emptyMessage && (
-            <p role="presentation" className="text-muted-foreground px-2 py-1.5 text-sm">
-              {emptyMessage}
-            </p>
-          )}
         </SelectContent>
       </Select>
       {selectedValues.map((value) => (
@@ -105,6 +102,10 @@ export function MultiSelectField({
       ))}
       {errorMessage ? (
         <FieldError className="text-xs leading-4">{errorMessage}</FieldError>
+      ) : isEmpty && emptyMessage ? (
+        <FieldDescription className="text-muted-foreground text-xs leading-4">
+          {emptyMessage}
+        </FieldDescription>
       ) : isMaxSelected && maxSelectedMessage ? (
         <FieldDescription className="text-muted-foreground text-xs leading-4">
           {maxSelectedMessage}

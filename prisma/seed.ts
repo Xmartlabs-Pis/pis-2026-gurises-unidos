@@ -51,7 +51,7 @@ type SeedProject = {
   startYear: number;
   endYear?: number;
   department: string;
-  topic: string;
+  topics: string[];
   zone: 'city' | 'inland' | 'rural';
   cities: string[];
   neighborhoods: string[];
@@ -67,7 +67,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'high',
     startYear: 2022,
     department: 'Montevideo',
-    topic: 'Community',
+    topics: ['Community'],
     zone: 'city',
     cities: ['Montevideo'],
     neighborhoods: ['Cerro Norte'],
@@ -103,7 +103,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2023,
     department: 'Canelones',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'inland',
     cities: ['Las Piedras'],
     neighborhoods: [],
@@ -139,7 +139,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'low',
     startYear: 2024,
     department: 'Montevideo',
-    topic: 'Education',
+    topics: ['Education', 'Community'],
     zone: 'city',
     cities: ['Montevideo'],
     neighborhoods: ['Casavalle'],
@@ -169,7 +169,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'high',
     startYear: 2023,
     department: 'Salto',
-    topic: 'Health',
+    topics: ['Health'],
     zone: 'inland',
     cities: ['Salto'],
     neighborhoods: ['Barrio Artigas'],
@@ -200,7 +200,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2024,
     department: 'Maldonado',
-    topic: 'Protection',
+    topics: ['Protection'],
     zone: 'city',
     cities: ['Maldonado'],
     neighborhoods: ['Maldonado Nuevo'],
@@ -223,7 +223,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2025,
     department: 'Paysandú',
-    topic: 'Community',
+    topics: ['Community'],
     zone: 'city',
     cities: ['Paysandú'],
     neighborhoods: ['Barrio Obrero'],
@@ -245,7 +245,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'low',
     startYear: 2023,
     department: 'Rivera',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'rural',
     cities: ['Paraje Cerros Blancos'],
     neighborhoods: [],
@@ -272,7 +272,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2022,
     department: 'Tacuarembó',
-    topic: 'Health',
+    topics: ['Health'],
     zone: 'inland',
     cities: ['Tacuarembó'],
     neighborhoods: ['Barrio Ferrocarril'],
@@ -288,7 +288,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'high',
     startYear: 2024,
     department: 'Colonia',
-    topic: 'Protection',
+    topics: ['Protection', 'Health'],
     zone: 'city',
     cities: ['Colonia del Sacramento'],
     neighborhoods: ['Barrio Sur'],
@@ -303,7 +303,7 @@ const SEED_PROJECTS: SeedProject[] = [
     startYear: 2021,
     endYear: 2023,
     department: 'Montevideo',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'city',
     cities: ['Montevideo'],
     neighborhoods: ['Malvín Norte'],
@@ -321,7 +321,7 @@ const SEED_PROJECTS: SeedProject[] = [
     startYear: 2020,
     endYear: 2024,
     department: 'Tacuarembó',
-    topic: 'Community',
+    topics: ['Community'],
     zone: 'rural',
     cities: ['Paso de los Toros'],
     neighborhoods: [],
@@ -351,7 +351,7 @@ const SEED_PROJECTS: SeedProject[] = [
     startYear: 2022,
     endYear: 2025,
     department: 'Canelones',
-    topic: 'Health',
+    topics: ['Health'],
     zone: 'inland',
     cities: ['Barros Blancos'],
     neighborhoods: [],
@@ -368,7 +368,7 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'low',
     startYear: 2025,
     department: 'Montevideo',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'city',
     cities: ['Montevideo'],
     neighborhoods: ['Casavalle'],
@@ -390,6 +390,7 @@ type ProjectFixture = Required<
     | 'updatedAt'
     | 'projectCoordinators'
     | 'projectBeneficiaries'
+    | 'topics'
     | 'strategicLines'
     | 'departments'
   >
@@ -482,7 +483,7 @@ async function main() {
       });
 
       for (const [index, project] of SEED_PROJECTS.entries()) {
-        const { department, topic, beneficiaries, endYear, showOnLanding, ...fields } = project;
+        const { department, topics, beneficiaries, endYear, showOnLanding, ...fields } = project;
         const fixture: ProjectFixture = {
           ...fields,
           counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
@@ -491,7 +492,6 @@ async function main() {
           leadCoordinatorId: coordinator.id,
           geographicScope: 'national',
           countries: [],
-          topicId: topicIds.get(topic)!,
           generalObjective: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
           internalNotes: null,
@@ -505,13 +505,22 @@ async function main() {
           select: { id: true },
         });
         const projectDepartments = [{ id: departmentIds.get(department)! }];
+        const topicRefs = topics.map((name) => ({ id: topicIds.get(name)! }));
         const saved = existing
           ? await tx.project.update({
               where: { id: existing.id },
-              data: { ...fixture, departments: { set: projectDepartments } },
+              data: {
+                ...fixture,
+                departments: { set: projectDepartments },
+                topics: { set: topicRefs },
+              },
             })
           : await tx.project.create({
-              data: { ...fixture, departments: { connect: projectDepartments } },
+              data: {
+                ...fixture,
+                departments: { connect: projectDepartments },
+                topics: { connect: topicRefs },
+              },
             });
 
         for (const { year, ...counts } of beneficiaries) {

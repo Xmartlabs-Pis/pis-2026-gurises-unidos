@@ -42,7 +42,7 @@ const DETAIL = {
       coverPhoto: '/images/project-placeholders/1.webp',
       leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
       departments: [{ id: 1, name: 'Montevideo' }],
-      topic: { id: 1, name: 'Educación' },
+      topics: [{ id: 1, name: 'Educación' }],
     },
     selectedYear: 2026,
     comparisonYear: 2025,

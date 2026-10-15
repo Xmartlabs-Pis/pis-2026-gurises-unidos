@@ -109,7 +109,10 @@ export async function getPublicProjectsPage(
   page: number
 ): Promise<PublicProjectsPage> {
   const rows = await prisma.project.findMany({
-    where: { ...publicProjectWhere(year), topicId, topic: { isActive: true, showPublicly: true } },
+    where: {
+      ...publicProjectWhere(year),
+      topics: { some: { id: topicId, isActive: true, showPublicly: true } },
+    },
     orderBy: PUBLIC_PROJECT_ORDER,
     select: publicProjectSelect(year),
     skip: (page - 1) * PUBLIC_PROJECTS_PAGE_SIZE,
