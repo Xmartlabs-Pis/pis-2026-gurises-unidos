@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import Link from 'next/link';
 import { createTopic, deleteTopic, type TopicActionState } from '@/app/actions/topics';
 import { topicSchema } from '@/lib/validation/topic';
 import { Input } from '../ui/input';
@@ -110,6 +111,29 @@ export function TopicsManagement({ topics }: TopicsManagementProps) {
   );
 }
 
+function TopicProjectCount({
+  topicId,
+  projectCount,
+}: {
+  topicId: number;
+  projectCount: number;
+}) {
+  const label = projectCount === 1 ? '1 proyecto' : `${projectCount} proyectos`;
+
+  if (!projectCount) {
+    return <span className="text-muted-foreground text-xs leading-4 font-normal">{label}</span>;
+  }
+
+  return (
+    <Link
+      href={`/dashboard/projects?topicId=${topicId}&status=all&beneficiaryYear=all`}
+      className="text-primary text-xs leading-4 font-normal underline-offset-4 hover:underline"
+    >
+      {label}
+    </Link>
+  );
+}
+
 function TopicRow({ topic }: { topic: Topic }) {
   const [state, formAction, pending] = useActionState(
     deleteTopic.bind(null, topic.id),
@@ -122,9 +146,7 @@ function TopicRow({ topic }: { topic: Topic }) {
         <span className="text-foreground text-sm leading-5 font-medium">{topic.name}</span>
 
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs leading-4 font-normal">
-            {topic._count.projects === 1 ? '1 proyecto' : `${topic._count.projects} proyectos`}
-          </span>
+          <TopicProjectCount topicId={topic.id} projectCount={topic._count.projects} />
 
           {topic._count.projects > 0 ? (
             <AlertDialog>
