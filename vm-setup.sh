@@ -46,6 +46,8 @@ DB_PORT=$DB_PORT
 AUTH_SECRET=$(openssl rand -base64 32)
 AUTH_TRUST_HOST=true
 AUTH_URL=http://$IP:$PORT
+EMAIL_FROM="Gurises Unidos <onboarding@resend.dev>"
+RESEND_API_KEY=
 EOF
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -53,3 +55,4 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 echo "== $ENV_FILE creado"
+echo "== completá RESEND_API_KEY en $ENV_FILE: sin ella no se envían mails"
