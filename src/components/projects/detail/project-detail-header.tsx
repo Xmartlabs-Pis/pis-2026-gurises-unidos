@@ -74,7 +74,6 @@ export function ProjectDetailHeader({
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
-  const description = project.generalObjective ?? project.publicDescription;
 
   return (
     <section className="border-border pb-1 sm:border-b sm:pb-5">
@@ -106,9 +105,9 @@ export function ProjectDetailHeader({
       </div>
 
       <div className="flex flex-col">
-        {description && (
+        {project.generalObjective && (
           <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
-            {description}
+            {project.generalObjective}
           </p>
         )}
         <div className="order-2 sm:order-1">
