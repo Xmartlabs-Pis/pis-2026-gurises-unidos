@@ -64,16 +64,6 @@ function ProjectMetadata({
   );
 }
 
-function ProjectGeneralObjective({ generalObjective }: { generalObjective: string | null }) {
-  if (!generalObjective) {
-    return null;
-  }
-
-  return (
-    <p className="text-muted-foreground mt-3 max-w-4xl text-sm leading-5">{generalObjective}</p>
-  );
-}
-
 export function ProjectDetailHeader({
   project,
   selectedYear,
@@ -115,9 +105,11 @@ export function ProjectDetailHeader({
       </div>
 
       <div className="flex flex-col">
-        <div className="order-1 sm:order-2">
-          <ProjectGeneralObjective generalObjective={project.generalObjective} />
-        </div>
+        {project.generalObjective && (
+          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
+            {project.generalObjective}
+          </p>
+        )}
         <div className="order-2 sm:order-1">
           <ProjectMetadata
             territory={territory}
