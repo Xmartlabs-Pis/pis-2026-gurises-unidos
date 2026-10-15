@@ -34,7 +34,7 @@ const PROJECT: ProjectDetail['project'] = {
 };
 
 function renderHeader(endYear: number | null) {
-  render(
+  return render(
     <ProjectDetailHeader
       project={{ ...PROJECT, endYear }}
       selectedYear={2026}
@@ -99,4 +99,24 @@ test('shows the end year of a finished project', () => {
   renderHeader(2023);
 
   expect(screen.getByText('2020–2023')).toBeDefined();
+});
+
+test('shows only the general objective text in the header', () => {
+  renderHeader(null);
+
+  expect(screen.getByText('Support adolescents and families.')).toBeDefined();
+  expect(screen.queryByRole('heading', { name: 'Objetivo general' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Descripción pública' })).toBeNull();
+  expect(screen.queryByText('Community support project.')).toBeNull();
+});
+
+test('places the general objective before metadata in the mobile reading order', () => {
+  const { container } = renderHeader(null);
+  const content = container.textContent ?? '';
+  const objectivePosition = content.indexOf('Support adolescents and families.');
+  const metadataPosition = content.indexOf('Territorio:');
+
+  expect(objectivePosition).toBeGreaterThanOrEqual(0);
+  expect(metadataPosition).toBeGreaterThanOrEqual(0);
+  expect(objectivePosition).toBeLessThan(metadataPosition);
 });
