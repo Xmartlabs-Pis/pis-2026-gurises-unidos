@@ -8,10 +8,9 @@ CROSS JOIN LATERAL (
     ORDER BY lower("name"), "id"
     LIMIT 1
 ) AS strategic_line
-WHERE project."deletedAt" IS NULL
-  AND NOT EXISTS (
-      SELECT 1
-      FROM "_ProjectToStrategicLine" AS relation
-      WHERE relation."A" = project."id"
-  )
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM "_ProjectToStrategicLine" AS relation
+    WHERE relation."A" = project."id"
+)
 ON CONFLICT ("A", "B") DO NOTHING;
