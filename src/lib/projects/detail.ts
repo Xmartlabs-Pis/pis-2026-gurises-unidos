@@ -15,7 +15,7 @@ import {
   toBeneficiaryCounts,
 } from '@/lib/projects/beneficiary-values';
 import { parseProjectDetailInput } from '@/lib/validation/project-detail';
-import { PROJECT_LOCATION_SELECT } from '@/lib/projects/location';
+import { PROJECT_LOCATION_SELECT, getTerritoryNames } from '@/lib/projects/location';
 
 export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown) {
   const user = await requireUser();
@@ -152,10 +152,7 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
   ).percentageChange;
 
   const hasData = current !== null;
-  const territoryNames =
-    project.geographicScope === 'international'
-      ? project.countries
-      : project.departments.map(({ name }) => name);
+  const territoryNames = getTerritoryNames(project);
 
   return {
     status: 'success' as const,

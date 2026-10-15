@@ -17,14 +17,14 @@ export const PROJECT_LOCATION_SELECT = {
   departments: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
 } satisfies Prisma.ProjectSelect;
 
-export function getTerritoryLabel({
-  geographicScope,
-  departments,
-  countries,
-}: Pick<ProjectLocation, 'geographicScope' | 'departments' | 'countries'>) {
-  const territories =
-    geographicScope === 'international' ? countries : departments.map(({ name }) => name);
-  return territories.join(', ');
+type TerritoryInput = Pick<ProjectLocation, 'geographicScope' | 'departments' | 'countries'>;
+
+export function getTerritoryNames({ geographicScope, departments, countries }: TerritoryInput) {
+  return geographicScope === 'international' ? countries : departments.map(({ name }) => name);
+}
+
+export function getTerritoryLabel(location: TerritoryInput) {
+  return getTerritoryNames(location).join(', ');
 }
 
 export function getLocationLabel(location: ProjectLocation) {
