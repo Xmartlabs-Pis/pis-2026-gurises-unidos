@@ -98,7 +98,7 @@ async function main() {
             ...E2E_ACTIVE_PROJECT,
             leadCoordinatorId: coordinator.id,
             departmentId: department.id,
-            topicId: topic.id,
+            topics: { connect: { id: topic.id } },
             createdBy: admin.id,
           },
         });
@@ -108,7 +108,7 @@ async function main() {
             ...E2E_INACTIVE_PROJECT,
             leadCoordinatorId: coordinator.id,
             departmentId: department.id,
-            topicId: topic.id,
+            topics: { connect: { id: topic.id } },
             createdBy: admin.id,
           },
         });

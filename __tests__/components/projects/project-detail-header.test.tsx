@@ -23,7 +23,7 @@ const PROJECT: ProjectDetail['project'] = {
   coverPhoto: null,
   leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
   department: { id: 1, name: 'Montevideo' },
-  topic: { id: 1, name: 'Educación' },
+  topics: [{ id: 1, name: 'Educación' }],
 };
 
 function renderHeader(endYear: number | null) {

@@ -108,7 +108,9 @@ describe('getPublicProjectsPage', () => {
     });
     expect(prismaMock.project.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ topic: { isActive: true, showPublicly: true } }),
+        where: expect.objectContaining({
+          topics: { some: { id: TOPIC_ID, isActive: true, showPublicly: true } },
+        }),
       })
     );
   });
@@ -125,8 +127,7 @@ describe('getPublicProjectsPage', () => {
           deletedAt: null,
           showOnLanding: true,
           projectBeneficiaries: { some: { year: 2025 } },
-          topicId: TOPIC_ID,
-          topic: { isActive: true, showPublicly: true },
+          topics: { some: { id: TOPIC_ID, isActive: true, showPublicly: true } },
         },
         skip: PUBLIC_PROJECTS_PAGE_SIZE,
         take: PUBLIC_PROJECTS_PAGE_SIZE + 1,

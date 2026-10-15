@@ -36,7 +36,7 @@ type FormDataInput = Record<string, string | undefined>;
 
 const VALID_FIELDS: FormDataInput = {
   name: 'Community Center',
-  topicId: '1',
+  topicIds: '1',
   status: 'active',
   intensity: 'high',
   counterpartyType: 'publicSector',
@@ -84,7 +84,7 @@ function setupTransaction({ projectId = 42, beneficiaryId = 9 } = {}) {
             : []
       ),
       user: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
-      topic: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
+      topic: { count: vi.fn().mockResolvedValue(1) },
       project: { create: projectCreate, findFirst: vi.fn().mockResolvedValue(null) },
       projectBeneficiary: { create: beneficiaryCreate },
     })
@@ -182,7 +182,7 @@ describe('createProject', () => {
         showOnLanding: true,
         coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
         createdBy: 7,
-        topicId: 1,
+        topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
       },
     });

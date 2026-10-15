@@ -59,7 +59,8 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
           name: true,
         },
       },
-      topic: {
+      topics: {
+        orderBy: { name: 'asc' },
         select: {
           id: true,
           name: true,

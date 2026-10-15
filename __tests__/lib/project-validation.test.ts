@@ -60,10 +60,11 @@ it.each([
   expect(projectSchema.shape[field].safeParse('a'.repeat(limit)).success).toBe(true);
   expect(projectSchema.shape[field].safeParse('a'.repeat(limit + 1)).success).toBe(false);
 });
-it('requires one valid topic', () => {
-  const schema = buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS).shape.topicId;
-  expect(schema.parse('2')).toBe(2);
-  for (const value of ['', 'none', undefined, null, 'invalid', '0', ['1', '2']])
+it('requires one or more unique valid topics', () => {
+  const schema = buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS).shape.topicIds;
+  expect(schema.parse(['2'])).toEqual([2]);
+  expect(schema.parse(['2', '5', '9'])).toEqual([2, 5, 9]);
+  for (const value of [[], [''], ['none'], ['invalid'], ['0'], ['1', '1'], undefined, null])
     expect(schema.safeParse(value).success).toBe(false);
 });
 it('parses an empty end year as null and bounds it to valid years', () => {
@@ -123,7 +124,7 @@ it('validates a custom beneficiary category and splits it into the counts', () =
   const schema = buildProjectFormSchema(keys);
   const input = {
     ...BASE_PROJECT,
-    topicId: '1',
+    topicIds: ['1'],
     year: '2021',
     strategicLineIds: ['1'],
     customVolunteers: '12',
@@ -134,11 +135,13 @@ it('validates a custom beneficiary category and splits it into the counts', () =
     customVolunteers: ['No puede ser negativo'],
   });
 
-  const { projectData, beneficiaryData, strategicLineIds } = splitProjectFormData(
+  const { projectData, beneficiaryData, topicIds, strategicLineIds } = splitProjectFormData(
     schema.parse(input),
     keys
   );
+  expect(topicIds).toEqual([1]);
   expect(strategicLineIds).toEqual([1]);
+  expect(projectData).not.toHaveProperty('topicIds');
   expect(projectData).not.toHaveProperty('strategicLineIds');
   expect(beneficiaryData).toEqual({
     year: 2021,
@@ -155,7 +158,7 @@ it('validates a custom beneficiary category and splits it into the counts', () =
   });
   expect(projectData).not.toHaveProperty('customVolunteers');
   expect(projectData).not.toHaveProperty('families');
-  expect(projectData).toMatchObject({ name: 'Project', topicId: 1 });
+  expect(projectData).toMatchObject({ name: 'Project' });
 });
 
 it.each(['publicSector', 'privateSector', 'internationalCooperation'])(
@@ -184,7 +187,7 @@ it('requires between one and three unique strategic lines', () => {
     ...BASE_PROJECT,
     status: 'active',
     endYear: '',
-    topicId: '1',
+    topicIds: ['1'],
     year: '2020',
   };
 

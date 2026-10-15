@@ -63,7 +63,7 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
     where.departmentId = filters.departmentId;
   }
   if (filters.topicId) {
-    where.topicId = filters.topicId;
+    where.topics = { some: { id: filters.topicId } };
   }
   if (filters.startYearFrom !== undefined || filters.startYearTo !== undefined) {
     where.startYear = { gte: filters.startYearFrom, lte: filters.startYearTo };

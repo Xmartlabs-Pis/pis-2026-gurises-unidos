@@ -61,23 +61,16 @@ export function BasicInfoSection({
             }
           }}
         />
-        <SelectField
-          id="topicId"
-          name="topicId"
-          label="Temática"
-          placeholder="Seleccionar temática..."
+        <MultiSelectField
+          id="topicIds"
+          name="topicIds"
+          label="Temáticas"
+          placeholder="Seleccionar temáticas..."
           options={topics.map((topic) => ({
             value: String(topic.id),
             label: topic.name,
           }))}
-          disabled={topics.length === 0}
-          messages={
-            topics.length === 0
-              ? [
-                  'No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos.',
-                ]
-              : undefined
-          }
+          emptyMessage="No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos."
           required
         />
       </div>

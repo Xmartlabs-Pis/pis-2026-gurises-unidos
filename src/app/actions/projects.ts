@@ -17,6 +17,7 @@ import {
   buildProjectFormSchema,
   readProjectFormData,
   splitProjectFormData,
+  TOPICS_ERROR_MESSAGE,
 } from '@/lib/validation/project-form';
 import type { Prisma } from '@/generated/prisma/client';
 import type { Intensity } from '@/generated/prisma/enums';
@@ -31,10 +32,8 @@ import { DUPLICATE_PROJECT_MESSAGE } from '@/lib/projects/map-project-db-error';
 import { PROJECT_LIST_PAGE_SIZE, parseProjectFilters } from '@/lib/validation/project-filters';
 import { listProjects, type ProjectListPage } from '@/lib/projects/list';
 
-async function lockTopics(tx: Prisma.TransactionClient, topicIds: (number | null)[]) {
-  const ids = [...new Set(topicIds.filter((id): id is number => id !== null))].sort(
-    (a, b) => a - b
-  );
+async function lockTopics(tx: Prisma.TransactionClient, topicIds: number[]) {
+  const ids = [...new Set(topicIds)].sort((a, b) => a - b);
   for (const id of ids) {
     await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${id} FOR UPDATE`;
   }
@@ -43,9 +42,9 @@ async function lockTopics(tx: Prisma.TransactionClient, topicIds: (number | null
 async function validateRelations(
   tx: Prisma.TransactionClient,
   coordinatorId: number,
-  topicId: number,
+  topicIds: number[],
   currentCoordinatorId?: number,
-  currentTopicId?: number
+  currentTopicIds: number[] = []
 ): Promise<ProjectFormState | null> {
   const coordinator = await tx.user.findFirst({
     where: {
@@ -57,16 +56,15 @@ async function validateRelations(
     select: { id: true },
   });
   if (!coordinator) return { errors: { leadCoordinatorId: ['Elegí un coordinador válido'] } };
-  const topic = await tx.topic.findFirst({
+  const validTopics = await tx.topic.count({
     where: {
-      id: topicId,
-      ...(topicId === currentTopicId ? {} : { isActive: true }),
+      id: { in: topicIds },
+      OR: [{ isActive: true }, { id: { in: currentTopicIds } }],
     },
-    select: { id: true },
   });
 
-  if (!topic) {
-    return { errors: { topicId: ['Elegí una temática válida'] } };
+  if (validTopics !== topicIds.length) {
+    return { errors: { topicIds: [TOPICS_ERROR_MESSAGE] } };
   }
   return null;
 }
@@ -173,7 +171,7 @@ export async function createProject(
   );
   if ('error' in resolved) return resolved.error;
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
-  const { strategicLineIds } = parsed;
+  const { topicIds, strategicLineIds } = parsed;
   const submittedPlaceholder = formData.get('projectPlaceholder');
   const coverPhoto = isProjectPlaceholder(submittedPlaceholder)
     ? submittedPlaceholder
@@ -182,15 +180,11 @@ export async function createProject(
   try {
     const result = await prisma.$transaction(
       async (tx): Promise<{ error: ProjectFormState } | { projectId: number }> => {
-        await lockTopics(tx, [projectData.topicId]);
+        await lockTopics(tx, topicIds);
         if (!(await lockBeneficiaryCategories(tx, keys))) {
           return { error: { formError: STALE_CATEGORIES_MESSAGE } };
         }
-        const error = await validateRelations(
-          tx,
-          projectData.leadCoordinatorId,
-          projectData.topicId
-        );
+        const error = await validateRelations(tx, projectData.leadCoordinatorId, topicIds);
         if (error) return { error };
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
         if (strategicLinesError) return { error: strategicLinesError };
@@ -199,6 +193,7 @@ export async function createProject(
         const project = await tx.project.create({
           data: {
             ...projectData,
+            topics: { connect: topicIds.map((id) => ({ id })) },
             strategicLines: { connect: strategicLineIds.map((id) => ({ id })) },
             coverPhoto,
             createdBy: user.id,
@@ -253,31 +248,35 @@ export async function updateProject(
   if (!parseId(projectId)) return { formError: 'El proyecto no es válido.' };
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
-  const { keys, projectData, beneficiaryData, strategicLineIds } = parsed;
+  const { keys, projectData, beneficiaryData, topicIds, strategicLineIds } = parsed;
   try {
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
         await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
         const previous = await tx.project.findFirst({
           where: { id: projectId, deletedAt: null },
-          include: { strategicLines: { select: { id: true } } },
+          include: {
+            topics: { select: { id: true } },
+            strategicLines: { select: { id: true } },
+          },
         });
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
         if (!canEditProject(user, previous))
           return { formError: 'No tenés permiso para editar este proyecto.' };
+        const currentTopicIds = previous.topics.map(({ id }) => id);
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
         if (strategicLinesError) return strategicLinesError;
-        await lockTopics(tx, [previous.topicId, projectData.topicId]);
+        await lockTopics(tx, [...currentTopicIds, ...topicIds]);
         if (!(await lockBeneficiaryCategories(tx, keys))) {
           return { formError: STALE_CATEGORIES_MESSAGE };
         }
         const relationError = await validateRelations(
           tx,
           projectData.leadCoordinatorId,
-          projectData.topicId,
+          topicIds,
           previous.leadCoordinatorId,
-          previous.topicId
+          currentTopicIds
         );
         if (relationError) return relationError;
         const nameError = await validateUniqueName(
@@ -310,11 +309,15 @@ export async function updateProject(
         );
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
+        const topicsChanged =
+          currentTopicIds.length !== topicIds.length ||
+          currentTopicIds.some((id) => !topicIds.includes(id));
         const strategicLinesChanged =
           currentStrategicLineIds.length !== strategicLineIds.length ||
           currentStrategicLineIds.some((id) => !strategicLineIds.includes(id));
         const fields = [
           ...changedFields(nextProjectData, previous),
+          ...(topicsChanged ? ['topics'] : []),
           ...(strategicLinesChanged ? ['strategicLines'] : []),
         ];
         if (fields.length) {
@@ -322,6 +325,7 @@ export async function updateProject(
             where: { id: projectId },
             data: {
               ...nextProjectData,
+              ...(topicsChanged ? { topics: { set: topicIds.map((id) => ({ id })) } } : {}),
               ...(strategicLinesChanged
                 ? { strategicLines: { set: strategicLineIds.map((id) => ({ id })) } }
                 : {}),

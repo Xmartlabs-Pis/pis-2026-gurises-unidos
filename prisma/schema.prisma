@@ -142,13 +142,12 @@ model Project {
   updatedAt            DateTime?        @updatedAt
   deletedAt            DateTime?
   deletedBy            Int?
-  topicId              Int
 
   leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
   department      Department      @relation(fields: [departmentId], references: [id])
   creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
   deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
-  topic           Topic           @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  topics          Topic[]
   strategicLines  StrategicLine[]
 
   projectCoordinators  ProjectCoordinator[]

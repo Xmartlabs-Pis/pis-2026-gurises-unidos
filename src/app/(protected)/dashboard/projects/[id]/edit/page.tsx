@@ -30,6 +30,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
     include: {
+      topics: { select: { id: true } },
       strategicLines: { select: { id: true } },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
@@ -87,7 +88,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     }),
     prisma.topic.findMany({
       where: {
-        OR: [{ isActive: true }, ...(project.topicId !== null ? [{ id: project.topicId }] : [])],
+        OR: [{ isActive: true }, { id: { in: project.topics.map(({ id }) => id) } }],
       },
       orderBy: { name: 'asc' },
       select: { id: true, name: true },

@@ -6,6 +6,7 @@ import type { ProjectFormValues } from './project-form-values';
 export function projectToFormValues(
   project: Project & {
     projectBeneficiaries: (BeneficiaryCounts & { year: number })[];
+    topics: { id: number }[];
     strategicLines?: { id: number }[];
   },
   currentYear: number,
@@ -30,7 +31,7 @@ export function projectToFormValues(
     internalNotes: project.internalNotes ?? '',
     showOnLanding: String(project.showOnLanding),
     coverPhotoUrl: project.coverPhoto,
-    topicId: String(project.topicId),
+    topicIds: project.topics.map(({ id }) => String(id)),
     strategicLineIds: project.strategicLines?.map(({ id }) => String(id)) ?? [],
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),
   };

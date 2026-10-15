@@ -3,9 +3,10 @@ import type { ProjectFormData } from '@/lib/validation/project-form';
 
 export type ProjectFormValues = Omit<
   { [K in keyof ProjectFormData]: string },
-  'strategicLineIds'
+  'topicIds' | 'strategicLineIds'
 > & {
   coverPhotoUrl: string | null;
+  topicIds: string[];
   strategicLineIds: string[];
 } & {
   [K in BeneficiaryFieldName]?: string;

@@ -136,7 +136,7 @@ export function ProjectForm({
     if (submissionRef.current) return;
 
     if (mode === 'create' && topics.length === 0) {
-      form.setError('topicId', {
+      form.setError('topicIds', {
         type: 'manual',
         message:
           'No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos.',
@@ -159,8 +159,8 @@ export function ProjectForm({
   }
 
   useEffect(() => {
-    if (state.errors?.topicId || state.errors?.strategicLineIds) router.refresh();
-  }, [router, state.errors?.topicId, state.errors?.strategicLineIds]);
+    if (state.errors?.topicIds || state.errors?.strategicLineIds) router.refresh();
+  }, [router, state.errors?.topicIds, state.errors?.strategicLineIds]);
 
   useEffect(() => {
     if (state.formError) {

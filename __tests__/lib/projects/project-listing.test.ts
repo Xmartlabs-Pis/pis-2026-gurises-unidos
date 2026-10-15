@@ -389,7 +389,7 @@ test('combines topic and department with the other project filters', async () =>
   });
   expect(findManyArgs().where).toEqual({
     deletedAt: null,
-    topicId: 2,
+    topics: { some: { id: 2 } },
     departmentId: 3,
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',

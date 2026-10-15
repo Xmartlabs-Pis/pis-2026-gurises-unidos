@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   findCoordinator: vi.fn(),
   findProject: vi.fn(),
   findDuplicateProject: vi.fn(),
-  findTopic: vi.fn(),
+  countTopics: vi.fn(),
   transaction: vi.fn(),
   createProject: vi.fn(),
   updateProject: vi.fn(),
@@ -64,7 +64,7 @@ const TX = {
     ),
   },
   user: { findFirst: mocks.findCoordinator },
-  topic: { findFirst: mocks.findTopic },
+  topic: { count: mocks.countTopics },
   projectBeneficiary: {
     findFirst: mocks.findLaterBeneficiary,
     create: mocks.createBeneficiary,
@@ -79,7 +79,7 @@ const TX = {
 };
 const VALID_DATA = {
   name: '  Updated project  ',
-  topicId: '1',
+  topicIds: '1',
   status: 'active',
   intensity: 'medium',
   counterpartyType: 'publicSector',
@@ -128,10 +128,12 @@ beforeEach(() => {
   mocks.findProject.mockResolvedValue({
     id: 10,
     leadCoordinatorId: 2,
-    topicId: 1,
+    topics: [{ id: 1 }],
     strategicLines: [{ id: 1 }],
   });
-  mocks.findTopic.mockResolvedValue({ id: 2 });
+  mocks.countTopics.mockImplementation(
+    ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
+  );
   mocks.findDuplicateProject.mockResolvedValue(null);
   mocks.queryRaw.mockImplementation(lockedCategoryRows);
   mocks.redirect.mockImplementation((path: string) => {
@@ -247,7 +249,7 @@ describe.each([
 
   it('does not report unrelated unique violations as a duplicate project', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mocks.transaction.mockRejectedValue(databaseError('P2002', { target: ['topicId'] }));
+    mocks.transaction.mockRejectedValue(databaseError('P2002', { target: ['leadCoordinatorId'] }));
     try {
       const result = await submit(formData());
       expect(result.errors).toBeUndefined();
@@ -339,13 +341,14 @@ describe.each([
   });
 });
 
-it('creates the project, strategic lines and beneficiaries with audit entries in one transaction', async () => {
+it('creates the project, topics, strategic lines and beneficiaries with audit entries in one transaction', async () => {
   await expect(createProject({}, formData())).rejects.toThrow('Redirect: /dashboard/projects/10');
   expect(mocks.transaction).toHaveBeenCalledTimes(1);
   expect(mocks.createProject).toHaveBeenCalledWith({
     data: expect.objectContaining({
       name: 'Updated project',
       createdBy: 7,
+      topics: { connect: [{ id: 1 }] },
       strategicLines: { connect: [{ id: 1 }] },
     }),
   });
@@ -456,7 +459,6 @@ describe('updateProject persistence', () => {
           endYear: null,
           leadCoordinatorId: 2,
           departmentId: 3,
-          topicId: 1,
           zone: 'city',
           localityNeighborhood: 'Neighborhood',
           generalObjective: 'Objective',
@@ -688,7 +690,7 @@ function unchangedRecords() {
   mocks.findProject.mockResolvedValue({
     id: 10,
     ...projectData,
-    topicId: 1,
+    topics: [{ id: 1 }],
     strategicLines: [{ id: 1 }],
   });
   mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows(beneficiaryData.counts) });
@@ -804,11 +806,15 @@ describe('project review regressions', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it('saves one topic and audits a topic-only change', async () => {
+  it('replaces the topics and audits a topic-only change', async () => {
     unchangedRecords();
-    await expect(updateProject(10, {}, formData({ topicId: '2' }))).rejects.toThrow('Redirect:');
+    await expect(updateProject(10, {}, formData({ topicIds: ['2', '3'] }))).rejects.toThrow(
+      'Redirect:'
+    );
     expect(mocks.updateProject).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ topicId: 2 }) })
+      expect.objectContaining({
+        data: expect.objectContaining({ topics: { set: [{ id: 2 }, { id: 3 }] } }),
+      })
     );
     expect(mocks.audit).toHaveBeenCalledExactlyOnceWith({
       data: {
@@ -816,56 +822,56 @@ describe('project review regressions', () => {
         action: 'update',
         entity: 'project',
         entityId: 10,
-        details: { changedFields: ['topicId'] },
+        details: { changedFields: ['topics'] },
       },
     });
     expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
   });
 
-  it('creates a project with one topic', async () => {
-    await expect(createProject({}, formData({ topicId: '2' }))).rejects.toThrow('Redirect:');
+  it('creates a project with multiple topics', async () => {
+    await expect(createProject({}, formData({ topicIds: ['2', '4'] }))).rejects.toThrow(
+      'Redirect:'
+    );
     expect(mocks.createProject).toHaveBeenCalledWith({
-      data: expect.objectContaining({ topicId: 2 }),
+      data: expect.objectContaining({ topics: { connect: [{ id: 2 }, { id: 4 }] } }),
     });
-    expect(mocks.findTopic).toHaveBeenCalledWith({
-      where: { id: 2, isActive: true },
-      select: { id: true },
+    expect(mocks.countTopics).toHaveBeenCalledWith({
+      where: { id: { in: [2, 4] }, OR: [{ isActive: true }, { id: { in: [] } }] },
     });
   });
 
   it('rejects a nonexistent topic before any writes', async () => {
-    mocks.findTopic.mockResolvedValue(null);
-    expect(await updateProject(10, {}, formData({ topicId: '999' }))).toEqual({
-      errors: { topicId: ['Elegí una temática válida'] },
+    mocks.countTopics.mockResolvedValue(1);
+    expect(await updateProject(10, {}, formData({ topicIds: ['1', '999'] }))).toEqual({
+      errors: { topicIds: ['Elegí temáticas válidas'] },
     });
     expect(mocks.updateProject).not.toHaveBeenCalled();
     expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
   });
 
-  it.each(['create', 'edit'])('rejects multiple submitted topics in %s mode', async (mode) => {
-    const data = formData({ topicId: '2' });
-    data.append('topicId', '4');
+  it.each(['create', 'edit'])('rejects repeated topics in %s mode', async (mode) => {
+    const data = formData({ topicIds: ['2', '2'] });
     const result =
       mode === 'create' ? await createProject({}, data) : await updateProject(10, {}, data);
-    expect(result.errors?.topicId).toBeDefined();
+    expect(result.errors?.topicIds).toEqual(['No repitas temáticas']);
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
   it.each(['', 'none', undefined])(
     'rejects an empty topic (%s) in create and edit',
-    async (topicId) => {
+    async (topicIds) => {
       for (const action of [
-        () => createProject({}, formData({ topicId })),
-        () => updateProject(10, {}, formData({ topicId })),
+        () => createProject({}, formData({ topicIds })),
+        () => updateProject(10, {}, formData({ topicIds })),
       ]) {
         const result = await action();
-        expect(result.errors?.topicId).toBeDefined();
+        expect(result.errors?.topicIds).toBeDefined();
       }
       expect(mocks.transaction).not.toHaveBeenCalled();
     }
   );
 
-  it('preserves an unchanged topic without requiring it to be active or auditing', async () => {
+  it('preserves unchanged topics without requiring them to be active or auditing', async () => {
     unchangedRecords();
     const { projectData } = splitProjectFormData(
       buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS).parse(readProjectFormData(formData())),
@@ -874,11 +880,15 @@ describe('project review regressions', () => {
     mocks.findProject.mockResolvedValue({
       id: 10,
       ...projectData,
-      topicId: 2,
+      topics: [{ id: 3 }, { id: 2 }],
       strategicLines: [{ id: 1 }],
     });
-    await expect(updateProject(10, {}, formData({ topicId: '2' }))).rejects.toThrow('Redirect:');
-    expect(mocks.findTopic).toHaveBeenCalledWith({ where: { id: 2 }, select: { id: true } });
+    await expect(updateProject(10, {}, formData({ topicIds: ['2', '3'] }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.countTopics).toHaveBeenCalledWith({
+      where: { id: { in: [2, 3] }, OR: [{ isActive: true }, { id: { in: [3, 2] } }] },
+    });
     expect(mocks.updateProject).not.toHaveBeenCalled();
     expect(mocks.audit).not.toHaveBeenCalled();
   });

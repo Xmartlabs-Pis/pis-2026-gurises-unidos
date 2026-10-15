@@ -58,7 +58,7 @@ const PROJECT = {
     id: 1,
     name: 'Montevideo',
   },
-  topic: null,
+  topics: [],
   projectBeneficiaries: [{ year: 2026 }, { year: 2025 }],
 };
 
