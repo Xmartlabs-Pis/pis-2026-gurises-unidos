@@ -20,12 +20,14 @@ beforeEach(() => {
     <MetricsForm
       year="2025"
       values={{
-        children_reached: 0,
-        families: 0,
-        teachers: 0,
-        institutions: 0,
-        departments: 0,
-        active_projects: 0,
+        children_reached: 140,
+        direct_children_reached: 100,
+        indirect_children_reached: 40,
+        families: 20,
+        teachers: 12,
+        institutions: 5,
+        departments: 2,
+        active_projects: 3,
       }}
       initialMetrics={METRIC_DEFINITIONS}
       initialTopics={TOPICS}
@@ -78,4 +80,36 @@ it('enables all topics and then hides their statistics together', () => {
   expect(screen.getByRole('switch', { name: /Education/ }).getAttribute('aria-checked')).toBe(
     'false'
   );
+});
+
+it('toggles direct and indirect children independently in the preview', () => {
+  const preview = within(screen.getByRole('complementary'));
+  expect(preview.getByText('100')).toBeDefined();
+  expect(preview.getByText('40')).toBeDefined();
+
+  const directCard = screen.getByLabelText('NNA directos').closest('article')!;
+  const indirectCard = screen.getByLabelText('NNA indirectos').closest('article')!;
+  fireEvent.click(within(directCard).getByRole('switch'));
+
+  expect(preview.queryByText('NNA directos')).toBeNull();
+  expect(preview.getByText('NNA indirectos')).toBeDefined();
+  expect(preview.getByText('40')).toBeDefined();
+
+  fireEvent.click(within(indirectCard).getByRole('switch'));
+
+  expect(preview.queryByText('NNA indirectos')).toBeNull();
+  expect(screen.getByLabelText('NNA directos')).toHaveProperty('value', '100');
+  expect(screen.getByLabelText('NNA indirectos')).toHaveProperty('value', '40');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Restablecer valores' }));
+
+  expect(within(directCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
+  expect(within(indirectCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
+  expect(preview.getByText('NNA directos')).toBeDefined();
+  expect(preview.getByText('NNA indirectos')).toBeDefined();
+  expect(preview.getByText('Departamentos')).toBeDefined();
+  expect(preview.getByText('Proyectos con actividad')).toBeDefined();
+  expect(preview.queryByText('Familias acompañadas')).toBeNull();
+  expect(preview.queryByText('Funcionarios de servicios básicos')).toBeNull();
+  expect(preview.queryByText('Instituciones vinculadas')).toBeNull();
 });

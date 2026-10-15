@@ -28,6 +28,14 @@ export function isValidUruguayanDocumentId(rawValue: string) {
   return checkDigit === Number(paddedDigits[7]);
 }
 
+export const emailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1, 'El correo es obligatorio.')
+  .max(254, 'El correo no puede superar los 254 caracteres.')
+  .pipe(z.email({ error: 'Ingresá un correo electrónico válido.' }));
+
 export const userEditFormSchema = z.object({
   firstName: z
     .string()
@@ -45,18 +53,11 @@ export const userEditFormSchema = z.object({
     .min(1, 'El documento es obligatorio.')
     .refine(isValidUruguayanDocumentId, 'Ingresá una cédula uruguaya válida.')
     .transform(normalizeDocumentId),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, 'El correo es obligatorio.')
-    .max(254, 'El correo no puede superar los 254 caracteres.')
-    .pipe(z.email({ error: 'Ingresá un correo electrónico válido.' })),
+  email: emailSchema,
   role: z.enum(['admin', 'coordinator']),
-  status: z.enum(['active', 'pendingInvitation', 'disabled']),
 });
 
-export const userFormSchema = userEditFormSchema.omit({ status: true }).extend({
+export const userFormSchema = userEditFormSchema.extend({
   password: z
     .string()
     .min(1, 'La contraseña es obligatoria.')

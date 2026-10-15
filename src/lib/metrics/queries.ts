@@ -50,6 +50,8 @@ export async function getMetricValues(year: number) {
 
   return {
     children_reached: totals.directChildrenAdolescents + totals.indirectChildrenAdolescents,
+    direct_children_reached: totals.directChildrenAdolescents,
+    indirect_children_reached: totals.indirectChildrenAdolescents,
     families: totals.families,
     teachers: totals.basicServiceStaff,
     institutions: totals.coordinatedInstitutions,
