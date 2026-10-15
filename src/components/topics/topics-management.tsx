@@ -111,13 +111,7 @@ export function TopicsManagement({ topics }: TopicsManagementProps) {
   );
 }
 
-function TopicProjectCount({
-  topicId,
-  projectCount,
-}: {
-  topicId: number;
-  projectCount: number;
-}) {
+function TopicProjectCount({ topicId, projectCount }: { topicId: number; projectCount: number }) {
   const label = projectCount === 1 ? '1 proyecto' : `${projectCount} proyectos`;
 
   if (!projectCount) {
