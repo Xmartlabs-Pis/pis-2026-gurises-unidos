@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
+import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
 import { ADMIN, BENEFICIARY_CATEGORIES, STRATEGIC_LINES } from './fixtures';
 import {
@@ -219,17 +220,20 @@ async function main() {
         }
       }
 
-      await tx.metric.upsert({
-        where: { key: 'children_reached' },
-        update: {},
-        create: {
-          key: 'children_reached',
-          name: 'Children reached',
-          showPublicly: true,
-          sortOrder: 1,
-          updatedBy: admin.id,
-        },
-      });
+      for (const [index, metric] of METRIC_DEFINITIONS.entries()) {
+        await tx.metric.upsert({
+          where: { key: metric.key },
+          update: {},
+          create: {
+            key: metric.key,
+            name: metric.name,
+            showPublicly: metric.showPublicly,
+            showPubliclyDraft: metric.showPublicly,
+            sortOrder: index + 1,
+            updatedBy: admin.id,
+          },
+        });
+      }
     },
     { maxWait: 20_000, timeout: 120_000 }
   );

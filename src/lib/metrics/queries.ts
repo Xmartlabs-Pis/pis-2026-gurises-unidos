@@ -6,17 +6,10 @@ export async function getMetricSettings() {
   const savedMetrics = await prisma.metric.findMany({
     select: { key: true, showPublicly: true },
   });
-  const childrenVisibility = savedMetrics.find(
-    (metric) => metric.key === 'children_reached'
-  )?.showPublicly;
   return METRIC_DEFINITIONS.map((metric) => ({
     ...metric,
     showPublicly:
-      savedMetrics.find((saved) => saved.key === metric.key)?.showPublicly ??
-      (metric.key === 'direct_children_reached' || metric.key === 'indirect_children_reached'
-        ? childrenVisibility
-        : undefined) ??
-      metric.showPublicly,
+      savedMetrics.find((saved) => saved.key === metric.key)?.showPublicly ?? metric.showPublicly,
   }));
 }
 

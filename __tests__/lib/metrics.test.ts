@@ -71,33 +71,15 @@ describe('getMetricValues', () => {
 });
 
 describe('getMetricSettings', () => {
-  it('inherits legacy visibility until each child metric has its own setting', async () => {
-    vi.mocked(prisma.metric.findMany).mockResolvedValue([
-      { key: 'children_reached', showPublicly: false },
-      { key: 'direct_children_reached', showPublicly: true },
-    ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
-
-    const settings = await getMetricSettings();
-
-    expect(settings.find((metric) => metric.key === 'direct_children_reached')?.showPublicly).toBe(
-      true
-    );
-    expect(
-      settings.find((metric) => metric.key === 'indirect_children_reached')?.showPublicly
-    ).toBe(false);
-    expect(settings.map((metric) => metric.key)).not.toContain('children_reached');
-    expect(settings).toHaveLength(7);
-  });
-
   it('loads saved visibility and uses defaults for metrics without a saved setting', async () => {
     vi.mocked(prisma.metric.findMany).mockResolvedValue([
-      { key: 'children_reached', showPublicly: true },
-      { key: 'families', showPublicly: false },
+      { key: 'indirect_children_reached', showPublicly: false },
+      { key: 'families', showPublicly: true },
     ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
     const settings = await getMetricSettings();
     expect(settings.filter((metric) => metric.showPublicly).map((metric) => metric.key)).toEqual([
       'direct_children_reached',
-      'indirect_children_reached',
+      'families',
       'departments',
       'active_projects',
     ]);
