@@ -45,7 +45,11 @@ vi.mock('@/lib/beneficiary-categories', async () => {
 });
 
 function lockedCategoryRows(strings: TemplateStringsArray, ...values: unknown[]) {
-  if (!strings.join('').includes('"BeneficiaryCategory"')) return [];
+  const query = strings.join('');
+  if (query.includes('"StrategicLine"')) {
+    return (values[0] as number[]).map((id) => ({ id }));
+  }
+  if (!query.includes('"BeneficiaryCategory"')) return [];
   return (values[0] as string[]).map((key) => ({ key }));
 }
 
@@ -95,12 +99,15 @@ const VALID_DATA = {
   coordinatedInstitutions: '6',
   communityLeaders: '12',
   basicServiceStaff: '8',
+  strategicLineIds: '1',
 };
 
-function formData(overrides: Record<string, string | undefined> = {}) {
+function formData(overrides: Record<string, string | string[] | undefined> = {}) {
   const data = new FormData();
   Object.entries({ ...VALID_DATA, ...overrides }).forEach(([key, value]) => {
-    if (value !== undefined) data.set(key, value);
+    if (value !== undefined) {
+      for (const item of [value].flat()) data.append(key, item);
+    }
   });
   return data;
 }
@@ -118,7 +125,12 @@ beforeEach(() => {
   mocks.auth.mockResolvedValue({ user: { id: '7', role: 'admin' } });
   mocks.findUser.mockResolvedValue({ id: 7, role: 'admin', status: 'active', deletedAt: null });
   mocks.findCoordinator.mockResolvedValue({ id: 2 });
-  mocks.findProject.mockResolvedValue({ id: 10, leadCoordinatorId: 2, topicId: 1 });
+  mocks.findProject.mockResolvedValue({
+    id: 10,
+    leadCoordinatorId: 2,
+    topicId: 1,
+    strategicLines: [{ id: 1 }],
+  });
   mocks.findTopic.mockResolvedValue({ id: 2 });
   mocks.findDuplicateProject.mockResolvedValue(null);
   mocks.queryRaw.mockImplementation(lockedCategoryRows);
@@ -161,6 +173,18 @@ describe.each([
   it('clears intensity when the project has no direct children or adolescents', async () => {
     await expect(submit(formData({ directChildrenAdolescents: '0' }))).rejects.toThrow('Redirect:');
     expect(savedProjectData()).toMatchObject({ intensity: null });
+  });
+
+  it('rejects strategic lines that are no longer active', async () => {
+    mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
+      strings.join('').includes('"StrategicLine"') ? [] : lockedCategoryRows(strings, ...values)
+    );
+
+    expect(await submit(formData())).toEqual({
+      errors: { strategicLineIds: ['Elegí líneas estratégicas activas'] },
+    });
+    expect(mocks.createProject).not.toHaveBeenCalled();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
   it('rejects a name that matches another project in the same year ignoring case', async () => {
@@ -282,9 +306,12 @@ describe.each([
   });
 
   it('rejects stale beneficiary categories without writing', async () => {
-    mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
-      lockedCategoryRows(strings, ...values).slice(1)
-    );
+    mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const query = strings.join('');
+      return query.includes('"StrategicLine"')
+        ? lockedCategoryRows(strings, ...values)
+        : lockedCategoryRows(strings, ...values).slice(1);
+    });
     expect(await submit(formData())).toEqual({
       formError: 'Las categorías de beneficiarios cambiaron. Recargá la página e intentá de nuevo.',
     });
@@ -312,11 +339,15 @@ describe.each([
   });
 });
 
-it('creates the project and beneficiaries with audit entries in one transaction', async () => {
+it('creates the project, strategic lines and beneficiaries with audit entries in one transaction', async () => {
   await expect(createProject({}, formData())).rejects.toThrow('Redirect: /dashboard/projects/10');
   expect(mocks.transaction).toHaveBeenCalledTimes(1);
   expect(mocks.createProject).toHaveBeenCalledWith({
-    data: expect.objectContaining({ name: 'Updated project', createdBy: 7 }),
+    data: expect.objectContaining({
+      name: 'Updated project',
+      createdBy: 7,
+      strategicLines: { connect: [{ id: 1 }] },
+    }),
   });
   expect(mocks.createBeneficiary).toHaveBeenCalledWith({
     data: expect.objectContaining({
@@ -351,6 +382,14 @@ it('creates the project and beneficiaries with audit entries in one transaction'
       },
     },
   });
+});
+
+it('rejects more than three strategic lines before starting a transaction', async () => {
+  const result = await createProject({}, formData({ strategicLineIds: ['1', '2', '3', '4'] }));
+  expect(result.errors?.strategicLineIds).toEqual([
+    'Podés seleccionar hasta 3 líneas estratégicas',
+  ]);
+  expect(mocks.transaction).not.toHaveBeenCalled();
 });
 
 describe('updateProject persistence', () => {
@@ -646,7 +685,12 @@ function unchangedRecords() {
     buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS).parse(readProjectFormData(formData())),
     BENEFICIARY_CATEGORY_KEYS
   );
-  mocks.findProject.mockResolvedValue({ id: 10, ...projectData, topicId: 1 });
+  mocks.findProject.mockResolvedValue({
+    id: 10,
+    ...projectData,
+    topicId: 1,
+    strategicLines: [{ id: 1 }],
+  });
   mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows(beneficiaryData.counts) });
 }
 
@@ -827,7 +871,12 @@ describe('project review regressions', () => {
       buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS).parse(readProjectFormData(formData())),
       BENEFICIARY_CATEGORY_KEYS
     );
-    mocks.findProject.mockResolvedValue({ id: 10, ...projectData, topicId: 2 });
+    mocks.findProject.mockResolvedValue({
+      id: 10,
+      ...projectData,
+      topicId: 2,
+      strategicLines: [{ id: 1 }],
+    });
     await expect(updateProject(10, {}, formData({ topicId: '2' }))).rejects.toThrow('Redirect:');
     expect(mocks.findTopic).toHaveBeenCalledWith({ where: { id: 2 }, select: { id: true } });
     expect(mocks.updateProject).not.toHaveBeenCalled();

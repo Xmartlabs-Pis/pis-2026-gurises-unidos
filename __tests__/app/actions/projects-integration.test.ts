@@ -34,6 +34,7 @@ let projectId = 0;
 let coordinatorId = 0;
 let departmentId = 0;
 let topicId = 0;
+let strategicLineId = 0;
 
 beforeAll(async () => {
   if (!database) return;
@@ -66,6 +67,8 @@ beforeAll(async () => {
   departmentId = department.id;
   const topic = await database.topic.create({ data: { name: `Review ${suffix}` } });
   topicId = topic.id;
+  const strategicLine = await database.strategicLine.create({ data: { name: `Review ${suffix}` } });
+  strategicLineId = strategicLine.id;
   const project = await database.project.create({
     data: {
       name: 'Original project',
@@ -79,6 +82,7 @@ beforeAll(async () => {
       zone: 'city',
       coverPhoto: '/existing-cover.png',
       createdBy: user.id,
+      strategicLines: { connect: { id: strategicLineId } },
     },
   });
   projectId = project.id;
@@ -97,6 +101,7 @@ afterAll(async () => {
   await database.auditLog.deleteMany({ where: { authorId: state.authorId } });
   await database.projectBeneficiary.deleteMany({ where: { projectId } });
   if (projectId) await database.project.delete({ where: { id: projectId } });
+  if (strategicLineId) await database.strategicLine.delete({ where: { id: strategicLineId } });
   if (topicId) await database.topic.delete({ where: { id: topicId } });
   if (departmentId) await database.department.delete({ where: { id: departmentId } });
   await database.user.deleteMany({ where: { id: { in: [state.authorId, coordinatorId] } } });
@@ -120,6 +125,7 @@ it.skipIf(!TEST_DATABASE_URL)(
       year: '2026',
       families: '35',
       topicId: String(topicId),
+      strategicLineIds: String(strategicLineId),
       coverPhoto: '/forged-cover.png',
     }).forEach(([key, value]) => data.append(key, value));
     const original = await database!.project.findUniqueOrThrow({ where: { id: projectId } });

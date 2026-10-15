@@ -30,6 +30,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
@@ -38,6 +39,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
       initialValues={{
         counterpartyType: 'publicSector',
         name: 'Existing project',
+        strategicLineIds: ['1'],
         topicId: '1',
         status: 'active',
         leadCoordinatorId: '2',
@@ -90,6 +92,7 @@ it('keeps the original creation appearance separate from edit styling', () => {
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -117,6 +120,7 @@ it('shows and submits the selected project placeholder during creation', () => {
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -142,6 +146,7 @@ it('sends one selected topic and preserves it after a failed save', async () => 
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       currentYear={2026}
       topics={[
         { id: 1, name: 'Education' },
@@ -152,6 +157,7 @@ it('sends one selected topic and preserves it after a failed save', async () => 
       initialValues={{
         counterpartyType: 'publicSector',
         name: 'Project',
+        strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentId: '3',
         topicId: '1',
@@ -179,6 +185,7 @@ function renderFormWith(initialValues: Record<string, string>) {
   return render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -186,6 +193,7 @@ function renderFormWith(initialValues: Record<string, string>) {
       initialValues={{
         counterpartyType: 'publicSector',
         name: 'Project',
+        strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentId: '3',
         ...initialValues,
@@ -210,6 +218,7 @@ it('submits the end year of an inactive project', async () => {
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -217,6 +226,7 @@ it('submits the end year of an inactive project', async () => {
       initialValues={{
         counterpartyType: 'publicSector',
         name: 'Project',
+        strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentId: '3',
         status: 'inactive',
@@ -240,6 +250,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       currentYear={2026}
       topics={[{ id: 1, name: 'Education' }]}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -247,6 +258,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
       initialValues={{
         counterpartyType: 'publicSector',
         name: 'Project',
+        strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentId: '3',
         topicId: '1',
@@ -287,6 +299,7 @@ it('clears an invalid end year and advances beneficiaries to the start year', as
   render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -346,6 +359,7 @@ function renderWithManyCategories(
   return render(
     <ProjectForm
       beneficiaryCategories={MANY_CATEGORIES}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
@@ -354,6 +368,7 @@ function renderWithManyCategories(
       initialValues={{
         counterpartyType: 'publicSector',
         name: 'Existing project',
+        strategicLineIds: ['1'],
         topicId: '1',
         leadCoordinatorId: '2',
         departmentId: '3',
@@ -417,6 +432,7 @@ it.each(['create', 'edit'] as const)(
     const { container } = render(
       <ProjectForm
         beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+        strategicLines={[{ id: 1, name: 'Community Support' }]}
         mode={mode}
         currentYear={2026}
         topics={[{ id: 1, name: 'Education' }]}
@@ -428,6 +444,7 @@ it.each(['create', 'edit'] as const)(
           leadCoordinatorId: '2',
           departmentId: '3',
           counterpartyType: mode === 'edit' ? 'publicSector' : '',
+          strategicLineIds: ['1'],
         }}
         submitAction={submitAction}
       />

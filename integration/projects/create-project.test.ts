@@ -33,6 +33,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     publicDescription: 'Public description',
     internalNotes: '',
     topicId: String(seed.topicIds[0]),
+    strategicLineIds: [String(seed.strategicLineIds[0])],
     projectPlaceholder: PROJECT_PLACEHOLDERS[2],
     year: String(BENEFICIARY_YEAR),
     directChildrenAdolescents: '10',

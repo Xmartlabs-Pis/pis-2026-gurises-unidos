@@ -26,6 +26,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     publicDescription: '',
     internalNotes: '',
     topicId: String(seed.topicIds[0]),
+    strategicLineIds: [String(seed.strategicLineIds[0])],
     year: String(BENEFICIARY_YEAR),
     directChildrenAdolescents: '10',
     indirectChildrenAdolescents: '5',
@@ -58,6 +59,7 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       generalObjective: 'Objective',
       createdBy: seed.adminId,
       topicId: seed.topicIds[0],
+      strategicLines: { connect: { id: seed.strategicLineIds[0] } },
       projectBeneficiaries: {
         create: {
           year: BENEFICIARY_YEAR,

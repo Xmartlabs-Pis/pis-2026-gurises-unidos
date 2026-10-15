@@ -4,8 +4,10 @@ import { useEffect } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
+import { MultiSelectField } from '@/components/ui/forms/multi-select-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
+import { MAX_STRATEGIC_LINES } from '@/lib/validation/project-form';
 import type { ProjectFormValues } from '../project-form-values';
 import type { SectionProps } from './section-props';
 
@@ -13,8 +15,13 @@ export function BasicInfoSection({
   yearOptions,
   coordinatorOptions,
   topics,
-}: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'topics'>) {
+  strategicLines,
+}: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'topics' | 'strategicLines'>) {
   const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
+  const strategicLineOptions = strategicLines.map(({ id, name }) => ({
+    value: String(id),
+    label: name,
+  }));
   const status = useWatch<ProjectFormValues, 'status'>({ name: 'status' });
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
@@ -106,6 +113,17 @@ export function BasicInfoSection({
         label="Coordinador responsable"
         placeholder="Seleccionar coordinador..."
         options={coordinatorOptions}
+      />
+      <MultiSelectField
+        id="strategicLineIds"
+        name="strategicLineIds"
+        label="Líneas estratégicas"
+        placeholder="Seleccionar líneas estratégicas..."
+        options={strategicLineOptions}
+        emptyMessage="No hay líneas estratégicas disponibles."
+        maxSelected={MAX_STRATEGIC_LINES}
+        maxSelectedMessage={`Podés seleccionar hasta ${MAX_STRATEGIC_LINES} líneas estratégicas.`}
+        required
       />
     </FormSection>
   );
