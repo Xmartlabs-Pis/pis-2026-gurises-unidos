@@ -179,6 +179,26 @@ it('sends multiple selected topics and preserves them after a failed save', asyn
   expect(screen.getByLabelText('Temáticas').textContent).toContain('Education, Health');
 });
 
+it('disables the topics field and explains why when there are no topics', () => {
+  render(
+    <ProjectForm
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      submitAction={vi.fn()}
+    />
+  );
+  expect(screen.getByLabelText('Temáticas')).toHaveProperty('disabled', true);
+  expect(
+    screen.getByText(
+      'No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos.'
+    )
+  ).toBeTruthy();
+});
+
 function renderFormWith(initialValues: Record<string, string>) {
   return render(
     <ProjectForm

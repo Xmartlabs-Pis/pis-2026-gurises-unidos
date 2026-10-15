@@ -1,6 +1,5 @@
 import { Prisma } from '@/generated/prisma/client';
 import type { ProjectFormState } from '@/lib/validation/project';
-import { TOPICS_ERROR_MESSAGE } from '@/lib/validation/project-form';
 
 export const DUPLICATE_PROJECT_MESSAGE = 'Ya existe un proyecto con ese nombre y año de inicio';
 
@@ -19,8 +18,6 @@ export function mapProjectDbError(error: unknown): ProjectFormState | null {
     const constraint = String(error.meta?.field_name ?? error.meta?.constraint ?? '');
     if (constraint.includes('leadCoordinatorId') || constraint.includes('_DepartmentToProject'))
       return { formError: 'El coordinador o el departamento seleccionado no existe.' };
-    if (constraint.includes('ProjectToTopic'))
-      return { errors: { topicIds: [TOPICS_ERROR_MESSAGE] } };
     return { formError: 'Tu sesión ya no es válida. Iniciá sesión de nuevo.' };
   }
   return null;
