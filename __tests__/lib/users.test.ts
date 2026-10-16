@@ -196,6 +196,11 @@ describe('parseUserListFilters', () => {
     expect(parseUserListFilters({ sort: 'toString' }).sortBy).toBe('name');
   });
 
+  test('ignores a blank search', () => {
+    expect(parseUserListFilters({ q: '   ' }).search).toBeUndefined();
+    expect(parseUserListFilters({ q: ' ana ' }).search).toBe('ana');
+  });
+
   test('takes the first value when a param is repeated', () => {
     expect(parseUserListFilters({ q: ['ana', 'juan'] }).search).toBe('ana');
   });
