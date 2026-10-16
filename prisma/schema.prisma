@@ -69,6 +69,7 @@ enum CounterpartyType {
 
 enum UserTokenType {
   passwordReset
+  invitation
 }
 
 // ---------- TABLES ----------

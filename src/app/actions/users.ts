@@ -8,15 +8,13 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/auth/require-user';
 import { parseId } from '@/lib/validation/ids';
-import {
-  PRESERVED_FIELDS,
-  userEditFormSchema,
-  userFormSchema,
-  type UserFormState,
-} from '@/lib/validation/user';
+import { PRESERVED_FIELDS, userEditFormSchema, type UserFormState } from '@/lib/validation/user';
 import { logAudit } from '@/lib/audit-log';
 import { mapUserDbError } from '@/lib/users/map-user-db-error';
-import bcrypt from 'bcryptjs';
+import { createUserToken } from '@/lib/auth/user-tokens';
+import { hashPassword } from '@/lib/credentials';
+import { sendInvitationEmail, type InvitedUser } from '@/lib/users/invitation';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 // Serializable so two admins acting on each other at once can't leave zero active admins
@@ -49,7 +47,7 @@ export async function createUser(
     redirect('/dashboard');
   }
 
-  const result = userFormSchema.safeParse(Object.fromEntries(formData));
+  const result = userEditFormSchema.safeParse(Object.fromEntries(formData));
   const values = Object.fromEntries(
     PRESERVED_FIELDS.map((field) => [field, String(formData.get(field) ?? '')])
   );
@@ -59,10 +57,13 @@ export async function createUser(
   }
 
   const userData = result.data;
-  const passwordHash = await bcrypt.hash(userData.password, 10);
+  // Invited users have no password until they accept the invitation; this hash matches nothing
+  const passwordHash = await hashPassword(randomBytes(32).toString('base64url'));
 
   const restoreConfirmed = formData.get('confirmRestore') === 'true';
-  let outcome: 'created' | 'restored' | 'restoreConfirmationRequired';
+  let outcome:
+    | { kind: 'restoreConfirmationRequired' }
+    | { kind: 'created' | 'restored'; user: InvitedUser; token: string };
 
   try {
     outcome = await prisma.$transaction(async (tx) => {
@@ -72,9 +73,9 @@ export async function createUser(
         lastName: userData.lastName,
         email: userData.email,
         role: userData.role,
-        status: 'active' as const,
+        status: 'pendingInvitation' as const,
         passwordHash,
-        mustChangePassword: true,
+        mustChangePassword: false,
       };
 
       const deletedUser = await tx.user.findFirst({
@@ -83,22 +84,23 @@ export async function createUser(
       });
 
       if (deletedUser && !restoreConfirmed) {
-        return 'restoreConfirmationRequired';
+        return { kind: 'restoreConfirmationRequired' as const };
       }
 
       if (deletedUser) {
-        await tx.user.update({
+        const restoredUser = await tx.user.update({
           where: { id: deletedUser.id, deletedAt: { not: null } },
-          data: { ...profile, passwordChangedAt: new Date(), deletedAt: null },
+          data: { ...profile, passwordChangedAt: null, deletedAt: null },
         });
         await logAudit(tx, {
           authorId,
           action: 'creation',
           entity: 'user',
-          entityId: deletedUser.id,
+          entityId: restoredUser.id,
           details: { restored: true },
         });
-        return 'restored';
+        const token = await createUserToken(tx, restoredUser.id, 'invitation');
+        return { kind: 'restored' as const, user: restoredUser, token };
       }
 
       const createdUser = await tx.user.create({
@@ -110,7 +112,8 @@ export async function createUser(
         entity: 'user',
         entityId: createdUser.id,
       });
-      return 'created';
+      const token = await createUserToken(tx, createdUser.id, 'invitation');
+      return { kind: 'created' as const, user: createdUser, token };
     });
   } catch (error) {
     const dbError = mapUserDbError(error);
@@ -128,16 +131,62 @@ export async function createUser(
     return { formError: 'No se pudo crear el usuario. Intentá de nuevo.', values };
   }
 
-  if (outcome === 'restoreConfirmationRequired') {
+  if (outcome.kind === 'restoreConfirmationRequired') {
     return { restoreConfirmationRequired: true, values };
   }
 
-  if (outcome === 'restored') {
+  await sendInvitationEmail(outcome.user, outcome.token);
+
+  if (outcome.kind === 'restored') {
     revalidatePath('/management/users');
     return { restored: true };
   }
 
   redirect('/management/users');
+}
+
+export type ResendInvitationResult = { error?: string; success?: boolean };
+
+export async function resendInvitation(userId: number): Promise<ResendInvitationResult> {
+  const actor = await requireUser();
+
+  if (actor.role !== 'admin') {
+    return { error: 'No tenés permisos para realizar esta acción.' };
+  }
+
+  const targetId = parseId(userId);
+
+  if (!targetId) {
+    return { error: 'El usuario no es válido.' };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetId, deletedAt: null },
+    select: { id: true, firstName: true, email: true, status: true },
+  });
+
+  if (!target) {
+    return { error: 'El usuario no existe.' };
+  }
+
+  if (target.status !== 'pendingInvitation') {
+    return { error: 'El usuario no tiene una invitación pendiente.' };
+  }
+
+  let token: string;
+
+  try {
+    token = await prisma.$transaction((tx) => createUserToken(tx, target.id, 'invitation'));
+  } catch (error) {
+    console.error('Failed to create invitation token', error);
+    return { error: 'No se pudo reenviar la invitación. Intentá de nuevo.' };
+  }
+
+  if (!(await sendInvitationEmail(target, token))) {
+    return { error: 'No se pudo enviar el correo de invitación. Intentá de nuevo.' };
+  }
+
+  return { success: true };
 }
 
 export type ToggleableUserStatus = Extract<UserStatus, 'active' | 'disabled'>;

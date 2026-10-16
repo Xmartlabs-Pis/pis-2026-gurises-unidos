@@ -15,11 +15,13 @@ import InputVisibilityToggle from './ui/forms/input-visibility-toggle';
 type PasswordResetFormProps = {
   action?: (state: PasswordFormState, formData: FormData) => Promise<PasswordFormState>;
   token?: string;
+  submitLabel?: string;
 };
 
 export function PasswordResetForm({
   action = completeForcedPasswordChange,
   token,
+  submitLabel = 'Actualizar contraseña',
 }: PasswordResetFormProps) {
   const [state, formAction, pending] = useActionState(action, {});
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -104,7 +106,7 @@ export function PasswordResetForm({
           />
         </div>
         <Button type="submit" disabled={pending} className="h-9 w-full shadow-xs/10">
-          Actualizar contraseña
+          {submitLabel}
         </Button>
       </form>
     </FormProvider>
