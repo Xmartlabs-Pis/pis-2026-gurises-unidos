@@ -13,6 +13,7 @@ const PROJECT: ProjectDetail['project'] = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: 2020,
   endYear: null,
   strategicLines: [
@@ -93,6 +94,13 @@ test('shows the countries as the territory of an international project', () => {
   );
 
   expect(screen.getAllByText('Argentina, Brasil')).not.toHaveLength(0);
+});
+
+test('shows the project counterparty', () => {
+  renderHeader(null);
+
+  expect(screen.getByText('Contraparte:')).toBeDefined();
+  expect(screen.getByText('Sector Público')).toBeDefined();
 });
 
 test('shows the end year of a finished project', () => {

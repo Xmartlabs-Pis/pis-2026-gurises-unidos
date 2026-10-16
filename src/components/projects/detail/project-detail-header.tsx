@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
+import { COUNTERPARTY_LABEL, INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectDetail } from '@/lib/projects/detail';
 import { getLocationLabel } from '@/lib/projects/location';
@@ -25,21 +25,17 @@ function ProjectBadges({ project }: { project: ProjectDetail['project'] }) {
   );
 }
 
-function ProjectMetadata({
-  territory,
-  coordinator,
-  period,
-  strategicLines,
-}: {
-  territory: string;
-  coordinator: string;
-  period: string;
-  strategicLines: string;
-}) {
+function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
+  const territory = getLocationLabel(project);
+  const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
+  const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
+  const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
+  const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
   const rows = [
     { label: 'Territorio:', value: territory },
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
+    { label: 'Contraparte:', value: counterparty },
   ];
 
   return (
@@ -70,11 +66,6 @@ export function ProjectDetailHeader({
   years,
   canEdit,
 }: ProjectDetailHeaderProps) {
-  const territory = getLocationLabel(project);
-  const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
-  const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
-  const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
-
   return (
     <section className="border-border pb-1 sm:border-b sm:pb-5">
       <p className="text-muted-foreground text-xs font-medium sm:hidden">Proyectos</p>
@@ -111,12 +102,7 @@ export function ProjectDetailHeader({
           </p>
         )}
         <div className="order-2 sm:order-1">
-          <ProjectMetadata
-            territory={territory}
-            coordinator={coordinator}
-            period={period}
-            strategicLines={strategicLines}
-          />
+          <ProjectMetadata project={project} />
         </div>
       </div>
 

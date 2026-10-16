@@ -28,6 +28,7 @@ const DETAIL = {
       name: 'El Resorte',
       status: 'active',
       intensity: 'high',
+      counterpartyType: 'publicSector',
       startYear: 2024,
       endYear: null,
       strategicLines: [{ id: 1, name: 'Formación' }],

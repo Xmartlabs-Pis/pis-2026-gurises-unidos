@@ -41,6 +41,7 @@ const PROJECT = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: 2024,
   endYear: null,
   leadCoordinatorId: 2,
