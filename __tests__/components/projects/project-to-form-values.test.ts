@@ -28,7 +28,7 @@ const PROJECT = {
   updatedAt: null,
   deletedAt: null,
   deletedBy: null,
-  topicId: 1,
+  topics: [{ id: 1 }, { id: 4 }],
   projectBeneficiaries: [
     {
       id: 1,
@@ -51,7 +51,7 @@ it('defaults to the current year without copying historical beneficiary counts',
     year: '2026',
     families: '0',
     directChildrenAdolescents: '0',
-    topicId: '1',
+    topicIds: ['1', '4'],
     coverPhotoUrl: '/cover.png',
     internalNotes: '',
   });

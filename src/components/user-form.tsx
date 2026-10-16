@@ -1,13 +1,30 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { startTransition, useActionState, useEffect, useState, type SubmitEvent } from 'react';
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type SubmitEvent,
+} from 'react';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
 
 import { createUser, updateUser } from '@/app/actions/users';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormActions } from '@/components/ui/forms/form-actions';
@@ -18,12 +35,8 @@ import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { ResetPasswordDialog } from '@/components/users/reset-password-dialog';
 import { UserStatusDialog } from '@/components/users/user-status-dialog';
 
-import { Copy } from 'lucide-react';
-
-import { userEditFormSchema, userFormSchema, type UserFormState } from '@/lib/validation/user';
-import { generateTemporaryPassword } from '@/lib/users';
+import { userEditFormSchema, type UserFormState } from '@/lib/validation/user';
 import { STATUS_CLASSNAMES, STATUS_LABELS } from '@/lib/users/constants';
-import { copyText } from '@/lib/clipboard';
 import { notify } from '@/lib/notify';
 
 const initialState: UserFormState = {};
@@ -34,7 +47,6 @@ type UserFormValues = {
   documentId: string;
   email: string;
   role: 'admin' | 'coordinator';
-  password: string;
 };
 
 type UserFormProps = {
@@ -79,62 +91,73 @@ const STATUS_DESCRIPTIONS = {
 export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   const router = useRouter();
   const isEditing = mode === 'edit';
+  const isPendingInvitation = initialValues?.status === 'pendingInvitation';
+  const securityDescription = !isEditing
+    ? 'Al guardar, se enviará una invitación al correo ingresado para que la persona elija su contraseña. El ingreso al sistema es por cédula.'
+    : isPendingInvitation
+      ? 'La persona elegirá su contraseña al aceptar la invitación. Podés reenviarla desde la lista de usuarios.'
+      : 'Se generará una contraseña temporal que la persona deberá cambiar al ingresar.';
   const action = isEditing && initialValues ? updateUser.bind(null, initialValues.id) : createUser;
   const [state, formAction, pending] = useActionState(action, initialState);
+  const lastSubmission = useRef<FormData | null>(null);
+  const [answeredRestoreState, setAnsweredRestoreState] = useState<UserFormState>();
+  const isRestoreDialogOpen =
+    Boolean(state.restoreConfirmationRequired) && answeredRestoreState !== state;
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(
-      isEditing ? userEditFormSchema : userFormSchema
-    ) as unknown as Resolver<UserFormValues>,
+    resolver: zodResolver(userEditFormSchema) as unknown as Resolver<UserFormValues>,
     defaultValues: {
       firstName: initialValues?.firstName ?? '',
       lastName: initialValues?.lastName ?? '',
       documentId: initialValues?.documentId ?? '',
       email: initialValues?.email ?? '',
       role: initialValues?.role ?? 'coordinator',
-      password: '',
     },
     mode: 'onChange',
   });
-  const {
-    handleSubmit,
-    setValue,
-    getValues,
-    formState: { errors },
-  } = form;
+  const { handleSubmit } = form;
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-
-  function handleGeneratePassword() {
-    const generated = generateTemporaryPassword();
-    setValue('password', generated, { shouldValidate: true });
-  }
-
-  async function handleCopyPassword() {
-    const password = getValues('password');
-    if (!password) return;
-
-    try {
-      await copyText(password);
-      notify.success({ title: 'Contraseña copiada al portapapeles' });
-    } catch {
-      notify.error({ title: 'No se pudo copiar la contraseña' });
-    }
-  }
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     const submitter = event.nativeEvent.submitter;
     return handleSubmit(() => {
+      const formData = submitter ? new FormData(formElement, submitter) : new FormData(formElement);
+      lastSubmission.current = formData;
       startTransition(() => {
-        formAction(submitter ? new FormData(formElement, submitter) : new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }
 
+  function handleCancelRestore() {
+    setAnsweredRestoreState(state);
+  }
+
+  function handleConfirmRestore() {
+    setAnsweredRestoreState(state);
+    if (!lastSubmission.current) return;
+
+    const formData = new FormData();
+    lastSubmission.current.forEach((value, key) => formData.append(key, value));
+    formData.set('confirmRestore', 'true');
+    startTransition(() => {
+      formAction(formData);
+    });
+  }
+
   useEffect(() => {
+    if (state.restored) {
+      notify.success({
+        title: 'La cuenta se restauró con los nuevos datos y se envió la invitación.',
+      });
+      router.push('/management/users');
+      return;
+    }
+
     if (!state.formError) return;
     notify.error({ title: state.formError });
-  }, [state]);
+  }, [state, router]);
 
   return (
     <FormProvider {...form}>
@@ -252,49 +275,14 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
                 </CardHeader>
                 <CardContent className="px-6">
                   <FieldGroup className="gap-4">
-                    {isEditing && initialValues ? (
+                    {isEditing && initialValues && !isPendingInvitation && (
                       <ResetPasswordDialog
                         userId={initialValues.id}
                         userName={`${initialValues.firstName} ${initialValues.lastName}`}
                       />
-                    ) : (
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <TextInputField
-                          id="password"
-                          name="password"
-                          label="Contraseña temporal"
-                          type="text"
-                          placeholder="Se genera automáticamente"
-                          messages={[errors?.password?.message ?? '']}
-                          trailingAction={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-xs"
-                              aria-label="Copiar contraseña"
-                              onClick={handleCopyPassword}
-                            >
-                              <Copy className="size-3" />
-                            </Button>
-                          }
-                        />
-                      </div>
-                    )}
-                    {!isEditing && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="lg"
-                        className="h-auto min-h-9 w-fit max-w-full px-4 py-1.5 whitespace-normal"
-                        onClick={handleGeneratePassword}
-                      >
-                        Generar contraseña automáticamente
-                      </Button>
                     )}
                     <FieldDescription className="text-xs leading-4">
-                      {isEditing
-                        ? 'Se generará una contraseña temporal que la persona deberá cambiar al ingresar.'
-                        : 'El administrador comparte esta contraseña con la persona. El ingreso al sistema es por cédula.'}
+                      {securityDescription}
                     </FieldDescription>
                   </FieldGroup>
                 </CardContent>
@@ -330,10 +318,35 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
         <FormActions
           onCancel={() => router.push('/management/users')}
-          submitLabel={'Guardar usuario'}
+          submitLabel={isEditing ? 'Guardar usuario' : 'Guardar y enviar invitación'}
           pending={pending}
         />
       </form>
+
+      <AlertDialog
+        open={isRestoreDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCancelRestore();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Este documento pertenece a un usuario eliminado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Si continuás, se restaura esa cuenta en lugar de crear una nueva:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
+            <li>Se reemplazan su nombre, correo y rol por los que ingresaste.</li>
+            <li>Se le envía una invitación al correo para que elija una contraseña nueva.</li>
+            <li>Recupera los proyectos y el historial que tenía asociados.</li>
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRestore}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FormProvider>
   );
 }

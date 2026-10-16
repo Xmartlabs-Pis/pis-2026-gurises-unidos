@@ -20,7 +20,7 @@ async function createProjectFixture(name: string) {
       departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
       createdBy: seed.adminId,
-      topicId: seed.topicIds[0],
+      topics: { connect: { id: seed.topicIds[0] } },
     },
   });
   createdProjectIds.push(project.id);

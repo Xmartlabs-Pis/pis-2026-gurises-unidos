@@ -34,7 +34,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     generalObjective: 'Objective',
     publicDescription: 'Public description',
     internalNotes: '',
-    topicId: String(seed.topicIds[0]),
+    topicIds: [String(seed.topicIds[0])],
     strategicLineIds: [String(seed.strategicLineIds[0])],
     projectPlaceholder: PROJECT_PLACEHOLDERS[2],
     year: String(BENEFICIARY_YEAR),
@@ -66,7 +66,7 @@ async function createProjectFixture(name: string, startYear = 2020) {
       departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
       createdBy: seed.adminId,
-      topicId: seed.topicIds[0],
+      topics: { connect: { id: seed.topicIds[0] } },
     },
   });
   createdProjectIds.push(project.id);
@@ -122,7 +122,7 @@ describe('createProject (integration)', () => {
       endYear: null,
       leadCoordinatorId: seed.coordinatorId,
       departments: [{ id: seed.departmentIds[0] }],
-      topicId: seed.topicIds[0],
+      topics: [{ id: seed.topicIds[0] }],
       geographicScope: 'national',
       countries: [],
       cities: ['Colonia del Sacramento'],
@@ -298,23 +298,39 @@ describe('createProject (integration)', () => {
     const before = await countRows();
     const unknownTopicId = Math.max(0, ...seed.topicIds) + 1000;
 
-    const result = await createProject({}, buildFormData({ topicId: String(unknownTopicId) }));
+    const result = await createProject(
+      {},
+      buildFormData({ topicIds: [String(seed.topicIds[0]), String(unknownTopicId)] })
+    );
 
-    expect(result.errors?.topicId).toEqual(['Elegí una temática válida']);
+    expect(result.errors?.topicIds).toEqual(['Elegí temáticas válidas']);
     expect(await countRows()).toEqual(before);
   });
 
-  test('rejects more than one topic', async () => {
+  test('rejects a project without topics', async () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
-    const result = await createProject(
-      {},
-      buildFormData({ topicId: [String(seed.topicIds[0]), String(seed.topicIds[1])] })
+    const result = await createProject({}, buildFormData({ topicIds: [] }));
+
+    expect(result.errors?.topicIds).toEqual(['Seleccioná al menos una temática']);
+    expect(await countRows()).toEqual(before);
+  });
+
+  test('associates every selected topic', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({ topicIds: [String(seed.topicIds[0]), String(seed.topicIds[1])] })
+      )
     );
 
-    expect(result.errors?.topicId).toEqual(['Elegí una temática válida']);
-    expect(await countRows()).toEqual(before);
+    const project = await loadProject(projectId);
+    expect(project.topics).toEqual(
+      [seed.topicIds[0], seed.topicIds[1]].sort((a, b) => a - b).map((id) => ({ id }))
+    );
   });
 
   test('rejects beneficiaries after the end year of an inactive project', async () => {

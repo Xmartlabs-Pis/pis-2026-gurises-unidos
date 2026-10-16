@@ -361,6 +361,18 @@ describe('resetPassword', () => {
     expect(result.formError).toBe('La cuenta seleccionada no existe.');
   });
 
+  test('rejects resetting the password of a user with a pending invitation', async () => {
+    authMock.mockResolvedValue({ user: { id: '1', role: 'admin' } });
+    findUniqueMock.mockResolvedValue(makeUser({ id: 9, status: 'pendingInvitation' }));
+
+    const result = await resetPassword({}, buildFormData(VALID_FIELDS));
+
+    expect(result.formError).toBe(
+      'La persona todavía no aceptó la invitación. Reenviale la invitación en su lugar.'
+    );
+    expect(hashPasswordMock).not.toHaveBeenCalled();
+  });
+
   test('hashes the new password, forces a change on next login, and logs the admin as the author', async () => {
     authMock.mockResolvedValue({ user: { id: '1', role: 'admin' } });
     findUniqueMock.mockResolvedValue(makeUser({ id: 9 }));

@@ -4,7 +4,15 @@ import { createUser } from '@/app/actions/users';
 import { generateTemporaryPassword } from '@/lib/users';
 import { Prisma } from '@/generated/prisma/client';
 
-const { authMock, redirectMock, logAuditMock, transactionMock, hashMock } = vi.hoisted(() => ({
+const {
+  authMock,
+  redirectMock,
+  logAuditMock,
+  transactionMock,
+  hashMock,
+  createUserTokenMock,
+  sendInvitationEmailMock,
+} = vi.hoisted(() => ({
   authMock: vi.fn(),
   redirectMock: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
@@ -12,12 +20,17 @@ const { authMock, redirectMock, logAuditMock, transactionMock, hashMock } = vi.h
   logAuditMock: vi.fn(),
   transactionMock: vi.fn(),
   hashMock: vi.fn(),
+  createUserTokenMock: vi.fn(),
+  sendInvitationEmailMock: vi.fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/audit-log', () => ({ logAudit: logAuditMock }));
-vi.mock('bcryptjs', () => ({ default: { hash: hashMock } }));
+vi.mock('@/lib/credentials', () => ({ hashPassword: hashMock }));
+vi.mock('@/lib/auth/user-tokens', () => ({ createUserToken: createUserTokenMock }));
+vi.mock('@/lib/users/invitation', () => ({ sendInvitationEmail: sendInvitationEmailMock }));
 vi.mock('@/lib/prisma', () => ({ default: { $transaction: transactionMock } }));
 
 const EMPTY_STATE: UserFormState = {};
@@ -38,8 +51,6 @@ function buildFormData(overrides: Record<string, string> = {}) {
     documentId: '77777777',
     email: 'ana@gmail.com',
     role: 'coordinator',
-    status: 'active',
-    password: 'Test1234',
     ...overrides,
   };
 
@@ -47,16 +58,24 @@ function buildFormData(overrides: Record<string, string> = {}) {
   return formData;
 }
 
-function setupTransaction({ userId = 42 } = {}) {
-  const userCreate = vi.fn().mockResolvedValue({ id: userId });
+function setupTransaction({ userId = 42, deletedUserId = null as number | null } = {}) {
+  const userCreate = vi
+    .fn()
+    .mockResolvedValue({ id: userId, firstName: 'Ana', email: 'ana@gmail.com' });
+  const userUpdate = vi
+    .fn()
+    .mockResolvedValue({ id: deletedUserId, firstName: 'Ana', email: 'ana@gmail.com' });
+  const userFindFirst = vi
+    .fn()
+    .mockResolvedValue(deletedUserId === null ? null : { id: deletedUserId });
 
   transactionMock.mockImplementation(async (callback) =>
     callback({
-      user: { create: userCreate },
+      user: { create: userCreate, update: userUpdate, findFirst: userFindFirst },
     })
   );
 
-  return { userCreate };
+  return { userCreate, userUpdate };
 }
 
 function knownRequestError(code: string, meta: Record<string, unknown>) {
@@ -72,7 +91,8 @@ beforeEach(() => {
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   });
-  hashMock.mockResolvedValue('hashed-password');
+  hashMock.mockResolvedValue('unusable-hash');
+  createUserTokenMock.mockResolvedValue('invitation-token');
 });
 
 describe('createUser', () => {
@@ -99,7 +119,7 @@ describe('createUser', () => {
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
-  test('creates the user and audit event in one transaction', async () => {
+  test('creates a pending user, audit event and invitation token in one transaction', async () => {
     const { userCreate } = setupTransaction();
 
     await expect(createUser(EMPTY_STATE, buildFormData())).rejects.toThrow(
@@ -114,19 +134,39 @@ describe('createUser', () => {
         documentId: '77777777',
         email: 'ana@gmail.com',
         role: 'coordinator',
-        status: 'active',
-        passwordHash: 'hashed-password',
-        mustChangePassword: true,
+        status: 'pendingInvitation',
+        passwordHash: 'unusable-hash',
         createdBy: 7,
       }),
     });
-    expect(hashMock).toHaveBeenCalledWith('Test1234', 10);
     expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
       authorId: 7,
       action: 'creation',
       entity: 'user',
       entityId: 42,
     });
+    expect(createUserTokenMock).toHaveBeenCalledWith(expect.anything(), 42, 'invitation');
+  });
+
+  test('sends the invitation email to the created user', async () => {
+    setupTransaction();
+
+    await expect(createUser(EMPTY_STATE, buildFormData())).rejects.toThrow(
+      'NEXT_REDIRECT:/management/users'
+    );
+
+    expect(sendInvitationEmailMock).toHaveBeenCalledWith(
+      { id: 42, firstName: 'Ana', email: 'ana@gmail.com' },
+      'invitation-token'
+    );
+  });
+
+  test('does not send an invitation when the user cannot be created', async () => {
+    transactionMock.mockRejectedValue(knownRequestError('P2002', { target: ['email'] }));
+
+    await createUser(EMPTY_STATE, buildFormData());
+
+    expect(sendInvitationEmailMock).not.toHaveBeenCalled();
   });
 
   test('normalizes and trims user data before creating the user', async () => {
@@ -154,18 +194,49 @@ describe('createUser', () => {
     });
   });
 
-  test('returns error for a weak password', async () => {
-    const result = await createUser(EMPTY_STATE, buildFormData({ password: '1234' }));
+  test('asks for confirmation before restoring a deleted user with the same document id', async () => {
+    const { userCreate, userUpdate } = setupTransaction({ deletedUserId: 13 });
 
-    expect(result.errors?.password).toEqual(
-      expect.arrayContaining([
-        'La contraseña debe tener al menos 8 caracteres.',
-        'La contraseña debe tener al menos una mayúscula.',
-        'La contraseña debe tener al menos una minúscula.',
-      ])
+    const result = await createUser(EMPTY_STATE, buildFormData());
+
+    expect(result).toEqual({ restoreConfirmationRequired: true, values: SUBMITTED_VALUES });
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(logAuditMock).not.toHaveBeenCalled();
+    expect(sendInvitationEmailMock).not.toHaveBeenCalled();
+  });
+
+  test('restores a deleted user as a pending invitation once confirmed', async () => {
+    const { userCreate, userUpdate } = setupTransaction({ deletedUserId: 13 });
+
+    const result = await createUser(EMPTY_STATE, buildFormData({ confirmRestore: 'true' }));
+
+    expect(result).toEqual({ restored: true });
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 13, deletedAt: { not: null } },
+      data: expect.objectContaining({
+        firstName: 'Ana',
+        email: 'ana@gmail.com',
+        status: 'pendingInvitation',
+        passwordHash: 'unusable-hash',
+        mustChangePassword: false,
+        passwordChangedAt: null,
+        deletedAt: null,
+      }),
+    });
+    expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 7,
+      action: 'creation',
+      entity: 'user',
+      entityId: 13,
+      details: { restored: true },
+    });
+    expect(createUserTokenMock).toHaveBeenCalledWith(expect.anything(), 13, 'invitation');
+    expect(sendInvitationEmailMock).toHaveBeenCalledWith(
+      { id: 13, firstName: 'Ana', email: 'ana@gmail.com' },
+      'invitation-token'
     );
-    expect(transactionMock).not.toHaveBeenCalled();
-    expect(hashMock).not.toHaveBeenCalled();
   });
 
   test('returns a duplicate document error', async () => {

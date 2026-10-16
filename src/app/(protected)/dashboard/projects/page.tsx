@@ -5,12 +5,12 @@ import { ProjectsCardList } from '@/components/projects/projects-card-listing';
 import { ProjectsCardListSkeleton } from '@/components/projects/projects-card-listing-skeleton';
 import { listBeneficiaryYears, listProjectFilterOptions, listProjects } from '@/lib/projects/list';
 import {
-  PROJECT_LIST_PAGE_SIZE,
-  parseProjectFilters,
+  resolveProjectListFilters,
   type RawProjectFilters,
 } from '@/lib/validation/project-filters';
+import { redirectToCanonical } from '@/lib/url-filters';
 
-const DEFAULT_STATUS = 'active';
+const PROJECTS_PATH = '/dashboard/projects';
 
 type ProjectsPageProps = {
   searchParams: Promise<RawProjectFilters>;
@@ -19,13 +19,9 @@ type ProjectsPageProps = {
 async function Projects({ searchParams }: ProjectsPageProps) {
   const params = await searchParams;
   const [years, options] = await Promise.all([listBeneficiaryYears(), listProjectFilterOptions()]);
-  const filters = parseProjectFilters({
-    ...params,
-    status: params.status ?? DEFAULT_STATUS,
-    beneficiaryYear: params.beneficiaryYear ?? years[0]?.toString(),
-    page: undefined,
-    pageSize: String(PROJECT_LIST_PAGE_SIZE),
-  });
+  const { canonical, filters } = resolveProjectListFilters(params, { years, ...options });
+  redirectToCanonical(PROJECTS_PATH, params, canonical);
+
   const { items, total, page, totalPages } = await listProjects(filters);
 
   return (
