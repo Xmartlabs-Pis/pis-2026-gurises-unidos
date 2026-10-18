@@ -8,7 +8,7 @@ import {
   SESSION_EXPIRATION_REASON,
 } from '@/lib/auth/session-expiration';
 
-const PUBLIC_ROUTES = ['/', '/login', '/forgot-password', '/reset-password', '/accept-invitation'];
+const PUBLIC_ROUTES = ['/', '/login', '/forgot-password', '/reset-password'];
 const PASSWORD_RESET_ROUTE = '/password-reset';
 
 function isPublicRoute(pathname: string) {

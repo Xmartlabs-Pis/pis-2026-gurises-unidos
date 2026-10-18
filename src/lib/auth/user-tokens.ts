@@ -3,11 +3,9 @@ import type { Prisma, User, UserTokenType } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 
 export const PASSWORD_RESET_TOKEN_TTL_MINUTES = 60;
-export const INVITATION_TOKEN_TTL_DAYS = 7;
 
 const TOKEN_TTL_MINUTES: Record<UserTokenType, number> = {
   passwordReset: PASSWORD_RESET_TOKEN_TTL_MINUTES,
-  invitation: INVITATION_TOKEN_TTL_DAYS * 24 * 60,
 };
 
 export type UserTokenFailureReason = 'invalid' | 'expired' | 'used' | 'replaced';

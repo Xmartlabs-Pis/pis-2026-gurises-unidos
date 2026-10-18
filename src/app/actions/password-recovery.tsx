@@ -17,7 +17,22 @@ import {
 } from '@/lib/auth/user-tokens';
 import { forgotPasswordFormSchema, resetPasswordWithTokenSchema } from '@/lib/validation/password';
 import type { PasswordFormState } from '@/app/actions/password';
-import { getAppUrl } from '@/lib/app-url';
+
+const DEV_APP_URL = 'http://localhost:3000';
+
+function getAppUrl() {
+  const appUrl = process.env.AUTH_URL;
+
+  if (appUrl) {
+    return appUrl;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_URL is not set');
+  }
+
+  return DEV_APP_URL;
+}
 
 export async function requestPasswordReset(
   _prevState: PasswordFormState,
