@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useState, type SubmitEvent } from 'react';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { completeForcedPasswordChange, type PasswordFormState } from '@/app/actions/password';
+import { completeForcedPasswordChange } from '@/app/actions/password';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,16 +12,8 @@ import {
 } from '@/lib/validation/password';
 import InputVisibilityToggle from './ui/forms/input-visibility-toggle';
 
-type PasswordResetFormProps = {
-  action?: (state: PasswordFormState, formData: FormData) => Promise<PasswordFormState>;
-  token?: string;
-};
-
-export function PasswordResetForm({
-  action = completeForcedPasswordChange,
-  token,
-}: PasswordResetFormProps) {
-  const [state, formAction, pending] = useActionState(action, {});
+export function PasswordResetForm() {
+  const [state, formAction, pending] = useActionState(completeForcedPasswordChange, {});
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const form = useForm<ForcedPasswordChangeFormValues>({
@@ -70,7 +62,6 @@ export function PasswordResetForm({
             {state.formError}
           </p>
         ) : null}
-        {token ? <input type="hidden" name="token" value={token} /> : null}
         <div className="flex flex-col gap-4.5">
           <TextInputField
             id="newPassword"

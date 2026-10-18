@@ -69,24 +69,6 @@ npx auth secret               # genera AUTH_SECRET y lo escribe en .env
 `SEED_USER_PASSWORD` es la contraseña de los usuarios de prueba del seed. Poné cualquier valor en
 `.env` antes de correr `npx prisma db seed`. Si la cambiás, volvé a ejecutar el seed para actualizar los hashes.
 
-## Email (Resend)
-
-Los mails (por ahora, el de recuperación de contraseña) salen por [Resend](https://resend.com).
-
-| Variable         | Uso                                                                                 |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `RESEND_API_KEY` | Key con permiso _Sending access_ (Dashboard → API Keys). Sin ella no se manda nada. |
-| `EMAIL_FROM`     | Remitente. Por defecto `Gurises Unidos <onboarding@resend.dev>`.                    |
-| `AUTH_URL`       | URL pública de la app, la misma que usa NextAuth. Es la base de los links del mail. |
-
-En local alcanza con no definir `RESEND_API_KEY`: el mail no se envía y se imprime en la terminal de
-`npm run dev`, con el link incluido. `AUTH_URL` tampoco hace falta, los links apuntan a
-`http://localhost:3000`. En producción (staging incluido, la imagen corre con `NODE_ENV=production`)
-`AUTH_URL` es obligatoria: si falta, no se envía el mail y queda el error en los logs.
-
-Sin un dominio verificado en Resend, el remitente `onboarding@resend.dev` solo entrega al mail del
-dueño de la cuenta. Hasta que haya dominio, los usuarios reales no reciben los mails.
-
 ## Tests end to end
 
 Playwright contra la app real y una base propia. Cubre login, la tabla de usuarios y el listado y
@@ -297,12 +279,11 @@ Entorno nuevo: clonar en `/srv/pis-<rama>` y, como `deploy` y sin `sudo`:
 ./vm-setup.sh staging     # o main
 ```
 
-Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `AUTH_URL`, `DB_PORT`, el
-`DATABASE_URL` apuntando a `db:5432`, `EMAIL_FROM` y `RESEND_API_KEY` vacía, que hay que completar a
-mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
+Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `DB_PORT` y el `DATABASE_URL`
+apuntando a `db:5432`. No sobrescribe uno existente.
 
 Si el `.env` ya existía, agregarle `DB_PORT` a mano: es la única fuente del puerto y el deploy corta
-si falta. Lo mismo con `RESEND_API_KEY`: sin ella la app levanta, pero no manda mails.
+si falta.
 
 ### Migraciones en el deploy
 

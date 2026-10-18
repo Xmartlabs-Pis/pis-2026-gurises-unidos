@@ -106,8 +106,7 @@ function LeftColumn({
         </div>
         {passwordChanged ? (
           <p className="text-status-success text-sm leading-5 font-medium tracking-normal">
-            Tu contraseña se actualizó correctamente. Iniciá sesión con tu cédula y la nueva
-            contraseña.
+            Tu contraseña se actualizó correctamente. Iniciá sesión con la nueva contraseña.
           </p>
         ) : null}
         <LoginForm sessionExpired={sessionExpired} />

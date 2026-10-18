@@ -1,7 +1,6 @@
 'use client';
 
 import { startTransition, useActionState, useEffect, useState, type SubmitEvent } from 'react';
-import Link from 'next/link';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { login } from '@/app/actions/auth';
@@ -100,12 +99,14 @@ export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean
               </FieldLabel>
             </Field>
           </FieldGroup>
-          <Link
-            href="/forgot-password"
-            className="text-primary shrink-0 font-sans text-sm leading-5 font-medium tracking-normal hover:underline"
-          >
-            ¿Olvidaste tu contraseña?
-          </Link>
+          {/* TODO: re-enable once the reset-password page exists
+            <Link
+              href="/reset-password"
+              className="hidden shrink-0 font-sans text-sm leading-5 font-medium tracking-normal text-primary lg:flex hover:underline"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          */}
         </div>
         <Button type="submit" disabled={pending} className="h-9 w-full shadow-xs/10">
           Ingresar
