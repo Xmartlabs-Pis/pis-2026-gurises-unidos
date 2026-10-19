@@ -13,7 +13,7 @@ env:
 jobs:
   deploy:
     name: Deploy to the VM
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: main
     permissions:
       contents: read

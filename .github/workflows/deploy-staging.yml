@@ -14,7 +14,7 @@ env:
 jobs:
   deploy:
     name: Deploy to the VM
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: staging
     permissions:
       contents: read

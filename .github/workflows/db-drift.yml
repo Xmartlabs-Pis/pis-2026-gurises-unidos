@@ -7,7 +7,7 @@ on:
 jobs:
   drift:
     name: migrations == schema
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     services:
       shadow:
         image: postgres:17-alpine

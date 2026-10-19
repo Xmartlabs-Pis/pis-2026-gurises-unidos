@@ -7,7 +7,7 @@ on:
 jobs:
   static:
     name: static checks
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +29,7 @@ jobs:
 
   test:
     name: vitest
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
