@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { emailSchema } from '@/lib/validation/user';
 
 export const passwordSchema = z
   .string()
@@ -39,14 +38,4 @@ export type ForcedPasswordChangeFormValues = z.infer<typeof forcedPasswordChange
 
 export const resetPasswordFormSchema = z.object({
   newPassword: passwordSchema,
-});
-
-export const forgotPasswordFormSchema = z.object({
-  email: emailSchema,
-});
-
-export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordFormSchema>;
-
-export const resetPasswordWithTokenSchema = forcedPasswordChangeSchema.safeExtend({
-  token: z.string().min(1),
 });

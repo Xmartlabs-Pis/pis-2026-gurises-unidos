@@ -83,16 +83,6 @@ describe('proxy', () => {
     expect(response.cookies.get(SESSION_EXPIRATION_COOKIE)).toBeUndefined();
   });
 
-  test.each(['/forgot-password', '/reset-password'])(
-    'allows unauthenticated access to the password recovery route %s',
-    (path) => {
-      const response = runProxy(makeRequest(path));
-
-      expect(response.headers.get('x-middleware-next')).toBe('1');
-      expect(response.headers.get('location')).toBeNull();
-    }
-  );
-
   test('redirects users who must change password away from protected routes', () => {
     const response = runProxy(
       makeRequest('/dashboard/projects', { authenticated: true, mustChangePassword: true })

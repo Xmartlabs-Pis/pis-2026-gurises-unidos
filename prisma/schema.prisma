@@ -67,11 +67,6 @@ enum CounterpartyType {
   internationalCooperation
 }
 
-enum UserTokenType {
-  passwordReset
-  invitation
-}
-
 // ---------- TABLES ----------
 
 model User {
@@ -103,8 +98,6 @@ model User {
   beneficiaryCategories BeneficiaryCategory[]
   reportsGenerated      Report[]
   auditLogs             AuditLog[]
-
-  tokens UserToken[]
 }
 
 model Topic {
@@ -262,19 +255,4 @@ model AuditLog {
   occurredAt DateTime    @default(now())
 
   author User @relation(fields: [authorId], references: [id])
-}
-
-model UserToken {
-  id        Int           @id @default(autoincrement())
-  userId    Int
-  type      UserTokenType
-  tokenHash String        @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  revokedAt DateTime?
-  createdAt DateTime      @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, type])
 }
