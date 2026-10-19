@@ -21,6 +21,7 @@ import logo from '@/assets/logo.png';
 import { AppSidebarFooter } from './footer';
 import { filterNavGroups, flattenNavItems, NAV_GROUPS } from './navigation';
 import { SidebarCollapsibleNavItem, SidebarNavItem } from './nav-item';
+import Link from 'next/link';
 
 interface Props {
   user: Session['user'];
@@ -37,17 +38,23 @@ export function AppSidebar({ user }: Props) {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-12 items-center gap-2 overflow-hidden p-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!">
-              <Image
-                className="size-8 shrink-0 rounded-md"
-                src={logo}
-                alt="Gurises Unidos"
-                width={32}
-                height={32}
-              />
-              <span className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold">Gurises Unidos</span>
-                <span className="text-xs">ONG Uruguay</span>
-              </span>
+              <Link
+                href="/dashboard"
+                onClick={() => setOpenMobile(false)}
+                className="flex min-w-0 flex-1 items-center gap-2"
+              >
+                <Image
+                  className="size-8 shrink-0 rounded-md"
+                  src={logo}
+                  alt=""
+                  width={32}
+                  height={32}
+                />
+                <span className="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-semibold">Gurises Unidos</span>
+                  <span className="text-xs">ONG Uruguay</span>
+                </span>
+              </Link>
               <Button
                 variant="ghost"
                 size="icon-sm"

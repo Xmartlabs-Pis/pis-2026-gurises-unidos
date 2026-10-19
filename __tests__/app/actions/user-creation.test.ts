@@ -16,6 +16,7 @@ const { authMock, redirectMock, logAuditMock, transactionMock, hashMock } = vi.h
 
 vi.mock('@/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/audit-log', () => ({ logAudit: logAuditMock }));
 vi.mock('bcryptjs', () => ({ default: { hash: hashMock } }));
 vi.mock('@/lib/prisma', () => ({ default: { $transaction: transactionMock } }));
@@ -33,7 +34,6 @@ const SUBMITTED_VALUES = {
 function buildFormData(overrides: Record<string, string> = {}) {
   const formData = new FormData();
   const fields = {
-    intent: 'submit',
     firstName: 'Ana',
     lastName: 'García',
     documentId: '77777777',
@@ -48,16 +48,20 @@ function buildFormData(overrides: Record<string, string> = {}) {
   return formData;
 }
 
-function setupTransaction({ userId = 42 } = {}) {
+function setupTransaction({ userId = 42, deletedUserId = null as number | null } = {}) {
   const userCreate = vi.fn().mockResolvedValue({ id: userId });
+  const userUpdate = vi.fn().mockResolvedValue({ id: deletedUserId });
+  const userFindFirst = vi
+    .fn()
+    .mockResolvedValue(deletedUserId === null ? null : { id: deletedUserId });
 
   transactionMock.mockImplementation(async (callback) =>
     callback({
-      user: { create: userCreate },
+      user: { create: userCreate, update: userUpdate, findFirst: userFindFirst },
     })
   );
 
-  return { userCreate };
+  return { userCreate, userUpdate };
 }
 
 function knownRequestError(code: string, meta: Record<string, unknown>) {
@@ -88,7 +92,7 @@ describe('createUser', () => {
     authMock.mockResolvedValue({ user: { id: '8', role: 'coordinator' } });
 
     await expect(createUser(EMPTY_STATE, buildFormData())).rejects.toThrow(
-      'NEXT_REDIRECT:/dashboard/projects'
+      'NEXT_REDIRECT:/dashboard'
     );
     expect(transactionMock).not.toHaveBeenCalled();
   });
@@ -155,6 +159,45 @@ describe('createUser', () => {
     });
   });
 
+  test('asks for confirmation before restoring a deleted user with the same document id', async () => {
+    const { userCreate, userUpdate } = setupTransaction({ deletedUserId: 13 });
+
+    const result = await createUser(EMPTY_STATE, buildFormData());
+
+    expect(result).toEqual({ restoreConfirmationRequired: true, values: SUBMITTED_VALUES });
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(logAuditMock).not.toHaveBeenCalled();
+  });
+
+  test('restores a deleted user with the same document id once confirmed', async () => {
+    const { userCreate, userUpdate } = setupTransaction({ deletedUserId: 13 });
+
+    const result = await createUser(EMPTY_STATE, buildFormData({ confirmRestore: 'true' }));
+
+    expect(result).toEqual({ restored: true });
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 13, deletedAt: { not: null } },
+      data: expect.objectContaining({
+        firstName: 'Ana',
+        email: 'ana@gmail.com',
+        status: 'active',
+        passwordHash: 'hashed-password',
+        mustChangePassword: true,
+        passwordChangedAt: expect.any(Date),
+        deletedAt: null,
+      }),
+    });
+    expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 7,
+      action: 'creation',
+      entity: 'user',
+      entityId: 13,
+      details: { restored: true },
+    });
+  });
+
   test('returns error for a weak password', async () => {
     const result = await createUser(EMPTY_STATE, buildFormData({ password: '1234' }));
 
@@ -203,13 +246,6 @@ describe('createUser', () => {
       formError: 'No se pudo crear el usuario. Intentá de nuevo.',
       values: SUBMITTED_VALUES,
     });
-  });
-
-  test('returns an empty state when the intent is not submit', async () => {
-    const result = await createUser(EMPTY_STATE, buildFormData({ intent: 'cancel' }));
-
-    expect(result).toEqual({});
-    expect(transactionMock).not.toHaveBeenCalled();
   });
 });
 

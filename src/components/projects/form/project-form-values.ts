@@ -1,6 +1,14 @@
-import type { z } from 'zod';
-import type { projectFormSchema } from '@/lib/validation/project-form';
+import type { BeneficiaryFieldName } from '@/lib/project-display';
+import type { ProjectFormData } from '@/lib/validation/project-form';
 
-export type ProjectFormValues = {
-  [K in keyof z.infer<typeof projectFormSchema>]: string;
-} & { coverPhotoUrl: string | null };
+type ProjectFormListField =
+  'topicIds' | 'strategicLineIds' | 'departmentIds' | 'countries' | 'cities' | 'neighborhoods';
+
+export type ProjectFormValues = Omit<
+  { [K in keyof ProjectFormData]: string },
+  ProjectFormListField
+> & {
+  coverPhotoUrl: string | null;
+} & { [K in ProjectFormListField]: string[] } & {
+  [K in BeneficiaryFieldName]?: string;
+};

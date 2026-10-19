@@ -20,13 +20,19 @@ export type ProjectTopbarConfig = {
 type TopbarContextValue = {
   projectConfig: ProjectTopbarConfig | null;
   setProjectConfig: Dispatch<SetStateAction<ProjectTopbarConfig | null>>;
+  resourceLabel: string | null;
+  setResourceLabel: Dispatch<SetStateAction<string | null>>;
 };
 
 const TopbarContext = createContext<TopbarContextValue | null>(null);
 
 export function TopbarProvider({ children }: { children: ReactNode }) {
   const [projectConfig, setProjectConfig] = useState<ProjectTopbarConfig | null>(null);
-  const value = useMemo(() => ({ projectConfig, setProjectConfig }), [projectConfig]);
+  const [resourceLabel, setResourceLabel] = useState<string | null>(null);
+  const value = useMemo(
+    () => ({ projectConfig, setProjectConfig, resourceLabel, setResourceLabel }),
+    [projectConfig, resourceLabel]
+  );
 
   return <TopbarContext.Provider value={value}>{children}</TopbarContext.Provider>;
 }
@@ -57,6 +63,18 @@ export function ProjectTopbarRegistration({
 
     return () => setProjectConfig(null);
   }, [projectName, selectedYear, setProjectConfig, years]);
+
+  return null;
+}
+
+export function BreadcrumbResourceLabel({ label }: { label: string }) {
+  const { setResourceLabel } = useTopbar();
+
+  useEffect(() => {
+    setResourceLabel(label);
+
+    return () => setResourceLabel(null);
+  }, [label, setResourceLabel]);
 
   return null;
 }

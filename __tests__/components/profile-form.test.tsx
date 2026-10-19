@@ -3,7 +3,15 @@ import { describe, expect, test, vi } from 'vitest';
 
 vi.mock('@/app/actions/profile', () => ({ updateProfile: vi.fn() }));
 vi.mock('@/app/actions/password', () => ({ changePassword: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+
+const { routerBackMock, routerReplaceMock } = vi.hoisted(() => ({
+  routerBackMock: vi.fn(),
+  routerReplaceMock: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ back: routerBackMock, replace: routerReplaceMock }),
+}));
 
 import { ProfileForm } from '@/components/profile-form';
 
@@ -74,33 +82,11 @@ describe('ProfileForm', () => {
     });
   });
 
-  test('discards unsaved changes and validation errors', async () => {
+  test('navigates back when canceled', () => {
     render(<ProfileForm profile={PROFILE} />);
-    const firstNameInput = screen.getByRole('textbox', { name: 'Nombre' }) as HTMLInputElement;
-    const lastNameInput = screen.getByRole('textbox', { name: 'Apellido' }) as HTMLInputElement;
-    const emailInput = screen.getByRole('textbox', {
-      name: 'Correo electrónico',
-    }) as HTMLInputElement;
 
-    fireEvent.change(firstNameInput, { target: { value: '' } });
-    fireEvent.change(lastNameInput, { target: { value: 'Pérez' } });
-    fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-    await act(async () => {
-      fireEvent.submit(
-        (screen.getByRole('button', { name: 'Guardar cambios' }) as HTMLButtonElement).form!
-      );
-    });
-    await screen.findByText('El nombre es obligatorio.');
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 
-    expect((screen.getByRole('textbox', { name: 'Nombre' }) as HTMLInputElement).value).toBe('Ana');
-    expect((screen.getByRole('textbox', { name: 'Apellido' }) as HTMLInputElement).value).toBe(
-      'García'
-    );
-    expect(
-      (screen.getByRole('textbox', { name: 'Correo electrónico' }) as HTMLInputElement).value
-    ).toBe('ana@example.com');
-    expect(screen.queryByText('El nombre es obligatorio.')).toBeNull();
-    expect(screen.queryByText('Ingresá un correo electrónico válido.')).toBeNull();
+    expect(routerBackMock).toHaveBeenCalledOnce();
   });
 });

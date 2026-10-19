@@ -3,48 +3,60 @@ import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
-import { ADMIN } from './fixtures';
+import {
+  formCategoryValuesWhere,
+  SYSTEM_BENEFICIARY_KEYS,
+  toBeneficiaryValuesCreate,
+  type BeneficiaryCounts,
+} from '../src/lib/project-display';
+import { ADMIN, BENEFICIARY_CATEGORIES, STRATEGIC_LINES } from './fixtures';
+import { CounterpartyType } from '../src/generated/prisma/enums';
 
 const prisma = new PrismaClient();
 
 const REFERENCE_YEAR = 2025;
 
 const DEPARTMENTS = [
-  'Montevideo',
+  'Artigas',
   'Canelones',
-  'Maldonado',
-  'Salto',
-  'Paysandú',
-  'Rivera',
-  'Tacuarembó',
+  'Cerro Largo',
   'Colonia',
+  'Durazno',
+  'Flores',
+  'Florida',
+  'Lavalleja',
+  'Maldonado',
+  'Montevideo',
+  'Paysandú',
+  'Río Negro',
+  'Rivera',
+  'Rocha',
+  'Salto',
+  'San José',
+  'Soriano',
+  'Tacuarembó',
+  'Treinta y Tres',
 ];
+
+const COUNTERPARTY_TYPES = Object.values(CounterpartyType);
 
 const TOPICS = ['Education', 'Health', 'Protection', 'Community'];
 
-const EMPTY_BENEFICIARIES = {
-  directChildrenAdolescents: 0,
-  indirectChildrenAdolescents: 0,
-  youth18To29: 0,
-  families: 0,
-  coordinatedInstitutions: 0,
-  communityLeaders: 0,
-  basicServiceStaff: 0,
-};
-
-type BeneficiaryRecord = { year: number } & Partial<typeof EMPTY_BENEFICIARIES>;
+type BeneficiaryRecord = { year: number } & Partial<BeneficiaryCounts>;
 
 type SeedProject = {
   name: string;
-  status: 'active' | 'paused' | 'closed';
+  status: 'active' | 'inactive';
   intensity: 'high' | 'medium' | 'low';
   startYear: number;
   endYear?: number;
   department: string;
-  topic: string;
+  topics: string[];
   zone: 'city' | 'inland' | 'rural';
-  localityNeighborhood: string;
+  cities: string[];
+  neighborhoods: string[];
   publicDescription: string;
+  showOnLanding?: boolean;
   beneficiaries: BeneficiaryRecord[];
 };
 
@@ -55,9 +67,10 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'high',
     startYear: 2022,
     department: 'Montevideo',
-    topic: 'Community',
+    topics: ['Community'],
     zone: 'city',
-    localityNeighborhood: 'Cerro Norte',
+    cities: ['Montevideo'],
+    neighborhoods: ['Cerro Norte'],
     publicDescription:
       'Espacios lúdicos seguros para el desarrollo integral de niños y niñas en zonas vulnerables.',
     beneficiaries: [
@@ -90,9 +103,10 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2023,
     department: 'Canelones',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'inland',
-    localityNeighborhood: 'Las Piedras',
+    cities: ['Las Piedras'],
+    neighborhoods: [],
     publicDescription:
       'Acompañamiento educativo para fortalecer el vínculo con la escuela y mejorar trayectorias.',
     beneficiaries: [
@@ -125,9 +139,10 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'low',
     startYear: 2024,
     department: 'Montevideo',
-    topic: 'Education',
+    topics: ['Education', 'Community'],
     zone: 'city',
-    localityNeighborhood: 'Casavalle',
+    cities: ['Montevideo'],
+    neighborhoods: ['Casavalle'],
     publicDescription:
       'Talleres de expresión artística que fortalecen identidad y habilidades socioemocionales.',
     beneficiaries: [
@@ -154,9 +169,10 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'high',
     startYear: 2023,
     department: 'Salto',
-    topic: 'Health',
+    topics: ['Health'],
     zone: 'inland',
-    localityNeighborhood: 'Barrio Artigas',
+    cities: ['Salto'],
+    neighborhoods: ['Barrio Artigas'],
     publicDescription:
       'Promoción de la salud integral con equipos barriales y centros de salud de referencia.',
     beneficiaries: [
@@ -184,9 +200,10 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2024,
     department: 'Maldonado',
-    topic: 'Protection',
+    topics: ['Protection'],
     zone: 'city',
-    localityNeighborhood: 'Maldonado Nuevo',
+    cities: ['Maldonado'],
+    neighborhoods: ['Maldonado Nuevo'],
     publicDescription:
       'Fortalecimiento de entornos protectores con familias, escuelas e instituciones locales.',
     beneficiaries: [
@@ -206,9 +223,10 @@ const SEED_PROJECTS: SeedProject[] = [
     intensity: 'medium',
     startYear: 2025,
     department: 'Paysandú',
-    topic: 'Community',
+    topics: ['Community'],
     zone: 'city',
-    localityNeighborhood: 'Barrio Obrero',
+    cities: ['Paysandú'],
+    neighborhoods: ['Barrio Obrero'],
     publicDescription:
       'Liderazgo juvenil y participación comunitaria a través de proyectos impulsados por jóvenes.',
     beneficiaries: [
@@ -223,13 +241,14 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Escuela Abierta',
-    status: 'paused',
+    status: 'active',
     intensity: 'low',
     startYear: 2023,
     department: 'Rivera',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'rural',
-    localityNeighborhood: 'Paraje Cerros Blancos',
+    cities: ['Paraje Cerros Blancos'],
+    neighborhoods: [],
     publicDescription:
       'Propuestas educativas en escuelas rurales para reducir la desvinculación escolar.',
     beneficiaries: [
@@ -249,13 +268,14 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Nutrición Comunitaria',
-    status: 'paused',
+    status: 'active',
     intensity: 'medium',
     startYear: 2022,
     department: 'Tacuarembó',
-    topic: 'Health',
+    topics: ['Health'],
     zone: 'inland',
-    localityNeighborhood: 'Barrio Ferrocarril',
+    cities: ['Tacuarembó'],
+    neighborhoods: ['Barrio Ferrocarril'],
     publicDescription:
       'Huertas y espacios de alimentación saludable con participación de familias del barrio.',
     beneficiaries: [
@@ -264,27 +284,29 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Primera Infancia',
-    status: 'paused',
+    status: 'active',
     intensity: 'high',
     startYear: 2024,
     department: 'Colonia',
-    topic: 'Protection',
+    topics: ['Protection', 'Health'],
     zone: 'city',
-    localityNeighborhood: 'Barrio Sur',
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     publicDescription:
       'Acompañamiento a familias con niños y niñas de 0 a 3 años en situación de vulnerabilidad.',
     beneficiaries: [],
   },
   {
     name: 'Mirada Joven',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2021,
     endYear: 2023,
     department: 'Montevideo',
-    topic: 'Education',
+    topics: ['Education'],
     zone: 'city',
-    localityNeighborhood: 'Malvín Norte',
+    cities: ['Montevideo'],
+    neighborhoods: ['Malvín Norte'],
     publicDescription:
       'Talleres de comunicación audiovisual para adolescentes, finalizados en 2023.',
     beneficiaries: [
@@ -294,14 +316,15 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Puentes Rurales',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'medium',
     startYear: 2020,
     endYear: 2024,
     department: 'Tacuarembó',
-    topic: 'Community',
+    topics: ['Community'],
     zone: 'rural',
-    localityNeighborhood: 'Paso de los Toros',
+    cities: ['Paso de los Toros'],
+    neighborhoods: [],
     publicDescription:
       'Articulación de instituciones y referentes comunitarios en zonas rurales aisladas.',
     beneficiaries: [
@@ -323,14 +346,15 @@ const SEED_PROJECTS: SeedProject[] = [
   },
   {
     name: 'Semillero Deportivo',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2022,
     endYear: 2025,
     department: 'Canelones',
-    topic: 'Health',
+    topics: ['Health'],
     zone: 'inland',
-    localityNeighborhood: 'Barros Blancos',
+    cities: ['Barros Blancos'],
+    neighborhoods: [],
     publicDescription:
       'Actividad física y deporte comunitario como herramienta de inclusión para adolescentes.',
     beneficiaries: [
@@ -338,12 +362,37 @@ const SEED_PROJECTS: SeedProject[] = [
       { year: 2025, directChildrenAdolescents: 145, families: 52, communityLeaders: 4 },
     ],
   },
+  {
+    name: 'Puente Escolar',
+    status: 'active',
+    intensity: 'low',
+    startYear: 2025,
+    department: 'Montevideo',
+    topics: ['Education'],
+    zone: 'city',
+    cities: ['Montevideo'],
+    neighborhoods: ['Casavalle'],
+    publicDescription:
+      'Apoyo a la continuidad educativa de niños y niñas, aún sin publicar en la landing.',
+    showOnLanding: false,
+    beneficiaries: [
+      { year: 2025, directChildrenAdolescents: 60, families: 25, communityLeaders: 3 },
+    ],
+  },
 ];
 
 type ProjectFixture = Required<
   Omit<
     Prisma.ProjectUncheckedCreateInput,
-    'id' | 'createdAt' | 'updatedAt' | 'projectCoordinators' | 'projectBeneficiaries'
+    | 'id'
+    | 'searchName'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'projectCoordinators'
+    | 'projectBeneficiaries'
+    | 'topics'
+    | 'strategicLines'
+    | 'departments'
   >
 >;
 
@@ -357,6 +406,11 @@ async function main() {
 
   await prisma.$transaction(
     async (tx) => {
+      await tx.beneficiaryCategory.createMany({
+        data: BENEFICIARY_CATEGORIES,
+        skipDuplicates: true,
+      });
+
       const departmentIds = new Map<string, number>();
       for (const name of DEPARTMENTS) {
         const department = await tx.department.upsert({
@@ -371,6 +425,10 @@ async function main() {
       for (const name of TOPICS) {
         const topic = await tx.topic.upsert({ where: { name }, update: {}, create: { name } });
         topicIds.set(name, topic.id);
+      }
+
+      for (const name of STRATEGIC_LINES) {
+        await tx.strategicLine.upsert({ where: { name }, update: {}, create: { name } });
       }
 
       const admin = await tx.user.upsert({
@@ -425,13 +483,15 @@ async function main() {
       });
 
       for (const [index, project] of SEED_PROJECTS.entries()) {
-        const { department, topic, beneficiaries, endYear, ...fields } = project;
+        const { department, topics, beneficiaries, endYear, showOnLanding, ...fields } = project;
         const fixture: ProjectFixture = {
           ...fields,
+          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
           endYear: endYear ?? null,
+          showOnLanding: showOnLanding ?? true,
           leadCoordinatorId: coordinator.id,
-          departmentId: departmentIds.get(department)!,
-          topicId: topicIds.get(topic)!,
+          geographicScope: 'national',
+          countries: [],
           generalObjective: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
           internalNotes: null,
@@ -444,16 +504,41 @@ async function main() {
           where: { name: fixture.name, startYear: fixture.startYear, deletedAt: null },
           select: { id: true },
         });
+        const projectDepartments = [{ id: departmentIds.get(department)! }];
+        const topicRefs = topics.map((name) => ({ id: topicIds.get(name)! }));
         const saved = existing
-          ? await tx.project.update({ where: { id: existing.id }, data: fixture })
-          : await tx.project.create({ data: fixture });
+          ? await tx.project.update({
+              where: { id: existing.id },
+              data: {
+                ...fixture,
+                departments: { set: projectDepartments },
+                topics: { set: topicRefs },
+              },
+            })
+          : await tx.project.create({
+              data: {
+                ...fixture,
+                departments: { connect: projectDepartments },
+                topics: { connect: topicRefs },
+              },
+            });
 
         for (const { year, ...counts } of beneficiaries) {
-          const data = { ...EMPTY_BENEFICIARIES, ...counts, authorId: coordinator.id };
+          await tx.projectBeneficiaryValue.deleteMany({
+            where: formCategoryValuesWhere(saved.id, year, SYSTEM_BENEFICIARY_KEYS),
+          });
           await tx.projectBeneficiary.upsert({
             where: { projectId_year: { projectId: saved.id, year } },
-            update: data,
-            create: { projectId: saved.id, year, ...data },
+            update: {
+              authorId: coordinator.id,
+              values: { create: toBeneficiaryValuesCreate(counts) },
+            },
+            create: {
+              projectId: saved.id,
+              year,
+              authorId: coordinator.id,
+              values: { create: toBeneficiaryValuesCreate(counts) },
+            },
           });
         }
       }

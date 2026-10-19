@@ -1,8 +1,10 @@
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { updateProject } from '@/app/actions/projects';
+import { createProject, updateProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
+import { toBeneficiaryValuesCreate } from '@/lib/project-display';
 import { loadSeedData, type SeedData } from '../fixtures';
 import { signInAs } from '../session';
+import { auditLogsFor, deleteProject, loadProject } from './project-helpers';
 
 const BENEFICIARY_YEAR = 2024;
 
@@ -14,15 +16,19 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     name: 'Project under edit',
     status: 'active',
     intensity: 'high',
+    counterpartyType: 'publicSector',
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
-    departmentId: String(seed.departmentIds[0]),
+    geographicScope: 'national',
+    departmentIds: [String(seed.departmentIds[0])],
+    cities: ['Colonia del Sacramento'],
+    neighborhoods: ['Barrio Sur'],
     zone: 'rural',
-    localityNeighborhood: 'Barrio Sur',
     generalObjective: 'Objective',
     publicDescription: '',
     internalNotes: '',
-    topicId: String(seed.topicIds[0]),
+    topicIds: [String(seed.topicIds[0])],
+    strategicLineIds: [String(seed.strategicLineIds[0])],
     year: String(BENEFICIARY_YEAR),
     directChildrenAdolescents: '10',
     indirectChildrenAdolescents: '5',
@@ -46,73 +52,38 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       name: 'Project under edit',
       status: 'active',
       intensity: 'high',
+      counterpartyType: 'publicSector',
       startYear: 2020,
       leadCoordinatorId,
-      departmentId: seed.departmentIds[0],
+      departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
-      localityNeighborhood: 'Barrio Sur',
+      cities: ['Colonia del Sacramento'],
+      neighborhoods: ['Barrio Sur'],
       generalObjective: 'Objective',
       createdBy: seed.adminId,
-      topicId: seed.topicIds[0],
+      topics: { connect: { id: seed.topicIds[0] } },
+      strategicLines: { connect: { id: seed.strategicLineIds[0] } },
       projectBeneficiaries: {
         create: {
           year: BENEFICIARY_YEAR,
-          directChildrenAdolescents: 10,
-          indirectChildrenAdolescents: 5,
-          youth18To29: 3,
-          families: 2,
-          coordinatedInstitutions: 1,
-          communityLeaders: 4,
-          basicServiceStaff: 6,
           authorId: seed.adminId,
+          values: {
+            create: toBeneficiaryValuesCreate({
+              directChildrenAdolescents: 10,
+              indirectChildrenAdolescents: 5,
+              youth18To29: 3,
+              families: 2,
+              coordinatedInstitutions: 1,
+              communityLeaders: 4,
+              basicServiceStaff: 6,
+            }),
+          },
         },
       },
     },
   });
   createdProjectIds.push(project.id);
   return project.id;
-}
-
-async function deleteProject(id: number) {
-  const beneficiaryIds = (
-    await prisma.projectBeneficiary.findMany({ where: { projectId: id }, select: { id: true } })
-  ).map((beneficiary) => beneficiary.id);
-  await prisma.$transaction([
-    prisma.auditLog.deleteMany({
-      where: {
-        OR: [
-          { entity: 'project', entityId: id },
-          { entity: 'beneficiary', entityId: { in: beneficiaryIds } },
-        ],
-      },
-    }),
-    prisma.projectBeneficiary.deleteMany({ where: { projectId: id } }),
-    prisma.project.deleteMany({ where: { id } }),
-  ]);
-}
-
-function loadProject(id: number) {
-  return prisma.project.findUniqueOrThrow({
-    where: { id },
-    include: {
-      projectBeneficiaries: { orderBy: { year: 'asc' } },
-    },
-  });
-}
-
-async function auditLogsFor(id: number) {
-  const beneficiaryIds = (
-    await prisma.projectBeneficiary.findMany({ where: { projectId: id }, select: { id: true } })
-  ).map((beneficiary) => beneficiary.id);
-  return prisma.auditLog.findMany({
-    where: {
-      OR: [
-        { entity: 'project', entityId: id },
-        { entity: 'beneficiary', entityId: { in: beneficiaryIds } },
-      ],
-    },
-    orderBy: { id: 'asc' },
-  });
 }
 
 async function expectRedirectToProject(result: Promise<unknown>, id: number) {
@@ -130,7 +101,48 @@ afterEach(async () => {
 });
 
 describe('updateProject (integration)', () => {
-  test('rejects closing before stored beneficiary years without changing any data', async () => {
+  test.each(['admin', 'coordinator'] as const)(
+    'persists counterparty changes and audits only the changed field as %s',
+    async (role) => {
+      const projectId = await createProjectFixture();
+      signInAs(role === 'admin' ? seed.adminId : seed.coordinatorId);
+      for (const counterpartyType of [
+        'privateSector',
+        'internationalCooperation',
+        'publicSector',
+      ] as const) {
+        await expectRedirectToProject(
+          updateProject(projectId, {}, buildFormData({ counterpartyType })),
+          projectId
+        );
+        expect((await loadProject(projectId)).counterpartyType).toBe(counterpartyType);
+      }
+      expect(await auditLogsFor(projectId)).toEqual(
+        Array.from({ length: 3 }, () =>
+          expect.objectContaining({
+            entity: 'project',
+            action: 'update',
+            details: { changedFields: ['counterpartyType'] },
+          })
+        )
+      );
+    }
+  );
+
+  test.each(['', 'invalid'])(
+    'rejects counterparty %s without changing stored data',
+    async (counterpartyType) => {
+      const projectId = await createProjectFixture();
+      signInAs(seed.adminId);
+      const before = await loadProject(projectId);
+      const result = await updateProject(projectId, {}, buildFormData({ counterpartyType }));
+      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+      expect(await loadProject(projectId)).toEqual(before);
+      expect(await auditLogsFor(projectId)).toEqual([]);
+    }
+  );
+
+  test('rejects marking as inactive before stored beneficiary years without changing any data', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
     const before = await loadProject(projectId);
@@ -138,17 +150,17 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ status: 'closed', endYear: '2022', year: '2022', families: '99' })
+      buildFormData({ status: 'inactive', endYear: '2022', year: '2022', families: '99' })
     );
 
     expect(result.errors?.endYear).toEqual([
-      'El año de cierre no puede ser anterior a 2024, que tiene beneficiarios registrados',
+      'El año de fin no puede ser anterior a 2024, que tiene beneficiarios registrados',
     ]);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 
-  test('allows closing in the last stored beneficiary year and preserves its records', async () => {
+  test('allows marking as inactive in the last stored beneficiary year and preserves its records', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
     const before = await loadProject(projectId);
@@ -157,23 +169,23 @@ describe('updateProject (integration)', () => {
       updateProject(
         projectId,
         {},
-        buildFormData({ status: 'closed', endYear: String(BENEFICIARY_YEAR) })
+        buildFormData({ status: 'inactive', endYear: String(BENEFICIARY_YEAR) })
       ),
       projectId
     );
 
     const after = await loadProject(projectId);
-    expect(after).toMatchObject({ status: 'closed', endYear: BENEFICIARY_YEAR });
+    expect(after).toMatchObject({ status: 'inactive', endYear: BENEFICIARY_YEAR });
     expect(after.projectBeneficiaries).toEqual(before.projectBeneficiaries);
     expect(await auditLogsFor(projectId)).toEqual([
       expect.objectContaining({ entity: 'project', action: 'update' }),
     ]);
   });
 
-  test('persists changed fields and topic and audits only what changed', async () => {
+  test('persists changed fields and topics and audits only what changed', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
-    const newTopicId = seed.topicIds[1];
+    const newTopicIds = [seed.topicIds[1], seed.topicIds[2]];
 
     await expectRedirectToProject(
       updateProject(
@@ -182,8 +194,8 @@ describe('updateProject (integration)', () => {
         buildFormData({
           name: 'Renamed project',
           zone: 'city',
-          departmentId: String(seed.departmentIds[1]),
-          topicId: String(newTopicId),
+          departmentIds: [String(seed.departmentIds[1])],
+          topicIds: newTopicIds.map(String),
         })
       ),
       projectId
@@ -193,17 +205,17 @@ describe('updateProject (integration)', () => {
     expect(project).toMatchObject({
       name: 'Renamed project',
       zone: 'city',
-      departmentId: seed.departmentIds[1],
+      departments: [{ id: seed.departmentIds[1] }],
       status: 'active',
       startYear: 2020,
     });
-    expect(project.topicId).toBe(newTopicId);
+    expect(project.topics).toEqual([...newTopicIds].sort((a, b) => a - b).map((id) => ({ id })));
     expect(await auditLogsFor(projectId)).toEqual([
       expect.objectContaining({
         entity: 'project',
         action: 'update',
         authorId: seed.adminId,
-        details: { changedFields: ['name', 'departmentId', 'zone', 'topicId'] },
+        details: { changedFields: ['name', 'zone', 'topics', 'departments'] },
       }),
     ]);
   });
@@ -246,6 +258,44 @@ describe('updateProject (integration)', () => {
         },
       }),
     ]);
+  });
+
+  test('keeps values of inactive categories when updating beneficiaries', async () => {
+    const projectId = await createProjectFixture();
+    const category = await prisma.beneficiaryCategory.create({
+      data: {
+        key: `customCategory${projectId}`,
+        name: `Custom category ${projectId}`,
+        isActive: false,
+      },
+    });
+    const [beneficiary] = (await loadProject(projectId)).projectBeneficiaries;
+    await prisma.projectBeneficiaryValue.create({
+      data: { beneficiaryId: beneficiary.id, categoryId: category.id, value: 11 },
+    });
+    signInAs(seed.adminId);
+
+    try {
+      await expectRedirectToProject(
+        updateProject(projectId, {}, buildFormData({ families: '7' })),
+        projectId
+      );
+
+      expect(
+        await prisma.projectBeneficiaryValue.findUnique({
+          where: {
+            beneficiaryId_categoryId: { beneficiaryId: beneficiary.id, categoryId: category.id },
+          },
+          select: { value: true },
+        })
+      ).toEqual({ value: 11 });
+      expect((await loadProject(projectId)).projectBeneficiaries).toEqual([
+        expect.objectContaining({ families: 7, youth18To29: 3 }),
+      ]);
+    } finally {
+      await prisma.projectBeneficiaryValue.deleteMany({ where: { categoryId: category.id } });
+      await prisma.beneficiaryCategory.delete({ where: { id: category.id } });
+    }
   });
 
   test('adds a beneficiary row for a new year and keeps the previous one', async () => {
@@ -351,10 +401,10 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ name: 'Should not persist', topicId: String(unknownTopicId) })
+      buildFormData({ name: 'Should not persist', topicIds: [String(unknownTopicId)] })
     );
 
-    expect(result.errors?.topicId).toEqual(['Elegí una temática válida']);
+    expect(result.errors?.topicIds).toEqual(['Elegí temáticas válidas']);
     expect(await loadProject(projectId)).toEqual(before);
   });
 
@@ -366,10 +416,10 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ name: 'Should not persist', departmentId: '999999', families: '99' })
+      buildFormData({ name: 'Should not persist', departmentIds: ['999999'], families: '99' })
     );
 
-    expect(result.formError).toBe('El coordinador o el departamento seleccionado no existe.');
+    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
@@ -400,4 +450,20 @@ describe('updateProject (integration)', () => {
     ).rejects.toThrow(/^NEXT_REDIRECT:\/login$/);
     expect(await loadProject(projectId)).toEqual(before);
   });
+});
+
+describe('createProject counterparty (integration)', () => {
+  test.each(['publicSector', 'privateSector', 'internationalCooperation'])(
+    'persists counterparty %s when creating a project',
+    async (counterpartyType) => {
+      signInAs(seed.adminId);
+      const name = `Counterparty ${counterpartyType}`;
+      await expect(createProject({}, buildFormData({ name, counterpartyType }))).rejects.toThrow(
+        /^NEXT_REDIRECT:\/dashboard\/projects\/\d+$/
+      );
+      const project = await prisma.project.findFirstOrThrow({ where: { name } });
+      createdProjectIds.push(project.id);
+      expect((await loadProject(project.id)).counterpartyType).toBe(counterpartyType);
+    }
+  );
 });

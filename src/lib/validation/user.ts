@@ -9,6 +9,8 @@ export type UserFormState = {
   errors?: Record<string, string[]>;
   formError?: string;
   values?: Partial<Record<PreservedField, string>>;
+  restored?: boolean;
+  restoreConfirmationRequired?: boolean;
 };
 
 export function isValidUruguayanDocumentId(rawValue: string) {
@@ -53,10 +55,9 @@ export const userEditFormSchema = z.object({
     .max(254, 'El correo no puede superar los 254 caracteres.')
     .pipe(z.email({ error: 'Ingresá un correo electrónico válido.' })),
   role: z.enum(['admin', 'coordinator']),
-  status: z.enum(['active', 'pendingInvitation', 'disabled']),
 });
 
-export const userFormSchema = userEditFormSchema.omit({ status: true }).extend({
+export const userFormSchema = userEditFormSchema.extend({
   password: z
     .string()
     .min(1, 'La contraseña es obligatoria.')

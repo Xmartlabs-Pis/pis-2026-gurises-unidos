@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
+import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 
 export async function getMetricSettings() {
   const savedMetrics = await prisma.metric.findMany({
@@ -35,34 +36,28 @@ export async function getMetricYears(currentYear: number) {
 }
 
 export async function getMetricValues(year: number) {
-  const [beneficiaries, projectRecords] = await Promise.all([
-    prisma.projectBeneficiary.aggregate({
-      where: { year, project: { deletedAt: null } },
-      _sum: {
-        directChildrenAdolescents: true,
-        indirectChildrenAdolescents: true,
-        families: true,
-        basicServiceStaff: true,
-        coordinatedInstitutions: true,
-      },
-    }),
+  const where = { year, project: { deletedAt: null } };
+  const [totals, projectRecords] = await Promise.all([
+    sumBeneficiaryCounts(where),
     prisma.projectBeneficiary.findMany({
-      where: { year, project: { deletedAt: null } },
+      where,
       select: {
         projectId: true,
-        project: { select: { departmentId: true } },
+        project: { select: { departments: { select: { id: true } } } },
       },
     }),
   ]);
 
   return {
-    children_reached:
-      (beneficiaries._sum.directChildrenAdolescents ?? 0) +
-      (beneficiaries._sum.indirectChildrenAdolescents ?? 0),
-    families: beneficiaries._sum.families ?? 0,
-    teachers: beneficiaries._sum.basicServiceStaff ?? 0,
-    institutions: beneficiaries._sum.coordinatedInstitutions ?? 0,
-    departments: new Set(projectRecords.map(({ project }) => project.departmentId)).size,
+    children_reached: totals.directChildrenAdolescents + totals.indirectChildrenAdolescents,
+    direct_children_reached: totals.directChildrenAdolescents,
+    indirect_children_reached: totals.indirectChildrenAdolescents,
+    families: totals.families,
+    teachers: totals.basicServiceStaff,
+    institutions: totals.coordinatedInstitutions,
+    departments: new Set(
+      projectRecords.flatMap(({ project }) => project.departments.map(({ id }) => id))
+    ).size,
     active_projects: projectRecords.length,
   };
 }

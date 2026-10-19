@@ -1,7 +1,6 @@
 import type { AuditAction, AuditEntity } from '@/generated/prisma/enums';
 import { FormSection } from '@/components/ui/forms/form-section';
 import { z } from 'zod';
-import { BENEFICIARY_FIELDS } from '@/lib/project-display';
 import type { Prisma } from '@/generated/prisma/client';
 
 type ProjectHistoryProps = {
@@ -13,6 +12,7 @@ type ProjectHistoryProps = {
     occurredAt: Date;
     author: { firstName: string; lastName: string };
   }[];
+  fieldLabels: Record<string, string>;
 };
 
 const PROJECT_ACTION_LABELS: Partial<Record<AuditAction, string>> = {
@@ -22,10 +22,6 @@ const PROJECT_ACTION_LABELS: Partial<Record<AuditAction, string>> = {
 };
 
 const BENEFICIARY_ACTION_LABEL = 'actualizó el número de beneficiarios';
-
-const FIELD_LABELS: Record<string, string> = Object.fromEntries(
-  BENEFICIARY_FIELDS.map(({ key, label }) => [key, label])
-);
 
 const beneficiaryDetailsSchema = z.object({
   year: z.number(),
@@ -56,7 +52,7 @@ function describeEntry(
   };
 }
 
-export function ProjectHistory({ entries }: ProjectHistoryProps) {
+export function ProjectHistory({ entries, fieldLabels }: ProjectHistoryProps) {
   const described = entries.flatMap((entry) => {
     const description = describeEntry(entry);
     return description ? [{ entry, ...description }] : [];
@@ -93,7 +89,7 @@ export function ProjectHistory({ entries }: ProjectHistoryProps) {
                   <ul className="text-muted-foreground mt-1 space-y-0.5">
                     {changes.map((change) => (
                       <li key={change.field}>
-                        {FIELD_LABELS[change.field] ?? change.field}: {change.from} → {change.to}
+                        {fieldLabels[change.field] ?? change.field}: {change.from} → {change.to}
                       </li>
                     ))}
                   </ul>

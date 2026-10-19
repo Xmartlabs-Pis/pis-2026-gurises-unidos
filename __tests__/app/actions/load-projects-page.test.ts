@@ -19,12 +19,12 @@ beforeEach(() => {
 });
 
 test('lists the requested page with the given filters and the default page size', async () => {
-  const result = await loadProjectsPage({ status: 'paused', beneficiaryYear: '2024' }, 2);
+  const result = await loadProjectsPage({ status: 'inactive', beneficiaryYear: '2024' }, 2);
 
   expect(result).toBe(PAGE);
   expect(mocks.listProjects).toHaveBeenCalledWith(
     expect.objectContaining({
-      status: 'paused',
+      status: 'inactive',
       beneficiaryYear: 2024,
       page: 2,
       pageSize: PROJECT_LIST_PAGE_SIZE,
@@ -49,4 +49,25 @@ test('requires an authenticated user before listing', async () => {
     'NEXT_REDIRECT'
   );
   expect(mocks.listProjects).not.toHaveBeenCalled();
+});
+
+test('preserves combined filters when loading another page', async () => {
+  await loadProjectsPage(
+    {
+      status: 'active',
+      beneficiaryYear: '2025',
+      topicId: '2',
+      departmentId: '3',
+      search: 'Centro',
+    },
+    2
+  );
+  expect(mocks.listProjects).toHaveBeenCalledWith(
+    expect.objectContaining({
+      topicId: 2,
+      departmentId: 3,
+      search: 'Centro',
+      page: 2,
+    })
+  );
 });

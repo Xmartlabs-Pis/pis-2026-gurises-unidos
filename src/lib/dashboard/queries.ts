@@ -1,6 +1,8 @@
 import type { Intensity, ProjectStatus } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
 import { getMetricValues } from '@/lib/metrics/queries';
+import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { getChildrenReached } from '@/lib/projects/detail-metrics';
 
 export type DashboardKpi = {
   value: number;
@@ -12,7 +14,7 @@ export type DashboardProjectRow = {
   id: number;
   name: string;
   status: ProjectStatus;
-  intensity: Intensity;
+  intensity: Intensity | null;
   beneficiaries: number;
 };
 
@@ -41,7 +43,7 @@ async function getProjectsWithActivity(year: number): Promise<DashboardProjectRo
       intensity: true,
       projectBeneficiaries: {
         where: { year },
-        select: { directChildrenAdolescents: true, indirectChildrenAdolescents: true },
+        select: BENEFICIARY_VALUES_SELECT,
       },
     },
     orderBy: { name: 'asc' },
@@ -50,7 +52,7 @@ async function getProjectsWithActivity(year: number): Promise<DashboardProjectRo
   return projects.map(({ projectBeneficiaries, ...project }) => ({
     ...project,
     beneficiaries: projectBeneficiaries.reduce(
-      (sum, record) => sum + record.directChildrenAdolescents + record.indirectChildrenAdolescents,
+      (sum, record) => sum + (getChildrenReached(toBeneficiaryCounts(record.values)) ?? 0),
       0
     ),
   }));

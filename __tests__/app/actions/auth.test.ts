@@ -72,7 +72,7 @@ describe('login', () => {
       SESSION_EXPIRATION_COOKIE_OPTIONS
     );
     expect(Number(cookieStore.set.mock.calls[0][1])).toBeGreaterThan(Date.now());
-    expect(redirect).toHaveBeenCalledWith('/dashboard/projects');
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
   });
 
   test('redirects to password reset when mustChangePassword is true', async () => {
@@ -169,12 +169,12 @@ describe('logout', () => {
     cookieStore.delete.mockReset();
   });
 
-  test('calls signOut with redirectTo: /login', async () => {
+  test('calls signOut with the public dashboard as redirect target', async () => {
     vi.mocked(signOut).mockResolvedValue(undefined);
 
     await logout();
 
     expect(cookieStore.delete).toHaveBeenCalledWith(SESSION_EXPIRATION_COOKIE);
-    expect(signOut).toHaveBeenCalledWith({ redirectTo: '/login' });
+    expect(signOut).toHaveBeenCalledWith({ redirectTo: '/' });
   });
 });

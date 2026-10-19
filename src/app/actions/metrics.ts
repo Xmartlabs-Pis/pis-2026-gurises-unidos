@@ -10,6 +10,10 @@ import { getMetricYears } from '@/lib/metrics/queries';
 
 const METRIC_SETTINGS_SCHEMA = z.object({
   year: z.number().int(),
+  topics: z
+    .array(z.object({ id: z.number().int().positive(), showPublicly: z.boolean() }))
+    .refine((topics) => new Set(topics.map(({ id }) => id)).size === topics.length)
+    .default([]),
   metrics: z
     .array(
       z.object({
@@ -34,7 +38,7 @@ export async function saveMetricSettings(input: unknown) {
     return { success: false, message: 'La selección de métricas no es válida.' };
   }
 
-  const { year, metrics } = result.data;
+  const { year, metrics, topics } = result.data;
   const availableYears = await getMetricYears(new Date().getFullYear());
   if (!availableYears.includes(year)) {
     return { success: false, message: 'El año de referencia no es válido.' };
@@ -42,6 +46,13 @@ export async function saveMetricSettings(input: unknown) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      const selectedTopics = topics.length
+        ? await tx.topic.findMany({
+            where: { id: { in: topics.map(({ id }) => id) }, isActive: true },
+            select: { id: true },
+          })
+        : [];
+      if (selectedTopics.length !== topics.length) throw new Error('Invalid topic selection');
       await tx.publicSettings.upsert({
         where: { id: 1 },
         create: { id: 1, referenceYear: year, updatedBy: Number(session.user.id) },
@@ -65,6 +76,19 @@ export async function saveMetricSettings(input: unknown) {
           action: 'update',
           entity: 'metric',
           entityId: metric.id,
+        });
+      }
+      for (const topic of selectedTopics) {
+        const showPublicly = topics.find(({ id }) => id === topic.id)!.showPublicly;
+        await tx.topic.update({
+          where: { id: topic.id },
+          data: { showPublicly },
+        });
+        await logAudit(tx, {
+          authorId: Number(session.user.id),
+          action: 'update',
+          entity: 'topic',
+          entityId: topic.id,
         });
       }
     });

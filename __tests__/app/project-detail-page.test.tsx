@@ -28,23 +28,27 @@ const DETAIL = {
       name: 'El Resorte',
       status: 'active',
       intensity: 'high',
+      counterpartyType: 'publicSector',
       startYear: 2024,
       endYear: null,
+      strategicLines: [{ id: 1, name: 'Formación' }],
       leadCoordinatorId: 7,
       zone: 'city',
-      localityNeighborhood: 'Casavalle',
+      geographicScope: 'national',
+      countries: [],
+      cities: ['Montevideo'],
+      neighborhoods: ['Casavalle'],
       generalObjective: 'Support adolescents and families.',
       publicDescription: 'Community support project.',
       coverPhoto: '/images/project-placeholders/1.webp',
       leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
-      department: { id: 1, name: 'Montevideo' },
-      topic: { id: 1, name: 'Educación' },
+      departments: [{ id: 1, name: 'Montevideo' }],
+      topics: [{ id: 1, name: 'Educación' }],
     },
     selectedYear: 2026,
     comparisonYear: 2025,
     availableYears: [2026, 2025],
     hasData: true,
-    hasHistoricalData: true,
     canEdit: true,
     metrics: {
       childrenReached: {
@@ -71,13 +75,13 @@ const DETAIL = {
       annualGrowth: 22,
     },
     distribution: [
-      { key: 'directChildrenAdolescents', value: 80 },
-      { key: 'indirectChildrenAdolescents', value: 20 },
-      { key: 'youth18To29', value: 10 },
-      { key: 'families', value: 25 },
-      { key: 'coordinatedInstitutions', value: 5 },
-      { key: 'communityLeaders', value: 12 },
-      { key: 'basicServiceStaff', value: 18 },
+      { key: 'directChildrenAdolescents', label: 'NNA directos', value: 80 },
+      { key: 'indirectChildrenAdolescents', label: 'NNA indirectos', value: 20 },
+      { key: 'youth18To29', label: 'Jóvenes (18 a 29)', value: 10 },
+      { key: 'families', label: 'Familias', value: 25 },
+      { key: 'coordinatedInstitutions', label: 'Instituciones coordinadas', value: 5 },
+      { key: 'communityLeaders', label: 'Referentes comunitarios', value: 12 },
+      { key: 'basicServiceStaff', label: 'Personal de servicios básicos', value: 18 },
     ],
     institutionalContribution: {
       nationalReach: { projectValue: 100, nationalValue: 1250, percentage: 8 },
@@ -86,9 +90,12 @@ const DETAIL = {
         count: 1,
         items: [
           {
-            department: { id: 1, name: 'Montevideo' },
+            departments: [{ id: 1, name: 'Montevideo' }],
             zone: 'city',
-            localityNeighborhood: 'Casavalle',
+            geographicScope: 'national',
+            countries: [],
+            cities: ['Montevideo'],
+            neighborhoods: ['Casavalle'],
           },
         ],
       },
@@ -117,6 +124,8 @@ test('renders the selected project year and its main sections', async () => {
 
   expect(getProjectDetailMock).toHaveBeenCalledWith('42', '2026');
   expect(screen.getByRole('heading', { level: 1, name: 'El Resorte' })).toBeDefined();
+  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Formación')).toBeDefined();
   expect(screen.getByRole('region', { name: 'Métricas del proyecto' })).toBeDefined();
   expect(screen.getByRole('heading', { name: 'Distribución de beneficiarios' })).toBeDefined();
   expect(screen.getByRole('heading', { name: 'Contribución institucional' })).toBeDefined();

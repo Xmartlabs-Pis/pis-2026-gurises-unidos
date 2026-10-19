@@ -8,7 +8,7 @@ import { ProjectYearSelector } from '@/components/projects/detail/project-year-s
 import { SidebarTrigger } from '@/components/ui/sidebar';
 
 export function Topbar() {
-  const { projectConfig } = useTopbar();
+  const { projectConfig, resourceLabel } = useTopbar();
 
   return (
     <header className="border-border bg-background sticky top-0 z-10 flex h-15 items-center justify-between gap-4 border-b px-4 md:px-6">
@@ -22,7 +22,7 @@ export function Topbar() {
           height={32}
         />
         <span className="text-sm font-semibold md:hidden">Gurises Unidos</span>
-        <AppBreadcrumb currentLabel={projectConfig?.projectName} />
+        <AppBreadcrumb resourceLabel={resourceLabel ?? projectConfig?.projectName} />
       </div>
       <div className="hidden shrink-0 items-center gap-2 md:flex">
         {projectConfig && (

@@ -6,6 +6,7 @@ import loginImage from '@/assets/login-image.png';
 import { version } from '@/lib/version';
 import { formatNumber } from '@/lib/format';
 import prisma from '@/lib/prisma';
+import { sumBeneficiaryValues } from '@/lib/projects/beneficiary-values';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { connection } from 'next/server';
 import { SESSION_EXPIRATION_REASON } from '@/lib/auth/session-expiration';
@@ -21,36 +22,16 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 async function Stats() {
   await connection();
-  const [activeProjects, { _sum }, territories] = await Promise.all([
+  const [activeProjects, totalReach, territories] = await Promise.all([
     prisma.project.count({
       where: {
         status: 'active',
         deletedAt: null,
       },
     }),
-    prisma.projectBeneficiary.aggregate({
-      where: { project: { deletedAt: null } },
-      _sum: {
-        directChildrenAdolescents: true,
-        indirectChildrenAdolescents: true,
-        youth18To29: true,
-        families: true,
-        coordinatedInstitutions: true,
-        communityLeaders: true,
-        basicServiceStaff: true,
-      },
-    }),
+    sumBeneficiaryValues({ project: { deletedAt: null } }),
     prisma.department.count(),
   ]);
-
-  const totalReach =
-    (_sum.directChildrenAdolescents ?? 0) +
-    (_sum.indirectChildrenAdolescents ?? 0) +
-    (_sum.youth18To29 ?? 0) +
-    (_sum.families ?? 0) +
-    (_sum.coordinatedInstitutions ?? 0) +
-    (_sum.communityLeaders ?? 0) +
-    (_sum.basicServiceStaff ?? 0);
 
   return (
     <div className="flex flex-row gap-3 pt-2 lg:gap-10 lg:pt-0">

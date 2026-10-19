@@ -27,5 +27,5 @@ export async function login(page: Page, documentId: string, password = seedPassw
 
 export async function loginAs(page: Page, documentId: string) {
   await login(page, documentId);
-  await expect(page).toHaveURL('/dashboard/projects');
+  await expect(page).toHaveURL('/dashboard');
 }

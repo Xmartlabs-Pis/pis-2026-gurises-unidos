@@ -13,21 +13,29 @@ const PROJECT: ProjectDetail['project'] = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: 2020,
   endYear: null,
+  strategicLines: [
+    { id: 1, name: 'Formación' },
+    { id: 2, name: 'Participación' },
+  ],
   leadCoordinatorId: 7,
   zone: 'city',
-  localityNeighborhood: 'Casavalle',
+  geographicScope: 'national',
+  countries: [],
+  cities: ['Montevideo'],
+  neighborhoods: ['Casavalle'],
   generalObjective: 'Support adolescents and families.',
   publicDescription: 'Community support project.',
   coverPhoto: null,
   leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
-  department: { id: 1, name: 'Montevideo' },
-  topic: { id: 1, name: 'Educación' },
+  departments: [{ id: 1, name: 'Montevideo' }],
+  topics: [{ id: 1, name: 'Educación' }],
 };
 
 function renderHeader(endYear: number | null) {
-  render(
+  return render(
     <ProjectDetailHeader
       project={{ ...PROJECT, endYear }}
       selectedYear={2026}
@@ -41,10 +49,82 @@ test('shows an ongoing project period until the present', () => {
   renderHeader(null);
 
   expect(screen.getByText('2020–actualidad')).toBeDefined();
+  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Formación, Participación')).toBeDefined();
+});
+
+test('shows the departments, cities and neighborhoods as the territory', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        departments: [
+          { id: 2, name: 'Canelones' },
+          { id: 1, name: 'Montevideo' },
+        ],
+        cities: ['Las Piedras', 'Montevideo'],
+        neighborhoods: ['Centro'],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(
+    screen.getAllByText('Canelones, Montevideo — Las Piedras, Montevideo — Centro')
+  ).not.toHaveLength(0);
+});
+
+test('shows the countries as the territory of an international project', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: ['Argentina', 'Brasil'],
+        cities: [],
+        neighborhoods: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.getAllByText('Argentina, Brasil')).not.toHaveLength(0);
+});
+
+test('shows the project counterparty', () => {
+  renderHeader(null);
+
+  expect(screen.getByText('Contraparte:')).toBeDefined();
+  expect(screen.getByText('Sector Público')).toBeDefined();
 });
 
 test('shows the end year of a finished project', () => {
   renderHeader(2023);
 
   expect(screen.getByText('2020–2023')).toBeDefined();
+});
+
+test('shows only the general objective text in the header', () => {
+  renderHeader(null);
+
+  expect(screen.getByText('Support adolescents and families.')).toBeDefined();
+  expect(screen.queryByRole('heading', { name: 'Objetivo general' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Descripción pública' })).toBeNull();
+  expect(screen.queryByText('Community support project.')).toBeNull();
+});
+
+test('places the general objective before metadata in the mobile reading order', () => {
+  const { container } = renderHeader(null);
+  const content = container.textContent ?? '';
+  const objectivePosition = content.indexOf('Support adolescents and families.');
+  const metadataPosition = content.indexOf('Territorio:');
+
+  expect(objectivePosition).toBeGreaterThanOrEqual(0);
+  expect(metadataPosition).toBeGreaterThanOrEqual(0);
+  expect(objectivePosition).toBeLessThan(metadataPosition);
 });

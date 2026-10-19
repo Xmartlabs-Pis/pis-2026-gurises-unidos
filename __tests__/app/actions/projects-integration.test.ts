@@ -26,12 +26,15 @@ vi.mock('@/lib/audit-log', async (importOriginal) => {
 import prisma from '@/lib/prisma';
 import { updateProject } from '@/app/actions/projects';
 
+const WITH_VALUES = { values: { orderBy: { categoryId: 'asc' } } } as const;
+
 const TEST_DATABASE_URL = process.env.PROJECT_TEST_DATABASE_URL;
 const database = TEST_DATABASE_URL ? new PrismaClient({ datasourceUrl: TEST_DATABASE_URL }) : null;
 let projectId = 0;
 let coordinatorId = 0;
 let departmentId = 0;
 let topicId = 0;
+let strategicLineId = 0;
 
 beforeAll(async () => {
   if (!database) return;
@@ -64,23 +67,32 @@ beforeAll(async () => {
   departmentId = department.id;
   const topic = await database.topic.create({ data: { name: `Review ${suffix}` } });
   topicId = topic.id;
+  const strategicLine = await database.strategicLine.create({ data: { name: `Review ${suffix}` } });
+  strategicLineId = strategicLine.id;
   const project = await database.project.create({
     data: {
       name: 'Original project',
-      topicId,
+      topics: { connect: { id: topicId } },
       status: 'active',
       intensity: 'high',
+      counterpartyType: 'publicSector',
       startYear: 2024,
       leadCoordinatorId: coordinatorId,
-      departmentId,
+      departments: { connect: { id: departmentId } },
       zone: 'city',
       coverPhoto: '/existing-cover.png',
       createdBy: user.id,
+      strategicLines: { connect: { id: strategicLineId } },
     },
   });
   projectId = project.id;
   await database.projectBeneficiary.create({
-    data: { projectId, year: 2025, families: 20, authorId: user.id },
+    data: {
+      projectId,
+      year: 2025,
+      authorId: user.id,
+      values: { create: [{ value: 20, category: { connect: { key: 'families' } } }] },
+    },
   });
 });
 
@@ -89,6 +101,7 @@ afterAll(async () => {
   await database.auditLog.deleteMany({ where: { authorId: state.authorId } });
   await database.projectBeneficiary.deleteMany({ where: { projectId } });
   if (projectId) await database.project.delete({ where: { id: projectId } });
+  if (strategicLineId) await database.strategicLine.delete({ where: { id: strategicLineId } });
   if (topicId) await database.topic.delete({ where: { id: topicId } });
   if (departmentId) await database.department.delete({ where: { id: departmentId } });
   await database.user.deleteMany({ where: { id: { in: [state.authorId, coordinatorId] } } });
@@ -104,18 +117,22 @@ it.skipIf(!TEST_DATABASE_URL)(
       name: 'Changed project',
       status: 'active',
       intensity: 'high',
+      counterpartyType: 'publicSector',
       startYear: '2024',
       leadCoordinatorId: String(coordinatorId),
-      departmentId: String(departmentId),
+      geographicScope: 'national',
+      departmentIds: String(departmentId),
       zone: 'city',
       year: '2026',
       families: '35',
-      topicId: String(topicId),
+      topicIds: String(topicId),
+      strategicLineIds: String(strategicLineId),
       coverPhoto: '/forged-cover.png',
     }).forEach(([key, value]) => data.append(key, value));
     const original = await database!.project.findUniqueOrThrow({ where: { id: projectId } });
     const historical = await database!.projectBeneficiary.findUniqueOrThrow({
       where: { projectId_year: { projectId, year: 2025 } },
+      include: WITH_VALUES,
     });
     state.failAudit = true;
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -133,20 +150,23 @@ it.skipIf(!TEST_DATABASE_URL)(
     );
     const saved = await database!.project.findUniqueOrThrow({
       where: { id: projectId },
+      include: { topics: { select: { id: true } } },
     });
     expect(saved.name).toBe('Changed project');
     expect(saved.coverPhoto).toBe('/existing-cover.png');
-    expect(saved.topicId).toBe(topicId);
+    expect(saved.topics).toEqual([{ id: topicId }]);
     expect(
       await database!.projectBeneficiary.findUnique({
         where: { projectId_year: { projectId, year: 2025 } },
+        include: WITH_VALUES,
       })
     ).toEqual(historical);
     expect(
       await database!.projectBeneficiary.findUnique({
         where: { projectId_year: { projectId, year: 2026 } },
+        select: { values: { where: { category: { key: 'families' } }, select: { value: true } } },
       })
-    ).toMatchObject({ families: 35 });
+    ).toEqual({ values: [{ value: 35 }] });
     expect(await database!.auditLog.count({ where: { authorId: state.authorId } })).toBe(2);
     await expect(updateProject(projectId, {}, data)).rejects.toThrow('Redirect:');
     expect(await database!.project.findUnique({ where: { id: projectId } })).toMatchObject({

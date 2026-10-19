@@ -1,6 +1,8 @@
 import prisma from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
-import { sumBeneficiaries } from '@/lib/project-display';
+import { sumBeneficiaries, type BeneficiaryCounts } from '@/lib/project-display';
+import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { PROJECT_LOCATION_SELECT } from '@/lib/projects/location';
 import type { ProjectFilters } from '@/lib/validation/project-filters';
 
 const PROJECT_LIST_SELECT = {
@@ -10,30 +12,20 @@ const PROJECT_LIST_SELECT = {
   intensity: true,
   startYear: true,
   zone: true,
-  localityNeighborhood: true,
+  ...PROJECT_LOCATION_SELECT,
   publicDescription: true,
   coverPhoto: true,
   leadCoordinator: { select: { id: true, firstName: true, lastName: true } },
-  department: { select: { id: true, name: true } },
   projectBeneficiaries: {
     orderBy: { year: 'desc' },
-    select: {
-      year: true,
-      directChildrenAdolescents: true,
-      indirectChildrenAdolescents: true,
-      youth18To29: true,
-      families: true,
-      coordinatedInstitutions: true,
-      communityLeaders: true,
-      basicServiceStaff: true,
-    },
+    select: { year: true, ...BENEFICIARY_VALUES_SELECT },
   },
 } satisfies Prisma.ProjectSelect;
 
 type ProjectListRow = Prisma.ProjectGetPayload<{ select: typeof PROJECT_LIST_SELECT }>;
 
 export type ProjectListItem = Omit<ProjectListRow, 'projectBeneficiaries'> & {
-  beneficiaries: (ProjectListRow['projectBeneficiaries'][number] & { total: number })[];
+  beneficiaries: (BeneficiaryCounts & { year: number; total: number })[];
 };
 
 export type ProjectListPage = {
@@ -44,11 +36,19 @@ export type ProjectListPage = {
   totalPages: number;
 };
 
+function toSearchNamePattern(search: string) {
+  return search
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[\\%_]/g, '\\$&');
+}
+
 export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereInput {
   const where: Prisma.ProjectWhereInput = { deletedAt: null };
 
   if (filters.search) {
-    where.name = { contains: filters.search, mode: 'insensitive' };
+    where.searchName = { contains: toSearchNamePattern(filters.search) };
   }
   if (filters.status) {
     where.status = filters.status;
@@ -60,7 +60,10 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
     where.leadCoordinatorId = filters.leadCoordinatorId;
   }
   if (filters.departmentId) {
-    where.departmentId = filters.departmentId;
+    where.departments = { some: { id: filters.departmentId } };
+  }
+  if (filters.topicId) {
+    where.topics = { some: { id: filters.topicId } };
   }
   if (filters.startYearFrom !== undefined || filters.startYearTo !== undefined) {
     where.startYear = { gte: filters.startYearFrom, lte: filters.startYearTo };
@@ -75,10 +78,10 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
 function toListItem({ projectBeneficiaries, ...project }: ProjectListRow): ProjectListItem {
   return {
     ...project,
-    beneficiaries: projectBeneficiaries.map((record) => ({
-      ...record,
-      total: sumBeneficiaries(record),
-    })),
+    beneficiaries: projectBeneficiaries.map(({ year, values }) => {
+      const counts = toBeneficiaryCounts(values);
+      return { year, ...counts, total: sumBeneficiaries(counts) };
+    }),
   };
 }
 
@@ -127,18 +130,17 @@ export async function listBeneficiaryYears(): Promise<number[]> {
 }
 
 export async function listProjectFilterOptions() {
-  const [coordinators, departments] = await Promise.all([
-    prisma.user.findMany({
-      where: { ledProjects: { some: { deletedAt: null } } },
-      select: { id: true, firstName: true, lastName: true },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-    }),
+  const [departments, topics] = await Promise.all([
     prisma.department.findMany({
-      where: { projects: { some: { deletedAt: null } } },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.topic.findMany({
+      where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     }),
   ]);
 
-  return { coordinators, departments };
+  return { departments, topics };
 }

@@ -20,12 +20,47 @@ test('links the dashboard root crumb', () => {
 });
 
 test.each(['/management/users', '/management/metrics', '/management/users/5/edit'])(
-  'does not link the root crumb of %s because it has no page',
+  'hides the administration crumb of %s',
   (pathname) => {
     pathnameMock.mockReturnValue(pathname);
 
     render(<AppBreadcrumb />);
 
-    expect(screen.getByText('Administración').closest('a')).toBeNull();
+    expect(screen.queryByText('Administración')).toBeNull();
   }
 );
+
+test('links the management section root crumb', () => {
+  pathnameMock.mockReturnValue('/management/users/new');
+
+  render(<AppBreadcrumb />);
+
+  expect(screen.getByText('Usuarios').closest('a')?.getAttribute('href')).toBe('/management/users');
+});
+
+test('labels the profile crumb in spanish', () => {
+  pathnameMock.mockReturnValue('/management/profile');
+
+  render(<AppBreadcrumb />);
+
+  expect(screen.getByText('Perfil')).toBeTruthy();
+});
+
+test('links the project name crumb when editing a project', () => {
+  pathnameMock.mockReturnValue('/dashboard/projects/5/edit');
+
+  render(<AppBreadcrumb resourceLabel="Proyecto Uno" />);
+
+  expect(screen.getByText('Proyecto Uno').closest('a')?.getAttribute('href')).toBe(
+    '/dashboard/projects/5'
+  );
+  expect(screen.getByText('Editar')).toBeTruthy();
+});
+
+test('skips the user id crumb when editing a user because it has no page', () => {
+  pathnameMock.mockReturnValue('/management/users/5/edit');
+
+  render(<AppBreadcrumb />);
+
+  expect(screen.queryByText('Detalles')).toBeNull();
+});

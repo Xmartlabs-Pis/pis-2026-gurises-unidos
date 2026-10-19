@@ -53,11 +53,11 @@ export async function login(
     redirect('/password-reset');
   }
 
-  redirect('/dashboard/projects');
+  redirect('/dashboard');
 }
 
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_EXPIRATION_COOKIE);
-  await signOut({ redirectTo: '/login' });
+  await signOut({ redirectTo: '/' });
 }

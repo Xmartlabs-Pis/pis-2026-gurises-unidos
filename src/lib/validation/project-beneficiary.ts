@@ -13,21 +13,16 @@ const beneficiaryCount = z.preprocess(
     .default(0)
 );
 
-export const projectBeneficiarySchema = z.object({
-  year: z.preprocess(
-    emptyToUndefined,
-    z.coerce
-      .number({ error: 'Año inválido' })
-      .int('Año inválido')
-      .min(1989, 'Año inválido')
-      .refine((year) => year <= new Date().getFullYear(), 'Año inválido')
-      .default(() => new Date().getFullYear())
-  ),
-  directChildrenAdolescents: beneficiaryCount,
-  indirectChildrenAdolescents: beneficiaryCount,
-  youth18To29: beneficiaryCount,
-  families: beneficiaryCount,
-  coordinatedInstitutions: beneficiaryCount,
-  communityLeaders: beneficiaryCount,
-  basicServiceStaff: beneficiaryCount,
-});
+export const beneficiaryYear = z.preprocess(
+  emptyToUndefined,
+  z.coerce
+    .number({ error: 'Año inválido' })
+    .int('Año inválido')
+    .min(1989, 'Año inválido')
+    .refine((year) => year <= new Date().getFullYear(), 'Año inválido')
+    .default(() => new Date().getFullYear())
+);
+
+export function buildBeneficiaryCountsShape(keys: readonly string[]) {
+  return Object.fromEntries(keys.map((key) => [key, beneficiaryCount]));
+}

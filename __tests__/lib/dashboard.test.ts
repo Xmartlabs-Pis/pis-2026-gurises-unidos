@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
 import { getDashboardOverview } from '@/lib/dashboard/queries';
 import { getMetricValues, type MetricValues } from '@/lib/metrics/queries';
+import { beneficiaryValueRows } from '../mocks/beneficiary-values';
 
 vi.mock('@/lib/prisma', () => ({
   default: { project: { findMany: vi.fn() } },
@@ -11,6 +12,8 @@ vi.mock('@/lib/metrics/queries', () => ({ getMetricValues: vi.fn() }));
 function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
   return {
     children_reached: 0,
+    direct_children_reached: 0,
+    indirect_children_reached: 0,
     families: 0,
     teachers: 0,
     institutions: 0,
@@ -124,14 +127,28 @@ describe('getDashboardOverview', () => {
         name: 'Playground',
         status: 'active',
         intensity: 'high',
-        projectBeneficiaries: [{ directChildrenAdolescents: 30, indirectChildrenAdolescents: 12 }],
+        projectBeneficiaries: [
+          {
+            values: beneficiaryValueRows({
+              directChildrenAdolescents: 30,
+              indirectChildrenAdolescents: 12,
+            }),
+          },
+        ],
       },
       {
         id: 2,
         name: 'Talleres',
-        status: 'paused',
+        status: 'inactive',
         intensity: 'low',
-        projectBeneficiaries: [{ directChildrenAdolescents: 5, indirectChildrenAdolescents: 0 }],
+        projectBeneficiaries: [
+          {
+            values: beneficiaryValueRows({
+              directChildrenAdolescents: 5,
+              indirectChildrenAdolescents: 0,
+            }),
+          },
+        ],
       },
     ]);
 
@@ -139,7 +156,7 @@ describe('getDashboardOverview', () => {
 
     expect(projects).toEqual([
       { id: 1, name: 'Playground', status: 'active', intensity: 'high', beneficiaries: 42 },
-      { id: 2, name: 'Talleres', status: 'paused', intensity: 'low', beneficiaries: 5 },
+      { id: 2, name: 'Talleres', status: 'inactive', intensity: 'low', beneficiaries: 5 },
     ]);
     expect(projectsTotal).toBe(47);
   });

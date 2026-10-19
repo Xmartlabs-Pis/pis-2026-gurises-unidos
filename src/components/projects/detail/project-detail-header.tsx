@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
+import { COUNTERPARTY_LABEL, INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectDetail } from '@/lib/projects/detail';
+import { getLocationLabel } from '@/lib/projects/location';
 import { ProjectYearSelector } from './project-year-selector';
 
 type ProjectDetailHeaderProps = {
@@ -17,24 +18,24 @@ function ProjectBadges({ project }: { project: ProjectDetail['project'] }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Badge variant={STATUS_BADGE_VARIANT[project.status]}>{STATUS_LABEL[project.status]}</Badge>
-      <Badge variant="neutral">{INTENSITY_LABEL[project.intensity]} intensidad</Badge>
+      {project.intensity && (
+        <Badge variant="neutral">{INTENSITY_LABEL[project.intensity]} intensidad</Badge>
+      )}
     </div>
   );
 }
 
-function ProjectMetadata({
-  territory,
-  coordinator,
-  period,
-}: {
-  territory: string;
-  coordinator: string;
-  period: string;
-}) {
+function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
+  const territory = getLocationLabel(project);
+  const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
+  const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
+  const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
+  const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
   const rows = [
     { label: 'Territorio:', value: territory },
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
+    { label: 'Contraparte:', value: counterparty },
   ];
 
   return (
@@ -48,6 +49,13 @@ function ProjectMetadata({
           <dd className="text-foreground/80 sm:text-foreground/65">{value}</dd>
         </div>
       ))}
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline">
+        <span aria-hidden="true" className="hidden sm:inline">
+          •
+        </span>
+        <dt className="whitespace-nowrap">Líneas estratégicas:</dt>
+        <dd className="text-foreground/80 sm:text-foreground/65">{strategicLines}</dd>
+      </div>
     </dl>
   );
 }
@@ -58,13 +66,6 @@ export function ProjectDetailHeader({
   years,
   canEdit,
 }: ProjectDetailHeaderProps) {
-  const territory = [project.department.name, project.localityNeighborhood]
-    .filter(Boolean)
-    .join(' — ');
-  const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
-  const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
-  const description = project.generalObjective ?? project.publicDescription;
-
   return (
     <section className="border-border pb-1 sm:border-b sm:pb-5">
       <p className="text-muted-foreground text-xs font-medium sm:hidden">Proyectos</p>
@@ -95,13 +96,13 @@ export function ProjectDetailHeader({
       </div>
 
       <div className="flex flex-col">
-        {description && (
+        {project.generalObjective && (
           <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
-            {description}
+            {project.generalObjective}
           </p>
         )}
         <div className="order-2 sm:order-1">
-          <ProjectMetadata territory={territory} coordinator={coordinator} period={period} />
+          <ProjectMetadata project={project} />
         </div>
       </div>
 

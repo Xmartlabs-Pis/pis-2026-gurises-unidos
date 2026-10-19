@@ -3,6 +3,11 @@ import { expect, it } from 'vitest';
 import { ProjectHistory } from '@/components/projects/form/project-history';
 import type { AuditAction, AuditEntity } from '@/generated/prisma/enums';
 import type { Prisma } from '@/generated/prisma/client';
+import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
+
+const FIELD_LABELS = Object.fromEntries(
+  BENEFICIARY_CATEGORY_OPTIONS.map(({ key, name }) => [key, name])
+);
 
 function entry(
   id: number,
@@ -23,6 +28,7 @@ function entry(
 it('displays project events without showing password audit events', () => {
   render(
     <ProjectHistory
+      fieldLabels={FIELD_LABELS}
       entries={[
         entry(1, 'creation'),
         entry(2, 'update'),
@@ -39,7 +45,7 @@ it('displays project events without showing password audit events', () => {
 });
 
 it('shows the empty state when there are no project audit events', () => {
-  render(<ProjectHistory entries={[entry(1, 'passwordChange')]} />);
+  render(<ProjectHistory fieldLabels={FIELD_LABELS} entries={[entry(1, 'passwordChange')]} />);
   expect(screen.getByText('Todavía no hay modificaciones registradas.')).toBeDefined();
   expect(screen.queryByRole('list')).toBeNull();
 });
@@ -49,6 +55,7 @@ it.each(['creation', 'update'] as const)(
   (action) => {
     render(
       <ProjectHistory
+        fieldLabels={FIELD_LABELS}
         entries={[
           entry(1, action, 'beneficiary', {
             year: 2026,
@@ -73,6 +80,11 @@ it.each([
   ['with the legacy format', { year: 2026, changedFields: ['families'] }],
   ['without changes', { year: 2026, changes: [] }],
 ])('hides beneficiary events %s', (_name, details) => {
-  render(<ProjectHistory entries={[entry(1, 'creation', 'beneficiary', details)]} />);
+  render(
+    <ProjectHistory
+      fieldLabels={FIELD_LABELS}
+      entries={[entry(1, 'creation', 'beneficiary', details)]}
+    />
+  );
   expect(screen.getByText('Todavía no hay modificaciones registradas.')).toBeDefined();
 });

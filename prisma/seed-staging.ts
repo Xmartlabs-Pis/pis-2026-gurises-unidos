@@ -1,8 +1,16 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
+import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
-import { ADMIN } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, STRATEGIC_LINES } from './fixtures';
+import {
+  formCategoryValuesWhere,
+  SYSTEM_BENEFICIARY_KEYS,
+  toBeneficiaryValuesCreate,
+} from '../src/lib/project-display';
+
+import { CounterpartyType } from '../src/generated/prisma/enums';
 
 const prisma = new PrismaClient();
 
@@ -28,6 +36,8 @@ const DEPARTMENTS = [
   'Treinta y Tres',
 ];
 
+const COUNTERPARTY_TYPES = Object.values(CounterpartyType);
+
 const TOPICS = ['Education', 'Health', 'Protection', 'Community', 'Employment'];
 
 const COORDINATORS = [
@@ -52,7 +62,7 @@ const PROJECT_BASE_NAMES = [
 
 const PROJECT_DEPARTMENTS = ['Montevideo', 'Canelones', 'Salto', 'Rivera', 'Maldonado'];
 
-const STATUSES = ['active', 'paused', 'closed'] as const;
+const STATUSES = ['active', 'inactive'] as const;
 const INTENSITIES = ['high', 'medium', 'low'] as const;
 const ZONES = ['city', 'inland', 'border', 'rural'] as const;
 
@@ -82,6 +92,11 @@ async function main() {
 
   await prisma.$transaction(
     async (tx) => {
+      await tx.beneficiaryCategory.createMany({
+        data: BENEFICIARY_CATEGORIES,
+        skipDuplicates: true,
+      });
+
       const departments = new Map<string, number>();
       for (const name of DEPARTMENTS) {
         const department = await tx.department.upsert({
@@ -96,6 +111,10 @@ async function main() {
       for (const name of TOPICS) {
         const topic = await tx.topic.upsert({ where: { name }, update: {}, create: { name } });
         topicIds.push(topic.id);
+      }
+
+      for (const name of STRATEGIC_LINES) {
+        await tx.strategicLine.upsert({ where: { name }, update: {}, create: { name } });
       }
 
       const admin = await tx.user.upsert({
@@ -153,16 +172,16 @@ async function main() {
           name,
           status,
           intensity: INTENSITIES[index % INTENSITIES.length],
+          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
           startYear,
           endYear:
-            status === 'closed'
+            status === 'inactive'
               ? Math.min(startYear + 1 + (index % 3), new Date().getFullYear())
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
-          departmentId: departments.get(departmentName)!,
-          topicId: topicIds[index % topicIds.length],
           zone: ZONES[index % ZONES.length],
-          localityNeighborhood: index % 3 === 0 ? null : `Barrio ${index + 1}`,
+          cities: index % 3 === 0 ? [] : [`Ciudad ${index + 1}`],
+          neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
@@ -174,35 +193,63 @@ async function main() {
           where: { name, startYear, deletedAt: null },
           select: { id: true },
         });
+        const projectDepartments = [{ id: departments.get(departmentName)! }];
+        const topics = [topicIds[index % topicIds.length]];
+        if (index % 4 === 0) topics.push(topicIds[(index + 1) % topicIds.length]);
+        const topicRefs = topics.map((id) => ({ id }));
         const project = existing
-          ? await tx.project.update({ where: { id: existing.id }, data })
-          : await tx.project.create({ data });
+          ? await tx.project.update({
+              where: { id: existing.id },
+              data: {
+                ...data,
+                departments: { set: projectDepartments },
+                topics: { set: topicRefs },
+              },
+            })
+          : await tx.project.create({
+              data: {
+                ...data,
+                departments: { connect: projectDepartments },
+                topics: { connect: topicRefs },
+              },
+            });
 
         const yearCount = index % 7 === 0 ? 0 : 1 + (index % 4);
 
         for (let offset = 0; offset < yearCount; offset += 1) {
           const year = LATEST_BENEFICIARY_YEAR - offset;
-          const counts = { ...beneficiaryCounts(index + offset), authorId: coordinatorIds[0] };
+          const values = toBeneficiaryValuesCreate(beneficiaryCounts(index + offset));
 
+          await tx.projectBeneficiaryValue.deleteMany({
+            where: formCategoryValuesWhere(project.id, year, SYSTEM_BENEFICIARY_KEYS),
+          });
           await tx.projectBeneficiary.upsert({
             where: { projectId_year: { projectId: project.id, year } },
-            update: counts,
-            create: { projectId: project.id, year, ...counts },
+            update: { authorId: coordinatorIds[0], values: { create: values } },
+            create: {
+              projectId: project.id,
+              year,
+              authorId: coordinatorIds[0],
+              values: { create: values },
+            },
           });
         }
       }
 
-      await tx.metric.upsert({
-        where: { key: 'children_reached' },
-        update: {},
-        create: {
-          key: 'children_reached',
-          name: 'Children reached',
-          showPublicly: true,
-          sortOrder: 1,
-          updatedBy: admin.id,
-        },
-      });
+      for (const [index, metric] of METRIC_DEFINITIONS.entries()) {
+        await tx.metric.upsert({
+          where: { key: metric.key },
+          update: {},
+          create: {
+            key: metric.key,
+            name: metric.name,
+            showPublicly: metric.showPublicly,
+            showPubliclyDraft: metric.showPublicly,
+            sortOrder: index + 1,
+            updatedBy: admin.id,
+          },
+        });
+      }
     },
     { maxWait: 20_000, timeout: 120_000 }
   );

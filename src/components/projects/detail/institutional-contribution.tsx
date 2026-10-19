@@ -32,9 +32,6 @@ export function InstitutionalContribution({
     data.nationalReach.percentage === null
       ? '—'
       : `${PERCENTAGE_FORMATTER.format(data.nationalReach.percentage)}%`;
-  const territoryNames = [
-    ...new Set(data.territories.items.map(({ department }) => department.name)),
-  ];
 
   return (
     <section className="border-border bg-card h-full rounded-[14px] border p-4 sm:p-5">
@@ -61,7 +58,7 @@ export function InstitutionalContribution({
         <ContributionItem
           value={formatNumber(data.territories.count)}
           label={data.territories.count === 1 ? 'territorio vinculado' : 'territorios vinculados'}
-          detail={territoryNames.join(' · ')}
+          detail={data.territories.items.join(' · ')}
         />
       </dl>
     </section>

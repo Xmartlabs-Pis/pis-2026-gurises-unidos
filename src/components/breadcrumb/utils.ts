@@ -1,11 +1,17 @@
 const RESOURCE_SEGMENTS = new Set(['projects', 'users']);
 
+const RESOURCES_WITHOUT_DETAIL_PAGE = new Set(['users']);
+
+const HIDDEN_SEGMENTS = new Set(['management']);
+
 const STATIC_SEGMENTS = new Set([
   'dashboard',
   'projects',
   'users',
   'management',
   'topics',
+  'beneficiary-categories',
+  'strategic-lines',
   'new',
   'edit',
 ]);
@@ -13,10 +19,12 @@ const STATIC_SEGMENTS = new Set([
 export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   metrics: 'Métricas',
-  management: 'Administración',
   projects: 'Proyectos',
   users: 'Usuarios',
   topics: 'Temáticas',
+  profile: 'Perfil',
+  'beneficiary-categories': 'Categorías de beneficiarios',
+  'strategic-lines': 'Líneas estratégicas',
   new: 'Nuevo',
   edit: 'Editar',
 };
@@ -46,20 +54,29 @@ function getSegmentLabel(segment: string, segments: string[], index: number): st
   return formatBreadcrumbSegment(segment);
 }
 
-export function getBreadcrumbsFromPathname(pathname: string): { href: string; label: string }[] {
+export type BreadcrumbCrumb = { href: string; label: string; isResource: boolean };
+
+export function getBreadcrumbsFromPathname(pathname: string): BreadcrumbCrumb[] {
   const segments = pathname.split('/').filter(Boolean);
-  const crumbs: { href: string; label: string }[] = [];
+  const crumbs: BreadcrumbCrumb[] = [];
   let href = '';
 
   for (let index = 0; index < segments.length; index++) {
     const segment = segments[index];
     href += `/${segment}`;
 
-    if (isResourceId(segment, segments[index - 1]) && segments[index + 1] === 'edit') {
+    if (HIDDEN_SEGMENTS.has(segment)) {
       continue;
     }
 
-    crumbs.push({ href, label: getSegmentLabel(segment, segments, index) });
+    const parent = segments[index - 1];
+    const isResource = isResourceId(segment, parent);
+
+    if (isResource && segments[index + 1] === 'edit' && RESOURCES_WITHOUT_DETAIL_PAGE.has(parent)) {
+      continue;
+    }
+
+    crumbs.push({ href, label: getSegmentLabel(segment, segments, index), isResource });
   }
 
   return crumbs;

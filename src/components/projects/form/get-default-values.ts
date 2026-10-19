@@ -1,28 +1,32 @@
+import type { BeneficiaryCategoryOption } from '@/lib/project-display';
 import type { ProjectFormValues } from './project-form-values';
 
-export function getDefaultValues(currentYear: number): ProjectFormValues {
+export function getDefaultValues(
+  currentYear: number,
+  categories: BeneficiaryCategoryOption[]
+): ProjectFormValues {
   return {
     year: String(currentYear),
     name: '',
     status: 'active',
-    topicId: '',
-    intensity: 'high',
+    topicIds: [],
+    intensity: '',
+    counterpartyType: '',
     startYear: String(currentYear),
     endYear: '',
     leadCoordinatorId: '',
-    departmentId: '',
+    strategicLineIds: [],
+    geographicScope: 'national',
+    departmentIds: [],
+    countries: [],
+    cities: [],
+    neighborhoods: [],
     zone: 'city',
-    localityNeighborhood: '',
     generalObjective: '',
     publicDescription: '',
     internalNotes: '',
-    directChildrenAdolescents: '0',
-    indirectChildrenAdolescents: '0',
-    youth18To29: '0',
-    families: '0',
-    coordinatedInstitutions: '0',
-    communityLeaders: '0',
-    basicServiceStaff: '0',
+    showOnLanding: 'true',
     coverPhotoUrl: null,
+    ...Object.fromEntries(categories.map(({ key }) => [key, '0'])),
   };
 }

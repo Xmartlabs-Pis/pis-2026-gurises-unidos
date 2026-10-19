@@ -10,13 +10,7 @@ function renderContribution(projectCount: number) {
         activeProjects: { projectCount, totalCount: 27 },
         territories: {
           count: 1,
-          items: [
-            {
-              department: { id: 1, name: 'Montevideo' },
-              zone: 'city',
-              localityNeighborhood: null,
-            },
-          ],
+          items: ['Montevideo'],
         },
       }}
     />

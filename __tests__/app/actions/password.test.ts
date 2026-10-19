@@ -240,7 +240,7 @@ describe('completeForcedPasswordChange', () => {
       expect.any(String),
       SESSION_EXPIRATION_COOKIE_OPTIONS
     );
-    expect(redirect).toHaveBeenCalledWith('/dashboard/projects');
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
   });
 
   test('falls back to login when the silent sign-in fails after the password was updated', async () => {

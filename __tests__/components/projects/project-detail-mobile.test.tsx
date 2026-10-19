@@ -5,15 +5,16 @@ import { InstitutionalContribution } from '@/components/projects/detail/institut
 import { ProjectMetrics } from '@/components/projects/detail/project-metrics';
 import { ProjectPublicCard } from '@/components/projects/detail/project-public-card';
 import { ProjectRecentActivity } from '@/components/projects/detail/project-recent-activity';
+import type { ProjectDetail } from '@/lib/projects/detail';
 
-const BENEFICIARIES = [
-  { key: 'directChildrenAdolescents' as const, value: 80 },
-  { key: 'indirectChildrenAdolescents' as const, value: 20 },
-  { key: 'youth18To29' as const, value: 10 },
-  { key: 'families' as const, value: 25 },
-  { key: 'coordinatedInstitutions' as const, value: 5 },
-  { key: 'communityLeaders' as const, value: 12 },
-  { key: 'basicServiceStaff' as const, value: 18 },
+const BENEFICIARIES: ProjectDetail['distribution'] = [
+  { key: 'directChildrenAdolescents', label: 'NNA directos', value: 80 },
+  { key: 'indirectChildrenAdolescents', label: 'NNA indirectos', value: 20 },
+  { key: 'youth18To29', label: 'Jóvenes (18 a 29)', value: 10 },
+  { key: 'families', label: 'Familias', value: 25 },
+  { key: 'coordinatedInstitutions', label: 'Instituciones coordinadas', value: 5 },
+  { key: 'communityLeaders', label: 'Referentes comunitarios', value: 12 },
+  { key: 'basicServiceStaff', label: 'Personal de servicios básicos', value: 18 },
 ];
 
 test('uses a two-column metric grid on mobile', () => {
@@ -57,6 +58,54 @@ test('shows distribution values without bar tracks on mobile', () => {
   expect(screen.getByRole('meter', { name: 'NNA directos' }).className).toContain('sm:block');
 });
 
+test('uses a distinct color for each system beneficiary category', () => {
+  render(<BeneficiaryDistribution data={BENEFICIARIES} year={2026} />);
+
+  const colors = BENEFICIARIES.map(({ label }) =>
+    Array.from(screen.getByRole('meter', { name: label }).firstElementChild?.classList ?? []).find(
+      (className) => className.startsWith('bg-beneficiary-')
+    )
+  );
+
+  expect(colors).toEqual([
+    'bg-beneficiary-children',
+    'bg-beneficiary-indirect-children',
+    'bg-beneficiary-youth',
+    'bg-beneficiary-families',
+    'bg-beneficiary-institutions',
+    'bg-beneficiary-community-leaders',
+    'bg-beneficiary-staff',
+  ]);
+  expect(new Set(colors).size).toBe(BENEFICIARIES.length);
+});
+
+test('shows every beneficiary category in the provided order', () => {
+  render(
+    <BeneficiaryDistribution
+      data={[
+        ...BENEFICIARIES,
+        { key: 'customVolunteers' as const, label: 'Voluntarios', value: 7 },
+      ]}
+      year={2026}
+    />
+  );
+
+  const rows = screen.getAllByRole('listitem');
+  expect(rows.map((row) => row.textContent)).toEqual([
+    'NNA directos80',
+    'NNA indirectos20',
+    'Jóvenes (18 a 29)10',
+    'Familias25',
+    'Instituciones coordinadas5',
+    'Referentes comunitarios12',
+    'Personal de servicios básicos18',
+    'Voluntarios7',
+  ]);
+  expect(screen.getByRole('meter', { name: 'Voluntarios' }).getAttribute('aria-valuenow')).toBe(
+    '7'
+  );
+});
+
 test('keeps the public card horizontal and separates contribution rows on mobile', () => {
   const { container } = render(
     <>
@@ -71,13 +120,7 @@ test('keeps the public card horizontal and separates contribution rows on mobile
           activeProjects: { projectCount: 1, totalCount: 27 },
           territories: {
             count: 1,
-            items: [
-              {
-                department: { id: 1, name: 'Montevideo' },
-                zone: 'city',
-                localityNeighborhood: null,
-              },
-            ],
+            items: ['Montevideo'],
           },
         }}
       />

@@ -153,7 +153,7 @@ export async function completeForcedPasswordChange(
     SESSION_EXPIRATION_COOKIE_OPTIONS
   );
 
-  redirect('/dashboard/projects');
+  redirect('/dashboard');
 }
 
 const resetPasswordSchema = z.object({

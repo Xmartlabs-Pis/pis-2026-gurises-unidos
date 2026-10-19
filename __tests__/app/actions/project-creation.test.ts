@@ -21,24 +21,30 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+vi.mock('@/lib/beneficiary-categories', async () => {
+  const { BENEFICIARY_CATEGORY_OPTIONS } = await import('../../mocks/beneficiary-values');
+  return { getActiveBeneficiaryCategories: async () => BENEFICIARY_CATEGORY_OPTIONS };
+});
 
 import { createProject } from '@/app/actions/projects';
 import { Prisma } from '@/generated/prisma/client';
+import { toBeneficiaryValuesCreate } from '@/lib/project-display';
 
 const EMPTY_STATE: ProjectFormState = {};
 
-type FormDataInput = Record<string, string | undefined>;
+type FormDataInput = Record<string, string | string[] | undefined>;
 
 const VALID_FIELDS: FormDataInput = {
   name: 'Community Center',
-  topicId: '1',
+  topicIds: '1',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: '2020',
   leadCoordinatorId: '1',
-  departmentId: '2',
+  geographicScope: 'national',
+  departmentIds: '2',
   zone: 'city',
-  localityNeighborhood: '',
   generalObjective: '',
   publicDescription: '',
   internalNotes: '',
@@ -50,28 +56,40 @@ const VALID_FIELDS: FormDataInput = {
   coordinatedInstitutions: '1',
   communityLeaders: '4',
   basicServiceStaff: '6',
+  strategicLineIds: '1',
 };
 
 function buildFormData(overrides: FormDataInput = {}): FormData {
   const fields = { ...VALID_FIELDS, ...overrides };
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
-    if (value !== undefined) {
-      formData.append(key, value);
+    for (const item of [value].flat()) {
+      if (item !== undefined) formData.append(key, item);
     }
   }
   return formData;
 }
 
-function setupTransaction({ projectId = 42, beneficiaryId = 9 } = {}) {
+function setupTransaction({ projectId = 42, beneficiaryId = 9, existingDepartments = 99 } = {}) {
   const projectCreate = vi.fn().mockResolvedValue({ id: projectId });
   const beneficiaryCreate = vi.fn().mockResolvedValue({ id: beneficiaryId });
 
   transactionMock.mockImplementation(async (callback) =>
     callback({
-      $queryRaw: vi.fn().mockResolvedValue([]),
+      $queryRaw: vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) =>
+        strings.join('').includes('"StrategicLine"')
+          ? (values[0] as number[]).map((id) => ({ id }))
+          : strings.join('').includes('"BeneficiaryCategory"')
+            ? (values[0] as string[]).map((key) => ({ key }))
+            : []
+      ),
       user: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
-      topic: { findFirst: vi.fn().mockResolvedValue({ id: 1 }) },
+      topic: { count: vi.fn().mockResolvedValue(1) },
+      department: {
+        count: vi.fn(async ({ where }: { where: { id: { in: number[] } } }) =>
+          Math.min(where.id.in.length, existingDepartments)
+        ),
+      },
       project: { create: projectCreate, findFirst: vi.fn().mockResolvedValue(null) },
       projectBeneficiary: { create: beneficiaryCreate },
     })
@@ -97,6 +115,19 @@ beforeEach(() => {
 });
 
 describe('createProject', () => {
+  test.each(['publicSector', 'privateSector', 'internationalCooperation'])(
+    'creates a project with counterparty %s',
+    async (counterpartyType) => {
+      const { projectCreate } = setupTransaction();
+      await expect(createProject(EMPTY_STATE, buildFormData({ counterpartyType }))).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ counterpartyType }),
+      });
+    }
+  );
+
   test('redirects to /login and skips the database when there is no session', async () => {
     authMock.mockResolvedValue(null);
 
@@ -143,32 +174,42 @@ describe('createProject', () => {
         name: 'Community Center',
         status: 'active',
         intensity: 'high',
+        counterpartyType: 'publicSector',
         startYear: 2020,
         endYear: null,
         leadCoordinatorId: 1,
-        departmentId: 2,
+        geographicScope: 'national',
+        countries: [],
+        cities: [],
+        neighborhoods: [],
         zone: 'city',
-        localityNeighborhood: null,
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
+        showOnLanding: true,
         coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
         createdBy: 7,
-        topicId: 1,
+        topics: { connect: [{ id: 1 }] },
+        strategicLines: { connect: [{ id: 1 }] },
+        departments: { connect: [{ id: 2 }] },
       },
     });
     expect(beneficiaryCreate).toHaveBeenCalledWith({
       data: {
         year: 2024,
-        directChildrenAdolescents: 10,
-        indirectChildrenAdolescents: 5,
-        youth18To29: 3,
-        families: 2,
-        coordinatedInstitutions: 1,
-        communityLeaders: 4,
-        basicServiceStaff: 6,
         projectId: 42,
         authorId: 7,
+        values: {
+          create: toBeneficiaryValuesCreate({
+            directChildrenAdolescents: 10,
+            indirectChildrenAdolescents: 5,
+            youth18To29: 3,
+            families: 2,
+            coordinatedInstitutions: 1,
+            communityLeaders: 4,
+            basicServiceStaff: 6,
+          }),
+        },
       },
     });
     expect(transactionMock).toHaveBeenCalledWith(expect.any(Function), {
@@ -248,15 +289,95 @@ describe('createProject', () => {
     expect(beneficiaryCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({
         year: new Date().getFullYear(),
-        directChildrenAdolescents: 0,
-        indirectChildrenAdolescents: 0,
-        youth18To29: 0,
-        families: 0,
-        coordinatedInstitutions: 0,
-        communityLeaders: 0,
-        basicServiceStaff: 0,
+        values: {
+          create: toBeneficiaryValuesCreate({
+            directChildrenAdolescents: 0,
+            indirectChildrenAdolescents: 0,
+            youth18To29: 0,
+            families: 0,
+            coordinatedInstitutions: 0,
+            communityLeaders: 0,
+            basicServiceStaff: 0,
+          }),
+        },
       }),
     });
+  });
+
+  test('creates a national project with several departments, cities and neighborhoods', async () => {
+    const { projectCreate } = setupTransaction();
+
+    await expect(
+      createProject(
+        EMPTY_STATE,
+        buildFormData({
+          departmentIds: ['2', '5'],
+          cities: ['Las Piedras', 'Pando'],
+          neighborhoods: ['Centro', 'Barrio Obrero'],
+        })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        geographicScope: 'national',
+        countries: [],
+        cities: ['Las Piedras', 'Pando'],
+        neighborhoods: ['Centro', 'Barrio Obrero'],
+        departments: { connect: [{ id: 2 }, { id: 5 }] },
+      }),
+    });
+  });
+
+  test('creates an international project with several countries and no national values', async () => {
+    const { projectCreate } = setupTransaction();
+
+    await expect(
+      createProject(
+        EMPTY_STATE,
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          cities: ['Pando'],
+        })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        geographicScope: 'international',
+        countries: ['Argentina', 'Brasil'],
+        cities: [],
+        neighborhoods: [],
+        departments: { connect: [] },
+      }),
+    });
+  });
+
+  test('requires a department for a national project without accessing the database', async () => {
+    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: undefined }));
+
+    expect(result.errors?.departmentIds).toEqual(['Seleccioná al menos un departamento']);
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('requires a country for an international project without accessing the database', async () => {
+    const result = await createProject(
+      EMPTY_STATE,
+      buildFormData({ geographicScope: 'international' })
+    );
+
+    expect(result.errors?.countries).toEqual(['Ingresá al menos un país']);
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('rejects departments that do not exist before creating the project', async () => {
+    const { projectCreate } = setupTransaction({ existingDepartments: 1 });
+
+    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: ['2', '999'] }));
+
+    expect(result).toEqual({ errors: { departmentIds: ['Elegí departamentos válidos'] } });
+    expect(projectCreate).not.toHaveBeenCalled();
   });
 
   test('reports a message when the coordinator or department foreign key is invalid', async () => {
@@ -308,7 +429,6 @@ describe('createProject', () => {
 
   const TEXT_LIMITS = [
     { field: 'name', limit: 100 },
-    { field: 'localityNeighborhood', limit: 100 },
     { field: 'generalObjective', limit: 500 },
     { field: 'publicDescription', limit: 1000 },
     { field: 'internalNotes', limit: 1000 },
@@ -360,7 +480,13 @@ describe('createProject', () => {
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
 
     expect(beneficiaryCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ [field]: 2_147_483_647 }),
+      data: expect.objectContaining({
+        values: {
+          create: expect.arrayContaining([
+            { value: 2_147_483_647, category: { connect: { key: field } } },
+          ]),
+        },
+      }),
     });
   });
 

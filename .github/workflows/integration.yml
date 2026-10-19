@@ -21,6 +21,7 @@ jobs:
     env:
       E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/app_e2e
       SEED_USER_PASSWORD: integration-seed-password
+      AUTH_SECRET: integration-auth-secret
     steps:
       - uses: actions/checkout@v4
 

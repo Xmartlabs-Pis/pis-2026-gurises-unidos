@@ -1,15 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prismaMock } from '../../mocks/prisma';
-import type { BeneficiaryCounts } from '@/lib/project-display';
+import { FIRST_PROJECT_YEAR, type BeneficiaryCounts } from '@/lib/project-display';
 import { getProjectDetail } from '@/lib/projects/detail';
+import { beneficiaryValueRows } from '../../mocks/beneficiary-values';
 
-const { authMock } = vi.hoisted(() => ({
+const { authMock, extraCategories } = vi.hoisted(() => ({
   authMock: vi.fn(),
+  extraCategories: [] as { key: string; name: string }[],
 }));
 
 vi.mock('@/auth', () => ({
   auth: authMock,
 }));
+
+vi.mock('@/lib/beneficiary-categories', async () => {
+  const { BENEFICIARY_CATEGORY_OPTIONS } = await import('../../mocks/beneficiary-values');
+  return {
+    getActiveBeneficiaryCategories: async () => [
+      ...BENEFICIARY_CATEGORY_OPTIONS,
+      ...extraCategories,
+    ],
+  };
+});
 
 vi.mock('next/navigation', () => ({
   redirect: (url: string) => {
@@ -29,6 +41,7 @@ const PROJECT = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
+  counterpartyType: 'publicSector',
   startYear: 2024,
   endYear: null,
   leadCoordinatorId: 2,
@@ -36,17 +49,17 @@ const PROJECT = {
   publicDescription: 'Community project',
   coverPhoto: '/images/project-placeholders/2.webp',
   zone: 'city',
-  localityNeighborhood: 'Casavalle',
+  geographicScope: 'national',
+  countries: [],
+  cities: ['Montevideo'],
+  neighborhoods: ['Casavalle'],
   leadCoordinator: {
     id: 2,
     firstName: 'Ana',
     lastName: 'Garcia',
   },
-  department: {
-    id: 1,
-    name: 'Montevideo',
-  },
-  topic: null,
+  departments: [{ id: 1, name: 'Montevideo' }],
+  topics: [],
   projectBeneficiaries: [{ year: 2026 }, { year: 2025 }],
 };
 
@@ -92,18 +105,13 @@ beforeEach(() => {
   prismaMock.projectBeneficiary.findUnique.mockImplementation(async ({ where }) => {
     const year = where.projectId_year.year;
 
-    if (year === 2026) return CURRENT;
-    if (year === 2025) return PREVIOUS;
+    if (year === 2026) return { values: beneficiaryValueRows(CURRENT) };
+    if (year === 2025) return { values: beneficiaryValueRows(PREVIOUS) };
 
     return null;
   });
 
-  prismaMock.projectBeneficiary.aggregate.mockResolvedValue({
-    _sum: {
-      directChildrenAdolescents: 800,
-      indirectChildrenAdolescents: 200,
-    },
-  });
+  prismaMock.projectBeneficiaryValue.aggregate.mockResolvedValue({ _sum: { value: 1000 } });
 });
 
 afterEach(() => {
@@ -125,7 +133,6 @@ describe('getProjectDetail', () => {
       comparisonYear: 2025,
       availableYears: [2026, 2025],
       hasData: true,
-      hasHistoricalData: true,
       canEdit: true,
       metrics: {
         childrenReached: {
@@ -155,40 +162,72 @@ describe('getProjectDetail', () => {
         },
         territories: {
           count: 1,
-          items: [{ department: { id: 1, name: 'Montevideo' } }],
+          items: ['Montevideo'],
         },
       },
     });
 
     expect(prismaMock.project.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        select: expect.objectContaining({ coverPhoto: true, endYear: true }),
+        select: expect.objectContaining({
+          coverPhoto: true,
+          endYear: true,
+          projectBeneficiaries: {
+            where: {
+              year: { gte: FIRST_PROJECT_YEAR, lte: 2026 },
+              values: {
+                some: {
+                  value: { gt: 0 },
+                  category: { isActive: true },
+                },
+              },
+            },
+            orderBy: { year: 'desc' },
+            select: { year: true },
+          },
+        }),
       })
     );
     expect(result.data.distribution).toHaveLength(7);
     expect(result.data.metrics.annualGrowth).toBeCloseTo(30);
     expect(result.data.distribution).toContainEqual({
       key: 'directChildrenAdolescents',
+      label: 'NNA directos',
       value: 100,
     });
   });
 
-  it.each(['paused', 'closed'])(
-    'does not count a %s project with beneficiary data as active',
-    async (status) => {
-      prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status });
+  it('does not count an inactive project with beneficiary data as active', async () => {
+    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'inactive' });
 
-      expect(await getProjectDetail('12', '2026')).toMatchObject({
-        status: 'success',
-        data: {
-          hasData: true,
-          institutionalContribution: {
-            activeProjects: { projectCount: 0, totalCount: 10 },
-          },
+    expect(await getProjectDetail('12', '2026')).toMatchObject({
+      status: 'success',
+      data: {
+        hasData: true,
+        institutionalContribution: {
+          activeProjects: { projectCount: 0, totalCount: 10 },
         },
+      },
+    });
+  });
+
+  it('shows zero for a custom category without a stored value in a recorded year', async () => {
+    extraCategories.push({ key: 'customTeachers', name: 'Docentes' });
+    try {
+      const result = await getProjectDetail('12', '2026');
+      if (result.status !== 'success') {
+        throw new Error('Expected success');
+      }
+
+      expect(result.data.distribution).toContainEqual({
+        key: 'customTeachers',
+        label: 'Docentes',
+        value: 0,
       });
+    } finally {
+      extraCategories.length = 0;
     }
-  );
+  });
 
   it('counts an active project without beneficiary records', async () => {
     prismaMock.project.findFirst.mockResolvedValue({
@@ -201,7 +240,6 @@ describe('getProjectDetail', () => {
       status: 'success',
       data: {
         hasData: false,
-        hasHistoricalData: false,
         institutionalContribution: {
           activeProjects: { projectCount: 1, totalCount: 10 },
         },
@@ -229,7 +267,7 @@ describe('getProjectDetail', () => {
   });
 
   it('returns zero active projects when all projects are inactive', async () => {
-    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'closed' });
+    prismaMock.project.findFirst.mockResolvedValue({ ...PROJECT, status: 'inactive' });
     prismaMock.project.count.mockResolvedValue(0);
 
     expect(await getProjectDetail('12', '2026')).toMatchObject({
@@ -253,7 +291,7 @@ describe('getProjectDetail', () => {
       data: {
         selectedYear: 2025,
         comparisonYear: 2024,
-        availableYears: [2026, 2025],
+        availableYears: [2025],
         metrics: {
           childrenReached: {
             value: 100,
@@ -264,15 +302,15 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('offers a requested year without data in the year options', async () => {
+  it('falls back to the latest recorded year when the requested year has no data', async () => {
     const result = await getProjectDetail('12', '2015');
 
     expect(result).toMatchObject({
       status: 'success',
       data: {
-        selectedYear: 2015,
-        hasData: false,
-        availableYears: [2026, 2025, 2015],
+        selectedYear: 2026,
+        hasData: true,
+        availableYears: [2026, 2025],
       },
     });
   });
@@ -280,8 +318,12 @@ describe('getProjectDetail', () => {
   it('uses the exact requested year for national totals', async () => {
     await getProjectDetail('12', '2025');
 
-    expect(prismaMock.projectBeneficiary.aggregate).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { year: 2025, project: { deletedAt: null } } })
+    expect(prismaMock.projectBeneficiaryValue.aggregate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          beneficiary: { year: 2025, project: { deletedAt: null } },
+        }),
+      })
     );
   });
 
@@ -294,8 +336,8 @@ describe('getProjectDetail', () => {
     prismaMock.projectBeneficiary.findUnique.mockImplementation(async ({ where }) => {
       const year = where.projectId_year.year;
 
-      if (year === 2026) return CURRENT;
-      if (year === 2024) return PREVIOUS;
+      if (year === 2026) return { values: beneficiaryValueRows(CURRENT) };
+      if (year === 2024) return { values: beneficiaryValueRows(PREVIOUS) };
 
       return null;
     });
@@ -314,31 +356,6 @@ describe('getProjectDetail', () => {
     });
   });
 
-  it('keeps a missing selected year instead of substituting data', async () => {
-    const result = await getProjectDetail('12', '2024');
-
-    expect(result).toMatchObject({
-      status: 'success',
-      data: {
-        selectedYear: 2024,
-        hasData: false,
-        metrics: {
-          childrenReached: { value: null },
-          annualGrowth: null,
-        },
-        institutionalContribution: {
-          activeProjects: { projectCount: 1, totalCount: 10 },
-        },
-      },
-    });
-
-    if (result.status !== 'success') {
-      throw new Error('Expected success');
-    }
-
-    expect(result.data.distribution.every(({ value }) => value === null)).toBe(true);
-  });
-
   it('uses the current year for a project without records', async () => {
     prismaMock.project.findFirst.mockResolvedValue({
       ...PROJECT,
@@ -352,34 +369,61 @@ describe('getProjectDetail', () => {
         selectedYear: 2026,
         availableYears: [2026],
         hasData: false,
-        hasHistoricalData: false,
       },
     });
   });
 
-  it('preserves a recorded year containing zeros', async () => {
-    prismaMock.projectBeneficiary.findUnique.mockResolvedValue(createCounts());
-    prismaMock.projectBeneficiary.aggregate.mockResolvedValue({
-      _sum: {
-        directChildrenAdolescents: 0,
-        indirectChildrenAdolescents: 0,
+  it('ignores a recorded year with values only in an inactive category', async () => {
+    prismaMock.project.findFirst.mockResolvedValue({
+      ...PROJECT,
+      projectBeneficiaries: [],
+    });
+    prismaMock.projectBeneficiary.findUnique.mockImplementation(async ({ where }) => {
+      if (where.projectId_year.year === 2026) {
+        return { values: beneficiaryValueRows({ customInactive: 50 }) };
+      }
+
+      return null;
+    });
+
+    expect(await getProjectDetail('12')).toMatchObject({
+      status: 'success',
+      data: {
+        selectedYear: 2026,
+        availableYears: [2026],
+        hasData: false,
+        metrics: {
+          childrenReached: { value: null },
+          annualGrowth: null,
+        },
       },
     });
+  });
+
+  it('treats a recorded year containing only zeros as empty', async () => {
+    prismaMock.project.findFirst.mockResolvedValue({
+      ...PROJECT,
+      projectBeneficiaries: [],
+    });
+    prismaMock.projectBeneficiary.findUnique.mockResolvedValue({
+      values: beneficiaryValueRows(createCounts()),
+    });
+    prismaMock.projectBeneficiaryValue.aggregate.mockResolvedValue({ _sum: { value: 0 } });
 
     expect(await getProjectDetail('12', '2026')).toMatchObject({
       status: 'success',
       data: {
-        hasData: true,
+        availableYears: [2026],
+        hasData: false,
         metrics: {
           childrenReached: {
-            value: 0,
-            absoluteChange: 0,
-            percentageChange: null,
-            trend: 'stable',
+            value: null,
+            absoluteChange: null,
+            trend: null,
           },
         },
         institutionalContribution: {
-          nationalReach: { nationalValue: 0, percentage: null },
+          nationalReach: { projectValue: null, nationalValue: 0, percentage: null },
           activeProjects: { projectCount: 1 },
         },
       },
@@ -388,12 +432,7 @@ describe('getProjectDetail', () => {
 
   it('handles a year without national records', async () => {
     prismaMock.projectBeneficiary.findUnique.mockResolvedValue(null);
-    prismaMock.projectBeneficiary.aggregate.mockResolvedValue({
-      _sum: {
-        directChildrenAdolescents: null,
-        indirectChildrenAdolescents: null,
-      },
-    });
+    prismaMock.projectBeneficiaryValue.aggregate.mockResolvedValue({ _sum: { value: null } });
 
     expect(await getProjectDetail('12', '2024')).toMatchObject({
       status: 'success',
@@ -414,7 +453,7 @@ describe('getProjectDetail', () => {
     prismaMock.project.findFirst.mockResolvedValue(null);
 
     expect(await getProjectDetail('12')).toEqual({ status: 'notFound' });
-    expect(prismaMock.projectBeneficiary.aggregate).not.toHaveBeenCalled();
+    expect(prismaMock.projectBeneficiaryValue.aggregate).not.toHaveBeenCalled();
   });
 
   it('returns notFound for a deleted project without querying metrics', async () => {
@@ -425,7 +464,7 @@ describe('getProjectDetail', () => {
       expect.objectContaining({ where: { id: 12, deletedAt: null } })
     );
     expect(prismaMock.projectBeneficiary.findUnique).not.toHaveBeenCalled();
-    expect(prismaMock.projectBeneficiary.aggregate).not.toHaveBeenCalled();
+    expect(prismaMock.projectBeneficiaryValue.aggregate).not.toHaveBeenCalled();
     expect(prismaMock.project.count).not.toHaveBeenCalled();
   });
 

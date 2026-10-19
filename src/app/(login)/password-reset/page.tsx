@@ -15,7 +15,7 @@ export default async function PasswordResetPage() {
   }
 
   if (!session.user.mustChangePassword) {
-    redirect('/dashboard/projects');
+    redirect('/dashboard');
   }
 
   return (

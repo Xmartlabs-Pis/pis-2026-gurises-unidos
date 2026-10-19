@@ -1,13 +1,15 @@
-let currentUserId: number | null = null;
+import type { UserRole } from '@/generated/prisma/enums';
 
-export function signInAs(userId: number) {
-  currentUserId = userId;
+let currentUser: { id: string; role?: UserRole } | null = null;
+
+export function signInAs(userId: number, role?: UserRole) {
+  currentUser = { id: String(userId), role };
 }
 
 export function signOut() {
-  currentUserId = null;
+  currentUser = null;
 }
 
 export function currentSession() {
-  return currentUserId === null ? null : { user: { id: String(currentUserId) } };
+  return currentUser === null ? null : { user: currentUser };
 }

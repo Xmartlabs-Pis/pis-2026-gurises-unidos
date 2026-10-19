@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { ADMIN, TABLES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, TABLES } from './fixtures';
 
 const prisma = new PrismaClient();
 
@@ -42,6 +42,9 @@ async function main() {
           `
         : [];
 
+      if (existingNames.includes('BeneficiaryCategory')) {
+        await tx.beneficiaryCategory.createMany({ data: BENEFICIARY_CATEGORIES });
+      }
       if (mode === 'reset') {
         await tx.user.create({ data: { ...ADMIN, passwordHash } });
       }

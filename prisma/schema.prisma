@@ -23,14 +23,18 @@ enum UserStatus {
 
 enum ProjectStatus {
   active
-  paused
-  closed
+  inactive
 }
 
 enum Intensity {
   high
   medium
   low
+}
+
+enum GeographicScope {
+  national
+  international
 }
 
 enum Zone {
@@ -52,7 +56,15 @@ enum AuditEntity {
   user
   project
   beneficiary
+  beneficiaryCategory
   metric
+  topic
+}
+
+enum CounterpartyType {
+  publicSector
+  privateSector
+  internationalCooperation
 }
 
 // ---------- TABLES ----------
@@ -74,20 +86,30 @@ model User {
   updatedAt          DateTime?  @updatedAt
   deletedAt          DateTime?
 
-  creator               User?                @relation("UserCreatedBy", fields: [createdBy], references: [id])
-  createdUsers          User[]               @relation("UserCreatedBy")
-  ledProjects           Project[]            @relation("ProjectLeadCoordinator")
-  createdProjects       Project[]            @relation("ProjectCreatedBy")
-  deletedProjects       Project[]            @relation("ProjectDeletedBy")
+  creator               User?                 @relation("UserCreatedBy", fields: [createdBy], references: [id])
+  createdUsers          User[]                @relation("UserCreatedBy")
+  ledProjects           Project[]             @relation("ProjectLeadCoordinator")
+  createdProjects       Project[]             @relation("ProjectCreatedBy")
+  deletedProjects       Project[]             @relation("ProjectDeletedBy")
   projectCoordinators   ProjectCoordinator[]
   projectBeneficiaries  ProjectBeneficiary[]
   metricsUpdated        Metric[]
   publicSettingsUpdated PublicSettings[]
+  beneficiaryCategories BeneficiaryCategory[]
   reportsGenerated      Report[]
   auditLogs             AuditLog[]
 }
 
 model Topic {
+  id           Int     @id @default(autoincrement())
+  name         String  @unique
+  isActive     Boolean @default(true)
+  showPublicly Boolean @default(true)
+
+  projects Project[]
+}
+
+model StrategicLine {
   id       Int     @id @default(autoincrement())
   name     String  @unique
   isActive Boolean @default(true)
@@ -103,32 +125,37 @@ model Department {
 }
 
 model Project {
-  id                   Int           @id @default(autoincrement())
-  name                 String        @db.VarChar(100)
-  status               ProjectStatus
-  intensity            Intensity
-  startYear            Int
-  endYear              Int?
-  leadCoordinatorId    Int
-  departmentId         Int
-  localityNeighborhood String?       @db.VarChar(100)
-  zone                 Zone
-  generalObjective     String?       @db.VarChar(500)
-  publicDescription    String?       @db.VarChar(1000)
-  coverPhoto           String?
-  internalNotes        String?       @db.VarChar(1000)
-  createdAt            DateTime      @default(now())
-  createdBy            Int?
-  updatedAt            DateTime?     @updatedAt
-  deletedAt            DateTime?
-  deletedBy            Int?
-  topicId              Int
+  id                Int              @id @default(autoincrement())
+  name              String           @db.VarChar(100)
+  searchName        String?          @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
+  status            ProjectStatus
+  intensity         Intensity?
+  counterpartyType  CounterpartyType
+  startYear         Int
+  endYear           Int?
+  leadCoordinatorId Int
+  geographicScope   GeographicScope  @default(national)
+  countries         String[]         @default([])
+  cities            String[]         @default([])
+  neighborhoods     String[]         @default([])
+  zone              Zone
+  generalObjective  String?          @db.VarChar(500)
+  publicDescription String?          @db.VarChar(1000)
+  coverPhoto        String?
+  internalNotes     String?          @db.VarChar(1000)
+  showOnLanding     Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  createdBy         Int?
+  updatedAt         DateTime?        @updatedAt
+  deletedAt         DateTime?
+  deletedBy         Int?
 
-  leadCoordinator User       @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
-  department      Department @relation(fields: [departmentId], references: [id])
-  creator         User?      @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
-  deleter         User?      @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
-  topic           Topic      @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
+  departments     Department[]
+  creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
+  deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
+  topics          Topic[]
+  strategicLines  StrategicLine[]
 
   projectCoordinators  ProjectCoordinator[]
   projectBeneficiaries ProjectBeneficiary[]
@@ -145,23 +172,44 @@ model ProjectCoordinator {
 }
 
 model ProjectBeneficiary {
-  id                          Int      @id @default(autoincrement())
-  projectId                   Int
-  year                        Int
-  directChildrenAdolescents   Int      @default(0)
-  indirectChildrenAdolescents Int      @default(0)
-  youth18To29                 Int      @default(0)
-  families                    Int      @default(0)
-  coordinatedInstitutions     Int      @default(0)
-  communityLeaders            Int      @default(0)
-  basicServiceStaff           Int      @default(0)
-  recordedAt                  DateTime @default(now())
-  authorId                    Int
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  year       Int
+  recordedAt DateTime @default(now())
+  authorId   Int
 
-  project Project @relation(fields: [projectId], references: [id])
-  author  User    @relation(fields: [authorId], references: [id])
+  project Project                   @relation(fields: [projectId], references: [id])
+  author  User                      @relation(fields: [authorId], references: [id])
+  values  ProjectBeneficiaryValue[]
 
   @@unique([projectId, year])
+}
+
+model BeneficiaryCategory {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique
+  name         String   @unique
+  defaultValue Int      @default(0)
+  sortOrder    Int      @default(0)
+  isSystem     Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  createdBy    Int?
+
+  creator User?                     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  values  ProjectBeneficiaryValue[]
+}
+
+model ProjectBeneficiaryValue {
+  beneficiaryId Int
+  categoryId    Int
+  value         Int @default(0)
+
+  beneficiary ProjectBeneficiary  @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  category    BeneficiaryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([beneficiaryId, categoryId])
+  @@index([categoryId])
 }
 
 model Metric {

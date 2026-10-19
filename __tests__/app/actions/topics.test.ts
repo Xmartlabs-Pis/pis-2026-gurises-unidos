@@ -80,7 +80,7 @@ describe('deleteTopic', () => {
     await expect(deleteTopic(4)).resolves.toEqual({ success: true });
 
     expect(mocks.countProjects).toHaveBeenCalledWith({
-      where: { topicId: 4, deletedAt: null },
+      where: { topics: { some: { id: 4 } }, deletedAt: null },
     });
     expect(mocks.updateTopic).toHaveBeenCalledWith({
       where: { id: 4 },
@@ -95,7 +95,7 @@ describe('deleteTopic', () => {
     await expect(deleteTopic(4)).resolves.toEqual({ success: true });
 
     expect(mocks.countProjects).toHaveBeenCalledWith({
-      where: { topicId: 4, deletedAt: null },
+      where: { topics: { some: { id: 4 } }, deletedAt: null },
     });
     expect(mocks.updateTopic).toHaveBeenCalledWith({
       where: { id: 4 },

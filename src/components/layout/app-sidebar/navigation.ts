@@ -4,9 +4,11 @@ import {
   FolderKanban,
   HomeIcon,
   Tags,
+  Waypoints,
   type LucideIcon,
   // Newspaper,
   Users,
+  UsersRound,
 } from 'lucide-react';
 import type { UserRole } from '@/generated/prisma/enums';
 
@@ -96,6 +98,20 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         title: 'Temáticas',
         href: '/management/topics',
         icon: Tags,
+        roles: ['admin'],
+      },
+      {
+        id: 'beneficiary-categories',
+        title: 'Categorías de beneficiarios',
+        href: '/management/beneficiary-categories',
+        icon: UsersRound,
+        roles: ['admin'],
+      },
+      {
+        id: 'strategicLines',
+        title: 'Líneas estratégicas',
+        href: '/management/strategic-lines',
+        icon: Waypoints,
         roles: ['admin'],
       },
       {

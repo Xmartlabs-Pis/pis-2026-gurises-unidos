@@ -1,9 +1,8 @@
-import { ProjectStatus, Intensity } from '@/generated/prisma/enums';
+import { CounterpartyType, ProjectStatus, Intensity } from '@/generated/prisma/enums';
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: 'Activo',
-  paused: 'Pausado',
-  closed: 'Cerrado',
+  inactive: 'Inactivo',
 };
 
 export const INTENSITY_LABEL: Record<Intensity, string> = {
@@ -12,10 +11,25 @@ export const INTENSITY_LABEL: Record<Intensity, string> = {
   low: 'Baja',
 };
 
+export const INTENSITY_DESCRIPTION: Record<Intensity, string> = {
+  high: 'Acompañamiento individual',
+  medium: 'Actividad semanal grupal',
+  low: 'Al menos una actividad',
+};
+
+export function getIntensityLabel(intensity: Intensity | null) {
+  return intensity ? INTENSITY_LABEL[intensity] : '—';
+}
+
+export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
+  publicSector: 'Sector Público',
+  privateSector: 'Sector Privado',
+  internationalCooperation: 'Cooperación Internacional',
+};
+
 export const STATUS_OPTIONS = [
   { value: 'active', label: STATUS_LABEL.active },
-  { value: 'paused', label: STATUS_LABEL.paused },
-  { value: 'closed', label: STATUS_LABEL.closed },
+  { value: 'inactive', label: STATUS_LABEL.inactive },
 ] as const;
 
 export const INTENSITY_OPTIONS = [
@@ -24,25 +38,35 @@ export const INTENSITY_OPTIONS = [
   { value: 'low', label: INTENSITY_LABEL.low },
 ] as const;
 
-export type BeneficiaryCounts = {
-  directChildrenAdolescents: number;
-  indirectChildrenAdolescents: number;
-  youth18To29: number;
-  families: number;
-  coordinatedInstitutions: number;
-  communityLeaders: number;
-  basicServiceStaff: number;
-};
+export const COUNTERPARTY_OPTIONS = [
+  { value: 'publicSector', label: COUNTERPARTY_LABEL.publicSector },
+  { value: 'privateSector', label: COUNTERPARTY_LABEL.privateSector },
+  { value: 'internationalCooperation', label: COUNTERPARTY_LABEL.internationalCooperation },
+] as const;
 
-export const BENEFICIARY_FIELDS: { key: keyof BeneficiaryCounts; label: string }[] = [
-  { key: 'directChildrenAdolescents', label: 'NNA directos' },
-  { key: 'indirectChildrenAdolescents', label: 'NNA indirectos' },
-  { key: 'youth18To29', label: 'Jóvenes (18 a 29)' },
-  { key: 'families', label: 'Familias' },
-  { key: 'coordinatedInstitutions', label: 'Instituciones coordinadas' },
-  { key: 'communityLeaders', label: 'Referentes comunitarios' },
-  { key: 'basicServiceStaff', label: 'Personal de servicios básicos' },
-];
+export const SYSTEM_BENEFICIARY_KEYS = [
+  'directChildrenAdolescents',
+  'indirectChildrenAdolescents',
+  'youth18To29',
+  'families',
+  'coordinatedInstitutions',
+  'communityLeaders',
+  'basicServiceStaff',
+] as const;
+
+export type SystemBeneficiaryKey = (typeof SYSTEM_BENEFICIARY_KEYS)[number];
+
+export const DIRECT_CHILDREN_KEY: SystemBeneficiaryKey = 'directChildrenAdolescents';
+
+export function isSystemBeneficiaryKey(key: string): key is SystemBeneficiaryKey {
+  return (SYSTEM_BENEFICIARY_KEYS as readonly string[]).includes(key);
+}
+
+export type BeneficiaryCounts = Record<SystemBeneficiaryKey, number> & Record<string, number>;
+
+export type BeneficiaryFieldName = SystemBeneficiaryKey | `custom${string}`;
+
+export type BeneficiaryCategoryOption = { key: BeneficiaryFieldName; name: string };
 
 export const TOPIC_OPTIONS = [
   { value: 'education', label: 'Educación' },
@@ -59,10 +83,28 @@ export const ZONE_OPTIONS = [
   { value: 'rural', label: 'Rural' },
 ] as const;
 
+export const GEOGRAPHIC_SCOPE_OPTIONS = [
+  { value: 'national', label: 'Nacional' },
+  { value: 'international', label: 'Internacional' },
+] as const;
+
 export const FIRST_PROJECT_YEAR = 1989;
 export const PREVIEW_TOPIC_FALLBACK = 'Educación';
 export const PREVIEW_LOCATION_FALLBACK = 'Montevideo';
 
-export function sumBeneficiaries(counts: BeneficiaryCounts) {
-  return BENEFICIARY_FIELDS.reduce((sum, field) => sum + counts[field.key], 0);
+export function sumBeneficiaries(counts: Record<string, number>) {
+  return Object.values(counts).reduce((sum, value) => sum + value, 0);
+}
+
+export function toBeneficiaryValuesCreate(counts: Partial<Record<string, number>>) {
+  return Object.entries(counts).flatMap(([key, value]) =>
+    value ? [{ value, category: { connect: { key } } }] : []
+  );
+}
+
+export function formCategoryValuesWhere(projectId: number, year: number, keys: readonly string[]) {
+  return {
+    beneficiary: { projectId, year },
+    category: { key: { in: [...keys] } },
+  };
 }

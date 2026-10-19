@@ -1,6 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { UserRole, UserStatus } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
+import { firstValue, type RawSearchParams } from '@/lib/url-filters';
 import type { SortBy } from '@/lib/users/constants';
 import type { User } from '@/lib/users/format';
 
@@ -64,13 +65,7 @@ export async function getUserList(filters: UserListFilters = {}): Promise<User[]
   });
 }
 
-type UserListSearchParams = Record<string, string | string[] | undefined>;
-
 const NOT_DELETED_WHERE = { deletedAt: null };
-
-function firstValue(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 function isUserRole(value?: string): value is UserRole {
   return Object.values(UserRole).includes(value as UserRole);
@@ -80,12 +75,12 @@ function isUserStatus(value?: string): value is UserStatus {
   return Object.values(UserStatus).includes(value as UserStatus);
 }
 
-export function parseUserListFilters(searchParams: UserListSearchParams): UserListFilters {
+export function parseUserListFilters(searchParams: RawSearchParams): UserListFilters {
   const role = firstValue(searchParams.role);
   const status = firstValue(searchParams.status);
 
   return {
-    search: firstValue(searchParams.q),
+    search: firstValue(searchParams.q)?.trim() || undefined,
     role: isUserRole(role) ? role : undefined,
     status: isUserStatus(status) ? status : undefined,
     sortBy: resolveSortBy(firstValue(searchParams.sort)),

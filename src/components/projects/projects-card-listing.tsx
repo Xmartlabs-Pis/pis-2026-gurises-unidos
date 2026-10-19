@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Search, ListFilter } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -20,9 +20,9 @@ import type { ProjectListItem } from '@/lib/projects/list';
 import { STATUS_FILTERS, type StatusFilterValue } from '@/lib/projects/constants';
 import { PROJECT_SEARCH_MAX_LENGTH } from '@/lib/validation/project-filters';
 import { ScrollToTopButton } from '@/components/scroll-to-top-button';
+import { useUrlFilters } from '@/hooks/use-url-filters';
 
 const ALL_YEARS = 'all';
-const SEARCH_DEBOUNCE_MS = 400;
 
 type YearFilterValue = number | typeof ALL_YEARS;
 
@@ -35,6 +35,10 @@ type ProjectsCardListProps = {
   status: StatusFilterValue;
   beneficiaryYear: number | undefined;
   search: string | undefined;
+  departments?: { id: number; name: string }[];
+  topics?: { id: number; name: string }[];
+  departmentId?: number;
+  topicId?: number;
 };
 
 export function ProjectsCardList({
@@ -46,60 +50,41 @@ export function ProjectsCardList({
   status,
   beneficiaryYear,
   search,
+  departments = [],
+  topics = [],
+  departmentId,
+  topicId,
 }: ProjectsCardListProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
-  const [searchText, setSearchText] = useState(search ?? '');
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const requestedParams = useRef(searchParams.toString());
-
-  useEffect(() => () => clearTimeout(searchTimeout.current), []);
-
-  useEffect(() => {
-    const requestedSearch = new URLSearchParams(requestedParams.current).get('search') ?? undefined;
-    if (search === requestedSearch) return;
-    clearTimeout(searchTimeout.current);
-    setSearchText(search ?? '');
-  }, [search]);
-
-  useEffect(() => {
-    requestedParams.current = searchParams.toString();
-  }, [searchParams]);
+  const { searchText, changeSearch, updateFilters, clearFilters, isPending } = useUrlFilters({
+    search,
+    resetKeys: ['page'],
+  });
 
   const year: YearFilterValue = beneficiaryYear ?? ALL_YEARS;
+  const activeFilterCount =
+    Number(year !== (years[0] ?? ALL_YEARS)) +
+    Number(departmentId !== undefined) +
+    Number(topicId !== undefined);
   const yearOptions: { value: YearFilterValue; label: string }[] = [
     { value: ALL_YEARS, label: 'Todos' },
-    ...years.map((y) => ({ value: y, label: String(y) })),
+    ...years.map((y) => ({
+      value: y,
+      label: y === years[0] ? `${y} (por defecto)` : String(y),
+    })),
   ];
 
   const current = STATUS_FILTERS.find((f) => f.value === status) ?? STATUS_FILTERS[0];
 
   const query = useMemo<ProjectListQuery>(
-    () => ({ status, beneficiaryYear: String(year), search }),
-    [status, year, search]
+    () => ({
+      status,
+      beneficiaryYear: String(year),
+      search,
+      departmentId: departmentId?.toString(),
+      topicId: topicId?.toString(),
+    }),
+    [status, year, search, departmentId, topicId]
   );
-
-  function updateFilter(key: 'status' | 'beneficiaryYear' | 'search', value: string | null) {
-    const params = new URLSearchParams(requestedParams.current);
-    if (value) params.set(key, value);
-    else params.delete(key);
-    const queryString = params.toString();
-    requestedParams.current = queryString;
-    startTransition(() =>
-      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
-    );
-  }
-
-  function handleSearchChange(value: string) {
-    setSearchText(value);
-    clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(
-      () => updateFilter('search', value.trim() || null),
-      SEARCH_DEBOUNCE_MS
-    );
-  }
 
   const filteredCountLabel = `${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
 
@@ -118,15 +103,15 @@ export function ProjectsCardList({
     <Select<YearFilterValue>
       items={yearOptions}
       value={year}
-      onValueChange={(value) => value !== null && updateFilter('beneficiaryYear', String(value))}
+      onValueChange={(value) => value !== null && updateFilters({ beneficiaryYear: String(value) })}
     >
-      <SelectTrigger
-        aria-label="Filtrar por año"
-        className="bg-background h-9! w-22.5 rounded-md px-3 py-2 shadow-xs/10"
-      >
+      <SelectTrigger aria-label="Filtrar por año" className="w-full">
         <SelectValue className="text-primary text-sm leading-5 tracking-normal" />
       </SelectTrigger>
-      <SelectContent alignItemWithTrigger={false}>
+      <SelectContent
+        alignItemWithTrigger={false}
+        className="max-h-[min(15rem,var(--available-height))]"
+      >
         {yearOptions.map((y) => (
           <SelectItem key={y.value} value={y.value}>
             {y.label}
@@ -134,6 +119,90 @@ export function ProjectsCardList({
         ))}
       </SelectContent>
     </Select>
+  );
+
+  const filterMenu = (
+    <Popover>
+      <PopoverTrigger
+        render={<Button variant="outline" size="icon" className="relative h-9 w-9" />}
+        aria-label="Filtros de proyectos"
+        aria-description={`${activeFilterCount} filtros activos`}
+      >
+        <ListFilter />
+        {activeFilterCount > 0 && (
+          <span
+            aria-hidden="true"
+            className="bg-primary text-primary-foreground absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-semibold"
+          >
+            {activeFilterCount}
+          </span>
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 gap-4 p-4">
+        <div className="flex flex-col gap-2">
+          <span>Año</span>
+          {yearSelect}
+        </div>
+        {(
+          [
+            {
+              key: 'departmentId',
+              label: 'Departamento',
+              allLabel: 'Todos',
+              options: departments,
+              value: departmentId,
+            },
+            {
+              key: 'topicId',
+              label: 'Temática',
+              allLabel: 'Todas',
+              options: topics,
+              value: topicId,
+            },
+          ] as const
+        ).map(({ key, label, allLabel, options, value }) => {
+          const filterOptions = [
+            { value: 'all', label: allLabel },
+            ...options.map((option) => ({ value: String(option.id), label: option.name })),
+          ];
+
+          return (
+            <div key={key} className="flex flex-col gap-2">
+              <span>{label}</span>
+              <Select
+                items={filterOptions}
+                value={value?.toString() ?? 'all'}
+                onValueChange={(selected) =>
+                  updateFilters({ [key]: selected === 'all' ? null : selected })
+                }
+              >
+                <SelectTrigger aria-label={`Filtrar por ${label.toLowerCase()}`} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  className="max-h-[min(15rem,var(--available-height))]"
+                >
+                  {filterOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          );
+        })}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => clearFilters(['beneficiaryYear', 'departmentId', 'topicId'])}
+        >
+          Limpiar filtros
+        </Button>
+      </PopoverContent>
+    </Popover>
   );
 
   return (
@@ -148,14 +217,14 @@ export function ProjectsCardList({
           </h1>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <div className="lg:hidden">{yearSelect}</div>
+          <div className="lg:hidden">{filterMenu}</div>
           {newProjectButton}
         </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-row items-center gap-3">
-          <Tabs value={status} onValueChange={(value) => updateFilter('status', String(value))}>
+          <Tabs value={status} onValueChange={(value) => updateFilters({ status: String(value) })}>
             <div className="bg-secondary flex h-9 w-fit flex-row items-center rounded-lg px-0.5 py-0.75">
               <TabsList aria-label="Filtrar por estado">
                 {STATUS_FILTERS.map((f) => (
@@ -186,17 +255,17 @@ export function ProjectsCardList({
             placeholder="Buscar por nombre..."
             maxLength={PROJECT_SEARCH_MAX_LENGTH}
             value={searchText}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
           />
         </InputGroup>
-        <div className="hidden lg:block">{yearSelect}</div>
+        <div className="hidden lg:block">{filterMenu}</div>
       </div>
       <p className="text-primary block text-lg leading-7 font-semibold lg:hidden">
         {filteredCountLabel}
       </p>
 
       <ProjectCardsGrid
-        key={`${query.status}-${query.beneficiaryYear}-${query.search ?? ''}`}
+        key={JSON.stringify(query)}
         projects={projects}
         page={page}
         totalPages={totalPages}

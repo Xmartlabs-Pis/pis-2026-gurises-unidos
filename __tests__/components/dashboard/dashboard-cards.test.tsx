@@ -24,7 +24,7 @@ test('links each project to its detail page', () => {
   render(
     <ProjectsOverviewTable
       projects={[
-        { id: 7, name: 'Playground', status: 'paused', intensity: 'high', beneficiaries: 42 },
+        { id: 7, name: 'Playground', status: 'inactive', intensity: 'high', beneficiaries: 42 },
       ]}
       total={42}
       year={2026}
@@ -34,5 +34,5 @@ test('links each project to its detail page', () => {
   const links = screen.getAllByRole('link', { name: /Playground/ });
   expect(links.length).toBeGreaterThan(0);
   links.forEach((link) => expect(link.getAttribute('href')).toBe('/dashboard/projects/7'));
-  expect(screen.getAllByText('Pausado').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Inactivo').length).toBeGreaterThan(0);
 });

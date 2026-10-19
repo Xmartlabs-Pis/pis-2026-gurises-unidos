@@ -8,11 +8,38 @@ import {
   parseProjectFilters,
   type RawProjectFilters,
 } from '@/lib/validation/project-filters';
+import { beneficiaryValueRows } from '../../mocks/beneficiary-values';
 
 const CARLOS = { id: 3, firstName: 'Carlos', lastName: 'Coordinator' };
 const DIANA = { id: 4, firstName: 'Diana', lastName: 'Coordinator' };
 const MONTEVIDEO = { id: 1, name: 'Montevideo' };
 const CANELONES = { id: 2, name: 'Canelones' };
+
+const RECORD_2025 = {
+  year: 2025,
+  directChildrenAdolescents: 10,
+  indirectChildrenAdolescents: 5,
+  youth18To29: 3,
+  families: 2,
+  coordinatedInstitutions: 1,
+  communityLeaders: 4,
+  basicServiceStaff: 6,
+};
+
+const RECORD_2024 = {
+  year: 2024,
+  directChildrenAdolescents: 8,
+  indirectChildrenAdolescents: 0,
+  youth18To29: 0,
+  families: 2,
+  coordinatedInstitutions: 0,
+  communityLeaders: 0,
+  basicServiceStaff: 0,
+};
+
+function toBeneficiaryRow({ year, ...counts }: typeof RECORD_2025) {
+  return { year, values: beneficiaryValueRows(counts) };
+}
 
 const PROJECTS = [
   {
@@ -22,42 +49,27 @@ const PROJECTS = [
     intensity: 'high',
     startYear: 2018,
     zone: 'city',
-    localityNeighborhood: 'Cerro',
+    geographicScope: 'national',
+    countries: [],
+    cities: ['Montevideo'],
+    neighborhoods: ['Cerro'],
     leadCoordinator: CARLOS,
-    department: MONTEVIDEO,
-    projectBeneficiaries: [
-      {
-        year: 2025,
-        directChildrenAdolescents: 10,
-        indirectChildrenAdolescents: 5,
-        youth18To29: 3,
-        families: 2,
-        coordinatedInstitutions: 1,
-        communityLeaders: 4,
-        basicServiceStaff: 6,
-      },
-      {
-        year: 2024,
-        directChildrenAdolescents: 8,
-        indirectChildrenAdolescents: 0,
-        youth18To29: 0,
-        families: 2,
-        coordinatedInstitutions: 0,
-        communityLeaders: 0,
-        basicServiceStaff: 0,
-      },
-    ],
+    departments: [MONTEVIDEO],
+    projectBeneficiaries: [toBeneficiaryRow(RECORD_2025), toBeneficiaryRow(RECORD_2024)],
   },
   {
     id: 2,
     name: 'Escuela rural',
-    status: 'closed',
+    status: 'inactive',
     intensity: 'low',
     startYear: 2021,
     zone: 'rural',
-    localityNeighborhood: null,
+    geographicScope: 'national',
+    countries: [],
+    cities: [],
+    neighborhoods: [],
     leadCoordinator: DIANA,
-    department: CANELONES,
+    departments: [CANELONES],
     projectBeneficiaries: [],
   },
 ];
@@ -84,12 +96,15 @@ describe('AC1: paginated listing with each project data', () => {
       intensity: 'high',
       startYear: 2018,
       zone: 'city',
-      localityNeighborhood: 'Cerro',
+      geographicScope: 'national',
+      countries: [],
+      cities: ['Montevideo'],
+      neighborhoods: ['Cerro'],
       leadCoordinator: CARLOS,
-      department: MONTEVIDEO,
+      departments: [MONTEVIDEO],
       beneficiaries: [
-        { ...PROJECTS[0].projectBeneficiaries[0], total: 31 },
-        { ...PROJECTS[0].projectBeneficiaries[1], total: 10 },
+        { ...RECORD_2025, total: 31 },
+        { ...RECORD_2024, total: 10 },
       ],
     });
     expect(items[1].beneficiaries).toEqual([]);
@@ -151,9 +166,9 @@ describe('AC1: paginated listing with each project data', () => {
 
 describe('AC2: filters', () => {
   test('by status', async () => {
-    await listWith({ status: 'closed' });
+    await listWith({ status: 'inactive' });
 
-    expect(findManyArgs().where).toEqual({ deletedAt: null, status: 'closed' });
+    expect(findManyArgs().where).toEqual({ deletedAt: null, status: 'inactive' });
   });
 
   test('by lead coordinator', async () => {
@@ -186,15 +201,27 @@ describe('AC2: filters', () => {
   test('by department', async () => {
     await listWith({ departmentId: '2' });
 
-    expect(findManyArgs().where).toEqual({ deletedAt: null, departmentId: 2 });
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      departments: { some: { id: 2 } },
+    });
   });
 
-  test('by name, case-insensitive', async () => {
-    await listWith({ search: 'CENTRO' });
+  test('by name, ignoring case and accents', async () => {
+    await listWith({ search: 'ÓÑÁS Ü' });
 
     expect(findManyArgs().where).toEqual({
       deletedAt: null,
-      name: { contains: 'CENTRO', mode: 'insensitive' },
+      searchName: { contains: 'onas u' },
+    });
+  });
+
+  test('by name, matching LIKE wildcards literally', async () => {
+    await listWith({ search: '100%_\\' });
+
+    expect(findManyArgs().where).toEqual({
+      deletedAt: null,
+      searchName: { contains: '100\\%\\_\\\\' },
     });
   });
 
@@ -216,7 +243,7 @@ describe('AC2: filters', () => {
       where: {
         deletedAt: null,
         status: 'active',
-        departmentId: 1,
+        departments: { some: { id: 1 } },
         projectBeneficiaries: { some: { year: 2025 } },
       },
     });
@@ -240,7 +267,7 @@ describe('AC2: filters', () => {
     prismaMock.project.count.mockResolvedValue(1);
     prismaMock.project.findMany.mockResolvedValue([PROJECTS[1]]);
 
-    const result = await listProjects(parseProjectFilters({ status: 'closed', page: '4' }));
+    const result = await listProjects(parseProjectFilters({ status: 'inactive', page: '4' }));
 
     expect(result).toMatchObject({ page: 1, total: 1, totalPages: 1 });
     expect(result.items.map((item) => item.name)).toEqual(['Escuela rural']);
@@ -276,7 +303,7 @@ describe('AC3: no projects', () => {
   });
 
   test('returns an empty page when no project matches the filters', async () => {
-    const result = await listWith({ status: 'paused', leadCoordinatorId: '3' }, []);
+    const result = await listWith({ status: 'inactive', leadCoordinatorId: '3' }, []);
 
     expect(result.items).toEqual([]);
     expect(result.total).toBe(0);
@@ -318,7 +345,7 @@ describe('parseProjectFilters', () => {
   });
 
   test('uses the first value of repeated params', () => {
-    expect(parseProjectFilters({ status: ['closed', 'active'] }).status).toBe('closed');
+    expect(parseProjectFilters({ status: ['inactive', 'active'] }).status).toBe('inactive');
   });
 
   test('parses the beneficiary year and ignores invalid ones', () => {
@@ -343,19 +370,49 @@ describe('listBeneficiaryYears', () => {
 });
 
 describe('listProjectFilterOptions', () => {
-  test('returns coordinators and departments that lead or host projects', async () => {
-    prismaMock.user.findMany.mockResolvedValue([CARLOS]);
+  test('returns all departments and only active topics, including those without projects', async () => {
     prismaMock.department.findMany.mockResolvedValue([MONTEVIDEO]);
+    prismaMock.topic.findMany.mockResolvedValue([{ id: 1, name: 'Education' }]);
 
     expect(await listProjectFilterOptions()).toEqual({
-      coordinators: [CARLOS],
       departments: [MONTEVIDEO],
+      topics: [{ id: 1, name: 'Education' }],
     });
-    expect(prismaMock.user.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { ledProjects: { some: { deletedAt: null } } } })
-    );
-    expect(prismaMock.department.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { projects: { some: { deletedAt: null } } } })
-    );
+    expect(prismaMock.department.findMany).toHaveBeenCalledWith({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    expect(prismaMock.topic.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+  });
+});
+
+test('combines topic and department with the other project filters', async () => {
+  await listWith({
+    topicId: '2',
+    departmentId: '3',
+    beneficiaryYear: '2025',
+    status: 'active',
+    intensity: 'high',
+    search: 'Centro',
+  });
+  expect(findManyArgs().where).toEqual({
+    deletedAt: null,
+    topics: { some: { id: 2 } },
+    departments: { some: { id: 3 } },
+    projectBeneficiaries: { some: { year: 2025 } },
+    status: 'active',
+    intensity: 'high',
+    searchName: { contains: 'centro' },
+  });
+});
+
+test('ignores invalid topic and department IDs', () => {
+  expect(parseProjectFilters({ topicId: '-1', departmentId: 'invalid' })).toMatchObject({
+    topicId: undefined,
+    departmentId: undefined,
   });
 });

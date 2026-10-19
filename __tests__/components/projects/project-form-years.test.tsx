@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import type { SelectField } from '@/components/ui/forms/select-field';
 import { ProjectForm } from '@/components/projects/form/project-form';
+import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -47,6 +48,8 @@ it('loads only the selected year and retains unsaved drafts when switching years
   };
   render(
     <ProjectForm
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[]}
       currentYear={2026}
       topics={[]}
       coordinators={[]}

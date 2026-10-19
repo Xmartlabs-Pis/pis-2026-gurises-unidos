@@ -3,12 +3,16 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { UsersTable } from '@/components/users/users-table';
 import type { User } from '@/lib/users/format';
 
-const { updateUserStatusMock, notifySuccessMock } = vi.hoisted(() => ({
+const { updateUserStatusMock, deleteUserMock, notifySuccessMock } = vi.hoisted(() => ({
   updateUserStatusMock: vi.fn(),
+  deleteUserMock: vi.fn(),
   notifySuccessMock: vi.fn(),
 }));
 
-vi.mock('@/app/actions/users', () => ({ updateUserStatus: updateUserStatusMock }));
+vi.mock('@/app/actions/users', () => ({
+  updateUserStatus: updateUserStatusMock,
+  deleteUser: deleteUserMock,
+}));
 vi.mock('@/app/actions/password', () => ({ resetPassword: vi.fn() }));
 vi.mock('@/lib/notify', () => ({ notify: { success: notifySuccessMock } }));
 
@@ -33,8 +37,14 @@ function openStatusDialog(action: 'Deshabilitar' | 'Habilitar') {
   fireEvent.click(screen.getByRole('menuitem', { name: action }));
 }
 
+function openDeleteDialog() {
+  openActionsMenu();
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Eliminar' }));
+}
+
 beforeEach(() => {
   updateUserStatusMock.mockReset();
+  deleteUserMock.mockReset();
   notifySuccessMock.mockReset();
 });
 
@@ -141,4 +151,55 @@ test('hides the reset password action on the current user row', () => {
 
   expect(screen.getByRole('menuitem', { name: 'Editar' })).toBeTruthy();
   expect(screen.queryByRole('menuitem', { name: 'Restablecer contraseña' })).toBeNull();
+});
+
+test('hides the delete action on the current user row', () => {
+  render(<UsersTable users={[USER]} currentUserId={USER.id} />);
+
+  openActionsMenu();
+
+  expect(screen.queryByRole('menuitem', { name: 'Eliminar' })).toBeNull();
+});
+
+test('asks for confirmation before deleting a user', async () => {
+  render(<UsersTable users={[USER]} currentUserId={CURRENT_USER_ID} />);
+
+  openDeleteDialog();
+
+  expect(await screen.findByRole('alertdialog')).toBeTruthy();
+  expect(screen.getByText('¿Eliminar a Ana García?')).toBeTruthy();
+  expect(
+    screen.getByText(
+      'Va a perder el acceso al sistema. Los proyectos que tiene asignados se mantienen.'
+    )
+  ).toBeTruthy();
+  expect(deleteUserMock).not.toHaveBeenCalled();
+});
+
+test('deletes the user, confirms with a toast and closes the dialog', async () => {
+  deleteUserMock.mockResolvedValue({ success: true });
+  render(<UsersTable users={[USER]} currentUserId={CURRENT_USER_ID} />);
+
+  openDeleteDialog();
+  fireEvent.click(await screen.findByRole('button', { name: 'Eliminar' }));
+
+  expect(deleteUserMock).toHaveBeenCalledWith(42);
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+  expect(notifySuccessMock).toHaveBeenCalledWith({ title: 'Se eliminó a Ana García' });
+});
+
+test('keeps the dialog open and shows the error when deletion fails', async () => {
+  deleteUserMock.mockResolvedValue({
+    error: 'No se puede dar de baja al último administrador activo.',
+  });
+  render(<UsersTable users={[USER]} currentUserId={CURRENT_USER_ID} />);
+
+  openDeleteDialog();
+  fireEvent.click(await screen.findByRole('button', { name: 'Eliminar' }));
+
+  expect((await screen.findByRole('alert')).textContent).toBe(
+    'No se puede dar de baja al último administrador activo.'
+  );
+  expect(screen.getByRole('alertdialog')).toBeTruthy();
+  expect(notifySuccessMock).not.toHaveBeenCalled();
 });

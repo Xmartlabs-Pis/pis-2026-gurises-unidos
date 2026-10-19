@@ -38,9 +38,17 @@ type ErrorScreenProps = {
   description?: string;
   reference?: string;
   actions?: ReactNode;
+  homeHref?: string; // Public pages pass "/" so anonymous visitors are not sent to login
 };
 
-export function ErrorScreen({ code, title, description, reference, actions }: ErrorScreenProps) {
+export function ErrorScreen({
+  code,
+  title,
+  description,
+  reference,
+  actions,
+  homeHref = '/dashboard',
+}: ErrorScreenProps) {
   const copy = ERROR_COPY[code] ?? FALLBACK_COPY;
 
   return (
@@ -55,7 +63,7 @@ export function ErrorScreen({ code, title, description, reference, actions }: Er
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         {actions}
         <Link
-          href="/dashboard/projects"
+          href={homeHref}
           className={buttonVariants({ variant: actions ? 'outline' : 'default', size: 'lg' })}
         >
           Volver al inicio

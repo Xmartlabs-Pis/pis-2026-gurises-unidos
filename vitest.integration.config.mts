@@ -13,5 +13,6 @@ export default defineConfig({
     env: { DATABASE_URL: process.env.E2E_DATABASE_URL ?? '' },
     fileParallelism: false,
     testTimeout: 20_000,
+    server: { deps: { inline: ['next-auth'] } },
   },
 });

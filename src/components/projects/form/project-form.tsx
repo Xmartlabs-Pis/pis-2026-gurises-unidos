@@ -2,6 +2,7 @@
 
 import { InternalNotesSection } from './sections/internal-notes-section';
 import { PublicInfoSection } from './sections/public-info-section';
+import { VisibilitySection } from './sections/visibility-section';
 import { BeneficiariesSection } from './sections/beneficiaries-section';
 import { TerritorySection } from './sections/territory-section';
 import { BasicInfoSection } from './sections/basic-info-section';
@@ -20,10 +21,14 @@ import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
 import type { ProjectFormState } from '@/lib/validation/project';
-import { FIRST_PROJECT_YEAR, type BeneficiaryCounts } from '@/lib/project-display';
+import {
+  FIRST_PROJECT_YEAR,
+  type BeneficiaryCategoryOption,
+  type BeneficiaryCounts,
+} from '@/lib/project-display';
 import { ProjectPreview } from './project-preview';
 import type { ProjectFormValues } from './project-form-values';
-import { projectFormSchema } from '@/lib/validation/project-form';
+import { buildProjectFormSchema } from '@/lib/validation/project-form';
 import { FormActions } from '@/components/ui/forms/form-actions';
 import { getDefaultValues } from './get-default-values';
 import { getPreviewLabels } from './get-preview-labels';
@@ -38,7 +43,9 @@ type ProjectFormProps = {
   coordinators: { id: number; firstName: string; lastName: string }[];
   departments: { id: number; name: string }[];
   topics: { id: number; name: string }[];
+  strategicLines: { id: number; name: string }[];
   beneficiaryRecords?: (BeneficiaryCounts & { year: number })[];
+  beneficiaryCategories: BeneficiaryCategoryOption[];
   currentYear: number;
 };
 
@@ -49,7 +56,9 @@ export function ProjectForm({
   coordinators,
   departments,
   topics,
+  strategicLines,
   beneficiaryRecords = [],
+  beneficiaryCategories,
   currentYear,
   initialValues,
   submitAction,
@@ -82,13 +91,17 @@ export function ProjectForm({
       })),
     [departments]
   );
+  const schema = useMemo(
+    () => buildProjectFormSchema(beneficiaryCategories.map(({ key }) => key)),
+    [beneficiaryCategories]
+  );
   const defaultValues = {
-    ...getDefaultValues(currentYear),
+    ...getDefaultValues(currentYear, beneficiaryCategories),
     ...initialValues,
   };
   const [state, formAction, pending] = useActionState(submitAction, INITIAL_STATE);
   const form = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectFormSchema) as unknown as Resolver<ProjectFormValues>,
+    resolver: zodResolver(schema) as unknown as Resolver<ProjectFormValues>,
     defaultValues,
     mode: 'onChange',
   });
@@ -104,13 +117,14 @@ export function ProjectForm({
   const { locationLabel, coverageLabel, beneficiaryTotal } = getPreviewLabels(
     values,
     departments,
-    isEditing
+    isEditing,
+    beneficiaryCategories
   );
 
   const beneficiaryYearOptions = yearOptions.filter(
     ({ value }) =>
       Number(value) >= Number(values.startYear) &&
-      (values.status !== 'closed' || !values.endYear || Number(value) <= Number(values.endYear))
+      (values.status !== 'inactive' || !values.endYear || Number(value) <= Number(values.endYear))
   );
 
   useEffect(() => {
@@ -122,7 +136,7 @@ export function ProjectForm({
     if (submissionRef.current) return;
 
     if (mode === 'create' && topics.length === 0) {
-      form.setError('topicId', {
+      form.setError('topicIds', {
         type: 'manual',
         message:
           'No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos.',
@@ -145,8 +159,8 @@ export function ProjectForm({
   }
 
   useEffect(() => {
-    if (state.errors?.topicId) router.refresh();
-  }, [router, state.errors?.topicId]);
+    if (state.errors?.topicIds || state.errors?.strategicLineIds) router.refresh();
+  }, [router, state.errors?.topicIds, state.errors?.strategicLineIds]);
 
   useEffect(() => {
     if (state.formError) {
@@ -164,7 +178,7 @@ export function ProjectForm({
       <form
         noValidate
         className={cn(
-          'text-foreground flex min-h-0 min-w-0 flex-1 flex-col',
+          'text-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col',
           isEditing ? 'bg-surface-page' : 'bg-muted/30'
         )}
         aria-busy={pending}
@@ -175,7 +189,7 @@ export function ProjectForm({
         )}
         <div
           className={cn(
-            'grid flex-1 content-start items-start',
+            'mx-auto grid w-full max-w-[1185px] flex-1 content-start items-start',
             isEditing
               ? 'lg:grid-cols-[minmax(0,152fr)_minmax(0,85fr)]'
               : 'lg:grid-cols-[minmax(0,16fr)_minmax(0,9fr)]'
@@ -191,6 +205,7 @@ export function ProjectForm({
               yearOptions={yearOptions}
               coordinatorOptions={coordinatorOptions}
               topics={topics}
+              strategicLines={strategicLines}
             />
 
             <TerritorySection
@@ -203,9 +218,12 @@ export function ProjectForm({
               isEditing={isEditing}
               yearOptions={beneficiaryYearOptions}
               beneficiaryRecords={beneficiaryRecords}
+              beneficiaryCategories={beneficiaryCategories}
             />
 
             <PublicInfoSection />
+
+            <VisibilitySection />
 
             <InternalNotesSection isEditing={isEditing} />
             {children}
