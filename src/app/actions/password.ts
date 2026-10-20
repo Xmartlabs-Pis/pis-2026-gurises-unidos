@@ -191,6 +191,12 @@ export async function resetPassword(
     return { formError: 'La cuenta seleccionada no existe.' };
   }
 
+  if (targetUser.status === 'pendingInvitation') {
+    return {
+      formError: 'La persona todavía no aceptó la invitación. Reenviale la invitación en su lugar.',
+    };
+  }
+
   const newPasswordHash = await hashPassword(newPassword);
 
   try {

@@ -1,12 +1,14 @@
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { createUser } from '@/app/actions/users';
-import { verifyPassword } from '@/lib/credentials';
+import { hashToken } from '@/lib/auth/user-tokens';
+import { acceptInvitation } from '@/app/actions/invitation';
 import prisma from '@/lib/prisma';
 import { loadSeedData, type SeedData } from '../fixtures';
 import { signInAs } from '../session';
 import { createTestUser, deleteTestUsers } from './user-helpers';
 
 const PASSWORD = 'CreatedUser1';
+const INVITATION_TOKEN = 'integration-invitation-token';
 const DOCUMENT_ID = '54321044';
 const OTHER_DOCUMENT_ID = '54321050';
 const EMAIL = 'integration-create-user@gurisesunidos.test';
@@ -21,7 +23,6 @@ function buildFormData(overrides: Record<string, string> = {}) {
     documentId: DOCUMENT_ID,
     email: EMAIL,
     role: 'coordinator',
-    password: PASSWORD,
     ...overrides,
   };
   const formData = new FormData();
@@ -42,7 +43,7 @@ afterEach(async () => {
 });
 
 describe('createUser (integration)', () => {
-  test('creates an active user with a hashed password and audits the creation', async () => {
+  test('creates a pending user with an invitation token and audits the creation', async () => {
     signInAs(seed.adminId, 'admin');
 
     await expect(createUser({}, buildFormData())).rejects.toThrow(
@@ -55,12 +56,14 @@ describe('createUser (integration)', () => {
       lastName: 'User',
       email: EMAIL,
       role: 'coordinator',
-      status: 'active',
+      status: 'pendingInvitation',
       createdBy: seed.adminId,
-      mustChangePassword: true,
+      mustChangePassword: false,
       deletedAt: null,
     });
-    expect(await verifyPassword(PASSWORD, user.passwordHash)).toBe(true);
+    expect(
+      await prisma.userToken.findMany({ where: { userId: user.id, type: 'invitation' } })
+    ).toEqual([expect.objectContaining({ usedAt: null })]);
     expect(
       await prisma.auditLog.findMany({ where: { entity: 'user', entityId: user.id } })
     ).toEqual([
@@ -133,7 +136,7 @@ describe('createUser (integration)', () => {
     expect(user).toMatchObject({ firstName: 'Old', deletedAt: expect.any(Date) });
   });
 
-  test('restores a deleted user with the same document id once confirmed', async () => {
+  test('restores a deleted user as a pending invitation once confirmed', async () => {
     const deletedUser = await createTestUser(DOCUMENT_ID, {
       firstName: 'Old',
       role: 'admin',
@@ -156,12 +159,14 @@ describe('createUser (integration)', () => {
       lastName: 'User',
       email: EMAIL,
       role: 'coordinator',
-      status: 'active',
-      mustChangePassword: true,
+      status: 'pendingInvitation',
+      mustChangePassword: false,
+      passwordChangedAt: null,
       deletedAt: null,
     });
-    expect(user.passwordChangedAt).toBeInstanceOf(Date);
-    expect(await verifyPassword(PASSWORD, user.passwordHash)).toBe(true);
+    expect(
+      await prisma.userToken.findMany({ where: { userId: user.id, type: 'invitation' } })
+    ).toEqual([expect.objectContaining({ usedAt: null })]);
     expect(await prisma.user.count()).toBe(usersBefore);
     expect(
       await prisma.auditLog.findMany({ where: { entity: 'user', entityId: user.id } })
@@ -188,7 +193,33 @@ describe('createUser (integration)', () => {
     expect(user.deletedAt).not.toBeNull();
   });
 
-  test('returns field errors and preserves the values except the password', async () => {
+  test('activates the user once the invitation is accepted', async () => {
+    signInAs(seed.adminId, 'admin');
+    await expect(createUser({}, buildFormData())).rejects.toThrow(
+      /^NEXT_REDIRECT:\/management\/users$/
+    );
+    const user = await prisma.user.findUniqueOrThrow({ where: { documentId: DOCUMENT_ID } });
+    await prisma.userToken.updateMany({
+      where: { userId: user.id, type: 'invitation' },
+      data: { tokenHash: hashToken(INVITATION_TOKEN) },
+    });
+    const formData = new FormData();
+    formData.set('token', INVITATION_TOKEN);
+    formData.set('newPassword', PASSWORD);
+    formData.set('confirmNewPassword', PASSWORD);
+
+    await expect(acceptInvitation({}, formData)).rejects.toThrow(
+      /^NEXT_REDIRECT:\/login\?invitationAccepted=1$/
+    );
+
+    const activated = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(activated.status).toBe('active');
+    expect(await acceptInvitation({}, formData)).toEqual({
+      formError: 'Esta invitación ya fue usada. Si ya completaste tu registro, iniciá sesión.',
+    });
+  });
+
+  test('returns field errors and preserves the submitted values', async () => {
     signInAs(seed.adminId, 'admin');
     const before = await countRows();
 
@@ -198,7 +229,6 @@ describe('createUser (integration)', () => {
         firstName: '',
         documentId: '12345678',
         email: 'not-an-email',
-        password: 'weak',
       })
     );
 
@@ -207,7 +237,6 @@ describe('createUser (integration)', () => {
       documentId: ['Ingresá una cédula uruguaya válida.'],
       email: ['Ingresá un correo electrónico válido.'],
     });
-    expect(result.errors?.password).toContain('La contraseña debe tener al menos 8 caracteres.');
     expect(result.values).toEqual({
       firstName: '',
       lastName: 'User',
