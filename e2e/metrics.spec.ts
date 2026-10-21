@@ -5,7 +5,7 @@ import { DESKTOP, resetMetricSettings } from './helpers';
 test.use({ viewport: DESKTOP });
 
 const HIDDEN_METRIC = 'Familias acompañadas';
-const VISIBLE_METRIC = 'NNA directos';
+const VISIBLE_METRIC = 'Departamentos';
 
 test.afterEach(() => {
   resetMetricSettings();
