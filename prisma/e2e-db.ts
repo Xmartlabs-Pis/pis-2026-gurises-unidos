@@ -94,7 +94,7 @@ async function deleteBeneficiaryCategories(names: string[]) {
 
 async function resetMetricSettings() {
   await prisma.$transaction([
-    prisma.auditLog.deleteMany({ where: { entity: 'metric' } }),
+    prisma.auditLog.deleteMany({ where: { entity: { in: ['metric', 'topic'] } } }),
     prisma.metric.deleteMany(),
     prisma.publicSettings.deleteMany(),
   ]);
@@ -109,6 +109,8 @@ const COMMANDS = {
   deleteBeneficiaryCategories,
   resetMetricSettings,
 } as const;
+
+export type E2eDbCommands = typeof COMMANDS;
 
 async function main() {
   const [command, ...args] = JSON.parse(process.env.E2E_DB_COMMAND!) as [

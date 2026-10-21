@@ -3,6 +3,7 @@ import { expect, type Page } from '@playwright/test';
 
 import { E2E_ADMIN, E2E_COORDINATOR, E2E_TOPICS, E2E_DEPARTMENT } from '../prisma/e2e-fixtures';
 import { STRATEGIC_LINES } from '../prisma/fixtures';
+import type { E2eDbCommands } from '../prisma/e2e-db';
 
 export const ADMIN_NAME = `${E2E_ADMIN.firstName} ${E2E_ADMIN.lastName}`;
 export const COORDINATOR_NAME = `${E2E_COORDINATOR.firstName} ${E2E_COORDINATOR.lastName}`;
@@ -32,24 +33,27 @@ export async function loginAs(page: Page, documentId: string) {
   await expect(page).toHaveURL('/dashboard');
 }
 
-function e2eDb<T>(...command: unknown[]): T {
+function e2eDb<K extends keyof E2eDbCommands>(
+  command: K,
+  ...args: Parameters<E2eDbCommands[K]>
+): Awaited<ReturnType<E2eDbCommands[K]>> {
   const output = execSync('npx tsx prisma/e2e-db.ts', {
-    env: { ...process.env, E2E_DB_COMMAND: JSON.stringify(command) },
+    env: { ...process.env, E2E_DB_COMMAND: JSON.stringify([command, ...args]) },
     encoding: 'utf8',
   });
   return JSON.parse(output.trim().split('\n').at(-1)!);
 }
 
 export function createActiveUser(documentId: string) {
-  return e2eDb<{ email: string }>('createActiveUser', documentId);
+  return e2eDb('createActiveUser', documentId);
 }
 
 export function hasActiveUserToken(documentId: string, type: 'invitation' | 'passwordReset') {
-  return e2eDb<boolean>('hasActiveUserToken', documentId, type);
+  return e2eDb('hasActiveUserToken', documentId, type);
 }
 
 export function issueUserToken(documentId: string, type: 'invitation' | 'passwordReset') {
-  return e2eDb<{ token: string; status: string }>('issueUserToken', documentId, type);
+  return e2eDb('issueUserToken', documentId, type);
 }
 
 export function deleteUsers(documentIds: string[]) {
