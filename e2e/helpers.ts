@@ -1,4 +1,5 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 
 import { E2E_ADMIN, E2E_COORDINATOR, E2E_TOPICS, E2E_DEPARTMENT } from '../prisma/e2e-fixtures';
@@ -37,7 +38,8 @@ function e2eDb<K extends keyof E2eDbCommands>(
   command: K,
   ...args: Parameters<E2eDbCommands[K]>
 ): Awaited<ReturnType<E2eDbCommands[K]>> {
-  const output = execSync('npx tsx prisma/e2e-db.ts', {
+  const output = execFileSync(process.execPath, ['--import', 'tsx', 'prisma/e2e-db.ts'], {
+    cwd: path.resolve(__dirname, '..'),
     env: { ...process.env, E2E_DB_COMMAND: JSON.stringify([command, ...args]) },
     encoding: 'utf8',
   });
