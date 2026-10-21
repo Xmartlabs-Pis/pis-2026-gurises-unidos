@@ -1,14 +1,9 @@
-import { config as loadEnvFiles } from 'dotenv';
-import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { PrismaClient, type UserTokenType } from '../src/generated/prisma/client';
+import { createUserToken } from '../src/lib/auth/user-tokens';
+import { e2eDatabaseUrl } from './e2e-database-url';
 
-loadEnvFiles({
-  path: ['.env.development.local', '.env.local', '.env.development', '.env'],
-  quiet: true,
-});
-
-const prisma = new PrismaClient({ datasourceUrl: process.env.E2E_DATABASE_URL });
+const prisma = new PrismaClient({ datasourceUrl: e2eDatabaseUrl() });
 
 async function createActiveUser(documentId: string) {
   const user = await prisma.user.create({
@@ -27,15 +22,7 @@ async function createActiveUser(documentId: string) {
 
 async function issueUserToken(documentId: string, type: UserTokenType) {
   const user = await prisma.user.findUniqueOrThrow({ where: { documentId } });
-  const token = randomBytes(32).toString('base64url');
-  await prisma.userToken.create({
-    data: {
-      userId: user.id,
-      type,
-      tokenHash: createHash('sha256').update(token).digest('hex'),
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-    },
-  });
+  const token = await prisma.$transaction((tx) => createUserToken(tx, user.id, type));
   return { token, status: user.status };
 }
 
@@ -77,6 +64,19 @@ async function deleteProjects(names: string[]) {
   ]);
 }
 
+async function deleteBeneficiaryCategories(names: string[]) {
+  const categories = await prisma.beneficiaryCategory.findMany({
+    where: { name: { in: names }, isSystem: false },
+    select: { id: true },
+  });
+  const ids = categories.map((category) => category.id);
+  await prisma.$transaction([
+    prisma.auditLog.deleteMany({ where: { entity: 'beneficiaryCategory', entityId: { in: ids } } }),
+    prisma.projectBeneficiaryValue.deleteMany({ where: { categoryId: { in: ids } } }),
+    prisma.beneficiaryCategory.deleteMany({ where: { id: { in: ids } } }),
+  ]);
+}
+
 async function resetMetricSettings() {
   await prisma.$transaction([
     prisma.auditLog.deleteMany({ where: { entity: 'metric' } }),
@@ -90,6 +90,7 @@ const COMMANDS = {
   issueUserToken,
   deleteUsers,
   deleteProjects,
+  deleteBeneficiaryCategories,
   resetMetricSettings,
 } as const;
 

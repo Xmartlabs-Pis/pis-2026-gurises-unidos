@@ -56,6 +56,10 @@ export function deleteProjects(names: string[]) {
   e2eDb('deleteProjects', names);
 }
 
+export function deleteBeneficiaryCategories(names: string[]) {
+  e2eDb('deleteBeneficiaryCategories', names);
+}
+
 export function resetMetricSettings() {
   e2eDb('resetMetricSettings');
 }

@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 import { BENEFICIARY_CATEGORIES } from '../prisma/fixtures';
-import { DESKTOP, deleteProjects, fillRequiredProjectFields } from './helpers';
+import {
+  DESKTOP,
+  deleteBeneficiaryCategories,
+  deleteProjects,
+  fillRequiredProjectFields,
+} from './helpers';
 
 test.use({ viewport: DESKTOP });
 
@@ -10,6 +15,7 @@ const PROJECT_NAME = 'E2E project with a custom category';
 
 test.afterEach(() => {
   deleteProjects([PROJECT_NAME]);
+  deleteBeneficiaryCategories([CATEGORY_NAME]);
 });
 
 test('lists the system categories without a delete action', async ({ page }) => {
