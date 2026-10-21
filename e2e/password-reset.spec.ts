@@ -4,6 +4,7 @@ import {
   NO_SESSION,
   createActiveUser,
   deleteUsers,
+  hasActiveUserToken,
   issueUserToken,
   login,
   seedPassword,
@@ -28,6 +29,7 @@ test('requests a reset link from the login page', async ({ page }) => {
   await page.getByRole('button', { name: 'Enviar enlace' }).click();
 
   await expect(page.getByRole('status')).toContainText('Si el correo está registrado');
+  await expect.poll(() => hasActiveUserToken(DOCUMENT_ID, 'passwordReset')).toBe(true);
 });
 
 test('resets the password with an emailed link', async ({ page }) => {

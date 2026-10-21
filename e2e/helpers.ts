@@ -44,6 +44,10 @@ export function createActiveUser(documentId: string) {
   return e2eDb<{ email: string }>('createActiveUser', documentId);
 }
 
+export function hasActiveUserToken(documentId: string, type: 'invitation' | 'passwordReset') {
+  return e2eDb<boolean>('hasActiveUserToken', documentId, type);
+}
+
 export function issueUserToken(documentId: string, type: 'invitation' | 'passwordReset') {
   return e2eDb<{ token: string; status: string }>('issueUserToken', documentId, type);
 }

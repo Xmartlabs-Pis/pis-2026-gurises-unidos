@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 
-import { DESKTOP, NO_SESSION, deleteUsers, issueUserToken, login } from './helpers';
+import {
+  DESKTOP,
+  NO_SESSION,
+  deleteUsers,
+  hasActiveUserToken,
+  issueUserToken,
+  login,
+} from './helpers';
 
 test.use({ viewport: DESKTOP });
 
@@ -27,6 +34,7 @@ test('an invited user completes the sign up and logs in', async ({ page, browser
   await expect(page).toHaveURL('/management/users');
   await expect(page.getByRole('row').filter({ hasText: INVITEE.email })).toBeVisible();
 
+  expect(hasActiveUserToken(INVITEE.documentId, 'invitation')).toBe(true);
   const { token, status } = issueUserToken(INVITEE.documentId, 'invitation');
   expect(status).toBe('pendingInvitation');
 

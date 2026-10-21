@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
 import { PrismaClient, type UserTokenType } from '../src/generated/prisma/client';
-import { createUserToken } from '../src/lib/auth/user-tokens';
 import { e2eDatabaseUrl } from './e2e-database-url';
 
-const prisma = new PrismaClient({ datasourceUrl: e2eDatabaseUrl() });
+process.env.DATABASE_URL = e2eDatabaseUrl();
+
+const prisma = new PrismaClient();
 
 async function createActiveUser(documentId: string) {
   const user = await prisma.user.create({
@@ -20,7 +21,21 @@ async function createActiveUser(documentId: string) {
   return { email: user.email };
 }
 
+async function hasActiveUserToken(documentId: string, type: UserTokenType) {
+  const count = await prisma.userToken.count({
+    where: {
+      type,
+      user: { documentId },
+      usedAt: null,
+      revokedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+  });
+  return count > 0;
+}
+
 async function issueUserToken(documentId: string, type: UserTokenType) {
+  const { createUserToken } = await import('../src/lib/auth/user-tokens');
   const user = await prisma.user.findUniqueOrThrow({ where: { documentId } });
   const token = await prisma.$transaction((tx) => createUserToken(tx, user.id, type));
   return { token, status: user.status };
@@ -87,6 +102,7 @@ async function resetMetricSettings() {
 
 const COMMANDS = {
   createActiveUser,
+  hasActiveUserToken,
   issueUserToken,
   deleteUsers,
   deleteProjects,
