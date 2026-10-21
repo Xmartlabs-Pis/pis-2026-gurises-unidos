@@ -80,9 +80,11 @@ function RightColumn() {
 function LeftColumn({
   sessionExpired,
   passwordChanged,
+  invitationAccepted,
 }: {
   sessionExpired: boolean;
   passwordChanged: boolean;
+  invitationAccepted: boolean;
 }) {
   return (
     <div className="bg-background flex flex-col justify-between gap-6 pt-10 pr-6 pb-8 pl-6 lg:w-140 lg:min-w-140 lg:gap-0 lg:pt-14 lg:pr-18 lg:pb-10 lg:pl-18 2xl:min-w-[33%]">
@@ -106,7 +108,13 @@ function LeftColumn({
         </div>
         {passwordChanged ? (
           <p className="text-status-success text-sm leading-5 font-medium tracking-normal">
-            Tu contraseña se actualizó correctamente. Iniciá sesión con la nueva contraseña.
+            Tu contraseña se actualizó correctamente. Iniciá sesión con tu cédula y la nueva
+            contraseña.
+          </p>
+        ) : null}
+        {invitationAccepted ? (
+          <p className="text-status-success text-sm leading-5 font-medium tracking-normal">
+            Tu registro se completó correctamente. Iniciá sesión con tu cédula y tu contraseña.
           </p>
         ) : null}
         <LoginForm sessionExpired={sessionExpired} />
@@ -126,15 +134,20 @@ function LeftColumn({
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reason?: string | string[]; passwordChanged?: string }>;
+  searchParams: Promise<{
+    reason?: string | string[];
+    passwordChanged?: string;
+    invitationAccepted?: string;
+  }>;
 }) {
-  const { reason, passwordChanged } = await searchParams;
+  const { reason, passwordChanged, invitationAccepted } = await searchParams;
 
   return (
     <div className="flex min-h-screen w-full flex-col font-sans lg:h-screen lg:flex-row">
       <LeftColumn
         sessionExpired={reason === SESSION_EXPIRATION_REASON}
         passwordChanged={passwordChanged === '1'}
+        invitationAccepted={invitationAccepted === '1'}
       />
       <RightColumn />
       <footer className="bg-background flex flex-col gap-0.5 p-6 pt-5 lg:hidden">
