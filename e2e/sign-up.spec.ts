@@ -31,17 +31,20 @@ test('an invited user completes the sign up and logs in', async ({ page, browser
   expect(status).toBe('pendingInvitation');
 
   const context = await browser.newContext({ storageState: NO_SESSION, viewport: DESKTOP });
-  const guest = await context.newPage();
-  await guest.goto(`/accept-invitation?token=${token}`);
-  await expect(guest.getByText(`Hola, ${INVITEE.firstName}`)).toBeVisible();
-  await guest.getByLabel('Nueva contraseña', { exact: true }).fill(NEW_PASSWORD);
-  await guest.getByLabel('Confirmar nueva contraseña').fill(NEW_PASSWORD);
-  await guest.getByRole('button', { name: 'Completar registro' }).click();
+  try {
+    const guest = await context.newPage();
+    await guest.goto(`/accept-invitation?token=${token}`);
+    await expect(guest.getByText(`Hola, ${INVITEE.firstName}`)).toBeVisible();
+    await guest.getByLabel('Nueva contraseña', { exact: true }).fill(NEW_PASSWORD);
+    await guest.getByLabel('Confirmar nueva contraseña').fill(NEW_PASSWORD);
+    await guest.getByRole('button', { name: 'Completar registro' }).click();
 
-  await expect(guest).toHaveURL('/login?invitationAccepted=1');
-  await login(guest, INVITEE.documentId, NEW_PASSWORD);
-  await expect(guest).toHaveURL('/dashboard');
-  await context.close();
+    await expect(guest).toHaveURL('/login?invitationAccepted=1');
+    await login(guest, INVITEE.documentId, NEW_PASSWORD);
+    await expect(guest).toHaveURL('/dashboard');
+  } finally {
+    await context.close();
+  }
 });
 
 test.describe('without a session', () => {
