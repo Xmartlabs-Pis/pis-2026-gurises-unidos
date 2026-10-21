@@ -89,8 +89,9 @@ dueño de la cuenta. Hasta que haya dominio, los usuarios reales no reciben los 
 
 ## Tests end to end
 
-Playwright contra la app real y una base propia. Cubre login, la tabla de usuarios y el listado y
-detalle de proyectos. Los tests unitarios de Vitest (`npm test`) siguen siendo independientes: `e2e/`
+Playwright contra la app real y una base propia. Cubre login, registro por invitación, recuperación
+de contraseña, la tabla de usuarios, el listado, detalle y alta de proyectos, la visibilidad de
+métricas y las categorías de beneficiarios. Los tests unitarios de Vitest (`npm test`) siguen siendo independientes: `e2e/`
 no lo toca.
 
 Requiere Postgres levantado y el `.env` con `AUTH_SECRET` y `SEED_USER_PASSWORD`. Además, una sola
@@ -129,6 +130,12 @@ apuntes esto a staging ni a producción.
 El dataset vive en `prisma/e2e-fixtures.ts` y lo crea `prisma/seed-e2e.ts`: tres usuarios, dos
 proyectos, dos departamentos y tres temáticas, siempre los mismos. Por eso las aserciones pueden ser conteos exactos, y `prisma/seed.ts`
 puede cambiar sin romper los E2E.
+
+Los tests que crean datos los borran al terminar, porque el seed corre una sola vez por corrida y
+otros specs cuentan filas. Lo hacen con `prisma/e2e-db.ts`, que los helpers corren con `tsx`: el
+cliente de Prisma generado es ESM y Playwright no lo puede importar. Los links de los mails
+(invitación y recuperación) no se leen del mail: el test inserta un token propio en la base y abre
+el link directo.
 
 Cuando uno falla queda un reporte navegable en `playwright-report/`, con screenshot del momento del
 fallo. En CI el workflow `E2E` lo sube como artifact.
