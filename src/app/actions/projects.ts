@@ -297,7 +297,13 @@ export async function updateProject(
         if (!canEditProject(user, previous))
           return { formError: 'No tenés permiso para editar este proyecto.' };
         if (user.role !== 'admin' && projectData.leadCoordinatorId !== previous.leadCoordinatorId) {
-          return { errors: { leadCoordinatorId: ['Solo un administrador puede cambiar el coordinador responsable.'] } };
+          return {
+            errors: {
+              leadCoordinatorId: [
+                'Solo un administrador puede cambiar el coordinador responsable.',
+              ],
+            },
+          };
         }
         const currentTopicIds = previous.topics.map(({ id }) => id);
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);

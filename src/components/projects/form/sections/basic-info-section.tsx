@@ -17,7 +17,10 @@ export function BasicInfoSection({
   canSelectCoordinator,
   topics,
   strategicLines,
-}: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'canSelectCoordinator' | 'topics' | 'strategicLines'>) {
+}: Pick<
+  SectionProps,
+  'yearOptions' | 'coordinatorOptions' | 'canSelectCoordinator' | 'topics' | 'strategicLines'
+>) {
   const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
@@ -26,7 +29,9 @@ export function BasicInfoSection({
   const status = useWatch<ProjectFormValues, 'status'>({ name: 'status' });
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
-  const leadCoordinatorId = useWatch<ProjectFormValues, 'leadCoordinatorId'>({ name: 'leadCoordinatorId' });
+  const leadCoordinatorId = useWatch<ProjectFormValues, 'leadCoordinatorId'>({
+    name: 'leadCoordinatorId',
+  });
   const startYearOptions = yearOptions.filter(
     ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
   );
@@ -110,7 +115,9 @@ export function BasicInfoSection({
         options={coordinatorOptions}
         disabled={!canSelectCoordinator}
       />
-      {!canSelectCoordinator && (<input type="hidden" name="leadCoordinatorId" value={leadCoordinatorId ?? ''} />)}
+      {!canSelectCoordinator && (
+        <input type="hidden" name="leadCoordinatorId" value={leadCoordinatorId ?? ''} />
+      )}
       <MultiSelectField
         id="strategicLineIds"
         name="strategicLineIds"

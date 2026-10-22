@@ -11,7 +11,12 @@ export default async function NewProjectPage() {
   const [coordinators, departments, topics, strategicLines, beneficiaryCategories] =
     await Promise.all([
       prisma.user.findMany({
-        where: { role: 'coordinator', status: 'active', deletedAt: null, ...(user.role === 'coordinator' ? { id: user.id } : {}) },
+        where: {
+          role: 'coordinator',
+          status: 'active',
+          deletedAt: null,
+          ...(user.role === 'coordinator' ? { id: user.id } : {}),
+        },
         orderBy: { firstName: 'asc' },
         select: { id: true, firstName: true, lastName: true },
       }),
@@ -40,7 +45,10 @@ export default async function NewProjectPage() {
       currentYear={new Date().getFullYear()}
       coordinators={coordinators}
       departments={departments}
-      initialValues={{ coverPhotoUrl: getRandomProjectPlaceholder(), leadCoordinatorId: user.role === 'coordinator' ? String(user.id) : '' }}
+      initialValues={{
+        coverPhotoUrl: getRandomProjectPlaceholder(),
+        leadCoordinatorId: user.role === 'coordinator' ? String(user.id) : '',
+      }}
       submitAction={createProject}
       canSelectCoordinator={user.role === 'admin'}
     />
