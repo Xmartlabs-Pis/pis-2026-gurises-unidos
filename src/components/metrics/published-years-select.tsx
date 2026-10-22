@@ -1,7 +1,27 @@
 'use client';
 
+import { useState, useSyncExternalStore } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+
+const YEARS_MEDIA_QUERY = '(min-width: 640px)';
+const ROWS_PER_PAGE = 2;
+
+function subscribeToColumns(onChange: () => void) {
+  const query = window.matchMedia?.(YEARS_MEDIA_QUERY);
+  query?.addEventListener('change', onChange);
+  return () => query?.removeEventListener('change', onChange);
+}
+
+function getColumns() {
+  return window.matchMedia?.(YEARS_MEDIA_QUERY).matches === false ? 2 : 3;
+}
+
+function getServerColumns() {
+  return 3;
+}
 
 export function PublishedYearsSelect({
   years,
@@ -14,7 +34,10 @@ export function PublishedYearsSelect({
   onSelectedYearsChange: (years: number[]) => void;
   disabled?: boolean;
 }) {
+  const [visibleRows, setVisibleRows] = useState(ROWS_PER_PAGE);
+  const columns = useSyncExternalStore(subscribeToColumns, getColumns, getServerColumns);
   const availableYears = [...new Set([...years, ...selectedYears])].sort((a, b) => b - a);
+  const visibleYears = availableYears.slice(0, visibleRows * columns);
   const allSelected = availableYears.every((year) => selectedYears.includes(year));
 
   function toggleYear(year: number, checked: boolean) {
@@ -52,10 +75,13 @@ export function PublishedYearsSelect({
         Elegí qué años se podrán consultar en el sitio público. Las métricas y temáticas visibles
         serán las mismas para todos los años.
       </p>
-      <fieldset aria-describedby="published-years-description published-years-help">
+      <fieldset
+        id="published-years-options"
+        aria-describedby="published-years-description published-years-help"
+      >
         <legend className="sr-only">Años disponibles para publicar</legend>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {availableYears.map((year) => {
+          {visibleYears.map((year) => {
             const checked = selectedYears.includes(year);
             return (
               <label
@@ -73,8 +99,21 @@ export function PublishedYearsSelect({
           })}
         </div>
       </fieldset>
+      {visibleYears.length < availableYears.length && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-center"
+          aria-controls="published-years-options"
+          onClick={() => setVisibleRows((current) => current + ROWS_PER_PAGE)}
+        >
+          <Plus aria-hidden="true" />
+          Cargar más
+        </Button>
+      )}
       <div className="border-border-default flex flex-col gap-1 border-t pt-4">
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="truncate text-sm font-medium">
           {selectedYears.length === 1
             ? '1 año seleccionado'
             : `${selectedYears.length} años seleccionados`}
