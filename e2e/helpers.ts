@@ -5,6 +5,7 @@ import { expect, type Page } from '@playwright/test';
 import { E2E_ADMIN, E2E_COORDINATOR, E2E_TOPICS, E2E_DEPARTMENT } from '../prisma/e2e-fixtures';
 import { STRATEGIC_LINES } from '../prisma/fixtures';
 import type { E2eDbCommands } from '../prisma/e2e-db';
+import { E2E_DB_RESULT_MARKER } from '../prisma/e2e-database-url';
 
 export const ADMIN_NAME = `${E2E_ADMIN.firstName} ${E2E_ADMIN.lastName}`;
 export const COORDINATOR_NAME = `${E2E_COORDINATOR.firstName} ${E2E_COORDINATOR.lastName}`;
@@ -43,7 +44,11 @@ function e2eDb<K extends keyof E2eDbCommands>(
     env: { ...process.env, E2E_DB_COMMAND: JSON.stringify([command, ...args]) },
     encoding: 'utf8',
   });
-  return JSON.parse(output.trim().split('\n').at(-1)!);
+  const result = output.split(/\r?\n/).find((line) => line.startsWith(E2E_DB_RESULT_MARKER));
+  if (!result) {
+    throw new Error(`e2e-db "${command}" printed no result:\n${output}`);
+  }
+  return JSON.parse(result.slice(E2E_DB_RESULT_MARKER.length));
 }
 
 export function createActiveUser(documentId: string) {
@@ -70,8 +75,12 @@ export function deleteBeneficiaryCategories(names: string[]) {
   e2eDb('deleteBeneficiaryCategories', names);
 }
 
-export function resetMetricSettings() {
-  e2eDb('resetMetricSettings');
+export function lastAuditLogId() {
+  return e2eDb('lastAuditLogId');
+}
+
+export function resetMetricSettings(afterAuditLogId: number) {
+  e2eDb('resetMetricSettings', afterAuditLogId);
 }
 
 async function pickOption(page: Page, label: string, option: string) {

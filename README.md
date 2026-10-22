@@ -125,7 +125,9 @@ E2E_BASE_URL=http://localhost:3200 npm run test:e2e
 ```
 
 Ojo con eso: `E2E_DATABASE_URL` tiene que ser la base de _esa_ instancia, y el seed la trunca. No
-apuntes esto a staging ni a producción.
+apuntes esto a staging ni a producción. Tampoco hay `RESEND_API_KEY: ''` como con el server local:
+si esa instancia tiene la key, los specs de alta y recuperación de contraseña le piden a Resend
+mandar mails reales (a direcciones `@gurisesunidos.test`).
 
 El dataset vive en `prisma/e2e-fixtures.ts` y lo crea `prisma/seed-e2e.ts`: tres usuarios, dos
 proyectos, dos departamentos y tres temáticas, siempre los mismos. Por eso las aserciones pueden ser conteos exactos, y `prisma/seed.ts`

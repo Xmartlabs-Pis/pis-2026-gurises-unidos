@@ -1,12 +1,16 @@
 import bcrypt from 'bcryptjs';
 import { PrismaClient, type UserTokenType } from '../src/generated/prisma/client';
-import { e2eDatabaseUrl } from './e2e-database-url';
+import { E2E_DB_RESULT_MARKER, e2eDatabaseUrl } from './e2e-database-url';
 
 process.env.DATABASE_URL = e2eDatabaseUrl();
 
 const prisma = new PrismaClient();
 
 async function createActiveUser(documentId: string) {
+  const password = process.env.SEED_USER_PASSWORD;
+  if (!password) {
+    throw new Error('SEED_USER_PASSWORD environment variable is required');
+  }
   const user = await prisma.user.create({
     data: {
       firstName: 'E2E',
@@ -15,7 +19,7 @@ async function createActiveUser(documentId: string) {
       email: `e2e-${documentId}@gurisesunidos.test`,
       role: 'coordinator',
       status: 'active',
-      passwordHash: await bcrypt.hash(process.env.SEED_USER_PASSWORD!, 10),
+      passwordHash: await bcrypt.hash(password, 10),
     },
   });
   return { email: user.email };
@@ -92,9 +96,16 @@ async function deleteBeneficiaryCategories(names: string[]) {
   ]);
 }
 
-async function resetMetricSettings() {
+async function lastAuditLogId() {
+  const last = await prisma.auditLog.findFirst({ orderBy: { id: 'desc' }, select: { id: true } });
+  return last?.id ?? 0;
+}
+
+async function resetMetricSettings(afterAuditLogId: number) {
   await prisma.$transaction([
-    prisma.auditLog.deleteMany({ where: { entity: { in: ['metric', 'topic'] } } }),
+    prisma.auditLog.deleteMany({
+      where: { id: { gt: afterAuditLogId }, entity: { in: ['metric', 'topic'] } },
+    }),
     prisma.metric.deleteMany(),
     prisma.publicSettings.deleteMany(),
   ]);
@@ -107,6 +118,7 @@ const COMMANDS = {
   deleteUsers,
   deleteProjects,
   deleteBeneficiaryCategories,
+  lastAuditLogId,
   resetMetricSettings,
 } as const;
 
@@ -118,7 +130,7 @@ async function main() {
     ...unknown[],
   ];
   const run = COMMANDS[command] as (...input: unknown[]) => Promise<unknown>;
-  console.log(JSON.stringify((await run(...args)) ?? null));
+  console.log(E2E_DB_RESULT_MARKER + JSON.stringify((await run(...args)) ?? null));
 }
 
 main()

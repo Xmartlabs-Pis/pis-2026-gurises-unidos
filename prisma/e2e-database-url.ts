@@ -5,6 +5,8 @@ loadEnvFiles({
   quiet: true,
 });
 
+export const E2E_DB_RESULT_MARKER = 'E2E_DB_RESULT:';
+
 function databaseName(url: string) {
   try {
     return decodeURIComponent(new URL(url).pathname).replace(/^\/+/, '');

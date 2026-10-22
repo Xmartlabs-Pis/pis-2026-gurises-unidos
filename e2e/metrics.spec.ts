@@ -1,14 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { DESKTOP, resetMetricSettings } from './helpers';
+import { DESKTOP, lastAuditLogId, resetMetricSettings } from './helpers';
 
 test.use({ viewport: DESKTOP });
 
 const HIDDEN_METRIC = 'Familias acompañadas';
 const VISIBLE_METRIC = 'Departamentos';
 
+let auditLogIdBeforeTest: number;
+
+test.beforeEach(() => {
+  auditLogIdBeforeTest = lastAuditLogId();
+});
+
 test.afterEach(() => {
-  resetMetricSettings();
+  resetMetricSettings(auditLogIdBeforeTest);
 });
 
 function visibilitySwitch(page: Page, metric: string) {
