@@ -37,15 +37,9 @@ export async function getMetricYears(currentYear: number) {
 
 export async function getMetricValues(year: number) {
   const where = { year, project: { deletedAt: null } };
-  const [totals, projectRecords] = await Promise.all([
+  const [totals, activeProjects] = await Promise.all([
     sumBeneficiaryCounts(where),
-    prisma.projectBeneficiary.findMany({
-      where,
-      select: {
-        projectId: true,
-        project: { select: { departments: { select: { id: true } } } },
-      },
-    }),
+    prisma.projectBeneficiary.count({ where }),
   ]);
 
   return {
@@ -55,10 +49,7 @@ export async function getMetricValues(year: number) {
     families: totals.families,
     teachers: totals.basicServiceStaff,
     institutions: totals.coordinatedInstitutions,
-    departments: new Set(
-      projectRecords.flatMap(({ project }) => project.departments.map(({ id }) => id))
-    ).size,
-    active_projects: projectRecords.length,
+    active_projects: activeProjects,
   };
 }
 

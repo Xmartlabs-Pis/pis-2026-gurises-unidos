@@ -9,8 +9,8 @@ vi.mock('@/lib/metrics/queries', () => ({
   getMetricSettings: vi.fn(),
   getMetricValues: vi.fn(),
 }));
-vi.mock('@/lib/projects/department-beneficiaries', () => ({
-  getDepartmentBeneficiaries: vi.fn(async () => []),
+vi.mock('@/lib/projects/department-project-counts', () => ({
+  getDepartmentProjectCounts: vi.fn(async () => []),
 }));
 vi.mock('@/lib/metrics/topic-statistics', () => ({
   getTopicStatistics: vi.fn(async () => []),
@@ -26,7 +26,6 @@ beforeEach(() => {
     families: 0,
     teachers: 0,
     institutions: 0,
-    departments: 0,
     active_projects: 0,
   }));
 });

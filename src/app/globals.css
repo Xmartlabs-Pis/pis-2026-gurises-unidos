@@ -217,6 +217,11 @@
   }
 }
 
+.leaflet-container path.leaflet-interactive:focus,
+.leaflet-container:focus {
+  outline: none;
+}
+
 @utility bg-project-cover {
   background-image: var(--project-cover);
 }

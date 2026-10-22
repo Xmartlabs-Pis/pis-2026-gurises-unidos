@@ -37,12 +37,6 @@ export const METRIC_DEFINITIONS: {
     showPublicly: false,
   },
   {
-    key: 'departments',
-    name: 'Departamentos',
-    description: 'Departamentos con presencia de la organización.',
-    showPublicly: true,
-  },
-  {
     key: 'active_projects',
     name: 'Proyectos con actividad',
     description: 'Proyectos con beneficiarios registrados durante el año seleccionado.',
