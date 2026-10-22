@@ -6,6 +6,7 @@ import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
 import { Suspense } from 'react';
+import { UruguayMapLoader } from '@/components/uruguay-map-loader';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
@@ -221,12 +222,8 @@ export default async function Home({
                 ))}
               </div>
             </div>
-            <div className="bg-card flex h-50 w-full max-w-125 items-center justify-center rounded-xl px-5 py-15">
-              <p className="text-muted-foreground text-center text-sm leading-5 font-normal tracking-normal">
-                Mapa de Uruguay
-                <br />
-                {values.departments} departamentos cubiertos
-              </p>
+            <div className="h-80 w-full max-w-125">
+              <UruguayMapLoader />
             </div>
           </div>
         </div>
