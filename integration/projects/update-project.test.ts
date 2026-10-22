@@ -456,11 +456,7 @@ describe('updateProject (integration)', () => {
     signInAs(seed.adminId);
 
     await expectRedirectToProject(
-      updateProject(
-        projectId,
-        {},
-        buildFormData({ leadCoordinatorId: String(seed.adminId) })
-      ),
+      updateProject(projectId, {}, buildFormData({ leadCoordinatorId: String(seed.adminId) })),
       projectId
     );
 
