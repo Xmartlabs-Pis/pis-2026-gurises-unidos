@@ -280,17 +280,17 @@ describe('createProject (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
-  test('rejects an admin as lead coordinator', async () => {
+  test('allows an admin as lead coordinator', async () => {
     signInAs(seed.adminId);
-    const before = await countRows();
 
-    const result = await createProject(
-      {},
-      buildFormData({ leadCoordinatorId: String(seed.adminId) })
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ leadCoordinatorId: String(seed.adminId) }))
     );
 
-    expect(result.errors?.leadCoordinatorId).toEqual(['Elegí un coordinador válido']);
-    expect(await countRows()).toEqual(before);
+    expect(await loadProject(projectId)).toMatchObject({
+      leadCoordinatorId: seed.adminId,
+      createdBy: seed.adminId,
+    });
   });
 
   test('rejects an unknown topic', async () => {

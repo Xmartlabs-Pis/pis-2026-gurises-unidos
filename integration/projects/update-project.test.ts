@@ -450,6 +450,22 @@ describe('updateProject (integration)', () => {
     ).rejects.toThrow(/^NEXT_REDIRECT:\/login$/);
     expect(await loadProject(projectId)).toEqual(before);
   });
+
+  test('allows assigning an admin as lead coordinator', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({ leadCoordinatorId: String(seed.adminId) })
+      ),
+      projectId
+    );
+
+    expect((await loadProject(projectId)).leadCoordinatorId).toBe(seed.adminId);
+  });
 });
 
 describe('createProject counterparty (integration)', () => {

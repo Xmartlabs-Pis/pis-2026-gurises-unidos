@@ -819,7 +819,7 @@ describe('project review regressions', () => {
         errors: { leadCoordinatorId: ['Elegí un coordinador válido'] },
       });
       expect(mocks.findCoordinator).toHaveBeenCalledWith({
-        where: { id: 9, role: 'coordinator', status: 'active', deletedAt: null },
+        where: { id: 9, role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null },
         select: { id: true },
       });
       expect(mocks.createProject).not.toHaveBeenCalled();
