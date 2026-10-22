@@ -12,7 +12,7 @@ export default async function NewProjectPage() {
     await Promise.all([
       prisma.user.findMany({
         where: {
-          role: 'coordinator',
+          role: { in: ['coordinator', 'admin'] },
           status: 'active',
           deletedAt: null,
           ...(user.role === 'coordinator' ? { id: user.id } : {}),

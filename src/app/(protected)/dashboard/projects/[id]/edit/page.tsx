@@ -59,7 +59,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     prisma.user.findMany({
       where: {
         OR: [
-          { role: 'coordinator', status: 'active', deletedAt: null },
+          { role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null },
           { id: project.leadCoordinatorId },
         ],
       },

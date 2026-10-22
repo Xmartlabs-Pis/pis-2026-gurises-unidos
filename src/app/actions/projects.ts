@@ -51,7 +51,7 @@ async function validateRelations(
       id: coordinatorId,
       ...(coordinatorId === currentCoordinatorId
         ? {}
-        : { role: 'coordinator', status: 'active', deletedAt: null }),
+        : { role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null }),
     },
     select: { id: true },
   });
