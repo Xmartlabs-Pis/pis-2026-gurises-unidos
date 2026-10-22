@@ -110,7 +110,7 @@ export function BasicInfoSection({
       <MultiSelectField
         id="strategicLineIds"
         name="strategicLineIds"
-        label="Líneas estratégicas"
+        label="Líneas Estratégicas"
         placeholder="Seleccionar líneas estratégicas..."
         options={strategicLineOptions}
         emptyMessage="No hay líneas estratégicas disponibles."
