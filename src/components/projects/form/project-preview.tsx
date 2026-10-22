@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { ProjectFormValues } from './project-form-values';
 
@@ -9,12 +8,10 @@ export function ProjectPreview({
   values,
   locationLabel,
   beneficiaryTotal,
-  isEditing,
 }: {
   values: ProjectFormValues;
   locationLabel: string;
   beneficiaryTotal: number;
-  isEditing: boolean;
 }) {
   return (
     <aside
@@ -61,18 +58,6 @@ export function ProjectPreview({
         <p className="text-muted-foreground text-center text-xs leading-4">
           Así se verá en el listado público
         </p>
-
-        {isEditing && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="lg"
-            disabled
-            className="rounded-[10px] px-4 font-medium disabled:opacity-100"
-          >
-            Ver vista pública →
-          </Button>
-        )}
       </div>
     </aside>
   );
