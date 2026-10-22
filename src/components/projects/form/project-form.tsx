@@ -47,6 +47,7 @@ type ProjectFormProps = {
   beneficiaryRecords?: (BeneficiaryCounts & { year: number })[];
   beneficiaryCategories: BeneficiaryCategoryOption[];
   currentYear: number;
+  canSelectCoordinator?: boolean;
 };
 
 const INITIAL_STATE: ProjectFormState = {};
@@ -64,6 +65,7 @@ export function ProjectForm({
   submitAction,
   cancelHref = '/dashboard/projects',
   children,
+  canSelectCoordinator = false,
 }: ProjectFormProps) {
   const router = useRouter();
   const isEditing = mode === 'edit';
@@ -206,6 +208,7 @@ export function ProjectForm({
               coordinatorOptions={coordinatorOptions}
               topics={topics}
               strategicLines={strategicLines}
+              canSelectCoordinator={canSelectCoordinator}
             />
 
             <TerritorySection

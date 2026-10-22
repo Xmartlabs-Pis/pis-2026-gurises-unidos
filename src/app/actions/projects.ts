@@ -188,6 +188,9 @@ export async function createProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   const user = await requireUser();
+  if (user.role === 'coordinator') {
+    formData.set('leadCoordinatorId', String(user.id));
+  }
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
   const { keys, beneficiaryData } = parsed;
@@ -293,6 +296,9 @@ export async function updateProject(
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
         if (!canEditProject(user, previous))
           return { formError: 'No tenés permiso para editar este proyecto.' };
+        if (user.role !== 'admin' && projectData.leadCoordinatorId !== previous.leadCoordinatorId) {
+          return { errors: { leadCoordinatorId: ['Solo un administrador puede cambiar el coordinador responsable.'] } };
+        }
         const currentTopicIds = previous.topics.map(({ id }) => id);
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
