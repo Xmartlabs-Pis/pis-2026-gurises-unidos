@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { getCurrentYear } from '@/lib/metrics/year';
 
 export async function getMetricSettings() {
   const savedMetrics = await prisma.metric.findMany({
@@ -19,6 +20,17 @@ export async function getReferenceYear(currentYear = new Date().getFullYear()) {
     select: { referenceYear: true },
   });
   return settings?.referenceYear ?? currentYear - 1;
+}
+
+export async function getPublishedYears(currentYear = getCurrentYear()) {
+  const settings = await prisma.publicSettings.findUnique({
+    where: { id: 1 },
+    select: { publishedYears: true },
+  });
+  const years = settings?.publishedYears.length
+    ? settings.publishedYears
+    : await getMetricYears(currentYear);
+  return [...new Set(years)].sort((a, b) => b - a);
 }
 
 export type MetricSetting = Awaited<ReturnType<typeof getMetricSettings>>[number];

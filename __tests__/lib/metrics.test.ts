@@ -1,15 +1,54 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
-import { getMetricSettings, getMetricValues, getMetricYears } from '@/lib/metrics/queries';
+import {
+  getMetricSettings,
+  getMetricValues,
+  getMetricYears,
+  getPublishedYears,
+} from '@/lib/metrics/queries';
 
 vi.mock('@/lib/prisma', () => ({
   default: {
     metric: { findMany: vi.fn() },
+    publicSettings: { findUnique: vi.fn() },
     projectBeneficiary: { findMany: vi.fn() },
     projectBeneficiaryValue: { groupBy: vi.fn() },
     beneficiaryCategory: { findMany: vi.fn() },
   },
 }));
+
+describe('getPublishedYears', () => {
+  it('loads saved years in descending order', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [2024, 2026],
+      referenceYear: 2026,
+    });
+    expect(await getPublishedYears(2026)).toEqual([2026, 2024]);
+  });
+
+  it('defaults to all available years when no years have been saved yet', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [],
+      referenceYear: 2024,
+    });
+    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([{ year: 2024 }] as Awaited<
+      ReturnType<typeof prisma.projectBeneficiary.findMany>
+    >);
+    expect(await getPublishedYears(2026)).toEqual([2026, 2025, 2024]);
+  });
+
+  it('defaults to all available years when settings do not exist', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([]);
+    expect(await getPublishedYears(2026)).toEqual([2026, 2025]);
+  });
+});
 
 function mockBeneficiarySums(sums: Record<string, number>) {
   const keys = Object.keys(sums);
@@ -78,12 +117,13 @@ describe('getMetricSettings', () => {
     ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
     const settings = await getMetricSettings();
     expect(settings.filter((metric) => metric.showPublicly).map((metric) => metric.key)).toEqual([
+      'children_reached',
       'direct_children_reached',
       'families',
       'departments',
       'active_projects',
     ]);
-    expect(settings).toHaveLength(7);
+    expect(settings).toHaveLength(8);
   });
 });
 

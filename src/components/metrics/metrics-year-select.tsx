@@ -48,7 +48,7 @@ export function MetricsYearSelect({
         <SelectTrigger
           id="metrics-year"
           aria-describedby="metrics-year-status"
-          className="bg-background w-22 rounded-lg px-2.5 text-sm shadow-none"
+          className="w-22 rounded-lg bg-white! px-2.5 text-sm text-slate-900 shadow-none [&_svg]:text-slate-600"
         >
           <SelectValue />
         </SelectTrigger>

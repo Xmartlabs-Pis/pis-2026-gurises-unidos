@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { formatIncrement, formatNumber } from '@/lib/format';
-import { getMetricSettings, getMetricValues, getReferenceYear } from '@/lib/metrics/queries';
+import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
+import { resolveYearParam } from '@/lib/metrics/year';
+import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
 import { Suspense } from 'react';
@@ -49,8 +51,13 @@ const PARTNERS = [
   'UNFPA',
 ];
 
-export default async function Home() {
-  const year = await getReferenceYear();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string | string[] }>;
+}) {
+  const publishedYears = await getPublishedYears();
+  const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
   const [values, previousValues, settings, departmentBeneficiaries, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
@@ -80,9 +87,14 @@ export default async function Home() {
       <section className="w-full">
         <div className="mx-auto flex min-h-115.5 w-full max-w-360 flex-col gap-9 px-4 pt-13 pb-12 sm:px-6 lg:px-16">
           <div className="flex w-full flex-col gap-3 lg:h-48.5">
-            <span className="bg-card text-primary flex h-6.5 w-42.5 items-center justify-center rounded-[20px] px-3 py-1.25 text-xs leading-4 font-medium tracking-normal">
-              Informe de impacto · {year}
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="bg-card text-primary flex h-6.5 w-42.5 items-center justify-center rounded-[20px] px-3 py-1.25 text-xs leading-4 font-medium tracking-normal">
+                Informe de impacto · {year}
+              </span>
+              {publishedYears.length > 1 && (
+                <MetricsYearSelect year={year} years={publishedYears} label="Año del informe" />
+              )}
+            </div>
             <h1 className="text-foreground w-full max-w-122 text-3xl leading-9 font-bold tracking-normal lg:h-24 lg:text-5xl lg:leading-12">
               Transformando vidas en Uruguay
             </h1>
@@ -175,7 +187,7 @@ export default async function Home() {
               Organizados por temática
             </p>
           </div>
-          <Suspense fallback={<TopicCarouselSkeleton />}>
+          <Suspense key={year} fallback={<TopicCarouselSkeleton />}>
             <ProjectsByTopic year={year} />
           </Suspense>
         </div>

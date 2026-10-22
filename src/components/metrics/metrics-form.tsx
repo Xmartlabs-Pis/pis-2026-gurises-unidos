@@ -14,20 +14,27 @@ import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
 import { notify } from '@/lib/notify';
 import type { TopicStatistic } from '@/lib/metrics/topic-statistics';
 import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+import { PublishedYearsSelect } from '@/components/metrics/published-years-select';
+import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 
 export function MetricsForm({
   year,
   values,
   initialMetrics,
   initialTopics,
+  years,
+  initialPublishedYears,
 }: {
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];
   initialTopics: TopicStatistic[];
+  years: number[];
+  initialPublishedYears: number[];
 }) {
   const [metrics, setMetrics] = useState(initialMetrics);
   const [topics, setTopics] = useState(initialTopics);
+  const [publishedYears, setPublishedYears] = useState(initialPublishedYears);
   const [isPending, startTransition] = useTransition();
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
   const visibleTopics = getVisibleTopics(topics);
@@ -36,7 +43,7 @@ export function MetricsForm({
     startTransition(async () => {
       try {
         const result = await saveMetricSettings({
-          year: Number(year),
+          publishedYears,
           metrics: metrics.map(({ key, showPublicly }) => ({ key, showPublicly })),
           topics: topics.map(({ id, showPublicly }) => ({ id, showPublicly })),
         });
@@ -64,6 +71,15 @@ export function MetricsForm({
           aria-label="Selección de métricas"
           className="bg-surface-page flex min-w-0 flex-col gap-5 px-6 pt-6 pb-8"
         >
+          <div className="flex min-w-0 flex-col gap-2">
+            <PublishedYearsSelect
+              years={years}
+              selectedYears={publishedYears}
+              onSelectedYearsChange={setPublishedYears}
+              disabled={isPending}
+            />
+            <MetricsYearSelect year={Number(year)} years={years} label="Año de previsualización" />
+          </div>
           <div className="grid gap-4 md:grid-cols-2">
             {metrics.map((metric) => (
               <article
@@ -179,7 +195,7 @@ export function MetricsForm({
         </section>
         <aside
           aria-label="Vista previa del sitio público"
-          className="bg-card border-border-default flex w-full flex-col overflow-hidden border xl:mt-6"
+          className="bg-card border-border-default flex w-full flex-col overflow-hidden border xl:sticky xl:top-6 xl:mt-6 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto"
         >
           <div className="bg-surface-page border-border-default flex h-12 w-full shrink-0 items-center justify-between gap-2 border-b px-5 py-3 text-sm">
             <h2 className="font-medium">Vista previa</h2>
@@ -243,6 +259,7 @@ export function MetricsForm({
           className="h-9 w-fit flex-col gap-2.5 rounded-lg px-4 py-2"
           disabled={isPending}
           onClick={() => {
+            setPublishedYears(years);
             setTopics((current) => current.map((topic) => ({ ...topic, showPublicly: true })));
             setMetrics((current) =>
               current.map((metric) => ({

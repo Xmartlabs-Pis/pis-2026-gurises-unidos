@@ -6,6 +6,11 @@ import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 const { saveMock } = vi.hoisted(() => ({ saveMock: vi.fn() }));
 vi.mock('@/app/actions/metrics', () => ({ saveMetricSettings: saveMock }));
 vi.mock('@/lib/notify', () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/management/metrics',
+  useSearchParams: () => new URLSearchParams('year=2025'),
+}));
 
 const TOPICS = [
   { id: 1, name: 'Education', projectCount: 3, showPublicly: true },
@@ -19,6 +24,8 @@ beforeEach(() => {
   render(
     <MetricsForm
       year="2025"
+      years={[2026, 2025, 2024]}
+      initialPublishedYears={[2026, 2024]}
       values={{
         children_reached: 140,
         direct_children_reached: 100,
@@ -44,7 +51,7 @@ it('saves individual topic visibility changes', async () => {
   await waitFor(() =>
     expect(saveMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        year: 2025,
+        publishedYears: [2026, 2024],
         topics: [
           { id: 1, showPublicly: true },
           { id: 2, showPublicly: true },
@@ -53,6 +60,35 @@ it('saves individual topic visibility changes', async () => {
       })
     )
   );
+});
+
+it('loads saved years and saves a changed selection independently of the preview', async () => {
+  const year2026 = screen.getByRole('checkbox', { name: '2026' });
+  const year2025 = screen.getByRole('checkbox', { name: '2025' });
+  const year2024 = screen.getByRole('checkbox', { name: '2024' });
+  expect(year2026.getAttribute('aria-checked')).toBe('true');
+  expect(year2025.getAttribute('aria-checked')).toBe('false');
+  expect(year2024.getAttribute('aria-checked')).toBe('true');
+  fireEvent.click(year2024);
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+  await waitFor(() =>
+    expect(saveMock).toHaveBeenCalledWith(expect.objectContaining({ publishedYears: [2026] }))
+  );
+  expect(saveMock.mock.calls[0][0]).not.toHaveProperty('year');
+});
+
+it('keeps at least one year selected when toggling all years', () => {
+  const toggle = screen.getByRole('switch', { name: 'Publicar todos los años' });
+  fireEvent.click(toggle);
+  for (const year of ['2026', '2025', '2024']) {
+    expect(screen.getByRole('checkbox', { name: year }).getAttribute('aria-checked')).toBe('true');
+  }
+  fireEvent.click(toggle);
+  const latestYear = screen.getByRole('checkbox', { name: '2026' });
+  expect(latestYear.getAttribute('aria-checked')).toBe('true');
+  expect(latestYear.getAttribute('aria-disabled')).toBe('true');
+  expect(screen.getByRole('checkbox', { name: '2025' }).getAttribute('aria-checked')).toBe('false');
+  expect(screen.getByRole('checkbox', { name: '2024' }).getAttribute('aria-checked')).toBe('false');
 });
 
 it('allows enabling empty topics without showing them in the preview', () => {
@@ -82,6 +118,27 @@ it('enables all topics and then hides their statistics together', () => {
   );
 });
 
+it('toggles the combined child total in the preview and saves its visibility', async () => {
+  const preview = within(screen.getByRole('complementary'));
+  const metricCards = screen.getAllByRole('article');
+  expect(within(metricCards[0]).getByText('Total de NNA')).toBeDefined();
+  expect(screen.getByLabelText('Total de NNA')).toHaveProperty('value', '140');
+  expect(preview.getByText('140')).toBeDefined();
+  const totalCard = screen.getByLabelText('Total de NNA').closest('article')!;
+  fireEvent.click(within(totalCard).getByRole('switch'));
+  expect(preview.queryByText('Total de NNA')).toBeNull();
+  expect(preview.getByText('NNA directos')).toBeDefined();
+  expect(preview.getByText('NNA indirectos')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+  await waitFor(() =>
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metrics: expect.arrayContaining([{ key: 'children_reached', showPublicly: false }]),
+      })
+    )
+  );
+});
+
 it('toggles direct and indirect children independently in the preview', () => {
   const preview = within(screen.getByRole('complementary'));
   expect(preview.getByText('100')).toBeDefined();
@@ -102,6 +159,11 @@ it('toggles direct and indirect children independently in the preview', () => {
   expect(screen.getByLabelText('NNA indirectos')).toHaveProperty('value', '40');
 
   fireEvent.click(screen.getByRole('button', { name: 'Restablecer valores' }));
+
+  expect(
+    screen.getByRole('switch', { name: 'Publicar todos los años' }).getAttribute('aria-checked')
+  ).toBe('true');
+  expect(preview.getByText('Total de NNA')).toBeDefined();
 
   expect(within(directCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
   expect(within(indirectCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
