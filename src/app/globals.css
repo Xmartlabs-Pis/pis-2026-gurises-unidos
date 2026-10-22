@@ -212,6 +212,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  body:has(.embed-root) {
+    @apply bg-transparent;
+  }
   html {
     @apply font-sans;
   }
