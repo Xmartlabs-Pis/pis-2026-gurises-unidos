@@ -157,7 +157,8 @@ describe('createUser', () => {
 
     expect(sendInvitationEmailMock).toHaveBeenCalledWith(
       { id: 42, firstName: 'Ana', email: 'ana@gmail.com' },
-      'invitation-token'
+      'invitation-token',
+      7
     );
   });
 
@@ -235,7 +236,8 @@ describe('createUser', () => {
     expect(createUserTokenMock).toHaveBeenCalledWith(expect.anything(), 13, 'invitation');
     expect(sendInvitationEmailMock).toHaveBeenCalledWith(
       { id: 13, firstName: 'Ana', email: 'ana@gmail.com' },
-      'invitation-token'
+      'invitation-token',
+      7
     );
   });
 

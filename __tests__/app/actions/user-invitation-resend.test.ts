@@ -31,7 +31,7 @@ describe('resendInvitation', () => {
     await expect(resendInvitation(42)).resolves.toEqual({ success: true });
 
     expect(createUserTokenMock).toHaveBeenCalledWith(expect.anything(), 42, 'invitation');
-    expect(sendInvitationEmailMock).toHaveBeenCalledWith(TARGET, 'new-token');
+    expect(sendInvitationEmailMock).toHaveBeenCalledWith(TARGET, 'new-token', 7);
   });
 
   test('reports an error when the email could not be sent', async () => {
