@@ -3,8 +3,9 @@ import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { resolveYearParam } from '@/lib/metrics/year';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
+import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
-import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
+import { getDepartmentProjectCounts } from '@/lib/projects/department-project-counts';
 import { Suspense } from 'react';
 import { UruguayMapLoader } from '@/components/uruguay-map-loader';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
@@ -36,7 +37,6 @@ const LEVELS = [
 ];
 
 const MAX_DEPARTMENT_BUBBLES = 4;
-const FIRST_PROJECT_YEAR = 1989;
 
 const PARTNERS = [
   'INAU',
@@ -59,17 +59,18 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, departmentBeneficiaries, topics] = await Promise.all([
+  const [values, previousValues, settings, departmentProjectCounts, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getDepartmentBeneficiaries(year),
+    getDepartmentProjectCounts(),
     getTopicStatistics(year),
   ]);
-  const departmentBubbles = departmentBeneficiaries
+  const departmentsWithProjects = departmentProjectCounts.filter(({ total }) => total > 0);
+  const departmentBubbles = departmentsWithProjects
     .slice(0, MAX_DEPARTMENT_BUBBLES)
     .map(({ department }) => department);
-  const hiddenDepartments = departmentBeneficiaries.length - MAX_DEPARTMENT_BUBBLES;
+  const hiddenDepartments = departmentsWithProjects.length - MAX_DEPARTMENT_BUBBLES;
   if (hiddenDepartments > 0) departmentBubbles.push(`+ ${hiddenDepartments} más`);
   const stats = settings
     .filter((metric) => metric.showPublicly)
@@ -207,8 +208,8 @@ export default async function Home({
                   Presencia en todo Uruguay
                 </h2>
                 <p className="text-foreground text-sm leading-5 font-normal tracking-normal">
-                  Nuestros proyectos llegan a {values.departments} departamentos, priorizando
-                  comunidades con mayor vulnerabilidad social.
+                  Nuestros proyectos llegan a {departmentsWithProjects.length} departamentos,
+                  priorizando comunidades con mayor vulnerabilidad social.
                 </p>
               </div>
               <div className="flex max-w-105 flex-wrap gap-2">
@@ -223,7 +224,7 @@ export default async function Home({
               </div>
             </div>
             <div className="h-80 w-full max-w-125">
-              <UruguayMapLoader />
+              <UruguayMapLoader projectCounts={departmentProjectCounts} />
             </div>
           </div>
         </div>
