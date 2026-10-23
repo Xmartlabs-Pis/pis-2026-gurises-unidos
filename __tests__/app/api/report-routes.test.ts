@@ -27,10 +27,11 @@ function impactRequest(query = '') {
   return getImpactReport(new NextRequest(`http://localhost/api/reports/impact${query}`));
 }
 
-function sheetRequest(id: string) {
-  return getProjectSheet(new NextRequest(`http://localhost/api/reports/projects/${id}`), {
-    params: Promise.resolve({ id }),
-  });
+function sheetRequest(id: string, headers?: HeadersInit) {
+  return getProjectSheet(
+    new NextRequest(`http://localhost/api/reports/projects/${id}`, { headers }),
+    { params: Promise.resolve({ id }) }
+  );
 }
 
 describe('report routes', () => {
@@ -73,7 +74,7 @@ describe('report routes', () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
-      message: 'No hay datos cargados en 2026 para exportar.',
+      message: 'No hay datos cargados en el año elegido para exportar.',
     });
   });
 
@@ -81,6 +82,17 @@ describe('report routes', () => {
     vi.mocked(getProjectSheetData).mockResolvedValue({ status: 'forbidden' });
 
     expect((await sheetRequest('5')).status).toBe(403);
+  });
+
+  it('sends browser navigations to the error screen instead of returning JSON', async () => {
+    vi.mocked(getProjectSheetData).mockResolvedValue({ status: 'forbidden' });
+
+    const response = await sheetRequest('5', { 'Sec-Fetch-Dest': 'document' });
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get('Location')).toBe(
+      'http://localhost/dashboard/report-error?reason=projectForbidden'
+    );
   });
 
   it('returns not found for unknown or invalid projects', async () => {
