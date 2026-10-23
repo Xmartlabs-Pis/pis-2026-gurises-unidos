@@ -30,7 +30,6 @@ describe('getPublishedYears', () => {
       updatedBy: null,
       updatedAt: null,
       publishedYears: [2026, 2005],
-      referenceYear: 2026,
     });
     expect(await getPublishedYears(2026)).toEqual([2026]);
   });
@@ -41,7 +40,6 @@ describe('getPublishedYears', () => {
       updatedBy: null,
       updatedAt: null,
       publishedYears: [2005],
-      referenceYear: 2005,
     });
     expect(await getPublishedYears(2026)).toEqual([2026, 2025, 2024]);
   });
@@ -52,7 +50,6 @@ describe('getPublishedYears', () => {
       updatedBy: null,
       updatedAt: null,
       publishedYears: [2024, 2026],
-      referenceYear: 2026,
     });
     expect(await getPublishedYears(2026)).toEqual([2026, 2024]);
   });
@@ -63,7 +60,6 @@ describe('getPublishedYears', () => {
       updatedBy: null,
       updatedAt: null,
       publishedYears: [],
-      referenceYear: 2024,
     });
     vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([{ year: 2024 }] as Awaited<
       ReturnType<typeof prisma.projectBeneficiary.findMany>

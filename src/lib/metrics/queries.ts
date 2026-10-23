@@ -14,14 +14,6 @@ export async function getMetricSettings() {
   }));
 }
 
-export async function getReferenceYear(currentYear = new Date().getFullYear()) {
-  const settings = await prisma.publicSettings.findUnique({
-    where: { id: 1 },
-    select: { referenceYear: true },
-  });
-  return settings?.referenceYear ?? currentYear - 1;
-}
-
 export async function getPublishedYears(currentYear = getCurrentYear()) {
   const [settings, availableYears] = await Promise.all([
     prisma.publicSettings.findUnique({

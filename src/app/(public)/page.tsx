@@ -92,7 +92,12 @@ export default async function Home({
                 Informe de impacto · {year}
               </span>
               {publishedYears.length > 1 && (
-                <MetricsYearSelect year={year} years={publishedYears} label="Año del informe" />
+                <MetricsYearSelect
+                  year={year}
+                  years={publishedYears}
+                  label="Año del informe"
+                  className="bg-white! text-slate-900 [&_svg]:text-slate-600"
+                />
               )}
             </div>
             <h1 className="text-foreground w-full max-w-122 text-3xl leading-9 font-bold tracking-normal lg:h-24 lg:text-5xl lg:leading-12">

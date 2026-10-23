@@ -14,8 +14,6 @@ import { CounterpartyType } from '../src/generated/prisma/enums';
 
 const prisma = new PrismaClient();
 
-const REFERENCE_YEAR = 2025;
-
 const DEPARTMENTS = [
   'Artigas',
   'Canelones',
@@ -563,7 +561,6 @@ async function main() {
         update: {},
         create: {
           id: 1,
-          referenceYear: REFERENCE_YEAR,
           updatedBy: admin.id,
         },
       });

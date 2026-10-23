@@ -52,7 +52,6 @@ export async function saveMetricSettings(input: unknown) {
     };
   }
   const sortedYears = [...publishedYears].sort((a, b) => b - a);
-  const referenceYear = sortedYears[0];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -67,11 +66,10 @@ export async function saveMetricSettings(input: unknown) {
         where: { id: 1 },
         create: {
           id: 1,
-          referenceYear,
           publishedYears: sortedYears,
           updatedBy: Number(session.user.id),
         },
-        update: { referenceYear, publishedYears: sortedYears, updatedBy: Number(session.user.id) },
+        update: { publishedYears: sortedYears, updatedBy: Number(session.user.id) },
       });
       for (const [index, definition] of METRIC_DEFINITIONS.entries()) {
         const showPublicly = metrics.find((metric) => metric.key === definition.key)!.showPublicly;

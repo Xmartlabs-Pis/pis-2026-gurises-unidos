@@ -86,8 +86,8 @@ describe('saveMetricSettings', () => {
     expect((await saveMetricSettings(SETTINGS)).success).toBe(true);
     expect(settingsUpsertMock).toHaveBeenCalledWith({
       where: { id: 1 },
-      create: { id: 1, referenceYear: 2025, publishedYears: [2025], updatedBy: 1 },
-      update: { referenceYear: 2025, publishedYears: [2025], updatedBy: 1 },
+      create: { id: 1, publishedYears: [2025], updatedBy: 1 },
+      update: { publishedYears: [2025], updatedBy: 1 },
     });
     expect(upsertMock).toHaveBeenCalledTimes(8);
     expect(upsertMock).toHaveBeenCalledWith(
@@ -134,13 +134,13 @@ describe('saveMetricSettings', () => {
     expect(revalidateMock).not.toHaveBeenCalled();
   });
 
-  it('uses the latest published year regardless of the preview year', async () => {
+  it('sorts published years independently of the preview year', async () => {
     expect(
       (await saveMetricSettings({ ...SETTINGS, publishedYears: [2024, 2026], year: 2025 })).success
     ).toBe(true);
     expect(settingsUpsertMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        update: { referenceYear: 2026, publishedYears: [2026, 2024], updatedBy: 1 },
+        update: { publishedYears: [2026, 2024], updatedBy: 1 },
       })
     );
   });

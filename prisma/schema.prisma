@@ -234,7 +234,6 @@ model Metric {
 
 model PublicSettings {
   id             Int       @id @default(1)
-  referenceYear  Int
   publishedYears Int[]     @default([])
   updatedBy      Int?
   updatedAt      DateTime? @updatedAt
