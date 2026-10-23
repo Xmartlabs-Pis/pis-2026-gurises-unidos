@@ -18,6 +18,34 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 describe('getPublishedYears', () => {
+  beforeEach(() => {
+    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([{ year: 2024 }] as Awaited<
+      ReturnType<typeof prisma.projectBeneficiary.findMany>
+    >);
+  });
+
+  it('removes published historical years once their projects no longer have data', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [2026, 2005],
+      referenceYear: 2026,
+    });
+    expect(await getPublishedYears(2026)).toEqual([2026]);
+  });
+
+  it('falls back to available years when every saved year is unavailable', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [2005],
+      referenceYear: 2005,
+    });
+    expect(await getPublishedYears(2026)).toEqual([2026, 2025, 2024]);
+  });
+
   it('loads saved years in descending order', async () => {
     vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
       id: 1,

@@ -44,8 +44,12 @@ export async function saveMetricSettings(input: unknown) {
 
   const { publishedYears, metrics, topics } = result.data;
   const availableYears = await getMetricYears(getCurrentYear());
-  if (!publishedYears.every((year) => availableYears.includes(year))) {
-    return { success: false, message: 'La selección de años publicados no es válida.' };
+  const unavailableYears = publishedYears.filter((year) => !availableYears.includes(year));
+  if (unavailableYears.length) {
+    return {
+      success: false,
+      message: `Estos años ya no están disponibles: ${unavailableYears.join(', ')}. Recargá la página para actualizar la selección.`,
+    };
   }
   const sortedYears = [...publishedYears].sort((a, b) => b - a);
   const referenceYear = sortedYears[0];

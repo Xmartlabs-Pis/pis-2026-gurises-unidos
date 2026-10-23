@@ -120,6 +120,14 @@ describe('saveMetricSettings', () => {
     expect(revalidateMock).toHaveBeenCalledTimes(2);
   });
 
+  it('identifies years that become unavailable while the administrator is editing', async () => {
+    const result = await saveMetricSettings({ ...SETTINGS, publishedYears: [2026, 2005] });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('2005');
+    expect(result.message).toContain('Recargá la página');
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
   it('reports a database failure without reporting success', async () => {
     transactionMock.mockRejectedValue(new Error('Database unavailable'));
     expect((await saveMetricSettings(SETTINGS)).success).toBe(false);

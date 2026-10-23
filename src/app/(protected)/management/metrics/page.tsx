@@ -26,8 +26,7 @@ export default async function MetricsPage({
     getMetricYears(currentYear),
     getPublishedYears(currentYear),
   ]);
-  const availableYears = [...new Set([...years, ...publishedYears])].sort((a, b) => b - a);
-  const year = resolveYearParam((await searchParams).year, availableYears, publishedYears[0]);
+  const year = resolveYearParam((await searchParams).year, years, publishedYears[0]);
   const [values, initialMetrics, initialTopics] = await Promise.all([
     getMetricValues(year),
     getMetricSettings(),
@@ -48,7 +47,7 @@ export default async function MetricsPage({
           values={values}
           initialMetrics={initialMetrics}
           initialTopics={initialTopics}
-          years={availableYears}
+          years={years}
           initialPublishedYears={publishedYears}
         />
       </div>

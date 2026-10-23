@@ -23,14 +23,15 @@ export async function getReferenceYear(currentYear = new Date().getFullYear()) {
 }
 
 export async function getPublishedYears(currentYear = getCurrentYear()) {
-  const settings = await prisma.publicSettings.findUnique({
-    where: { id: 1 },
-    select: { publishedYears: true },
-  });
-  const years = settings?.publishedYears.length
-    ? settings.publishedYears
-    : await getMetricYears(currentYear);
-  return [...new Set(years)].sort((a, b) => b - a);
+  const [settings, availableYears] = await Promise.all([
+    prisma.publicSettings.findUnique({
+      where: { id: 1 },
+      select: { publishedYears: true },
+    }),
+    getMetricYears(currentYear),
+  ]);
+  const publishedYears = availableYears.filter((year) => settings?.publishedYears.includes(year));
+  return publishedYears.length ? publishedYears : availableYears;
 }
 
 export type MetricSetting = Awaited<ReturnType<typeof getMetricSettings>>[number];
