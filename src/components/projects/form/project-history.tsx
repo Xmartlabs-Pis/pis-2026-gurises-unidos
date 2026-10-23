@@ -168,9 +168,7 @@ export function ProjectHistory({ entries, fieldLabels }: ProjectHistoryProps) {
       descriptionSpacing="relaxed"
     >
       {described.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          Todavía no hay modificaciones registradas.
-        </p>
+        <p className="text-muted-foreground text-sm">Todavía no hay modificaciones registradas.</p>
       ) : (
         <div className="max-h-96 overflow-y-auto">
           <ol className="ml-1 space-y-[18px] border-l-2 pl-[18px]">
