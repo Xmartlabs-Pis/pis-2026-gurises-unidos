@@ -7,11 +7,12 @@ import {
   E2E_DEPARTMENT,
   E2E_PROJECTS,
 } from '../prisma/e2e-fixtures';
-import { COORDINATOR_NAME, DESKTOP } from './helpers';
+import { COORDINATOR_NAME, DESKTOP, deleteProjects, fillRequiredProjectFields } from './helpers';
 
 test.use({ viewport: DESKTOP });
 
 const ALL_PROJECTS_URL = '/dashboard/projects?status=all&beneficiaryYear=all';
+const NEW_PROJECT_NAME = 'E2E created project';
 
 function projectCards(page: Page) {
   return page.getByRole('link').filter({ has: page.getByRole('heading', { level: 2 }) });
@@ -100,4 +101,23 @@ test('opens the project detail from the list', async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText('Coordinador/a:')).toBeVisible();
   await expect(page.getByText(COORDINATOR_NAME)).toBeVisible();
+});
+
+test.describe('creating a project', () => {
+  test.afterEach(() => {
+    deleteProjects([NEW_PROJECT_NAME]);
+  });
+
+  test('creates a project from the list', async ({ page }) => {
+    await page.goto(ALL_PROJECTS_URL);
+    await page.getByRole('button', { name: 'Nuevo proyecto' }).click();
+    await expect(page).toHaveURL('/dashboard/projects/new');
+
+    await fillRequiredProjectFields(page, NEW_PROJECT_NAME);
+    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+
+    await expect(page).toHaveURL(/\/dashboard\/projects\/\d+$/);
+    await expect(page.getByRole('heading', { level: 1, name: NEW_PROJECT_NAME })).toBeVisible();
+    await expect(page.getByText(COORDINATOR_NAME)).toBeVisible();
+  });
 });

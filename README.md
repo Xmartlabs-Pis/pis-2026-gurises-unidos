@@ -89,8 +89,9 @@ dueño de la cuenta. Hasta que haya dominio, los usuarios reales no reciben los 
 
 ## Tests end to end
 
-Playwright contra la app real y una base propia. Cubre login, la tabla de usuarios y el listado y
-detalle de proyectos. Los tests unitarios de Vitest (`npm test`) siguen siendo independientes: `e2e/`
+Playwright contra la app real y una base propia. Cubre login, registro por invitación, recuperación
+de contraseña, la tabla de usuarios, el listado, detalle y alta de proyectos, la visibilidad de
+métricas y las categorías de beneficiarios. Los tests unitarios de Vitest (`npm test`) siguen siendo independientes: `e2e/`
 no lo toca.
 
 Requiere Postgres levantado y el `.env` con `AUTH_SECRET` y `SEED_USER_PASSWORD`. Además, una sola
@@ -124,11 +125,19 @@ E2E_BASE_URL=http://localhost:3200 npm run test:e2e
 ```
 
 Ojo con eso: `E2E_DATABASE_URL` tiene que ser la base de _esa_ instancia, y el seed la trunca. No
-apuntes esto a staging ni a producción.
+apuntes esto a staging ni a producción. Tampoco hay `RESEND_API_KEY: ''` como con el server local:
+si esa instancia tiene la key, los specs de alta y recuperación de contraseña le piden a Resend
+mandar mails reales (a direcciones `@gurisesunidos.test`).
 
 El dataset vive en `prisma/e2e-fixtures.ts` y lo crea `prisma/seed-e2e.ts`: tres usuarios, dos
 proyectos, dos departamentos y tres temáticas, siempre los mismos. Por eso las aserciones pueden ser conteos exactos, y `prisma/seed.ts`
 puede cambiar sin romper los E2E.
+
+Los tests que crean datos los borran al terminar, porque el seed corre una sola vez por corrida y
+otros specs cuentan filas. Lo hacen con `prisma/e2e-db.ts`, que los helpers corren con `tsx`: el
+cliente de Prisma generado es ESM y Playwright no lo puede importar. Los links de los mails
+(invitación y recuperación) no se leen del mail: el test inserta un token propio en la base y abre
+el link directo.
 
 Cuando uno falla queda un reporte navegable en `playwright-report/`, con screenshot del momento del
 fallo. En CI el workflow `E2E` lo sube como artifact.
