@@ -49,7 +49,7 @@ test('shows an ongoing project period until the present', () => {
   renderHeader(null);
 
   expect(screen.getByText('2020–actualidad')).toBeDefined();
-  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Líneas Estratégicas:')).toBeDefined();
   expect(screen.getByText('Formación, Participación')).toBeDefined();
 });
 

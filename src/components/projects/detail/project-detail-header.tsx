@@ -53,7 +53,7 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
         <span aria-hidden="true" className="hidden sm:inline">
           •
         </span>
-        <dt className="whitespace-nowrap">Líneas estratégicas:</dt>
+        <dt className="whitespace-nowrap">Líneas Estratégicas:</dt>
         <dd className="text-foreground/80 sm:text-foreground/65">{strategicLines}</dd>
       </div>
     </dl>
