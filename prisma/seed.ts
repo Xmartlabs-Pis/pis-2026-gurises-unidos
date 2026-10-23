@@ -14,8 +14,6 @@ import { CounterpartyType } from '../src/generated/prisma/enums';
 
 const prisma = new PrismaClient();
 
-const REFERENCE_YEAR = 2025;
-
 const DEPARTMENTS = [
   'Artigas',
   'Canelones',
@@ -561,7 +559,10 @@ async function main() {
       await tx.publicSettings.upsert({
         where: { id: 1 },
         update: {},
-        create: { id: 1, referenceYear: REFERENCE_YEAR, updatedBy: admin.id },
+        create: {
+          id: 1,
+          updatedBy: admin.id,
+        },
       });
     },
     { maxWait: 10_000, timeout: 30_000 }
