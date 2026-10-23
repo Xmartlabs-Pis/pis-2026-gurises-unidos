@@ -41,6 +41,7 @@ function renderHeader(endYear: number | null) {
       selectedYear={2026}
       years={[2026]}
       canEdit={false}
+      canExport={false}
     />
   );
 }
@@ -68,6 +69,7 @@ test('shows the departments, cities and neighborhoods as the territory', () => {
       selectedYear={2026}
       years={[2026]}
       canEdit={false}
+      canExport={false}
     />
   );
 
@@ -90,6 +92,7 @@ test('shows the countries as the territory of an international project', () => {
       selectedYear={2026}
       years={[2026]}
       canEdit={false}
+      canExport={false}
     />
   );
 
@@ -127,4 +130,20 @@ test('places the general objective before metadata in the mobile reading order',
   expect(objectivePosition).toBeGreaterThanOrEqual(0);
   expect(metadataPosition).toBeGreaterThanOrEqual(0);
   expect(objectivePosition).toBeLessThan(metadataPosition);
+});
+
+test('shows the export button only when the project can be exported', () => {
+  const { rerender } = renderHeader(null);
+  expect(screen.queryByRole('button', { name: 'Exportar' })).toBeNull();
+
+  rerender(
+    <ProjectDetailHeader
+      project={PROJECT}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+      canExport
+    />
+  );
+  expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
 });
