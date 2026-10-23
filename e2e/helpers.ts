@@ -94,6 +94,6 @@ export async function fillRequiredProjectFields(page: Page, name: string) {
   await pickOption(page, 'Temáticas', E2E_TOPICS[0]);
   await pickOption(page, 'Contraparte', 'Sector Público');
   await pickOption(page, 'Coordinador responsable', COORDINATOR_NAME);
-  await pickOption(page, 'Líneas estratégicas', STRATEGIC_LINES[0]);
+  await pickOption(page, 'Líneas Estratégicas', STRATEGIC_LINES[0]);
   await pickOption(page, 'Departamentos', E2E_DEPARTMENT);
 }

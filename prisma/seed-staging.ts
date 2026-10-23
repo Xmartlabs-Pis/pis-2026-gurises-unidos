@@ -38,26 +38,26 @@ const DEPARTMENTS = [
 
 const COUNTERPARTY_TYPES = Object.values(CounterpartyType);
 
-const TOPICS = ['Education', 'Health', 'Protection', 'Community', 'Employment'];
+const TOPICS = ['Educación', 'Salud', 'Protección', 'Comunidad', 'Empleo'];
 
 const COORDINATORS = [
-  { firstName: 'Carlos', lastName: 'Coordinator', documentId: '22222222', status: 'active' },
-  { firstName: 'Diana', lastName: 'Coordinator', documentId: '44444444', status: 'active' },
-  { firstName: 'Elena', lastName: 'Coordinator', documentId: '55555555', status: 'disabled' },
+  { firstName: 'Carlos', lastName: 'Pérez', documentId: '22222222', status: 'active' },
+  { firstName: 'Diana', lastName: 'Gómez', documentId: '44444444', status: 'active' },
+  { firstName: 'Elena', lastName: 'Fernández', documentId: '55555555', status: 'disabled' },
   {
     firstName: 'Federico',
-    lastName: 'Coordinator',
+    lastName: 'Martínez',
     documentId: '66666666',
     status: 'pendingInvitation',
   },
 ] as const;
 
 const PROJECT_BASE_NAMES = [
-  'Community center',
-  'Rural school support',
-  'Youth employment lab',
-  'Family health outreach',
-  'Child protection network',
+  'Centro comunitario',
+  'Apoyo a escuelas rurales',
+  'Laboratorio de empleo juvenil',
+  'Salud familiar en territorio',
+  'Red de protección infantil',
 ];
 
 const PROJECT_DEPARTMENTS = ['Montevideo', 'Canelones', 'Salto', 'Rivera', 'Maldonado'];
@@ -67,6 +67,8 @@ const INTENSITIES = ['high', 'medium', 'low'] as const;
 const ZONES = ['city', 'inland', 'border', 'rural'] as const;
 
 const LATEST_BENEFICIARY_YEAR = 2025;
+
+const STAGING_ADMIN = { ...ADMIN, lastName: 'Rodríguez' };
 
 function beneficiaryCounts(seed: number) {
   const at = (offset: number) => (seed * 7 + offset * 13) % 40;
@@ -118,14 +120,14 @@ async function main() {
       }
 
       const admin = await tx.user.upsert({
-        where: { documentId: ADMIN.documentId },
-        update: { ...ADMIN, passwordHash, deletedAt: null },
-        create: { ...ADMIN, passwordHash },
+        where: { documentId: STAGING_ADMIN.documentId },
+        update: { ...STAGING_ADMIN, passwordHash, deletedAt: null },
+        create: { ...STAGING_ADMIN, passwordHash },
       });
 
       const secondAdmin = {
         firstName: 'Bruno',
-        lastName: 'Admin',
+        lastName: 'Silva',
         documentId: '33333333',
         email: 'admin2@gurisesunidos.test',
         role: 'admin',
