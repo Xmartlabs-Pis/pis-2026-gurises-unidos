@@ -31,6 +31,7 @@ import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/b
 import { DUPLICATE_PROJECT_MESSAGE } from '@/lib/projects/map-project-db-error';
 import { PROJECT_LIST_PAGE_SIZE, parseProjectFilters } from '@/lib/validation/project-filters';
 import { listProjects, type ProjectListPage } from '@/lib/projects/list';
+import { getProjectAuditChanges, PROJECT_AUDIT_INCLUDE } from '@/lib/projects/audit-changes';
 
 async function lockTopics(tx: Prisma.TransactionClient, topicIds: number[]) {
   const ids = [...new Set(topicIds)].sort((a, b) => a - b);
@@ -287,11 +288,7 @@ export async function updateProject(
         await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
         const previous = await tx.project.findFirst({
           where: { id: projectId, deletedAt: null },
-          include: {
-            topics: { select: { id: true } },
-            strategicLines: { select: { id: true } },
-            departments: { select: { id: true } },
-          },
+          include: PROJECT_AUDIT_INCLUDE,
         });
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
         if (!canEditProject(user, previous))
@@ -366,7 +363,7 @@ export async function updateProject(
           ...(departmentsChanged ? ['departments'] : []),
         ];
         if (fields.length) {
-          await tx.project.update({
+          const updated = await tx.project.update({
             where: { id: projectId },
             data: {
               ...nextProjectData,
@@ -378,13 +375,18 @@ export async function updateProject(
                 ? { departments: { set: departmentIds.map((id) => ({ id })) } }
                 : {}),
             },
+            include: PROJECT_AUDIT_INCLUDE,
           });
+
           await logAudit(tx, {
             authorId: user.id,
             action: 'update',
             entity: 'project',
             entityId: projectId,
-            details: { changedFields: fields },
+            details: {
+              changedFields: fields,
+              changes: getProjectAuditChanges(previous, updated, fields),
+            },
           });
         }
         const where = { projectId_year: { projectId, year: beneficiaryData.year } };
