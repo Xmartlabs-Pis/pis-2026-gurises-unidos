@@ -772,7 +772,7 @@ describe('project review regressions', () => {
       'Redirect: /dashboard/projects/10'
     );
     expect(mocks.findCoordinator).toHaveBeenCalledWith({
-      where: { id: 9, role: 'coordinator', status: 'active', deletedAt: null },
+      where: { id: 9, role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null },
       select: { id: true },
     });
     expect(mocks.updateProject).toHaveBeenCalledWith({

@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import { requireUser } from '@/lib/auth/require-user';
 import { canEditProject } from '@/lib/projects/permissions';
 import { mapProjectDbError } from '@/lib/projects/map-project-db-error';
@@ -49,9 +50,7 @@ async function validateRelations(
   const coordinator = await tx.user.findFirst({
     where: {
       id: coordinatorId,
-      ...(coordinatorId === currentCoordinatorId
-        ? {}
-        : { role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null }),
+      ...(coordinatorId === currentCoordinatorId ? {} : ASSIGNABLE_LEAD_COORDINATOR_WHERE),
     },
     select: { id: true },
   });
