@@ -22,7 +22,6 @@ export interface NavigationItem {
   icon: LucideIcon;
   match?: PathMatch;
   roles?: readonly UserRole[];
-  children?: readonly NavigationItem[];
 }
 
 export interface NavigationGroup {
@@ -54,21 +53,19 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         href: '/dashboard',
         icon: HomeIcon,
         match: 'exact',
-        children: [
-          {
-            id: 'projects',
-            title: 'Proyectos',
-            href: '/dashboard/projects',
-            icon: FolderKanban,
-          },
-          // {
-          //   id: 'beneficiaries',
-          //   title: 'Beneficiarios',
-          //   href: '#',
-          //   icon: Users,
-          // },
-        ],
       },
+      {
+        id: 'projects',
+        title: 'Proyectos',
+        href: '/dashboard/projects',
+        icon: FolderKanban,
+      },
+      // {
+      //   id: 'beneficiaries',
+      //   title: 'Beneficiarios',
+      //   href: '#',
+      //   icon: Users,
+      // },
       {
         id: 'publicView',
         title: 'Vista pública',
@@ -144,15 +141,4 @@ export function filterNavGroups(groups: readonly NavigationGroup[], role: UserRo
       items: group.items.filter((item) => canAccessNavItem(item, role)),
     }))
     .filter((group) => group.items.length > 0);
-}
-
-export function flattenNavItems(items: readonly NavigationItem[]): NavigationItem[] {
-  return items.flatMap((item) => {
-    if (!item.children?.length) {
-      return [item];
-    }
-
-    const { children, ...parent } = item;
-    return [parent, ...children];
-  });
 }
