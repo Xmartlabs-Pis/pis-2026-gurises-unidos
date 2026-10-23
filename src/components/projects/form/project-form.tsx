@@ -233,7 +233,6 @@ export function ProjectForm({
             values={values}
             locationLabel={locationLabel}
             beneficiaryTotal={beneficiaryTotal}
-            isEditing={isEditing}
           />
         </div>
 
