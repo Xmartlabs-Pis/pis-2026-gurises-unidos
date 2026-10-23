@@ -71,7 +71,7 @@ export function StrategicLinesManagement({ lines }: StrategicLinesManagementProp
     <Card className="border-border flex w-full flex-col gap-4 rounded-[14px] border bg-white p-6 ring-0">
       <CardHeader className="px-0">
         <CardTitle className="font-sans text-base leading-6 font-semibold tracking-normal">
-          Líneas estratégicas de proyectos
+          Líneas Estratégicas de proyectos
         </CardTitle>
       </CardHeader>
       <div className="flex w-full flex-col gap-1.5">
