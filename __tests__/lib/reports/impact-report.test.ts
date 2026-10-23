@@ -6,8 +6,7 @@ import { getImpactReportData } from '@/lib/reports/impact-report';
 vi.mock('@/lib/prisma', () => ({
   default: {
     project: { findMany: vi.fn(), count: vi.fn() },
-    department: { count: vi.fn(), findUnique: vi.fn() },
-    topic: { findUnique: vi.fn() },
+    department: { count: vi.fn() },
   },
 }));
 vi.mock('@/lib/metrics/queries', () => ({ getMetricValues: vi.fn() }));
@@ -73,7 +72,7 @@ describe('getImpactReportData', () => {
   it('returns nothing when the year has no data', async () => {
     mockMetricsByYear({});
 
-    expect(await getImpactReportData(ADMIN, 2026, {})).toBeNull();
+    expect(await getImpactReportData(ADMIN, 2026)).toBeNull();
   });
 
   it('builds the indicators with the NNA total and deltas', async () => {
@@ -82,7 +81,7 @@ describe('getImpactReportData', () => {
       2025: metricValues({ children_reached: 100, families: 40, teachers: 45, active_projects: 4 }),
     });
 
-    const data = await getImpactReportData(ADMIN, 2026, {});
+    const data = await getImpactReportData(ADMIN, 2026);
 
     expect(data?.kpis).toEqual([
       expect.objectContaining({ value: 110, delta: '+10,0 % frente a 2025 (100)' }),
@@ -109,31 +108,25 @@ describe('getImpactReportData', () => {
   it('hides the deltas without data from the previous year', async () => {
     mockMetricsByYear({ 2024: metricValues({ children_reached: 5, active_projects: 1 }) });
 
-    const data = await getImpactReportData(ADMIN, 2024, {});
+    const data = await getImpactReportData(ADMIN, 2024);
 
     expect(data?.kpis.every(({ delta }) => delta === null)).toBe(true);
     expect(data?.pendingProjects).toBeNull();
   });
 
-  it('limits a coordinator to their own projects even when other projects are requested', async () => {
+  it('limits a coordinator to the projects they lead', async () => {
     mockMetricsByYear({ 2026: metricValues({ active_projects: 1 }) });
 
-    await getImpactReportData(COORDINATOR, 2026, { leadCoordinatorId: '99' });
+    await getImpactReportData(COORDINATOR, 2026);
 
-    expect(getMetricValues).toHaveBeenCalledWith(2026, {
-      AND: [{ leadCoordinatorId: COORDINATOR.id }, {}],
-    });
+    expect(getMetricValues).toHaveBeenCalledWith(2026, { leadCoordinatorId: COORDINATOR.id });
   });
 
-  it('applies and lists the requested filters', async () => {
+  it('includes every project for an admin', async () => {
     mockMetricsByYear({ 2026: metricValues({ active_projects: 1 }) });
-    vi.mocked(prisma.topic.findUnique).mockResolvedValue({ id: 4, name: 'Salud' } as never);
 
-    const data = await getImpactReportData(ADMIN, 2026, { topicId: '4', status: 'active' });
+    await getImpactReportData(ADMIN, 2026);
 
-    expect(getMetricValues).toHaveBeenCalledWith(2026, {
-      AND: [{}, { status: 'active', topics: { some: { id: 4 } } }],
-    });
-    expect(data?.appliedFilters).toEqual(['Temática: Salud', 'Estado: Activo']);
+    expect(getMetricValues).toHaveBeenCalledWith(2026, {});
   });
 });

@@ -43,7 +43,6 @@ export const styles = StyleSheet.create({
   headerLabel: { fontSize: 7.5, color: MUTED },
   title: { fontSize: 21, fontWeight: 700, color: INK },
   subtitle: { marginTop: 6, fontSize: 11, lineHeight: 1.45, color: TEXT },
-  filters: { marginTop: 4, fontSize: 8, color: MUTED },
   notice: {
     marginTop: 8,
     paddingVertical: 8,

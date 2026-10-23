@@ -13,7 +13,6 @@ type ProjectDetailHeaderProps = {
   selectedYear: number;
   years: number[];
   canEdit: boolean;
-  canExport: boolean;
 };
 
 function ProjectBadges({ project }: { project: ProjectDetail['project'] }) {
@@ -67,7 +66,6 @@ export function ProjectDetailHeader({
   selectedYear,
   years,
   canEdit,
-  canExport,
 }: ProjectDetailHeaderProps) {
   return (
     <section className="border-border pb-1 sm:border-b sm:pb-5">
@@ -83,24 +81,24 @@ export function ProjectDetailHeader({
         </div>
 
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
-          {canExport && (
-            <ExportPdfButton
-              href={`/api/reports/projects/${project.id}`}
-              label="Exportar"
-              className="h-9 px-4 shadow-sm"
-            />
-          )}
           {canEdit && (
-            <Link
-              href={`/dashboard/projects/${project.id}/edit`}
-              className={buttonVariants({
-                variant: 'outline',
-                size: 'lg',
-                className: 'h-9 px-4 shadow-sm',
-              })}
-            >
-              Editar proyecto
-            </Link>
+            <>
+              <ExportPdfButton
+                href={`/api/reports/projects/${project.id}?year=${selectedYear}`}
+                label="Exportar"
+                className="h-9 px-4 shadow-sm"
+              />
+              <Link
+                href={`/dashboard/projects/${project.id}/edit`}
+                className={buttonVariants({
+                  variant: 'outline',
+                  size: 'lg',
+                  className: 'h-9 px-4 shadow-sm',
+                })}
+              >
+                Editar proyecto
+              </Link>
+            </>
           )}
         </div>
       </div>

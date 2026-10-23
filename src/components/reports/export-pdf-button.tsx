@@ -28,7 +28,7 @@ function downloadBlob(blob: Blob, fileName: string) {
   link.href = url;
   link.download = fileName;
   link.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export function ExportPdfButton({ href, label, className }: ExportPdfButtonProps) {

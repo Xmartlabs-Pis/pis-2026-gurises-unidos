@@ -71,9 +71,11 @@ export function ProjectSheetDocument({ data, logo, fit = DESIGN_FIT }: ProjectSh
         {data.description && (
           <Text style={[styles.subtitle, { fontSize: 11 * fit }]}>{data.description}</Text>
         )}
-        <Notice>
-          Año en curso: incluye las cargas aprobadas hasta el {formatLongDate(data.generatedAt)}.
-        </Notice>
+        {data.isCurrentYear && (
+          <Notice>
+            Año en curso: incluye los datos cargados hasta el {formatLongDate(data.generatedAt)}.
+          </Notice>
+        )}
 
         <FieldTable data={data} fit={fit} />
 
@@ -90,7 +92,7 @@ export function ProjectSheetDocument({ data, logo, fit = DESIGN_FIT }: ProjectSh
         ) : (
           <Section title="Personas alcanzadas por categoría">
             <Text style={sheetStyles.empty}>
-              El proyecto todavía no cargó sus datos de {data.year}.
+              El proyecto no tiene datos cargados en {data.year}.
             </Text>
           </Section>
         )}

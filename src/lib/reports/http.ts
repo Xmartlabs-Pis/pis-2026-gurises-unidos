@@ -8,11 +8,6 @@ export const REPORT_ERRORS = {
     title: 'Sesión expirada',
     message: 'Tu sesión expiró. Volvé a iniciar sesión.',
   },
-  roleForbidden: {
-    status: 403,
-    title: 'Acceso denegado',
-    message: 'No tenés permisos para exportar reportes.',
-  },
   projectForbidden: {
     status: 403,
     title: 'Acceso denegado',

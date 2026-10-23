@@ -8,7 +8,7 @@ import {
   getChildrenReached,
   getPeopleReached,
 } from '@/lib/projects/detail-metrics';
-import { canEditProject, canExportProject } from '@/lib/projects/permissions';
+import { canEditProject } from '@/lib/projects/permissions';
 import {
   BENEFICIARY_VALUES_SELECT,
   sumBeneficiaryValues,
@@ -165,7 +165,6 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       availableYears,
       hasData,
       canEdit: canEditProject(user, project),
-      canExport: canExportProject(user, project),
       metrics: {
         childrenReached,
         families,
