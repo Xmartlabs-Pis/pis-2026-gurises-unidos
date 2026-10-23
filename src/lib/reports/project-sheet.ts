@@ -14,7 +14,7 @@ import {
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { getChildrenReached } from '@/lib/projects/detail-metrics';
 import { PROJECT_LOCATION_SELECT, getTerritoryNames } from '@/lib/projects/location';
-import { canExportProject } from '@/lib/projects/permissions';
+import { canEditProject } from '@/lib/projects/permissions';
 import { formatDelta, toFileNameSegment } from '@/lib/reports/format';
 import type { ReportBar, ReportKpi } from '@/lib/reports/impact-report';
 
@@ -22,6 +22,7 @@ export type ReportField = { label: string; value: string };
 
 export type ProjectSheetData = {
   year: number;
+  isCurrentYear: boolean;
   generatedAt: Date;
   name: string;
   description: string | null;
@@ -47,8 +48,11 @@ export function getProjectSheetFileName(projectName: string, year: number) {
   return `Ficha-${toFileNameSegment(projectName) || 'proyecto'}-${year}.pdf`;
 }
 
-export async function getProjectSheetData(user: { id: number; role: UserRole }, projectId: number) {
-  const year = getCurrentYear();
+export async function getProjectSheetData(
+  user: { id: number; role: UserRole },
+  projectId: number,
+  year: number
+) {
   const previousYear = year - 1;
 
   const project = await prisma.project.findFirst({
@@ -64,7 +68,6 @@ export async function getProjectSheetData(user: { id: number; role: UserRole }, 
       zone: true,
       generalObjective: true,
       publicDescription: true,
-      internalNotes: true,
       showOnLanding: true,
       ...PROJECT_LOCATION_SELECT,
       leadCoordinator: { select: { firstName: true, lastName: true } },
@@ -78,7 +81,7 @@ export async function getProjectSheetData(user: { id: number; role: UserRole }, 
   });
 
   if (project === null) return { status: 'notFound' as const };
-  if (!canExportProject(user, project)) return { status: 'forbidden' as const };
+  if (!canEditProject(user, project)) return { status: 'forbidden' as const };
 
   const categories = await getActiveBeneficiaryCategories();
   const activeKeys = new Set<string>(categories.map(({ key }) => key));
@@ -123,6 +126,7 @@ export async function getProjectSheetData(user: { id: number; role: UserRole }, 
 
   const data: ProjectSheetData = {
     year,
+    isCurrentYear: year === getCurrentYear(),
     generatedAt: new Date(),
     name: project.name,
     description: project.generalObjective,
@@ -151,10 +155,9 @@ export async function getProjectSheetData(user: { id: number; role: UserRole }, 
       { label: 'Barrios', value: joinList(project.neighborhoods) },
       { label: 'Visible en la web', value: project.showOnLanding ? 'Sí' : 'No' },
     ],
-    longFields: [
-      { label: 'Descripción pública', value: project.publicDescription ?? '' },
-      { label: 'Notas internas', value: project.internalNotes ?? '' },
-    ].filter(({ value }) => value.trim() !== ''),
+    longFields: [{ label: 'Descripción pública', value: project.publicDescription ?? '' }].filter(
+      ({ value }) => value.trim() !== ''
+    ),
     kpis,
     categories:
       current &&

@@ -8,6 +8,10 @@ import { getProjectSheetData } from '@/lib/reports/project-sheet';
 
 vi.mock('@/lib/auth/require-user', () => ({ getActiveUser: vi.fn() }));
 vi.mock('@/lib/metrics/queries', () => ({ getMetricYears: async () => [2026, 2025] }));
+vi.mock('@/lib/metrics/year', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics/year')>()),
+  getCurrentYear: () => 2026,
+}));
 vi.mock('@/lib/reports/render', () => ({
   renderImpactReport: async () => Buffer.from('%PDF'),
   renderProjectSheet: async () => Buffer.from('%PDF'),
@@ -27,9 +31,9 @@ function impactRequest(query = '') {
   return getImpactReport(new NextRequest(`http://localhost/api/reports/impact${query}`));
 }
 
-function sheetRequest(id: string, headers?: HeadersInit) {
+function sheetRequest(id: string, headers?: HeadersInit, query = '') {
   return getProjectSheet(
-    new NextRequest(`http://localhost/api/reports/projects/${id}`, { headers }),
+    new NextRequest(`http://localhost/api/reports/projects/${id}${query}`, { headers }),
     { params: Promise.resolve({ id }) }
   );
 }
@@ -47,15 +51,6 @@ describe('report routes', () => {
     expect((await sheetRequest('1')).status).toBe(401);
   });
 
-  it('rejects users without a report role', async () => {
-    vi.mocked(getActiveUser).mockResolvedValue({ ...ADMIN, role: 'guest' as never });
-
-    expect((await impactRequest()).status).toBe(403);
-    expect((await sheetRequest('1')).status).toBe(403);
-    expect(getImpactReportData).not.toHaveBeenCalled();
-    expect(getProjectSheetData).not.toHaveBeenCalled();
-  });
-
   it('downloads the impact report of the requested year', async () => {
     vi.mocked(getImpactReportData).mockResolvedValue({ year: 2025 } as never);
 
@@ -64,7 +59,7 @@ describe('report routes', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/pdf');
     expect(response.headers.get('Content-Disposition')).toContain('Informe-de-impacto-2025.pdf');
-    expect(getImpactReportData).toHaveBeenCalledWith(ADMIN, 2025, { year: '2025', topicId: '3' });
+    expect(getImpactReportData).toHaveBeenCalledWith(ADMIN, 2025);
   });
 
   it('warns instead of generating an empty impact report', async () => {
@@ -100,6 +95,18 @@ describe('report routes', () => {
 
     expect((await sheetRequest('5')).status).toBe(404);
     expect((await sheetRequest('abc')).status).toBe(404);
+  });
+
+  it('exports the sheet of the requested year and falls back to the current one', async () => {
+    vi.mocked(getProjectSheetData).mockResolvedValue({ status: 'notFound' });
+
+    await sheetRequest('5', undefined, '?year=2024');
+    await sheetRequest('5', undefined, '?year=abc');
+    await sheetRequest('5');
+
+    expect(vi.mocked(getProjectSheetData).mock.calls.map(([, , year]) => year)).toEqual([
+      2024, 2026, 2026,
+    ]);
   });
 
   it('downloads the project sheet', async () => {

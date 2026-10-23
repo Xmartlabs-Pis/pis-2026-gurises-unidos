@@ -9,6 +9,7 @@ const DEPARTMENTS = Array.from({ length: 19 }, (_, index) => `Departamento ${ind
 
 const SHEET: ProjectSheetData = {
   year: 2026,
+  isCurrentYear: true,
   generatedAt: new Date('2026-10-21T15:00:00Z'),
   name: 'El Resorte',
   description: 'Proyecto de acompañamiento territorial.',
@@ -44,7 +45,6 @@ const REPORT: ImpactReportData = {
   year: 2026,
   generatedAt: new Date('2026-10-21T15:00:00Z'),
   projectCount: 27,
-  appliedFilters: [],
   pendingProjects: 3,
   kpis: [
     { value: 6315, label: 'niños, niñas y adolescentes alcanzados', delta: null },
@@ -68,10 +68,7 @@ describe('report rendering', () => {
       fields: SHEET.fields.map((field) =>
         field.label === 'Territorio' ? { ...field, value: DEPARTMENTS.join(', ') } : field
       ),
-      longFields: [
-        { label: 'Descripción pública', value: LONG_TEXT.slice(0, 1000) },
-        { label: 'Notas internas', value: LONG_TEXT.slice(0, 1000) },
-      ],
+      longFields: [{ label: 'Descripción pública', value: LONG_TEXT.slice(0, 1000) }],
     });
 
     expect(countPages(pdf)).toBe(1);

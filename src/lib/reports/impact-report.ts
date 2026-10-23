@@ -3,11 +3,9 @@ import prisma from '@/lib/prisma';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { getMetricValues } from '@/lib/metrics/queries';
 import { getCurrentYear } from '@/lib/metrics/year';
-import { INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
 import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { getReportProjectScope } from '@/lib/projects/permissions';
 import { formatDelta } from '@/lib/reports/format';
-import { parseProjectFilters, type RawProjectFilters } from '@/lib/validation/project-filters';
 
 export type ReportKpi = { value: number; label: string; delta: string | null };
 
@@ -17,7 +15,6 @@ export type ImpactReportData = {
   year: number;
   generatedAt: Date;
   projectCount: number;
-  appliedFilters: string[];
   pendingProjects: number | null;
   kpis: ReportKpi[];
   topics: ReportBar[];
@@ -28,29 +25,6 @@ export type ImpactReportData = {
 };
 
 type ReportUser = { id: number; role: UserRole };
-
-async function resolveFilters(raw: RawProjectFilters) {
-  const { status, intensity, departmentId, topicId } = parseProjectFilters(raw);
-  const [department, topic] = await Promise.all([
-    departmentId ? prisma.department.findUnique({ where: { id: departmentId } }) : null,
-    topicId ? prisma.topic.findUnique({ where: { id: topicId } }) : null,
-  ]);
-
-  const where: Prisma.ProjectWhereInput = {
-    ...(status && { status }),
-    ...(intensity && { intensity }),
-    ...(department && { departments: { some: { id: department.id } } }),
-    ...(topic && { topics: { some: { id: topic.id } } }),
-  };
-  const labels = [
-    topic && `Temática: ${topic.name}`,
-    department && `Departamento: ${department.name}`,
-    status && `Estado: ${STATUS_LABEL[status]}`,
-    intensity && `Intensidad: ${INTENSITY_LABEL[intensity]}`,
-  ].filter((label): label is string => Boolean(label));
-
-  return { where, labels };
-}
 
 function countBy(groups: string[][]) {
   const counts = new Map<string, number>();
@@ -68,13 +42,9 @@ export function getImpactReportFileName(year: number) {
 
 export async function getImpactReportData(
   user: ReportUser,
-  year: number,
-  rawFilters: RawProjectFilters
+  year: number
 ): Promise<ImpactReportData | null> {
-  const filters = await resolveFilters(rawFilters);
-  const projectWhere: Prisma.ProjectWhereInput = {
-    AND: [getReportProjectScope(user), filters.where],
-  };
+  const projectWhere: Prisma.ProjectWhereInput = getReportProjectScope(user);
   const previousYear = year - 1;
   const isCurrentYear = year === getCurrentYear();
 
@@ -116,7 +86,6 @@ export async function getImpactReportData(
     year,
     generatedAt: new Date(),
     projectCount: current.active_projects,
-    appliedFilters: filters.labels,
     pendingProjects: pending,
     kpis: [
       {

@@ -29,7 +29,6 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
     availableYears,
     hasData,
     canEdit,
-    canExport,
     metrics,
     distribution,
     institutionalContribution,
@@ -48,7 +47,6 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
           selectedYear={selectedYear}
           years={availableYears}
           canEdit={canEdit}
-          canExport={canExport}
         />
 
         {hasData ? (

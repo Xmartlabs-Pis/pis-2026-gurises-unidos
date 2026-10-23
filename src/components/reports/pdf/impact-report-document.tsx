@@ -55,7 +55,7 @@ function pluralize(count: number, singular: string, plural: string) {
 }
 
 function getCurrentYearNotice(generatedAt: Date, pendingProjects: number) {
-  const cutoff = `Año en curso: incluye las cargas aprobadas hasta el ${formatLongDate(generatedAt)}.`;
+  const cutoff = `Año en curso: incluye los datos cargados hasta el ${formatLongDate(generatedAt)}.`;
   if (pendingProjects === 0) return cutoff;
   const pending =
     pendingProjects === 1
@@ -80,9 +80,6 @@ function ImpactOverviewPage({ data, logo, fit = DESIGN_FIT }: ImpactPageProps) {
         Lo que {data.projectCount === 1 ? 'hizo el' : 'hicieron los'} {projects} de Gurises Unidos
         en {data.year}.
       </Text>
-      {data.appliedFilters.length > 0 && (
-        <Text style={styles.filters}>Filtros aplicados: {data.appliedFilters.join(' · ')}</Text>
-      )}
       {data.pendingProjects !== null && (
         <Notice>{getCurrentYearNotice(data.generatedAt, data.pendingProjects)}</Notice>
       )}
