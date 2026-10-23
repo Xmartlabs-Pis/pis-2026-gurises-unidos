@@ -97,7 +97,7 @@ export function ProjectDetailHeader({
 
       <div className="flex flex-col">
         {project.generalObjective && (
-          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
+          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 break-words sm:order-2">
             {project.generalObjective}
           </p>
         )}
