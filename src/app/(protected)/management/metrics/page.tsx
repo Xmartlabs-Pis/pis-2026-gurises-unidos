@@ -44,7 +44,6 @@ export default async function MetricsPage({
       />
       <div className="flex w-full flex-1 flex-col gap-4 pt-1.5">
         <MetricsForm
-          key={year}
           year={String(year)}
           values={values}
           initialMetrics={initialMetrics}

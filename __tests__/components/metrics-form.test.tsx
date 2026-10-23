@@ -18,10 +18,12 @@ const TOPICS = [
   { id: 3, name: 'Protection', projectCount: 0, showPublicly: false },
 ];
 
+let rerender: ReturnType<typeof render>['rerender'];
+
 beforeEach(() => {
   saveMock.mockReset();
   saveMock.mockResolvedValue({ success: true, message: 'Saved' });
-  render(
+  ({ rerender } = render(
     <MetricsForm
       year="2025"
       years={[2026, 2025, 2024]}
@@ -39,6 +41,56 @@ beforeEach(() => {
       initialMetrics={METRIC_DEFINITIONS}
       initialTopics={TOPICS}
     />
+  ));
+});
+
+it('preserves pending edits while updating annual values and topic counts', async () => {
+  const totalCard = screen.getByLabelText('Total de NNA').closest('article')!;
+  fireEvent.click(within(totalCard).getByRole('switch'));
+  fireEvent.click(screen.getByRole('switch', { name: /Health/ }));
+  fireEvent.click(screen.getByRole('checkbox', { name: '2024' }));
+
+  const nextProps = {
+    year: '2024',
+    years: [2026, 2025, 2024],
+    initialPublishedYears: [2026, 2024],
+    initialMetrics: METRIC_DEFINITIONS,
+    initialTopics: TOPICS.map((topic) => ({ ...topic, projectCount: topic.id * 7 })),
+    values: {
+      children_reached: 400,
+      direct_children_reached: 300,
+      indirect_children_reached: 100,
+      families: 60,
+      teachers: 30,
+      institutions: 15,
+      departments: 8,
+      active_projects: 12,
+    },
+  };
+  rerender(<MetricsForm {...nextProps} />);
+
+  expect(screen.getByLabelText('Total de NNA')).toHaveProperty('value', '400');
+  expect(screen.getByRole('checkbox', { name: '2024' }).getAttribute('aria-checked')).toBe('false');
+  expect(screen.getByRole('switch', { name: /Health/ }).getAttribute('aria-checked')).toBe('true');
+  const preview = within(screen.getByRole('complementary'));
+  expect(preview.queryByText('Total de NNA')).toBeNull();
+  expect(preview.getByText('Impacto 2024')).toBeDefined();
+  expect(preview.getByText('300')).toBeDefined();
+  expect(preview.getByText('14')).toBeDefined();
+
+  rerender(<MetricsForm {...nextProps} year="2025" initialTopics={TOPICS} />);
+  expect(preview.getByText('Impacto 2025')).toBeDefined();
+  expect(preview.getByText('1')).toBeDefined();
+  expect(preview.queryByText('Total de NNA')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+  await waitFor(() =>
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        publishedYears: [2026],
+        metrics: expect.arrayContaining([{ key: 'children_reached', showPublicly: false }]),
+        topics: expect.arrayContaining([{ id: 2, showPublicly: true }]),
+      })
+    )
   );
 });
 
@@ -60,6 +112,40 @@ it('saves individual topic visibility changes', async () => {
       })
     )
   );
+});
+
+it('shows pending changes only while the selection differs from the saved settings', () => {
+  const saveButton = screen.getByRole('button', { name: 'Guardar cambios' });
+  expect(saveButton).toHaveProperty('disabled', true);
+  expect(screen.queryByText('Cambios sin guardar')).toBeNull();
+  const toggle = screen.getByRole('switch', { name: /Health/ });
+  fireEvent.click(toggle);
+  expect(screen.getByText('Cambios sin guardar')).toBeDefined();
+  expect(saveButton).toHaveProperty('disabled', false);
+  fireEvent.click(toggle);
+  expect(screen.queryByText('Cambios sin guardar')).toBeNull();
+  expect(saveButton).toHaveProperty('disabled', true);
+});
+
+it('clears the pending indicator after saving and detects subsequent edits', async () => {
+  const toggle = screen.getByRole('checkbox', { name: '2024' });
+  fireEvent.click(toggle);
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+  await waitFor(() => expect(screen.queryByText('Cambios sin guardar')).toBeNull());
+  expect(await screen.findByRole('button', { name: 'Guardar cambios' })).toHaveProperty(
+    'disabled',
+    true
+  );
+  fireEvent.click(toggle);
+  expect(screen.getByText('Cambios sin guardar')).toBeDefined();
+});
+
+it('keeps the pending indicator when saving fails', async () => {
+  saveMock.mockResolvedValue({ success: false, message: 'Save failed' });
+  fireEvent.click(screen.getByRole('switch', { name: /Health/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+  await waitFor(() => expect(saveMock).toHaveBeenCalled());
+  expect(screen.getByText('Cambios sin guardar')).toBeDefined();
 });
 
 it('loads saved years and saves a changed selection independently of the preview', async () => {

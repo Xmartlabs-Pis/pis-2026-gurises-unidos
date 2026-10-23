@@ -17,6 +17,22 @@ import { getVisibleTopics } from '@/lib/metrics/visible-topics';
 import { PublishedYearsSelect } from '@/components/metrics/published-years-select';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 
+function getSettingsSignature(
+  years: number[],
+  metrics: Pick<MetricSetting, 'key' | 'showPublicly'>[],
+  topics: Pick<TopicStatistic, 'id' | 'showPublicly'>[]
+) {
+  return JSON.stringify({
+    years: [...years].sort((a, b) => a - b),
+    metrics: metrics
+      .map(({ key, showPublicly }) => ({ key, showPublicly }))
+      .sort((a, b) => a.key.localeCompare(b.key)),
+    topics: topics
+      .map(({ id, showPublicly }) => ({ id, showPublicly }))
+      .sort((a, b) => a.id - b.id),
+  });
+}
+
 export function MetricsForm({
   year,
   values,
@@ -33,11 +49,20 @@ export function MetricsForm({
   initialPublishedYears: number[];
 }) {
   const [metrics, setMetrics] = useState(initialMetrics);
-  const [topics, setTopics] = useState(initialTopics);
+  const [topicVisibility, setTopicVisibility] = useState<Record<number, boolean>>({});
   const [publishedYears, setPublishedYears] = useState(initialPublishedYears);
+  const [savedSignature, setSavedSignature] = useState(() =>
+    getSettingsSignature(initialPublishedYears, initialMetrics, initialTopics)
+  );
   const [isPending, startTransition] = useTransition();
+  const topics = initialTopics.map((topic) => ({
+    ...topic,
+    showPublicly: topicVisibility[topic.id] ?? topic.showPublicly,
+  }));
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
   const visibleTopics = getVisibleTopics(topics);
+  const settingsSignature = getSettingsSignature(publishedYears, metrics, topics);
+  const hasUnsavedChanges = settingsSignature !== savedSignature;
 
   function saveChanges() {
     startTransition(async () => {
@@ -51,6 +76,7 @@ export function MetricsForm({
           notify.error({ title: result.message });
           return;
         }
+        setSavedSignature(settingsSignature);
         notify.success({ title: result.message });
       } catch {
         notify.error({ title: 'No se pudieron guardar los cambios. Intentá de nuevo.' });
@@ -62,6 +88,10 @@ export function MetricsForm({
     setMetrics((current) =>
       current.map((metric) => (metric.key === key ? { ...metric, showPublicly } : metric))
     );
+  }
+
+  function setAllTopicsVisibility(showPublicly: boolean) {
+    setTopicVisibility(Object.fromEntries(topics.map(({ id }) => [id, showPublicly])));
   }
 
   return (
@@ -144,9 +174,7 @@ export function MetricsForm({
                   id="topic-statistics-visibility"
                   checked={topics.length > 0 && topics.every((topic) => topic.showPublicly)}
                   disabled={isPending || topics.length === 0}
-                  onCheckedChange={(showPublicly) =>
-                    setTopics((current) => current.map((topic) => ({ ...topic, showPublicly })))
-                  }
+                  onCheckedChange={setAllTopicsVisibility}
                 />
                 <label htmlFor="topic-statistics-visibility" className="cursor-pointer text-sm">
                   Mostrar todas las temáticas
@@ -180,11 +208,7 @@ export function MetricsForm({
                       disabled={isPending}
                       aria-label={`Mostrar proyectos de ${topic.name} en el sitio público`}
                       onCheckedChange={(showPublicly) =>
-                        setTopics((current) =>
-                          current.map((item) =>
-                            item.id === topic.id ? { ...item, showPublicly } : item
-                          )
-                        )
+                        setTopicVisibility((current) => ({ ...current, [topic.id]: showPublicly }))
                       }
                     />
                   </div>
@@ -260,7 +284,7 @@ export function MetricsForm({
           disabled={isPending}
           onClick={() => {
             setPublishedYears(years);
-            setTopics((current) => current.map((topic) => ({ ...topic, showPublicly: true })));
+            setAllTopicsVisibility(true);
             setMetrics((current) =>
               current.map((metric) => ({
                 ...metric,
@@ -273,9 +297,17 @@ export function MetricsForm({
         >
           <span className="flex w-fit items-center gap-2.5 leading-5">Restablecer valores</span>
         </Button>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
+            {hasUnsavedChanges && (
+              <span className="flex items-center gap-2">
+                <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
+                Cambios sin guardar
+              </span>
+            )}
+          </span>
           <Button
-            disabled={isPending}
+            disabled={isPending || !hasUnsavedChanges}
             onClick={saveChanges}
             className="h-9 w-fit flex-col gap-2.5 rounded-lg px-4 py-2 shadow-[0_1px_2px_0_rgb(0_0_0/10%)]"
           >
