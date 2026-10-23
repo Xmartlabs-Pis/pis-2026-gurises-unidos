@@ -9,18 +9,14 @@ import { renderImpactReport } from '@/lib/reports/render';
 
 export async function GET(request: NextRequest) {
   const user = await getActiveUser();
-  if (!user) return reportErrorResponse(401, 'Tu sesión expiró. Volvé a iniciar sesión.');
-  if (!canExportReports(user)) {
-    return reportErrorResponse(403, 'No tenés permisos para exportar reportes.');
-  }
+  if (!user) return reportErrorResponse(request, 'unauthorized');
+  if (!canExportReports(user)) return reportErrorResponse(request, 'roleForbidden');
 
   const params = Object.fromEntries(request.nextUrl.searchParams);
   const currentYear = getCurrentYear();
   const year = resolveYearParam(params.year, await getMetricYears(currentYear), currentYear);
   const data = await getImpactReportData(user, year, params);
-  if (!data) {
-    return reportErrorResponse(404, `No hay datos cargados en ${year} para exportar.`);
-  }
+  if (!data) return reportErrorResponse(request, 'emptyReport');
 
   return pdfResponse(await renderImpactReport(data), getImpactReportFileName(year));
 }

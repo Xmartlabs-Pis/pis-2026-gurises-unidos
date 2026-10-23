@@ -23,6 +23,7 @@ export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   users: 'Usuarios',
   topics: 'Temáticas',
   profile: 'Perfil',
+  'report-error': 'Error al exportar',
   'beneficiary-categories': 'Categorías de beneficiarios',
   'strategic-lines': 'Líneas estratégicas',
   new: 'Nuevo',

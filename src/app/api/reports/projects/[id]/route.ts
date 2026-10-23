@@ -6,24 +6,17 @@ import { getProjectSheetData, getProjectSheetFileName } from '@/lib/reports/proj
 import { renderProjectSheet } from '@/lib/reports/render';
 import { parseId } from '@/lib/validation/ids';
 
-export async function GET(_request: NextRequest, ctx: RouteContext<'/api/reports/projects/[id]'>) {
+export async function GET(request: NextRequest, ctx: RouteContext<'/api/reports/projects/[id]'>) {
   const user = await getActiveUser();
-  if (!user) return reportErrorResponse(401, 'Tu sesión expiró. Volvé a iniciar sesión.');
-  if (!canExportReports(user)) {
-    return reportErrorResponse(403, 'No tenés permisos para exportar reportes.');
-  }
+  if (!user) return reportErrorResponse(request, 'unauthorized');
+  if (!canExportReports(user)) return reportErrorResponse(request, 'roleForbidden');
 
   const projectId = parseId((await ctx.params).id);
   const result = projectId ? await getProjectSheetData(user, projectId) : null;
   if (!result || result.status === 'notFound') {
-    return reportErrorResponse(404, 'No encontramos el proyecto.');
+    return reportErrorResponse(request, 'projectNotFound');
   }
-  if (result.status === 'forbidden') {
-    return reportErrorResponse(
-      403,
-      'Solo podés exportar las fichas de los proyectos que coordinás.'
-    );
-  }
+  if (result.status === 'forbidden') return reportErrorResponse(request, 'projectForbidden');
 
   const { data } = result;
   return pdfResponse(await renderProjectSheet(data), getProjectSheetFileName(data.name, data.year));
