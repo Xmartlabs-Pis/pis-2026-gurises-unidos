@@ -2,6 +2,7 @@ import {
   ChartNoAxesColumn,
   // FileChartColumnIncreasing,
   FolderKanban,
+  Globe,
   HomeIcon,
   Tags,
   Waypoints,
@@ -67,6 +68,13 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
           //   icon: Users,
           // },
         ],
+      },
+      {
+        id: 'publicView',
+        title: 'Vista pública',
+        href: '/',
+        icon: Globe,
+        match: 'exact',
       },
       // {
       //   id: 'publications',
