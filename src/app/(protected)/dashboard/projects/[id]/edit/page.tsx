@@ -151,6 +151,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
         departments={departments}
         cancelHref={`/dashboard/projects/${project.id}`}
         submitAction={submitAction}
+        canSelectCoordinator={user.role === 'admin'}
       >
         <ProjectHistory entries={history} fieldLabels={fieldLabels} />
         <DeleteProjectSection projectId={project.id} />
