@@ -5,9 +5,9 @@ import { resolveYearParam } from '@/lib/metrics/year';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
-import { getDepartmentProjectCounts } from '@/lib/projects/department-project-counts';
 import { Suspense } from 'react';
-import { UruguayMapLoader } from '@/components/uruguay-map-loader';
+import { DepartmentPresence } from '@/components/department-presence';
+import { DepartmentPresenceSkeleton } from '@/components/department-presence-skeleton';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
@@ -36,8 +36,6 @@ const LEVELS = [
   },
 ];
 
-const MAX_DEPARTMENT_BUBBLES = 4;
-
 const PARTNERS = [
   'INAU',
   'INEFOP',
@@ -59,19 +57,12 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, departmentProjectCounts, topics] = await Promise.all([
+  const [values, previousValues, settings, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getDepartmentProjectCounts(),
     getTopicStatistics(year),
   ]);
-  const departmentsWithProjects = departmentProjectCounts.filter(({ total }) => total > 0);
-  const departmentBubbles = departmentsWithProjects
-    .slice(0, MAX_DEPARTMENT_BUBBLES)
-    .map(({ department }) => department);
-  const hiddenDepartments = departmentsWithProjects.length - MAX_DEPARTMENT_BUBBLES;
-  if (hiddenDepartments > 0) departmentBubbles.push(`+ ${hiddenDepartments} más`);
   const stats = settings
     .filter((metric) => metric.showPublicly)
     .map((metric) => ({
@@ -201,32 +192,9 @@ export default async function Home({
       </section>
       <section className="w-full">
         <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
-          <div className="flex w-full flex-col items-center gap-8 lg:flex-row lg:gap-16">
-            <div className="flex flex-col gap-4 text-left">
-              <div className="flex max-w-105 flex-col gap-1">
-                <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-                  Presencia en todo Uruguay
-                </h2>
-                <p className="text-foreground text-sm leading-5 font-normal tracking-normal">
-                  Nuestros proyectos llegan a {departmentsWithProjects.length} departamentos,
-                  priorizando comunidades con mayor vulnerabilidad social.
-                </p>
-              </div>
-              <div className="flex max-w-105 flex-wrap gap-2">
-                {departmentBubbles.map((department) => (
-                  <span
-                    key={department}
-                    className="bg-card text-foreground flex h-6.5 items-center rounded-[14px] px-2.5 py-1.25 text-xs leading-4 font-normal tracking-normal"
-                  >
-                    {department}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="h-80 w-full max-w-125">
-              <UruguayMapLoader projectCounts={departmentProjectCounts} />
-            </div>
-          </div>
+          <Suspense fallback={<DepartmentPresenceSkeleton />}>
+            <DepartmentPresence />
+          </Suspense>
         </div>
       </section>
       <section className="w-full">

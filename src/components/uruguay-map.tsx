@@ -2,8 +2,8 @@
 
 import 'leaflet/dist/leaflet.css';
 import type { Feature } from 'geojson';
-import { Browser, geoJSON, type Path, type PathOptions } from 'leaflet';
-import { useEffect, useRef, useState } from 'react';
+import { Browser, geoJSON, type LatLngBounds, type Path, type PathOptions, point } from 'leaflet';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GeoJSON, MapContainer, useMap } from 'react-leaflet';
 import type { DepartmentProjectCounts } from '@/lib/projects/department-project-counts';
 import { getUruguayMapData } from '@/lib/map/uruguay-map';
@@ -11,6 +11,7 @@ import { getUruguayMapData } from '@/lib/map/uruguay-map';
 const MAX_ZOOM_LEVELS_IN = 3;
 const BOUNDS_PADDING_RATIO = 0.4;
 const HINT_DURATION_MS = 500;
+const FIT_PADDING_PX = 12;
 
 const DEPARTMENT_STYLE: PathOptions = {
   color: 'var(--surface-brand-deep)',
@@ -60,6 +61,26 @@ function bindDepartmentHover(
   });
 }
 
+function FitToDepartments({ bounds }: { bounds: LatLngBounds }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const fit = () => {
+      const zoom = map.getBoundsZoom(bounds, false, point(FIT_PADDING_PX, FIT_PADDING_PX));
+      map.setMinZoom(zoom);
+      map.setMaxZoom(zoom + MAX_ZOOM_LEVELS_IN);
+      map.setView(bounds.getCenter(), zoom, { animate: false });
+    };
+    fit();
+    map.on('resize', fit);
+    return () => {
+      map.off('resize', fit);
+    };
+  }, [map, bounds]);
+
+  return null;
+}
+
 function TwoFingerHint() {
   const map = useMap();
   const [visible, setVisible] = useState(false);
@@ -96,7 +117,8 @@ function TwoFingerHint() {
 export default function UruguayMap({ projectCounts }: UruguayMapProps) {
   const { center, zoom, departments } = getUruguayMapData();
   const countsByDepartment = new Map(projectCounts.map((counts) => [counts.department, counts]));
-  const maxBounds = geoJSON(departments).getBounds().pad(BOUNDS_PADDING_RATIO);
+  const bounds = useMemo(() => geoJSON(departments).getBounds(), [departments]);
+  const maxBounds = useMemo(() => bounds.pad(BOUNDS_PADDING_RATIO), [bounds]);
 
   return (
     <MapContainer
@@ -104,8 +126,6 @@ export default function UruguayMap({ projectCounts }: UruguayMapProps) {
       zoom={zoom}
       zoomSnap={0.25}
       dragging={!Browser.mobile}
-      minZoom={zoom}
-      maxZoom={zoom + MAX_ZOOM_LEVELS_IN}
       maxBounds={maxBounds}
       maxBoundsViscosity={0.5}
       className="bg-surface-page h-full w-full rounded-xl"
@@ -117,6 +137,7 @@ export default function UruguayMap({ projectCounts }: UruguayMapProps) {
           bindDepartmentHover(feature, layer as Path, countsByDepartment)
         }
       />
+      <FitToDepartments bounds={bounds} />
       <TwoFingerHint />
     </MapContainer>
   );

@@ -2,11 +2,12 @@
 
 import dynamic from 'next/dynamic';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import type { DepartmentProjectCounts } from '@/lib/projects/department-project-counts';
 
 const UruguayMap = dynamic(() => import('@/components/uruguay-map'), {
   ssr: false,
-  loading: () => <div className="bg-card h-full w-full rounded-xl" />,
+  loading: () => <Skeleton className="h-full w-full rounded-xl" />,
 });
 
 type UruguayMapLoaderProps = {
