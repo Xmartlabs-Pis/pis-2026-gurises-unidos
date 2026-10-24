@@ -19,7 +19,7 @@ export function DepartmentPresenceSkeleton() {
           ))}
         </div>
       </div>
-      <div className="h-80 w-full min-w-0 lg:h-107 lg:max-w-138 lg:flex-1">
+      <div className="h-100 w-full min-w-0 md:h-128 lg:h-107 lg:max-w-138 lg:flex-1">
         <Skeleton className="h-full w-full rounded-xl" />
       </div>
     </div>
