@@ -55,6 +55,7 @@ function bindDepartmentHover(
 ) {
   const name: string = feature.properties?.name;
   layer.bindTooltip(buildTooltip(name, countsByDepartment.get(name)), { sticky: true });
+  if (!Browser.mobile) layer.off('click');
   layer.on({
     mouseover: () => layer.setStyle(HIGHLIGHT_STYLE),
     mouseout: () => layer.setStyle(DEPARTMENT_STYLE),
