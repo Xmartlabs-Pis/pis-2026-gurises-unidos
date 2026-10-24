@@ -135,7 +135,7 @@ export async function createUser(
     return { restoreConfirmationRequired: true, values };
   }
 
-  await sendInvitationEmail(outcome.user, outcome.token);
+  await sendInvitationEmail(outcome.user, outcome.token, Number(session.user.id));
 
   if (outcome.kind === 'restored') {
     revalidatePath('/management/users');
@@ -162,7 +162,7 @@ export async function resendInvitation(userId: number): Promise<ResendInvitation
 
   const target = await prisma.user.findUnique({
     where: { id: targetId, deletedAt: null },
-    select: { id: true, firstName: true, email: true, status: true },
+    select: { id: true, firstName: true, email: true, role: true, status: true },
   });
 
   if (!target) {
@@ -182,7 +182,7 @@ export async function resendInvitation(userId: number): Promise<ResendInvitation
     return { error: 'No se pudo reenviar la invitación. Intentá de nuevo.' };
   }
 
-  if (!(await sendInvitationEmail(target, token))) {
+  if (!(await sendInvitationEmail(target, token, actor.id))) {
     return { error: 'No se pudo enviar el correo de invitación. Intentá de nuevo.' };
   }
 
