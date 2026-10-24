@@ -1,5 +1,6 @@
 import { createProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { requireUser } from '@/lib/auth/require-user';
 import { ProjectForm } from '@/components/projects/form/project-form';
@@ -12,9 +13,7 @@ export default async function NewProjectPage() {
     await Promise.all([
       prisma.user.findMany({
         where: {
-          role: 'coordinator',
-          status: 'active',
-          deletedAt: null,
+          ...ASSIGNABLE_LEAD_COORDINATOR_WHERE,
           ...(user.role === 'coordinator' ? { id: user.id } : {}),
         },
         orderBy: { firstName: 'asc' },
