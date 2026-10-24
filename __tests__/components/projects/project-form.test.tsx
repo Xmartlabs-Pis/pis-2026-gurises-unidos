@@ -504,3 +504,29 @@ it.each(['create', 'edit'] as const)(
     expect(field.textContent).toContain('Cooperación Internacional');
   }
 );
+
+it.each([false, true])(
+  'preserves the assigned coordinator in form data when coordinator selection is %s',
+  (canSelectCoordinator) => {
+    const { container } = render(
+      <ProjectForm
+        canSelectCoordinator={canSelectCoordinator}
+        beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+        strategicLines={[{ id: 1, name: 'Community Support' }]}
+        topics={[{ id: 1, name: 'Education' }]}
+        currentYear={2026}
+        coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
+        departments={[]}
+        initialValues={{ leadCoordinatorId: '2' }}
+        submitAction={vi.fn()}
+      />
+    );
+
+    const coordinatorField = screen.getByRole('combobox', { name: 'Coordinador responsable' });
+    expect((coordinatorField as HTMLButtonElement).disabled).toBe(!canSelectCoordinator);
+    expect(coordinatorField.textContent).toContain('Test Coordinator');
+    expect(new FormData(container.querySelector('form')!).getAll('leadCoordinatorId')).toEqual([
+      '2',
+    ]);
+  }
+);
