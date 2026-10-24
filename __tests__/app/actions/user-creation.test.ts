@@ -59,9 +59,12 @@ function buildFormData(overrides: Record<string, string> = {}) {
 }
 
 function setupTransaction({ userId = 42, deletedUserId = null as number | null } = {}) {
-  const userCreate = vi
-    .fn()
-    .mockResolvedValue({ id: userId, firstName: 'Ana', email: 'ana@gmail.com', role: 'coordinator' });
+  const userCreate = vi.fn().mockResolvedValue({
+    id: userId,
+    firstName: 'Ana',
+    email: 'ana@gmail.com',
+    role: 'coordinator',
+  });
   const userUpdate = vi.fn().mockResolvedValue({
     id: deletedUserId,
     firstName: 'Ana',
