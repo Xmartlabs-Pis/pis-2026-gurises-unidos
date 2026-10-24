@@ -162,7 +162,7 @@ export async function resendInvitation(userId: number): Promise<ResendInvitation
 
   const target = await prisma.user.findUnique({
     where: { id: targetId, deletedAt: null },
-    select: { id: true, firstName: true, email: true, status: true },
+    select: { id: true, firstName: true, email: true, role: true, status: true },
   });
 
   if (!target) {

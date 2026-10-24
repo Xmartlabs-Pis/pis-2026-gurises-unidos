@@ -12,16 +12,8 @@ vi.mock('@/lib/email/client', () => ({ sendEmail: sendEmailMock }));
 
 import { sendInvitationEmail } from '@/lib/users/invitation';
 
-const USER = { id: 42, firstName: 'Ana', email: 'ana@gmail.com' };
+const USER = { id: 42, firstName: 'Ana', email: 'ana@gmail.com', role: 'coordinator' as const };
 const INVITER_ID = 7;
-
-function mockUsers(invitee: unknown, inviter: unknown) {
-  findUniqueMock.mockImplementation(async ({ where }: { where: { id: number } }) => {
-    if (where.id === USER.id) return invitee;
-    if (where.id === INVITER_ID) return inviter;
-    return null;
-  });
-}
 
 beforeEach(() => {
   findUniqueMock.mockReset();
@@ -36,10 +28,15 @@ afterEach(() => {
 
 describe('sendInvitationEmail', () => {
   test('names the current inviter and uses the invitee role', async () => {
-    mockUsers({ role: 'coordinator' }, { firstName: 'María', lastName: 'Rodríguez' });
+    findUniqueMock.mockResolvedValue({ firstName: 'María', lastName: 'Rodríguez' });
 
     await expect(sendInvitationEmail(USER, 'token-1', INVITER_ID)).resolves.toBe(true);
 
+    expect(findUniqueMock).toHaveBeenCalledTimes(1);
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { id: INVITER_ID },
+      select: { firstName: true, lastName: true },
+    });
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
     const { to, react } = sendEmailMock.mock.calls[0][0];
     expect(to).toBe(USER.email);
@@ -54,9 +51,11 @@ describe('sendInvitationEmail', () => {
   });
 
   test('falls back to a generic inviter when the actor cannot be loaded', async () => {
-    mockUsers({ role: 'admin' }, null);
+    findUniqueMock.mockResolvedValue(null);
 
-    await expect(sendInvitationEmail(USER, 'token-1', INVITER_ID)).resolves.toBe(true);
+    await expect(
+      sendInvitationEmail({ ...USER, role: 'admin' }, 'token-1', INVITER_ID)
+    ).resolves.toBe(true);
 
     expect(sendEmailMock.mock.calls[0][0].react.props).toMatchObject({
       invitedByName: 'un administrador',
@@ -64,12 +63,5 @@ describe('sendInvitationEmail', () => {
       roleLabel: 'Administrador',
       expiresInDays: 7,
     });
-  });
-
-  test('does not send when the invitee no longer exists', async () => {
-    mockUsers(null, { firstName: 'María', lastName: 'Rodríguez' });
-
-    await expect(sendInvitationEmail(USER, 'token-1', INVITER_ID)).resolves.toBe(false);
-    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 });

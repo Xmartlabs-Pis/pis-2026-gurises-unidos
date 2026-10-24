@@ -61,10 +61,13 @@ function buildFormData(overrides: Record<string, string> = {}) {
 function setupTransaction({ userId = 42, deletedUserId = null as number | null } = {}) {
   const userCreate = vi
     .fn()
-    .mockResolvedValue({ id: userId, firstName: 'Ana', email: 'ana@gmail.com' });
-  const userUpdate = vi
-    .fn()
-    .mockResolvedValue({ id: deletedUserId, firstName: 'Ana', email: 'ana@gmail.com' });
+    .mockResolvedValue({ id: userId, firstName: 'Ana', email: 'ana@gmail.com', role: 'coordinator' });
+  const userUpdate = vi.fn().mockResolvedValue({
+    id: deletedUserId,
+    firstName: 'Ana',
+    email: 'ana@gmail.com',
+    role: 'coordinator',
+  });
   const userFindFirst = vi
     .fn()
     .mockResolvedValue(deletedUserId === null ? null : { id: deletedUserId });
@@ -156,7 +159,7 @@ describe('createUser', () => {
     );
 
     expect(sendInvitationEmailMock).toHaveBeenCalledWith(
-      { id: 42, firstName: 'Ana', email: 'ana@gmail.com' },
+      { id: 42, firstName: 'Ana', email: 'ana@gmail.com', role: 'coordinator' },
       'invitation-token',
       7
     );
@@ -235,7 +238,7 @@ describe('createUser', () => {
     });
     expect(createUserTokenMock).toHaveBeenCalledWith(expect.anything(), 13, 'invitation');
     expect(sendInvitationEmailMock).toHaveBeenCalledWith(
-      { id: 13, firstName: 'Ana', email: 'ana@gmail.com' },
+      { id: 13, firstName: 'Ana', email: 'ana@gmail.com', role: 'coordinator' },
       'invitation-token',
       7
     );

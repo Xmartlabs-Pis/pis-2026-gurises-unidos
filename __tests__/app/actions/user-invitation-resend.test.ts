@@ -13,7 +13,13 @@ vi.mock('@/lib/auth/require-user', () => ({ requireUser: requireUserMock }));
 vi.mock('@/lib/auth/user-tokens', () => ({ createUserToken: createUserTokenMock }));
 vi.mock('@/lib/users/invitation', () => ({ sendInvitationEmail: sendInvitationEmailMock }));
 
-const TARGET = { id: 42, firstName: 'Ana', email: 'ana@gmail.com', status: 'pendingInvitation' };
+const TARGET = {
+  id: 42,
+  firstName: 'Ana',
+  email: 'ana@gmail.com',
+  role: 'coordinator',
+  status: 'pendingInvitation',
+};
 
 beforeEach(() => {
   requireUserMock.mockResolvedValue({ id: 7, role: 'admin', status: 'active' });
