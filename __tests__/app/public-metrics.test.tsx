@@ -3,7 +3,6 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import Home from '@/app/(public)/page';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
-import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
@@ -120,7 +119,6 @@ test('uses the requested published year for all annual data', async () => {
   expect(screen.getByRole('group', { name: 'Impacto 2024' })).toBeDefined();
   expect(getMetricValues).toHaveBeenNthCalledWith(1, 2024);
   expect(getMetricValues).toHaveBeenNthCalledWith(2, 2023);
-  expect(getDepartmentBeneficiaries).toHaveBeenCalledWith(2024);
   expect(getTopicStatistics).toHaveBeenCalledWith(2024);
   expect(ProjectsByTopic).toHaveBeenCalledWith(expect.objectContaining({ year: 2024 }), undefined);
 });
