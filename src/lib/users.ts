@@ -30,5 +30,9 @@ function getRandomCharacter(characters: string) {
 }
 
 function getRandomIndex(length: number) {
-  return Math.floor(Math.random() * length);
+  const limit = Math.floor(0x1_0000_0000 / length) * length;
+  const buffer = new Uint32Array(1);
+  do crypto.getRandomValues(buffer);
+  while (buffer[0] >= limit);
+  return buffer[0] % length;
 }

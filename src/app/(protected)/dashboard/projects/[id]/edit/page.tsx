@@ -8,6 +8,7 @@ import { updateProject } from '@/app/actions/projects';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { projectToFormValues } from '@/components/projects/form/project-to-form-values';
 import prisma from '@/lib/prisma';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import {
   getActiveBeneficiaryCategories,
   getBeneficiaryCategoryLabels,
@@ -58,10 +59,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
   ] = await Promise.all([
     prisma.user.findMany({
       where: {
-        OR: [
-          { role: 'coordinator', status: 'active', deletedAt: null },
-          { id: project.leadCoordinatorId },
-        ],
+        OR: [ASSIGNABLE_LEAD_COORDINATOR_WHERE, { id: project.leadCoordinatorId }],
       },
       orderBy: { firstName: 'asc' },
       select: { id: true, firstName: true, lastName: true },
