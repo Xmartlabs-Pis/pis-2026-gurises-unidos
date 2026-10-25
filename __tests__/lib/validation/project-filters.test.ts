@@ -8,6 +8,7 @@ const OPTIONS = {
   years: [2026, 2025],
   departments: [{ id: 2 }],
   topics: [{ id: 1 }],
+  strategicLines: [{ id: 5 }],
 };
 
 describe('resolveProjectListFilters', () => {
@@ -20,6 +21,7 @@ describe('resolveProjectListFilters', () => {
       search: undefined,
       departmentId: undefined,
       topicId: undefined,
+      strategicLineId: undefined,
     });
     expect(filters).toMatchObject({
       status: 'active',
@@ -36,6 +38,7 @@ describe('resolveProjectListFilters', () => {
         beneficiaryYear: '2025',
         departmentId: '2',
         topicId: '1',
+        strategicLineId: '5',
         search: 'centro',
       },
       OPTIONS
@@ -47,6 +50,7 @@ describe('resolveProjectListFilters', () => {
       search: 'centro',
       departmentId: 2,
       topicId: 1,
+      strategicLineId: 5,
     });
     expect(filters).toMatchObject({
       status: 'inactive',
@@ -54,6 +58,7 @@ describe('resolveProjectListFilters', () => {
       search: 'centro',
       departmentId: 2,
       topicId: 1,
+      strategicLineId: 5,
     });
   });
 
@@ -78,9 +83,9 @@ describe('resolveProjectListFilters', () => {
     expect(filters).toMatchObject({ status: 'active', beneficiaryYear: 2026 });
   });
 
-  it('drops years, departments and topics that are not available', () => {
+  it('drops years, departments, topics and strategic lines that are not available', () => {
     const { canonical, filters } = resolveProjectListFilters(
-      { beneficiaryYear: '2010', departmentId: '999', topicId: '7' },
+      { beneficiaryYear: '2010', departmentId: '999', topicId: '7', strategicLineId: '1' },
       OPTIONS
     );
 
@@ -88,11 +93,13 @@ describe('resolveProjectListFilters', () => {
       beneficiaryYear: undefined,
       departmentId: undefined,
       topicId: undefined,
+      strategicLineId: undefined,
     });
     expect(filters).toMatchObject({
       beneficiaryYear: 2026,
       departmentId: undefined,
       topicId: undefined,
+      strategicLineId: undefined,
     });
   });
 

@@ -370,13 +370,15 @@ describe('listBeneficiaryYears', () => {
 });
 
 describe('listProjectFilterOptions', () => {
-  test('returns all departments and only active topics, including those without projects', async () => {
+  test('returns all departments and only active topics and strategic lines, including those without projects', async () => {
     prismaMock.department.findMany.mockResolvedValue([MONTEVIDEO]);
     prismaMock.topic.findMany.mockResolvedValue([{ id: 1, name: 'Education' }]);
+    prismaMock.strategicLine.findMany.mockResolvedValue([{ id: 5, name: 'Formación' }]);
 
     expect(await listProjectFilterOptions()).toEqual({
       departments: [MONTEVIDEO],
       topics: [{ id: 1, name: 'Education' }],
+      strategicLines: [{ id: 5, name: 'Formación' }],
     });
     expect(prismaMock.department.findMany).toHaveBeenCalledWith({
       select: { id: true, name: true },
@@ -387,13 +389,19 @@ describe('listProjectFilterOptions', () => {
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
+    expect(prismaMock.strategicLine.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
   });
 });
 
-test('combines topic and department with the other project filters', async () => {
+test('combines topic, department and strategic line with the other project filters', async () => {
   await listWith({
     topicId: '2',
     departmentId: '3',
+    strategicLineId: '5',
     beneficiaryYear: '2025',
     status: 'active',
     intensity: 'high',
@@ -403,6 +411,7 @@ test('combines topic and department with the other project filters', async () =>
     deletedAt: null,
     topics: { some: { id: 2 } },
     departments: { some: { id: 3 } },
+    strategicLines: { some: { id: 5 } },
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',
@@ -410,9 +419,12 @@ test('combines topic and department with the other project filters', async () =>
   });
 });
 
-test('ignores invalid topic and department IDs', () => {
-  expect(parseProjectFilters({ topicId: '-1', departmentId: 'invalid' })).toMatchObject({
+test('ignores invalid topic, department and strategic line IDs', () => {
+  expect(
+    parseProjectFilters({ topicId: '-1', departmentId: 'invalid', strategicLineId: '2.5' })
+  ).toMatchObject({
     topicId: undefined,
     departmentId: undefined,
+    strategicLineId: undefined,
   });
 });

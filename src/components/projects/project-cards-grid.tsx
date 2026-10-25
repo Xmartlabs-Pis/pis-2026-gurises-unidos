@@ -18,6 +18,7 @@ export type ProjectListQuery = {
   search?: string;
   departmentId?: string;
   topicId?: string;
+  strategicLineId?: string;
 };
 
 type ProjectCardsGridProps = {
