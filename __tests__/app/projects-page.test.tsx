@@ -27,6 +27,7 @@ type ListingProps = {
   beneficiaryYear?: number;
   departmentId?: number;
   topicId?: number;
+  strategicLineId?: number;
   search?: string;
 };
 
@@ -45,6 +46,7 @@ beforeEach(() => {
   mocks.listProjectFilterOptions.mockResolvedValue({
     departments: [{ id: 2, name: 'Montevideo' }],
     topics: [{ id: 1, name: 'Educación' }],
+    strategicLines: [{ id: 5, name: 'Formación' }],
   });
   mocks.listProjects.mockResolvedValue({ items: [], total: 0, page: 1, totalPages: 0 });
 });
@@ -63,6 +65,7 @@ describe('ProjectsPage url params', () => {
       beneficiaryYear: '2025',
       departmentId: '2',
       topicId: '1',
+      strategicLineId: '5',
       search: 'centro',
     });
 
@@ -72,6 +75,7 @@ describe('ProjectsPage url params', () => {
       beneficiaryYear: 2025,
       departmentId: 2,
       topicId: 1,
+      strategicLineId: 5,
       search: 'centro',
     });
   });
@@ -89,6 +93,7 @@ describe('ProjectsPage url params', () => {
     [{ beneficiaryYear: 'abc' }, '/dashboard/projects'],
     [{ beneficiaryYear: '2010' }, '/dashboard/projects'],
     [{ departmentId: '999', topicId: '1' }, '/dashboard/projects?topicId=1'],
+    [{ strategicLineId: '999', topicId: '1' }, '/dashboard/projects?topicId=1'],
     [{ status: ['inactive', 'active'] }, '/dashboard/projects?status=inactive'],
     [{ search: '   ' }, '/dashboard/projects'],
     [{ page: '3', status: 'inactive' }, '/dashboard/projects?status=inactive'],

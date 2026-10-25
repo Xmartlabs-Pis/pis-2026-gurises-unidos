@@ -480,6 +480,7 @@ export async function loadProjectsPage(
     search?: string;
     departmentId?: string;
     topicId?: string;
+    strategicLineId?: string;
   },
   page: number
 ): Promise<ProjectListPage> {
