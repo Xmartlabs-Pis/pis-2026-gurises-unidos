@@ -1,4 +1,4 @@
-import { UruguayMapLoader } from '@/components/uruguay-map-loader';
+import { UruguayMapLoader } from '@/components/map/uruguay-map-loader';
 import { getDepartmentProjectCounts } from '@/lib/projects/department-project-counts';
 
 const MAX_DEPARTMENT_BUBBLES = 4;
