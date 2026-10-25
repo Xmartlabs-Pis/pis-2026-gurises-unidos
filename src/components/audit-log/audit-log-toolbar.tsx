@@ -20,7 +20,7 @@ import { ALL_FILTER_VALUE } from '@/lib/url-filters';
 import { fullName } from '@/lib/users/format';
 import type { AuditLogFilters } from '@/lib/validation/audit-log-filters';
 
-const FILTER_KEYS = ['entity', 'authorId', 'from', 'to'];
+const FILTER_KEYS: (keyof AuditLogFilters)[] = ['entity', 'authorId', 'from', 'to'];
 
 type AuditLogToolbarProps = {
   filters: AuditLogFilters;
@@ -31,11 +31,11 @@ type AuditLogToolbarProps = {
 export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProps) {
   const { updateFilters, clearFilters } = useUrlFilters({ resetKeys: ['page'] });
 
-  const activeFilterCount =
-    Number(filters.entity !== undefined) +
-    Number(filters.authorId !== undefined) +
-    Number(filters.from !== undefined) +
-    Number(filters.to !== undefined);
+  const activeFilterCount = FILTER_KEYS.filter((key) => filters[key] !== undefined).length;
+
+  function commitDate(key: 'from' | 'to', value: string) {
+    if (value !== (filters[key] ?? '')) updateFilters({ [key]: value || null });
+  }
 
   const entityOptions = [
     { value: ALL_FILTER_VALUE, label: 'Todas' },
@@ -145,9 +145,13 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
               <label key={key} className="flex flex-col gap-2">
                 <span>{label}</span>
                 <Input
+                  key={value}
                   type="date"
-                  value={value ?? ''}
-                  onChange={(event) => updateFilters({ [key]: event.target.value || null })}
+                  defaultValue={value ?? ''}
+                  onBlur={(event) => commitDate(key, event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') commitDate(key, event.currentTarget.value);
+                  }}
                 />
               </label>
             ))}

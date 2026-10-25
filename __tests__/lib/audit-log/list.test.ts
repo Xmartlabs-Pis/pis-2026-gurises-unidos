@@ -43,10 +43,11 @@ describe('buildAuditLogWhere', () => {
     });
   });
 
-  test('keeps user updates only when they change the status', () => {
+  test('keeps user updates only when they change the status or the role', () => {
     expect(buildAuditLogWhere(parseAuditLogFilters({})).OR).toEqual([
       { NOT: { entity: 'user', action: 'update' } },
       { details: { path: ['changes'], array_contains: [{ field: 'status' }] } },
+      { details: { path: ['changes'], array_contains: [{ field: 'role' }] } },
     ]);
   });
 

@@ -37,9 +37,10 @@ export type AuditLogListItem = Omit<ListedAuditLogRow, 'details'> & {
 const LISTED_ACTIONS_WHERE = { in: [...LISTED_AUDIT_ACTIONS] };
 const LISTED_ENTITIES_WHERE = { in: [...LISTED_AUDIT_ENTITIES] };
 
-const ONLY_USER_STATUS_UPDATES: Prisma.AuditLogWhereInput[] = [
+const ONLY_USER_STATUS_AND_ROLE_UPDATES: Prisma.AuditLogWhereInput[] = [
   { NOT: { entity: 'user', action: 'update' } },
   { details: { path: ['changes'], array_contains: [{ field: 'status' }] } },
+  { details: { path: ['changes'], array_contains: [{ field: 'role' }] } },
 ];
 
 export type AuditLogPage = {
@@ -54,7 +55,7 @@ export function buildAuditLogWhere(filters: AuditLogFilters): Prisma.AuditLogWhe
   const where: Prisma.AuditLogWhereInput = {
     action: filters.action ?? LISTED_ACTIONS_WHERE,
     entity: filters.entity ?? LISTED_ENTITIES_WHERE,
-    OR: ONLY_USER_STATUS_UPDATES,
+    OR: ONLY_USER_STATUS_AND_ROLE_UPDATES,
   };
 
   if (filters.authorId) {
@@ -148,7 +149,7 @@ export async function listAuditLogAuthors() {
         some: {
           action: LISTED_ACTIONS_WHERE,
           entity: LISTED_ENTITIES_WHERE,
-          OR: ONLY_USER_STATUS_UPDATES,
+          OR: ONLY_USER_STATUS_AND_ROLE_UPDATES,
         },
       },
     },

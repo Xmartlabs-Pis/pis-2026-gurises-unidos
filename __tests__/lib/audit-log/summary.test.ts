@@ -17,6 +17,22 @@ describe('describeAuditDetails', () => {
     ).toBe('Estado: Invitación pendiente → Activo');
   });
 
+  test('describes a user role change with readable values', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'user',
+          details: {
+            changedFields: ['firstName', 'role'],
+            changes: [{ field: 'role', from: 'coordinator', to: 'admin' }],
+          },
+        },
+        {}
+      )
+    ).toBe('Rol: Coordinador → Administrador');
+  });
+
   test('describes a restored user', () => {
     expect(
       describeAuditDetails({ action: 'creation', entity: 'user', details: { restored: true } }, {})
