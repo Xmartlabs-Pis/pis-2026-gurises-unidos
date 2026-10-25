@@ -168,7 +168,9 @@ archivos corren de a uno (`fileParallelism: false`) porque comparten la base. En
 workflow `Integration`, con un Postgres propio.
 
 `integration/setup.ts` mockea lo que depende de Next: `auth()` devuelve la sesión que armes con
-`signInAs`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no hace nada.
+`signInAs` (`signInAs(id, role, { remember: true })` simula "recordarme"),
+`signIn` es un `vi.fn()`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no
+hace nada.
 
 ### Escribir un test nuevo
 
@@ -204,7 +206,7 @@ afterEach(async () => {
 describe('someAction (integration)', () => {
   test('does the thing', async () => {
     const id = await createFixture();
-    signInAs(seed.adminId);
+    signInAs(seed.adminId, 'admin');
 
     await expect(someAction(id, {}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/somewhere$/);
 
@@ -223,7 +225,7 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Cada test crea sus propios datos** y guarda los ids, y el `afterEach` los borra. Incluí los
   `AuditLog` y las filas hijas que genere la action. Crear los datos dentro de cada test, y no en un
   `beforeEach`, deja que cada uno arme exactamente lo que necesita.
-- **Logueate antes de llamar a la action** con `signInAs(userId)`. La sesión se cierra sola al
+- **Logueate antes de llamar a la action** con `signInAs(userId, role)`. La sesión se cierra sola al
   terminar cada test. Sin `signInAs`, la action ve un usuario no logueado.
 - **Anclá los regex de redirect** (`^...$`): comparar un substring deja pasar
   `/dashboard/projects/11` cuando esperabas `/dashboard/projects/1`.
