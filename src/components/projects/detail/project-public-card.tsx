@@ -18,7 +18,7 @@ export function ProjectPublicCard({ name, description, coverPhoto }: ProjectPubl
       </div>
       <div className="min-w-0">
         <h2 className="text-sm font-semibold">Tarjeta pública</h2>
-        <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-5">
+        <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-5 break-words">
           {description ?? 'Este proyecto todavía no tiene una descripción pública.'}
         </p>
         <Link

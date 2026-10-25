@@ -242,30 +242,33 @@ describe('createProject', () => {
     });
   });
 
-  test('allows a coordinator to create a project', async () => {
-    authMock.mockResolvedValue({ user: { id: '3' } });
-    findUserMock.mockResolvedValue({
-      id: 3,
-      role: 'coordinator',
-      status: 'active',
-      deletedAt: null,
-    });
-    const { projectCreate } = setupTransaction();
+  test.each([undefined, '', '1', 'invalid'])(
+    'assigns the signed-in coordinator regardless of the submitted coordinator: %s',
+    async (leadCoordinatorId) => {
+      authMock.mockResolvedValue({ user: { id: '3' } });
+      findUserMock.mockResolvedValue({
+        id: 3,
+        role: 'coordinator',
+        status: 'active',
+        deletedAt: null,
+      });
+      const { projectCreate } = setupTransaction();
 
-    await expect(createProject(EMPTY_STATE, buildFormData())).rejects.toThrow(
-      'NEXT_REDIRECT:/dashboard/projects/42'
-    );
+      await expect(
+        createProject(EMPTY_STATE, buildFormData({ leadCoordinatorId }))
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
 
-    expect(projectCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ createdBy: 3 }),
-    });
-    expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
-      authorId: 3,
-      action: 'creation',
-      entity: 'project',
-      entityId: 42,
-    });
-  });
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ createdBy: 3, leadCoordinatorId: 3 }),
+      });
+      expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
+        authorId: 3,
+        action: 'creation',
+        entity: 'project',
+        entityId: 42,
+      });
+    }
+  );
 
   test('defaults beneficiary counts to 0 and year to the current year when omitted', async () => {
     const { beneficiaryCreate } = setupTransaction();

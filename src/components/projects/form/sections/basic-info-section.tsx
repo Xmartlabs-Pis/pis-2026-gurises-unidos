@@ -14,9 +14,13 @@ import type { SectionProps } from './section-props';
 export function BasicInfoSection({
   yearOptions,
   coordinatorOptions,
+  canSelectCoordinator,
   topics,
   strategicLines,
-}: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'topics' | 'strategicLines'>) {
+}: Pick<
+  SectionProps,
+  'yearOptions' | 'coordinatorOptions' | 'canSelectCoordinator' | 'topics' | 'strategicLines'
+>) {
   const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
@@ -25,6 +29,9 @@ export function BasicInfoSection({
   const status = useWatch<ProjectFormValues, 'status'>({ name: 'status' });
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
+  const leadCoordinatorId = useWatch<ProjectFormValues, 'leadCoordinatorId'>({
+    name: 'leadCoordinatorId',
+  });
   const startYearOptions = yearOptions.filter(
     ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
   );
@@ -106,11 +113,15 @@ export function BasicInfoSection({
         label="Coordinador responsable"
         placeholder="Seleccionar coordinador..."
         options={coordinatorOptions}
+        disabled={!canSelectCoordinator}
       />
+      {!canSelectCoordinator && (
+        <input type="hidden" name="leadCoordinatorId" value={leadCoordinatorId ?? ''} />
+      )}
       <MultiSelectField
         id="strategicLineIds"
         name="strategicLineIds"
-        label="Líneas estratégicas"
+        label="Líneas Estratégicas"
         placeholder="Seleccionar líneas estratégicas..."
         options={strategicLineOptions}
         emptyMessage="No hay líneas estratégicas disponibles."

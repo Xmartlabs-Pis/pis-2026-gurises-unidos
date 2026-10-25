@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import { requireUser } from '@/lib/auth/require-user';
 import { canEditProject } from '@/lib/projects/permissions';
 import { mapProjectDbError } from '@/lib/projects/map-project-db-error';
@@ -49,9 +50,7 @@ async function validateRelations(
   const coordinator = await tx.user.findFirst({
     where: {
       id: coordinatorId,
-      ...(coordinatorId === currentCoordinatorId
-        ? {}
-        : { role: 'coordinator', status: 'active', deletedAt: null }),
+      ...(coordinatorId === currentCoordinatorId ? {} : ASSIGNABLE_LEAD_COORDINATOR_WHERE),
     },
     select: { id: true },
   });
@@ -188,6 +187,9 @@ export async function createProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   const user = await requireUser();
+  if (user.role === 'coordinator') {
+    formData.set('leadCoordinatorId', String(user.id));
+  }
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
   const { keys, beneficiaryData } = parsed;
@@ -293,6 +295,15 @@ export async function updateProject(
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
         if (!canEditProject(user, previous))
           return { formError: 'No tenés permiso para editar este proyecto.' };
+        if (user.role !== 'admin' && projectData.leadCoordinatorId !== previous.leadCoordinatorId) {
+          return {
+            errors: {
+              leadCoordinatorId: [
+                'Solo un administrador puede cambiar el coordinador responsable.',
+              ],
+            },
+          };
+        }
         const currentTopicIds = previous.topics.map(({ id }) => id);
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);

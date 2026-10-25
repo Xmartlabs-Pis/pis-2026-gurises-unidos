@@ -745,6 +745,42 @@ describe('project review regressions', () => {
     expect(mocks.updateProject).toHaveBeenCalled();
   });
 
+  it('rejects reassignment by the lead coordinator even with an admin JWT', async () => {
+    mocks.findUser.mockResolvedValue({
+      id: 2,
+      role: 'coordinator',
+      status: 'active',
+      deletedAt: null,
+    });
+
+    expect(await updateProject(10, {}, formData({ leadCoordinatorId: '9' }))).toEqual({
+      errors: {
+        leadCoordinatorId: ['Solo un administrador puede cambiar el coordinador responsable.'],
+      },
+    });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it('allows an admin to reassign the lead coordinator', async () => {
+    mocks.findCoordinator.mockResolvedValue({ id: 9 });
+
+    await expect(updateProject(10, {}, formData({ leadCoordinatorId: '9' }))).rejects.toThrow(
+      'Redirect: /dashboard/projects/10'
+    );
+    expect(mocks.findCoordinator).toHaveBeenCalledWith({
+      where: { id: 9, role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null },
+      select: { id: true },
+    });
+    expect(mocks.updateProject).toHaveBeenCalledWith({
+      where: { id: 10 },
+      data: expect.objectContaining({ leadCoordinatorId: 9 }),
+    });
+  });
+
   it.each([
     null,
     { id: 7, role: 'admin', status: 'disabled', deletedAt: null },
@@ -783,7 +819,7 @@ describe('project review regressions', () => {
         errors: { leadCoordinatorId: ['Elegí un coordinador válido'] },
       });
       expect(mocks.findCoordinator).toHaveBeenCalledWith({
-        where: { id: 9, role: 'coordinator', status: 'active', deletedAt: null },
+        where: { id: 9, role: { in: ['coordinator', 'admin'] }, status: 'active', deletedAt: null },
         select: { id: true },
       });
       expect(mocks.createProject).not.toHaveBeenCalled();

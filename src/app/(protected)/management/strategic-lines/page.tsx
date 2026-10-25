@@ -19,7 +19,7 @@ export default async function StrategicLinesPage() {
         <PageHeader
           className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
           eyebrow="Administración"
-          title="Líneas estratégicas"
+          title="Líneas Estratégicas"
           description="Etiquetas para clasificar los proyectos."
         />
 

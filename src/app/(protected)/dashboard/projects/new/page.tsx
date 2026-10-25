@@ -1,17 +1,21 @@
 import { createProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { requireUser } from '@/lib/auth/require-user';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { getRandomProjectPlaceholder } from '@/lib/projects/project-placeholders';
 
 export default async function NewProjectPage() {
-  await requireUser();
+  const user = await requireUser();
 
   const [coordinators, departments, topics, strategicLines, beneficiaryCategories] =
     await Promise.all([
       prisma.user.findMany({
-        where: { role: 'coordinator', status: 'active', deletedAt: null },
+        where: {
+          ...ASSIGNABLE_LEAD_COORDINATOR_WHERE,
+          ...(user.role === 'coordinator' ? { id: user.id } : {}),
+        },
         orderBy: { firstName: 'asc' },
         select: { id: true, firstName: true, lastName: true },
       }),
@@ -40,8 +44,12 @@ export default async function NewProjectPage() {
       currentYear={new Date().getFullYear()}
       coordinators={coordinators}
       departments={departments}
-      initialValues={{ coverPhotoUrl: getRandomProjectPlaceholder() }}
+      initialValues={{
+        coverPhotoUrl: getRandomProjectPlaceholder(),
+        leadCoordinatorId: user.role === 'coordinator' ? String(user.id) : '',
+      }}
       submitAction={createProject}
+      canSelectCoordinator={user.role === 'admin'}
     />
   );
 }

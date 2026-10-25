@@ -19,8 +19,8 @@ import {
 } from '@/components/ui/sidebar';
 import logo from '@/assets/logo.png';
 import { AppSidebarFooter } from './footer';
-import { filterNavGroups, flattenNavItems, NAV_GROUPS } from './navigation';
-import { SidebarCollapsibleNavItem, SidebarNavItem } from './nav-item';
+import { filterNavGroups, NAV_GROUPS } from './navigation';
+import { SidebarNavItem } from './nav-item';
 import Link from 'next/link';
 
 interface Props {
@@ -29,7 +29,7 @@ interface Props {
 
 export function AppSidebar({ user }: Props) {
   const pathname = usePathname();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { setOpenMobile } = useSidebar();
   const navGroups = filterNavGroups(NAV_GROUPS, user.role);
 
   return (
@@ -70,26 +70,18 @@ export function AppSidebar({ user }: Props) {
       </SidebarHeader>
 
       <SidebarContent className="space-y-2">
-        {navGroups.map((group) => {
-          const items = isMobile ? flattenNavItems(group.items) : group.items;
-
-          return (
-            <SidebarGroup key={group.id} className="first:pb-0 last:pt-0">
-              <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu className="gap-y-1">
-                  {items.map((item) =>
-                    !isMobile && item.children?.length ? (
-                      <SidebarCollapsibleNavItem key={item.id} item={item} pathname={pathname} />
-                    ) : (
-                      <SidebarNavItem key={item.id} item={item} pathname={pathname} />
-                    )
-                  )}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
+        {navGroups.map((group) => (
+          <SidebarGroup key={group.id} className="first:pb-0 last:pt-0">
+            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-y-1">
+                {group.items.map((item) => (
+                  <SidebarNavItem key={item.id} item={item} pathname={pathname} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <AppSidebarFooter user={user} />
