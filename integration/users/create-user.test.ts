@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createUser } from '@/app/actions/users';
 import { hashToken } from '@/lib/auth/user-tokens';
 import { acceptInvitation } from '@/app/actions/invitation';
@@ -6,6 +6,8 @@ import prisma from '@/lib/prisma';
 import { loadSeedData, type SeedData } from '../fixtures';
 import { signInAs } from '../session';
 import { createTestUser, deleteTestUsers } from './user-helpers';
+
+vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ set: vi.fn() })) }));
 
 const PASSWORD = 'CreatedUser1';
 const INVITATION_TOKEN = 'integration-invitation-token';
@@ -208,9 +210,7 @@ describe('createUser (integration)', () => {
     formData.set('newPassword', PASSWORD);
     formData.set('confirmNewPassword', PASSWORD);
 
-    await expect(acceptInvitation({}, formData)).rejects.toThrow(
-      /^NEXT_REDIRECT:\/login\?invitationAccepted=1$/
-    );
+    await expect(acceptInvitation({}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/dashboard$/);
 
     const activated = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     expect(activated.status).toBe('active');
