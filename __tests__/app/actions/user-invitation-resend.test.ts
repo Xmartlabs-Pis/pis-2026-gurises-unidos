@@ -13,7 +13,13 @@ vi.mock('@/lib/auth/require-user', () => ({ requireUser: requireUserMock }));
 vi.mock('@/lib/auth/user-tokens', () => ({ createUserToken: createUserTokenMock }));
 vi.mock('@/lib/users/invitation', () => ({ sendInvitationEmail: sendInvitationEmailMock }));
 
-const TARGET = { id: 42, firstName: 'Ana', email: 'ana@gmail.com', status: 'pendingInvitation' };
+const TARGET = {
+  id: 42,
+  firstName: 'Ana',
+  email: 'ana@gmail.com',
+  role: 'coordinator',
+  status: 'pendingInvitation',
+};
 
 beforeEach(() => {
   requireUserMock.mockResolvedValue({ id: 7, role: 'admin', status: 'active' });
@@ -31,7 +37,7 @@ describe('resendInvitation', () => {
     await expect(resendInvitation(42)).resolves.toEqual({ success: true });
 
     expect(createUserTokenMock).toHaveBeenCalledWith(expect.anything(), 42, 'invitation');
-    expect(sendInvitationEmailMock).toHaveBeenCalledWith(TARGET, 'new-token');
+    expect(sendInvitationEmailMock).toHaveBeenCalledWith(TARGET, 'new-token', 7);
   });
 
   test('reports an error when the email could not be sent', async () => {
