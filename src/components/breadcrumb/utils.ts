@@ -12,6 +12,7 @@ const STATIC_SEGMENTS = new Set([
   'topics',
   'beneficiary-categories',
   'strategic-lines',
+  'history',
   'new',
   'edit',
 ]);
@@ -26,6 +27,7 @@ export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   'report-error': 'Error al exportar',
   'beneficiary-categories': 'Categorías de Beneficiarios',
   'strategic-lines': 'Líneas Estratégicas',
+  history: 'Historial de cambios',
   new: 'Nuevo',
   edit: 'Editar',
 };

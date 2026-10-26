@@ -32,6 +32,10 @@ export const prismaMock = {
   department: {
     findMany: vi.fn(),
   },
+  auditLog: {
+    findMany: vi.fn(),
+    count: vi.fn(),
+  },
   $transaction: vi.fn(),
 };
 
