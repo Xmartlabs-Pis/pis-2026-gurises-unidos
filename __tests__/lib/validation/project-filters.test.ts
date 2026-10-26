@@ -9,6 +9,7 @@ const OPTIONS = {
   departments: [{ id: 2 }],
   topics: [{ id: 1 }],
   strategicLines: [{ id: 5 }],
+  beneficiaryCategories: [{ id: 3 }],
 };
 
 describe('resolveProjectListFilters', () => {
@@ -22,6 +23,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: undefined,
       topicId: undefined,
       strategicLineId: undefined,
+      beneficiaryCategoryId: undefined,
     });
     expect(filters).toMatchObject({
       status: 'active',
@@ -39,6 +41,7 @@ describe('resolveProjectListFilters', () => {
         departmentId: '2',
         topicId: '1',
         strategicLineId: '5',
+        beneficiaryCategoryId: '3',
         search: 'centro',
       },
       OPTIONS
@@ -51,6 +54,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: 2,
       topicId: 1,
       strategicLineId: 5,
+      beneficiaryCategoryId: 3,
     });
     expect(filters).toMatchObject({
       status: 'inactive',
@@ -59,6 +63,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: 2,
       topicId: 1,
       strategicLineId: 5,
+      beneficiaryCategoryId: 3,
     });
   });
 
@@ -83,9 +88,15 @@ describe('resolveProjectListFilters', () => {
     expect(filters).toMatchObject({ status: 'active', beneficiaryYear: 2026 });
   });
 
-  it('drops years, departments, topics and strategic lines that are not available', () => {
+  it('drops years, departments, topics, strategic lines and beneficiary categories that are not available', () => {
     const { canonical, filters } = resolveProjectListFilters(
-      { beneficiaryYear: '2010', departmentId: '999', topicId: '7', strategicLineId: '1' },
+      {
+        beneficiaryYear: '2010',
+        departmentId: '999',
+        topicId: '7',
+        strategicLineId: '1',
+        beneficiaryCategoryId: '5',
+      },
       OPTIONS
     );
 
@@ -94,12 +105,14 @@ describe('resolveProjectListFilters', () => {
       departmentId: undefined,
       topicId: undefined,
       strategicLineId: undefined,
+      beneficiaryCategoryId: undefined,
     });
     expect(filters).toMatchObject({
       beneficiaryYear: 2026,
       departmentId: undefined,
       topicId: undefined,
       strategicLineId: undefined,
+      beneficiaryCategoryId: undefined,
     });
   });
 

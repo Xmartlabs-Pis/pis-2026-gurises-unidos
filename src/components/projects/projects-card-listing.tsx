@@ -38,9 +38,11 @@ type ProjectsCardListProps = {
   departments?: { id: number; name: string }[];
   topics?: { id: number; name: string }[];
   strategicLines?: { id: number; name: string }[];
+  beneficiaryCategories?: { id: number; name: string }[];
   departmentId?: number;
   topicId?: number;
   strategicLineId?: number;
+  beneficiaryCategoryId?: number;
 };
 
 export function ProjectsCardList({
@@ -55,9 +57,11 @@ export function ProjectsCardList({
   departments = [],
   topics = [],
   strategicLines = [],
+  beneficiaryCategories = [],
   departmentId,
   topicId,
   strategicLineId,
+  beneficiaryCategoryId,
 }: ProjectsCardListProps) {
   const { searchText, changeSearch, updateFilters, clearFilters, isPending } = useUrlFilters({
     search,
@@ -69,7 +73,8 @@ export function ProjectsCardList({
     Number(year !== (years[0] ?? ALL_YEARS)) +
     Number(departmentId !== undefined) +
     Number(topicId !== undefined) +
-    Number(strategicLineId !== undefined);
+    Number(strategicLineId !== undefined) +
+    Number(beneficiaryCategoryId !== undefined);
   const yearOptions: { value: YearFilterValue; label: string }[] = [
     { value: ALL_YEARS, label: 'Todos' },
     ...years.map((y) => ({
@@ -88,8 +93,9 @@ export function ProjectsCardList({
       departmentId: departmentId?.toString(),
       topicId: topicId?.toString(),
       strategicLineId: strategicLineId?.toString(),
+      beneficiaryCategoryId: beneficiaryCategoryId?.toString(),
     }),
-    [status, year, search, departmentId, topicId, strategicLineId]
+    [status, year, search, departmentId, topicId, strategicLineId, beneficiaryCategoryId]
   );
 
   const filteredCountLabel = `${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
@@ -172,6 +178,13 @@ export function ProjectsCardList({
               options: strategicLines,
               value: strategicLineId,
             },
+            {
+              key: 'beneficiaryCategoryId',
+              label: 'Categoría de beneficiarios',
+              allLabel: 'Todas',
+              options: beneficiaryCategories,
+              value: beneficiaryCategoryId,
+            },
           ] as const
         ).map(({ key, label, allLabel, options, value }) => {
           const filterOptions = [
@@ -211,7 +224,13 @@ export function ProjectsCardList({
           size="sm"
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={() =>
-            clearFilters(['beneficiaryYear', 'departmentId', 'topicId', 'strategicLineId'])
+            clearFilters([
+              'beneficiaryYear',
+              'departmentId',
+              'topicId',
+              'strategicLineId',
+              'beneficiaryCategoryId',
+            ])
           }
         >
           Limpiar filtros

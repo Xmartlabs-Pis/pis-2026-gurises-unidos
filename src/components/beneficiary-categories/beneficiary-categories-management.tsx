@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
+import Link from 'next/link';
 
 type BeneficiaryCategoriesManagementProps = {
   categories: Category[];
@@ -115,6 +116,29 @@ export function BeneficiaryCategoriesManagement({
   );
 }
 
+function BeneficiaryCategoryProjectCount({
+  beneficiaryCategoryId,
+  projectCount,
+}: {
+  beneficiaryCategoryId: number;
+  projectCount: number;
+}) {
+  const label = projectCount === 1 ? '1 proyecto' : `${projectCount} proyectos`;
+
+  if (!projectCount) {
+    return <span className="text-muted-foreground text-xs leading-4 font-normal">{label}</span>;
+  }
+
+  return (
+    <Link
+      href={`/dashboard/projects?beneficiaryCategoryId=${beneficiaryCategoryId}&status=all&beneficiaryYear=all`}
+      className="text-primary text-xs leading-4 font-normal underline-offset-4 hover:underline"
+    >
+      {label}
+    </Link>
+  );
+}
+
 function CategoryRow({ category }: { category: Category }) {
   const [state, formAction, pending] = useActionState(
     deleteBeneficiaryCategory.bind(null, category.id),
@@ -127,9 +151,10 @@ function CategoryRow({ category }: { category: Category }) {
         <span className="text-foreground text-sm leading-5 font-medium">{category.name}</span>
 
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs leading-4 font-normal">
-            {category.projectCount === 1 ? '1 proyecto' : `${category.projectCount} proyectos`}
-          </span>
+          <BeneficiaryCategoryProjectCount
+            beneficiaryCategoryId={category.id}
+            projectCount={category.projectCount}
+          />
 
           {category.isSystem ? (
             <span className="text-muted-foreground inline-flex h-8 items-center px-2.5 text-xs leading-4 font-medium">

@@ -481,6 +481,7 @@ export async function loadProjectsPage(
     departmentId?: string;
     topicId?: string;
     strategicLineId?: string;
+    beneficiaryCategoryId?: string;
   },
   page: number
 ): Promise<ProjectListPage> {
