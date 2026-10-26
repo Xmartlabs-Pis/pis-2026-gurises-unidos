@@ -337,7 +337,7 @@ entorno (separados por espacio, o `*` para cualquiera). Se lee en cada request d
 así que alcanza con reiniciar el contenedor. Si no está definida, el embed no carga en ningún sitio.
 
 ```
-EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy https://www.gurisesunidos.org.uy"
+EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy"
 ```
 
 ### Snippet para la web de Gurises Unidos
