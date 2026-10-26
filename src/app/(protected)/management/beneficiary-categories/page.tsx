@@ -1,15 +1,10 @@
-import { auth } from '@/auth';
 import { BeneficiaryCategoriesManagement } from '@/components/beneficiary-categories/beneficiary-categories-management';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { getBeneficiaryCategoriesWithUsage } from '@/lib/beneficiary-categories';
 
 export default async function BeneficiaryCategoriesPage() {
-  const session = await auth();
-
-  if (session?.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  await requireAdmin();
 
   const categories = await getBeneficiaryCategoriesWithUsage();
 

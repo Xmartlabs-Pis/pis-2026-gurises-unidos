@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { Users } from 'lucide-react';
-import { auth } from '@/auth';
 import { Button } from '@/components/ui/button';
 
 import {
@@ -14,8 +13,8 @@ import {
 import { UsersListToolbar } from '@/components/users/users-list-toolbar';
 import { UsersTable } from '@/components/users/users-table';
 import { UserStatsCards } from '@/components/users/user-stats-cards';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { getUserList, getUserStats, parseUserListFilters } from '@/lib/users/list';
 import { redirectToCanonical, type RawSearchParams } from '@/lib/url-filters';
 
@@ -24,11 +23,7 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  const session = await auth();
-
-  if (session?.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  const admin = await requireAdmin();
 
   const rawParams = await searchParams;
   const filters = parseUserListFilters(rawParams);
@@ -93,7 +88,7 @@ export default async function UsersPage({
               <UsersListToolbar filters={filters} filteredCount={users.length} />
             </div>
 
-            <UsersTable users={users} currentUserId={Number(session.user.id)} />
+            <UsersTable users={users} currentUserId={Number(admin.id)} />
           </div>
         )}
       </div>
