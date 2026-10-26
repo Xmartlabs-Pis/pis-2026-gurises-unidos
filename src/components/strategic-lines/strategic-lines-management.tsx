@@ -156,7 +156,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Eliminar línea estratégica?</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="wrap-anywhere">
                       Esta acción dejará de mostrar “{line.name}” como línea estratégica.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
