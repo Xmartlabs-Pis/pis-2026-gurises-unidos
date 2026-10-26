@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
-import Link from 'next/link';
+import { ProjectCountLink } from '@/components/project-count-link';
 
 type BeneficiaryCategoriesManagementProps = {
   categories: Category[];
@@ -116,29 +116,6 @@ export function BeneficiaryCategoriesManagement({
   );
 }
 
-function BeneficiaryCategoryProjectCount({
-  beneficiaryCategoryId,
-  projectCount,
-}: {
-  beneficiaryCategoryId: number;
-  projectCount: number;
-}) {
-  const label = projectCount === 1 ? '1 proyecto' : `${projectCount} proyectos`;
-
-  if (!projectCount) {
-    return <span className="text-muted-foreground text-xs leading-4 font-normal">{label}</span>;
-  }
-
-  return (
-    <Link
-      href={`/dashboard/projects?beneficiaryCategoryId=${beneficiaryCategoryId}&status=all&beneficiaryYear=all`}
-      className="text-primary text-xs leading-4 font-normal underline-offset-4 hover:underline"
-    >
-      {label}
-    </Link>
-  );
-}
-
 function CategoryRow({ category }: { category: Category }) {
   const [state, formAction, pending] = useActionState(
     deleteBeneficiaryCategory.bind(null, category.id),
@@ -151,9 +128,9 @@ function CategoryRow({ category }: { category: Category }) {
         <span className="text-foreground text-sm leading-5 font-medium">{category.name}</span>
 
         <div className="flex items-center gap-3">
-          <BeneficiaryCategoryProjectCount
-            beneficiaryCategoryId={category.id}
+          <ProjectCountLink
             projectCount={category.projectCount}
+            href={`/dashboard/projects?beneficiaryCategoryId=${category.id}&status=all&beneficiaryYear=all`}
           />
 
           {category.isSystem ? (
