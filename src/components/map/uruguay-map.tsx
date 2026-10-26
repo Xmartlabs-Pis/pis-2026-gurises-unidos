@@ -5,6 +5,7 @@ import type { Feature } from 'geojson';
 import {
   Browser,
   geoJSON,
+  type GeoJSON as LeafletGeoJSON,
   type LatLngBounds,
   type LeafletMouseEvent,
   type Path,
@@ -129,9 +130,21 @@ function TwoFingerHint() {
 
 export default function UruguayMap({ projectCounts }: UruguayMapProps) {
   const { center, zoom, departments } = getUruguayMapData();
-  const countsByDepartment = new Map(projectCounts.map((counts) => [counts.department, counts]));
+  const countsByDepartment = useMemo(
+    () => new Map(projectCounts.map((counts) => [counts.department, counts])),
+    [projectCounts]
+  );
+  const geoJsonRef = useRef<LeafletGeoJSON>(null);
   const bounds = useMemo(() => geoJSON(departments).getBounds(), [departments]);
   const maxBounds = useMemo(() => bounds.pad(BOUNDS_PADDING_RATIO), [bounds]);
+
+  useEffect(() => {
+    geoJsonRef.current?.eachLayer((layer) => {
+      const name: string | undefined = (layer as Path & { feature?: Feature }).feature?.properties
+        ?.name;
+      if (name) layer.setTooltipContent(buildTooltip(name, countsByDepartment.get(name)));
+    });
+  }, [countsByDepartment]);
 
   return (
     <MapContainer
@@ -144,6 +157,7 @@ export default function UruguayMap({ projectCounts }: UruguayMapProps) {
       className="bg-surface-page h-full w-full rounded-xl"
     >
       <GeoJSON
+        ref={geoJsonRef}
         data={departments}
         style={DEPARTMENT_STYLE}
         onEachFeature={(feature, layer) =>
