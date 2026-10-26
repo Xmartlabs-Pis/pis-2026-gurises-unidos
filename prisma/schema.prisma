@@ -59,6 +59,7 @@ enum AuditEntity {
   beneficiaryCategory
   metric
   topic
+  contributor
 }
 
 enum CounterpartyType {
@@ -239,6 +240,13 @@ model PublicSettings {
   updatedAt      DateTime? @updatedAt
 
   updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+model Contributor {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
 }
 
 model Report {
