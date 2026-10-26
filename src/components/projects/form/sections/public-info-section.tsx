@@ -14,6 +14,7 @@ export function PublicInfoSection() {
         label="Objetivo general"
         placeholder="Ej: Acompañando a jóvenes en situación de vulnerabilidad"
         description="Aparece como subtítulo en la vista pública"
+        className="min-h-9"
       />
       <TextareaField
         id="publicDescription"
