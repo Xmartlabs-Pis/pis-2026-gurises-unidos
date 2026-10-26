@@ -28,6 +28,8 @@ test('packs variable-width pills into rows without overlap or scaling', () => {
     { x: 152, y: 30 },
     { x: 20, y: 86 },
   ]);
+  expect(strategy.getHeight(0, 3)).toBe(156);
+  expect(strategy.getHeight(0, 0)).toBe(100);
   for (const [index, rect] of transformed.entries()) {
     expect(rect.right).toBeLessThanOrEqual(layout.left + layout.width);
     for (const other of transformed.slice(index + 1)) {

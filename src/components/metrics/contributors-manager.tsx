@@ -11,7 +11,10 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
-import { createContributorSortingStrategy } from '@/components/metrics/contributor-sorting';
+import {
+  createContributorSortingStrategy,
+  type ContributorSortingStrategy,
+} from '@/components/metrics/contributor-sorting';
 import {
   SortableContributor,
   ContributorDragPreview,
@@ -45,7 +48,8 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
   const [orderedContributors, setOrderedContributors] = useState<Contributor[] | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const sortingStrategyRef = useRef<SortingStrategy | null>(null);
+  const sortingStrategyRef = useRef<ContributorSortingStrategy | null>(null);
+  const [previewHeight, setPreviewHeight] = useState<number>();
   const sortingStrategy = useCallback<SortingStrategy>(
     (args) => sortingStrategyRef.current?.(args) ?? null,
     []
@@ -198,9 +202,19 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
               });
               setDraggedId(Number(active.id));
             }}
-            onDragCancel={() => setDraggedId(null)}
+            onDragOver={({ active, over }) => {
+              if (!over) return;
+              const sourceIndex = displayedContributors.findIndex(({ id }) => id === active.id);
+              const targetIndex = displayedContributors.findIndex(({ id }) => id === over.id);
+              setPreviewHeight(sortingStrategyRef.current?.getHeight(sourceIndex, targetIndex));
+            }}
+            onDragCancel={() => {
+              setDraggedId(null);
+              setPreviewHeight(undefined);
+            }}
             onDragEnd={({ active, over }) => {
               setDraggedId(null);
+              setPreviewHeight(undefined);
               if (!over || active.id === over.id) return;
               const sourceIndex = displayedContributors.findIndex(({ id }) => id === active.id);
               const targetIndex = displayedContributors.findIndex(({ id }) => id === over.id);
@@ -213,8 +227,9 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
             <SortableContext items={displayedContributors} strategy={sortingStrategy}>
               <ul
                 ref={listRef}
+                style={{ minHeight: previewHeight }}
                 aria-label="Contribuyentes publicados"
-                className="flex min-w-0 flex-wrap gap-3"
+                className="flex min-w-0 flex-wrap content-start gap-3"
               >
                 {displayedContributors.map((contributor, index) => (
                   <SortableContributor
