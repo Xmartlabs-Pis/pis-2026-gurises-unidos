@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useCallback, useRef, useState, useTransition } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -10,8 +10,8 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { SortableContext, arrayMove } from '@dnd-kit/sortable';
-import { getContributorSortingTransform } from '@/components/metrics/contributor-sorting';
+import { SortableContext, arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
+import { createContributorSortingStrategy } from '@/components/metrics/contributor-sorting';
 import {
   SortableContributor,
   ContributorDragPreview,
@@ -45,6 +45,11 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
   const [orderedContributors, setOrderedContributors] = useState<Contributor[] | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const sortingStrategyRef = useRef<SortingStrategy | null>(null);
+  const sortingStrategy = useCallback<SortingStrategy>(
+    (args) => sortingStrategyRef.current?.(args) ?? null,
+    []
+  );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const displayedContributors = orderedContributors ?? contributors;
 
@@ -180,7 +185,19 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
               const collisions = pointerWithin(args);
               return collisions.length ? collisions : closestCenter(args);
             }}
-            onDragStart={({ active }) => setDraggedId(Number(active.id))}
+            onDragStart={({ active }) => {
+              const list = listRef.current;
+              if (!list) return;
+              const { left, top, width } = list.getBoundingClientRect();
+              const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+              sortingStrategyRef.current = createContributorSortingStrategy({
+                left,
+                top,
+                width,
+                gap,
+              });
+              setDraggedId(Number(active.id));
+            }}
             onDragCancel={() => setDraggedId(null)}
             onDragEnd={({ active, over }) => {
               setDraggedId(null);
@@ -193,16 +210,7 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
               saveOrder(next);
             }}
           >
-            <SortableContext
-              items={displayedContributors}
-              strategy={(args) => {
-                const list = listRef.current;
-                if (!list) return null;
-                const { left, top, width } = list.getBoundingClientRect();
-                const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
-                return getContributorSortingTransform(args, { left, top, width, gap });
-              }}
-            >
+            <SortableContext items={displayedContributors} strategy={sortingStrategy}>
               <ul
                 ref={listRef}
                 aria-label="Contribuyentes publicados"

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { auth } from '@/auth';
+import { requireUser } from '@/lib/auth/require-user';
 import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { Prisma } from '@/generated/prisma/client';
@@ -19,8 +19,8 @@ function revalidateContributors() {
 }
 
 export async function createContributor(input: unknown) {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') {
+  const user = await requireUser();
+  if (user.role !== 'admin') {
     return { success: false as const, message: 'No tenés permisos para agregar contribuyentes.' };
   }
   const result = CONTRIBUTOR_NAME_SCHEMA.safeParse(input);
@@ -28,24 +28,27 @@ export async function createContributor(input: unknown) {
     return { success: false as const, message: 'Ingresá un nombre de entre 1 y 100 caracteres.' };
   }
   try {
-    const contributor = await prisma.$transaction(async (tx) => {
-      const { _max } = await tx.contributor.aggregate({
-        where: { deletedAt: null },
-        _max: { sortOrder: true },
-      });
-      const created = await tx.contributor.create({
-        data: { name: result.data, sortOrder: (_max.sortOrder ?? 0) + 1 },
-        select: { id: true, name: true },
-      });
-      await logAudit(tx, {
-        authorId: Number(session.user.id),
-        action: 'creation',
-        entity: 'contributor',
-        entityId: created.id,
-        details: { name: created.name },
-      });
-      return created;
-    });
+    const contributor = await prisma.$transaction(
+      async (tx) => {
+        const { _max } = await tx.contributor.aggregate({
+          where: { deletedAt: null },
+          _max: { sortOrder: true },
+        });
+        const created = await tx.contributor.create({
+          data: { name: result.data, sortOrder: (_max.sortOrder ?? 0) + 1 },
+          select: { id: true, name: true },
+        });
+        await logAudit(tx, {
+          authorId: user.id,
+          action: 'creation',
+          entity: 'contributor',
+          entityId: created.id,
+          details: { name: created.name },
+        });
+        return created;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
     revalidateContributors();
     return { success: true as const, contributor, message: 'Contribuyente publicado.' };
   } catch (error) {
@@ -58,8 +61,8 @@ export async function createContributor(input: unknown) {
 }
 
 export async function deleteContributor(input: unknown) {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') {
+  const user = await requireUser();
+  if (user.role !== 'admin') {
     return { success: false, message: 'No tenés permisos para eliminar contribuyentes.' };
   }
   const result = CONTRIBUTOR_ID_SCHEMA.safeParse(input);
@@ -73,7 +76,7 @@ export async function deleteContributor(input: unknown) {
         data: { deletedAt: new Date() },
       });
       await logAudit(tx, {
-        authorId: Number(session.user.id),
+        authorId: user.id,
         action: 'deletion',
         entity: 'contributor',
         entityId: deleted.id,
@@ -91,8 +94,8 @@ export async function deleteContributor(input: unknown) {
 }
 
 export async function reorderContributors(input: unknown) {
-  const session = await auth();
-  if (session?.user?.role !== 'admin') {
+  const user = await requireUser();
+  if (user.role !== 'admin') {
     return { success: false, message: 'No tenés permisos para ordenar contribuyentes.' };
   }
   const result = CONTRIBUTOR_ORDER_SCHEMA.safeParse(input);
@@ -103,24 +106,37 @@ export async function reorderContributors(input: unknown) {
     await prisma.$transaction(
       async (tx) => {
         const contributors = await tx.contributor.findMany({ where: { deletedAt: null } });
+        const contributorsById = new Map(
+          contributors.map((contributor) => [contributor.id, contributor])
+        );
         if (
           contributors.length !== result.data.length ||
-          contributors.some(({ id }) => !result.data.includes(id))
+          result.data.some((id) => !contributorsById.has(id))
         ) {
           throw new Error('Contributor list changed');
         }
-        for (const [sortOrder, id] of result.data.entries()) {
-          const contributor = contributors.find((item) => item.id === id)!;
-          if (contributor.sortOrder === sortOrder) continue;
-          await tx.contributor.update({ where: { id, deletedAt: null }, data: { sortOrder } });
-          await logAudit(tx, {
-            authorId: Number(session.user.id),
+        const changes = result.data.flatMap((id, sortOrder) => {
+          const contributor = contributorsById.get(id)!;
+          return contributor.sortOrder === sortOrder
+            ? []
+            : [{ id, sortOrder, previousOrder: contributor.sortOrder }];
+        });
+        if (!changes.length) return;
+        await tx.$executeRaw(Prisma.sql`
+          UPDATE "Contributor" AS contributor
+          SET "sortOrder" = ordering."sortOrder"
+          FROM (VALUES ${Prisma.join(changes.map(({ id, sortOrder }) => Prisma.sql`(${id}::integer, ${sortOrder}::integer)`))}) AS ordering("id", "sortOrder")
+          WHERE contributor."id" = ordering."id" AND contributor."deletedAt" IS NULL
+        `);
+        await tx.auditLog.createMany({
+          data: changes.map(({ id, sortOrder, previousOrder }) => ({
+            authorId: user.id,
             action: 'update',
             entity: 'contributor',
             entityId: id,
-            details: { sortOrder: { from: contributor.sortOrder, to: sortOrder } },
-          });
-        }
+            details: { sortOrder: { from: previousOrder, to: sortOrder } },
+          })),
+        });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
