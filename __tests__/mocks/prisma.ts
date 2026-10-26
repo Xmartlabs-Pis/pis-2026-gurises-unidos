@@ -26,6 +26,9 @@ export const prismaMock = {
   strategicLine: {
     findMany: vi.fn(),
   },
+  beneficiaryCategory: {
+    findMany: vi.fn(),
+  },
   department: {
     findMany: vi.fn(),
   },
