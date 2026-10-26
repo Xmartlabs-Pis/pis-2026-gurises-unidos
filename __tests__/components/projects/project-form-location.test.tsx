@@ -65,23 +65,23 @@ function isDisabled(label: string) {
 it('enables cities after a department and neighborhoods after a city', async () => {
   renderForm();
 
-  expect(isDisabled('Ciudades (opcional)')).toBe(true);
+  expect(isDisabled('Ciudades')).toBe(true);
   expect(isDisabled('Barrios (opcional)')).toBe(true);
 
   await selectDepartment('Canelones');
-  await waitFor(() => expect(isDisabled('Ciudades (opcional)')).toBe(false));
+  await waitFor(() => expect(isDisabled('Ciudades')).toBe(false));
   expect(isDisabled('Barrios (opcional)')).toBe(true);
 
-  addTag('Ciudades (opcional)', 'Las Piedras');
+  addTag('Ciudades', 'Las Piedras');
   await waitFor(() => expect(isDisabled('Barrios (opcional)')).toBe(false));
 });
 
 it('submits several departments, cities and neighborhoods', async () => {
   const { submitAction, submit } = renderForm({ departmentIds: ['3', '4'] });
 
-  addTag('Ciudades (opcional)', 'Las Piedras');
-  addTag('Ciudades (opcional)', 'Pando');
-  addTag('Ciudades (opcional)', ' pando ');
+  addTag('Ciudades', 'Las Piedras');
+  addTag('Ciudades', 'Pando');
+  addTag('Ciudades', ' pando ');
   await waitFor(() => expect(isDisabled('Barrios (opcional)')).toBe(false));
   addTag('Barrios (opcional)', 'Centro');
   addTag('Barrios (opcional)', 'Barrio Obrero');
@@ -105,7 +105,7 @@ it('clears the dependent levels when their parent values are removed', async () 
   expect(screen.queryByRole('button', { name: 'Quitar Centro' })).toBeNull();
 
   await selectDepartment('Montevideo');
-  await waitFor(() => expect(isDisabled('Ciudades (opcional)')).toBe(true));
+  await waitFor(() => expect(isDisabled('Ciudades')).toBe(true));
 });
 
 it('requires at least one department for a national project', async () => {
@@ -115,6 +115,20 @@ it('requires at least one department for a national project', async () => {
 
   expect(await screen.findByText('Seleccioná al menos un departamento')).toBeTruthy();
   expect(submitAction).not.toHaveBeenCalled();
+});
+
+it('requires at least one city once a department is selected', async () => {
+  const { submitAction, submit } = renderForm({ departmentIds: ['3'] });
+
+  await submit();
+  expect(await screen.findByText('Ingresá al menos una ciudad')).toBeTruthy();
+  expect(submitAction).not.toHaveBeenCalled();
+
+  addTag('Ciudades', 'Montevideo');
+  await submit();
+
+  await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
+  expect((submitAction.mock.calls[0][1] as FormData).getAll('cities')).toEqual(['Montevideo']);
 });
 
 it('loads several countries for an international project', async () => {

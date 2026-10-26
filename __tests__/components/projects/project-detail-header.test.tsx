@@ -128,3 +128,11 @@ test('places the general objective before metadata in the mobile reading order',
   expect(metadataPosition).toBeGreaterThanOrEqual(0);
   expect(objectivePosition).toBeLessThan(metadataPosition);
 });
+
+test('shows the export button only to users who can edit the project', () => {
+  const { rerender } = renderHeader(null);
+  expect(screen.queryByRole('button', { name: 'Exportar' })).toBeNull();
+
+  rerender(<ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit />);
+  expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+});

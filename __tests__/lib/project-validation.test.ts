@@ -87,7 +87,7 @@ const BASE_PROJECT = {
   geographicScope: 'national',
   departmentIds: ['1'],
   countries: [],
-  cities: [],
+  cities: ['Pando'],
   neighborhoods: [],
   zone: 'city',
 };
@@ -229,6 +229,28 @@ describe('geographic scope', () => {
     ).toEqual(['Seleccioná al menos un departamento']);
   });
 
+  it('requires at least one city for a national project with departments', () => {
+    expect(
+      schema.safeParse({ ...input, cities: [' ', ''] }).error?.flatten().fieldErrors.cities
+    ).toEqual(['Ingresá al menos una ciudad']);
+    expect(
+      schema.safeParse({ ...input, departmentIds: [], cities: [] }).error?.flatten().fieldErrors
+        .cities
+    ).toBeUndefined();
+  });
+
+  it('does not require cities for an international project', () => {
+    expect(
+      schema.safeParse({
+        ...input,
+        geographicScope: 'international',
+        departmentIds: [],
+        countries: ['Brasil'],
+        cities: [],
+      }).success
+    ).toBe(true);
+  });
+
   it('requires at least one country for an international project', () => {
     expect(
       schema
@@ -309,14 +331,6 @@ describe('geographic scope', () => {
       neighborhoods: ['Centro'],
     });
     expect(projectData).not.toHaveProperty('departmentIds');
-  });
-
-  it('drops neighborhoods when no city is loaded', () => {
-    const { projectData } = splitProjectFormData(
-      schema.parse({ ...input, neighborhoods: ['Centro'] }),
-      BENEFICIARY_CATEGORY_KEYS
-    );
-    expect(projectData).toMatchObject({ cities: [], neighborhoods: [] });
   });
 
   it('keeps only the countries for an international project', () => {

@@ -1,10 +1,18 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { AuthError } from 'next-auth';
 import prisma from '@/lib/prisma';
+import { signIn } from '@/auth';
 import { hashPassword } from '@/lib/credentials';
 import { logAudit } from '@/lib/audit-log';
 import { INVITATION_TOKEN_ERROR_MESSAGES } from '@/lib/auth/invitation';
+import {
+  getSessionExpirationTimestamp,
+  SESSION_EXPIRATION_COOKIE,
+  SESSION_EXPIRATION_COOKIE_OPTIONS,
+} from '@/lib/auth/session-expiration';
 import { consumeUserToken, findValidUserToken } from '@/lib/auth/user-tokens';
 import { resetPasswordWithTokenSchema } from '@/lib/validation/password';
 import type { PasswordFormState } from '@/app/actions/password';
@@ -88,5 +96,26 @@ export async function acceptInvitation(
     return { formError: INVITATION_TOKEN_ERROR_MESSAGES[current.valid ? 'used' : current.reason] };
   }
 
-  redirect('/login?invitationAccepted=1');
+  try {
+    await signIn('credentials', {
+      documentId: lookup.user.documentId,
+      password: newPassword,
+      remember: 'false',
+      redirect: false,
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      redirect('/login?invitationAccepted=1');
+    }
+    throw error;
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(
+    SESSION_EXPIRATION_COOKIE,
+    String(getSessionExpirationTimestamp(false)),
+    SESSION_EXPIRATION_COOKIE_OPTIONS
+  );
+
+  redirect('/dashboard');
 }
