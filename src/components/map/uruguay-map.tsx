@@ -2,7 +2,15 @@
 
 import 'leaflet/dist/leaflet.css';
 import type { Feature } from 'geojson';
-import { Browser, geoJSON, type LatLngBounds, type Path, type PathOptions, point } from 'leaflet';
+import {
+  Browser,
+  geoJSON,
+  type LatLngBounds,
+  type LeafletMouseEvent,
+  type Path,
+  type PathOptions,
+  point,
+} from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GeoJSON, MapContainer, useMap } from 'react-leaflet';
 import type { DepartmentProjectCounts } from '@/lib/projects/department-project-counts';
@@ -59,6 +67,10 @@ function bindDepartmentHover(
   layer.on({
     mouseover: () => layer.setStyle(HIGHLIGHT_STYLE),
     mouseout: () => layer.setStyle(DEPARTMENT_STYLE),
+    mousedown: (event: LeafletMouseEvent) => event.originalEvent.preventDefault(),
+    ...(!Browser.mobile && {
+      click: (event: LeafletMouseEvent) => layer.openTooltip(event.latlng),
+    }),
   });
 }
 
