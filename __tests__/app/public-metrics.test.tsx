@@ -1,12 +1,15 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import Home from '@/app/(public)/page';
+import { getContributors } from '@/lib/contributors';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+
+vi.mock('@/lib/contributors', () => ({ getContributors: vi.fn(async () => []) }));
 
 vi.mock('@/lib/metrics/queries', () => ({
   getPublishedYears: vi.fn(),
@@ -28,6 +31,7 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getContributors).mockResolvedValue([]);
   vi.mocked(getPublishedYears).mockResolvedValue([2025]);
   vi.mocked(getMetricSettings).mockResolvedValue(METRIC_DEFINITIONS);
   vi.mocked(getMetricValues).mockImplementation(async (year) => ({
@@ -39,6 +43,18 @@ beforeEach(() => {
     institutions: 0,
     active_projects: 0,
   }));
+});
+
+test('renders published contributors from the database', async () => {
+  vi.mocked(getContributors).mockResolvedValue([{ id: 42, name: 'Published contributor' }]);
+  render(await Home({ searchParams: Promise.resolve({}) }));
+  expect(screen.getByText('Published contributor')).toBeDefined();
+  expect(screen.queryByText('INAU')).toBeNull();
+});
+
+test('hides the contributors section when none are published', async () => {
+  render(await Home({ searchParams: Promise.resolve({}) }));
+  expect(screen.queryByRole('heading', { name: 'Quienes nos acompañan' })).toBeNull();
 });
 
 test('shows separate child totals and year-over-year changes on the public page', async () => {

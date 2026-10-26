@@ -1,3 +1,4 @@
+import { getContributors } from '@/lib/contributors';
 import { MetricsForm } from '@/components/metrics/metrics-form';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
@@ -27,10 +28,11 @@ export default async function MetricsPage({
     getPublishedYears(currentYear),
   ]);
   const year = resolveYearParam((await searchParams).year, years, publishedYears[0]);
-  const [values, initialMetrics, initialTopics] = await Promise.all([
+  const [values, initialMetrics, initialTopics, contributors] = await Promise.all([
     getMetricValues(year),
     getMetricSettings(),
     getTopicStatistics(year),
+    getContributors(),
   ]);
 
   return (
@@ -43,6 +45,7 @@ export default async function MetricsPage({
       />
       <div className="flex w-full flex-1 flex-col gap-4 pt-1.5">
         <MetricsForm
+          contributors={contributors}
           year={String(year)}
           values={values}
           initialMetrics={initialMetrics}

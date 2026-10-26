@@ -13,6 +13,7 @@ import {
   firstValue,
   isCanonical,
   redirectToCanonical,
+  toSingleValues,
 } from '@/lib/url-filters';
 
 beforeEach(() => {
@@ -24,6 +25,16 @@ describe('firstValue', () => {
     expect(firstValue(['a', 'b'])).toBe('a');
     expect(firstValue('a')).toBe('a');
     expect(firstValue(undefined)).toBeUndefined();
+  });
+});
+
+describe('toSingleValues', () => {
+  it('keeps the first value of each param', () => {
+    expect(toSingleValues({ a: ['1', '2'], b: '3', c: undefined })).toEqual({
+      a: '1',
+      b: '3',
+      c: undefined,
+    });
   });
 });
 

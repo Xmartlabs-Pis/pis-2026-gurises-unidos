@@ -9,7 +9,7 @@ import {
   toBeneficiaryValuesCreate,
   type BeneficiaryCounts,
 } from '../src/lib/project-display';
-import { ADMIN, BENEFICIARY_CATEGORIES, STRATEGIC_LINES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, CONTRIBUTORS, STRATEGIC_LINES } from './fixtures';
 import { CounterpartyType } from '../src/generated/prisma/enums';
 
 const prisma = new PrismaClient();
@@ -540,6 +540,18 @@ async function main() {
           });
         }
       }
+
+      const { _max: contributorOrder } = await tx.contributor.aggregate({
+        where: { deletedAt: null },
+        _max: { sortOrder: true },
+      });
+      await tx.contributor.createMany({
+        data: CONTRIBUTORS.map((name, index) => ({
+          name,
+          sortOrder: (contributorOrder.sortOrder ?? 0) + index + 1,
+        })),
+        skipDuplicates: true,
+      });
 
       for (const [index, metric] of METRIC_DEFINITIONS.entries()) {
         await tx.metric.upsert({
