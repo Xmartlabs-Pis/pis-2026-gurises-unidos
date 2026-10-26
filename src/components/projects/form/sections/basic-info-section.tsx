@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
-import { TextInputField } from '@/components/ui/forms/text-input-field';
+import { TextareaField } from '@/components/ui/forms/textarea-field';
 import { MultiSelectField } from '@/components/ui/forms/multi-select-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
@@ -47,13 +47,14 @@ export function BasicInfoSection({
 
   return (
     <FormSection title="Información básica">
-      <TextInputField
+      <TextareaField
         maxLength={100}
         id="name"
         name="name"
         label="Nombre del proyecto"
         placeholder="Ej: Espacio joven Malvín Norte"
         description="Nombre de fantasía — puede cambiarse después"
+        className="min-h-9"
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField
