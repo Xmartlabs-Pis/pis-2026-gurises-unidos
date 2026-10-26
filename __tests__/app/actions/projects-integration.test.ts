@@ -122,6 +122,7 @@ it.skipIf(!TEST_DATABASE_URL)(
       leadCoordinatorId: String(coordinatorId),
       geographicScope: 'national',
       departmentIds: String(departmentId),
+      cities: 'Montevideo',
       zone: 'city',
       year: '2026',
       families: '35',

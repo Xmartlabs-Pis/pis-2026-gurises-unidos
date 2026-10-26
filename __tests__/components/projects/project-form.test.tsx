@@ -44,6 +44,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
         status: 'active',
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         startYear: '2020',
         year: '2024',
         families: '30',
@@ -160,6 +161,7 @@ it('sends multiple selected topics and preserves them after a failed save', asyn
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         topicIds: ['1'],
       }}
       submitAction={submitAction}
@@ -214,6 +216,7 @@ function renderFormWith(initialValues: Record<string, string>) {
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         ...initialValues,
       }}
       submitAction={vi.fn()}
@@ -247,6 +250,7 @@ it('submits the end year of an inactive project', async () => {
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         status: 'inactive',
         startYear: '2020',
         endYear: '2022',
@@ -279,6 +283,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         topicIds: ['1'],
       }}
       submitAction={submitAction}
@@ -390,6 +395,7 @@ function renderWithManyCategories(
         topicIds: ['1'],
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         startYear: '2020',
         ...initialValues,
       }}
@@ -461,6 +467,7 @@ it.each(['create', 'edit'] as const)(
           topicIds: ['1'],
           leadCoordinatorId: '2',
           departmentIds: ['3'],
+          cities: ['Montevideo'],
           counterpartyType: mode === 'edit' ? 'publicSector' : '',
           strategicLineIds: ['1'],
         }}

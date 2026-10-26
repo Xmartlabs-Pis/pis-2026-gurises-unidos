@@ -31,6 +31,7 @@ function projectFormData(fields: Record<string, string>) {
     leadCoordinatorId: String(seed.coordinatorId),
     geographicScope: 'national',
     departmentIds: String(seed.departmentIds[0]),
+    cities: 'Colonia del Sacramento',
     zone: 'rural',
     topicIds: String(seed.topicIds[0]),
     strategicLineIds: String(seed.strategicLineIds[0]),

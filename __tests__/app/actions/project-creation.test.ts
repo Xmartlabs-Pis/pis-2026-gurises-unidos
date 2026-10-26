@@ -44,6 +44,7 @@ const VALID_FIELDS: FormDataInput = {
   leadCoordinatorId: '1',
   geographicScope: 'national',
   departmentIds: '2',
+  cities: 'Las Piedras',
   zone: 'city',
   generalObjective: '',
   publicDescription: '',
@@ -180,7 +181,7 @@ describe('createProject', () => {
         leadCoordinatorId: 1,
         geographicScope: 'national',
         countries: [],
-        cities: [],
+        cities: ['Las Piedras'],
         neighborhoods: [],
         zone: 'city',
         generalObjective: null,
@@ -361,6 +362,13 @@ describe('createProject', () => {
     const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: undefined }));
 
     expect(result.errors?.departmentIds).toEqual(['Seleccioná al menos un departamento']);
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('requires a city for a national project without accessing the database', async () => {
+    const result = await createProject(EMPTY_STATE, buildFormData({ cities: undefined }));
+
+    expect(result.errors?.cities).toEqual(['Ingresá al menos una ciudad']);
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
