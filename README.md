@@ -16,7 +16,7 @@ La app queda corriendo en **http://localhost:3000** (`dev`, `start` y Docker usa
 
 Otros scripts: `npm run build`, `npm start` (sirve el build en el mismo puerto), `npm run lint`,
 `npm test` (Vitest), `npm run test:watch`, `npm run test:e2e` (Playwright), `npm run typecheck`,
-`npm run format`.
+`npm run format`, `npm run email` (preview de templates en http://localhost:3333).
 
 ### Con Docker
 
@@ -71,7 +71,7 @@ npx auth secret               # genera AUTH_SECRET y lo escribe en .env
 
 ## Email (Resend)
 
-Los mails (por ahora, el de recuperación de contraseña) salen por [Resend](https://resend.com).
+Los mails de invitación y de recuperación de contraseña salen por [Resend](https://resend.com).
 
 | Variable         | Uso                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------- |
@@ -86,6 +86,15 @@ En local alcanza con no definir `RESEND_API_KEY`: el mail no se envía y se impr
 
 Sin un dominio verificado en Resend, el remitente `onboarding@resend.dev` solo entrega al mail del
 dueño de la cuenta. Hasta que haya dominio, los usuarios reales no reciben los mails.
+
+Los templates están en `src/emails`. Para verlos en el browser, sin mandar nada:
+
+```bash
+npm run email   # http://localhost:3333
+```
+
+Usa el puerto 3333 para no pisar `npm run dev` en `:3000`. En el previewer el logo sale de
+`src/emails/static`; en los mails reales usa `AUTH_URL` + `/images/logo.png`.
 
 ## Tests end to end
 
@@ -159,7 +168,9 @@ archivos corren de a uno (`fileParallelism: false`) porque comparten la base. En
 workflow `Integration`, con un Postgres propio.
 
 `integration/setup.ts` mockea lo que depende de Next: `auth()` devuelve la sesión que armes con
-`signInAs`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no hace nada.
+`signInAs` (`signInAs(id, role, { remember: true })` simula "recordarme"),
+`signIn` es un `vi.fn()`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no
+hace nada.
 
 ### Escribir un test nuevo
 
@@ -195,7 +206,7 @@ afterEach(async () => {
 describe('someAction (integration)', () => {
   test('does the thing', async () => {
     const id = await createFixture();
-    signInAs(seed.adminId);
+    signInAs(seed.adminId, 'admin');
 
     await expect(someAction(id, {}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/somewhere$/);
 
@@ -214,7 +225,7 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Cada test crea sus propios datos** y guarda los ids, y el `afterEach` los borra. Incluí los
   `AuditLog` y las filas hijas que genere la action. Crear los datos dentro de cada test, y no en un
   `beforeEach`, deja que cada uno arme exactamente lo que necesita.
-- **Logueate antes de llamar a la action** con `signInAs(userId)`. La sesión se cierra sola al
+- **Logueate antes de llamar a la action** con `signInAs(userId, role)`. La sesión se cierra sola al
   terminar cada test. Sin `signInAs`, la action ve un usuario no logueado.
 - **Anclá los regex de redirect** (`^...$`): comparar un substring deja pasar
   `/dashboard/projects/11` cuando esperabas `/dashboard/projects/1`.

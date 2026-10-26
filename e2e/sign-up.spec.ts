@@ -1,13 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import {
-  DESKTOP,
-  NO_SESSION,
-  deleteUsers,
-  hasActiveUserToken,
-  issueUserToken,
-  login,
-} from './helpers';
+import { DESKTOP, NO_SESSION, deleteUsers, hasActiveUserToken, issueUserToken } from './helpers';
 
 test.use({ viewport: DESKTOP });
 
@@ -23,7 +16,10 @@ test.afterEach(() => {
   deleteUsers([INVITEE.documentId]);
 });
 
-test('an invited user completes the sign up and logs in', async ({ page, browser }) => {
+test('an invited user completes the sign up and lands logged in on the dashboard', async ({
+  page,
+  browser,
+}) => {
   await page.goto('/management/users/new');
   await page.getByLabel('Nombre', { exact: true }).fill(INVITEE.firstName);
   await page.getByLabel('Apellido').fill(INVITEE.lastName);
@@ -47,8 +43,6 @@ test('an invited user completes the sign up and logs in', async ({ page, browser
     await guest.getByLabel('Confirmar nueva contraseña').fill(NEW_PASSWORD);
     await guest.getByRole('button', { name: 'Completar registro' }).click();
 
-    await expect(guest).toHaveURL('/login?invitationAccepted=1');
-    await login(guest, INVITEE.documentId, NEW_PASSWORD);
     await expect(guest).toHaveURL('/dashboard');
   } finally {
     await context.close();

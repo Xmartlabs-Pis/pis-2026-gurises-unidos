@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import Link from 'next/link';
 import {
   createStrategicLine,
   deleteStrategicLine,
@@ -114,6 +115,29 @@ export function StrategicLinesManagement({ lines }: StrategicLinesManagementProp
   );
 }
 
+function StrategicLineProjectCount({
+  strategicLineId,
+  projectCount,
+}: {
+  strategicLineId: number;
+  projectCount: number;
+}) {
+  const label = projectCount === 1 ? '1 proyecto' : `${projectCount} proyectos`;
+
+  if (!projectCount) {
+    return <span className="text-muted-foreground text-xs leading-4 font-normal">{label}</span>;
+  }
+
+  return (
+    <Link
+      href={`/dashboard/projects?strategicLineId=${strategicLineId}&status=all&beneficiaryYear=all`}
+      className="text-primary text-xs leading-4 font-normal underline-offset-4 hover:underline"
+    >
+      {label}
+    </Link>
+  );
+}
+
 function StrategicLineRow({ line }: { line: StrategicLine }) {
   const [state, formAction, pending] = useActionState(
     deleteStrategicLine.bind(null, line.id),
@@ -126,9 +150,10 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
         <span className="text-foreground text-sm leading-5 font-medium">{line.name}</span>
 
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs leading-4 font-normal">
-            {line._count.projects === 1 ? '1 proyecto' : `${line._count.projects} proyectos`}
-          </span>
+          <StrategicLineProjectCount
+            strategicLineId={line.id}
+            projectCount={line._count.projects}
+          />
 
           {line._count.projects > 0 ? (
             <AlertDialog>
