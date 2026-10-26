@@ -7,6 +7,7 @@ import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-benefici
 export const MAX_STRATEGIC_LINES = 3;
 export const TOPICS_ERROR_MESSAGE = 'Elegí temáticas válidas';
 export const MAX_PLACE_NAME_LENGTH = 100;
+export const CITIES_REQUIRED_MESSAGE = 'Ingresá al menos una ciudad';
 
 function placeNames(duplicateMessage: string) {
   return z
@@ -87,6 +88,13 @@ export function buildProjectFormSchema(keys: readonly string[]) {
       message: 'Seleccioná al menos un departamento',
       path: ['departmentIds'],
     })
+    .refine(
+      (data) =>
+        data.geographicScope !== 'national' ||
+        data.departmentIds.length === 0 ||
+        data.cities.length > 0,
+      { message: CITIES_REQUIRED_MESSAGE, path: ['cities'] }
+    )
     .refine((data) => data.geographicScope !== 'international' || data.countries.length > 0, {
       message: 'Ingresá al menos un país',
       path: ['countries'],
@@ -110,14 +118,13 @@ export function splitProjectFormData(data: ProjectFormData, keys: readonly strin
   const counts = Object.fromEntries(keys.map((key) => [key, fields[key] as number]));
   for (const key of keys) delete fields[key];
   const isNational = rest.geographicScope === 'national';
-  const nationalCities = isNational ? cities : [];
 
   return {
     projectData: {
       ...rest,
       countries: isNational ? [] : countries,
-      cities: nationalCities,
-      neighborhoods: nationalCities.length > 0 ? neighborhoods : [],
+      cities: isNational ? cities : [],
+      neighborhoods: isNational ? neighborhoods : [],
     },
     beneficiaryData: { year, counts },
     topicIds,

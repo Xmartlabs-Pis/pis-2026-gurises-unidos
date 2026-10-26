@@ -97,7 +97,7 @@ export function TerritorySection({
         name="geographicScope"
         label="Alcance geográfico"
         options={GEOGRAPHIC_SCOPE_OPTIONS}
-        onValueChange={() => clearErrors(['departmentIds', 'countries'])}
+        onValueChange={() => clearErrors(['departmentIds', 'countries', 'cities'])}
       />
       {isInternational ? (
         <TagInputField
@@ -122,7 +122,7 @@ export function TerritorySection({
             <TagInputField
               id="cities"
               name="cities"
-              label="Ciudades (opcional)"
+              label="Ciudades"
               placeholder="Ej: Las Piedras"
               description={
                 hasDepartments
@@ -131,6 +131,7 @@ export function TerritorySection({
               }
               disabled={!hasDepartments}
               maxLength={MAX_PLACE_NAME_LENGTH}
+              required
             />
             <TagInputField
               id="neighborhoods"
