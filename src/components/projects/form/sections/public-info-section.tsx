@@ -1,5 +1,4 @@
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { TextareaField } from '@/components/ui/forms/textarea-field';
 import { FormSection } from '@/components/ui/forms/form-section';
 
@@ -9,7 +8,7 @@ export function PublicInfoSection() {
       title="Información pública"
       description="Aparece en la vista pública para donantes y aliados."
     >
-      <TextInputField
+      <TextareaField
         id="generalObjective"
         name="generalObjective"
         label="Objetivo general"
