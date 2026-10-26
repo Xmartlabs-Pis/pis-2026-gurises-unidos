@@ -39,6 +39,7 @@ function renderForm(props: Partial<ComponentProps<typeof ProjectForm>> = {}) {
         status: 'active',
         leadCoordinatorId: '2',
         departmentIds: ['3'],
+        cities: ['Montevideo'],
         startYear: '2020',
         year: '2024',
       }}
@@ -87,6 +88,7 @@ it('submits no intensity while the project has no direct children or adolescents
       intensity: 'medium',
       leadCoordinatorId: '2',
       departmentIds: ['3'],
+      cities: ['Montevideo'],
       startYear: '2020',
       year: '2024',
     },

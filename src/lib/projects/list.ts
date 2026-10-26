@@ -68,8 +68,18 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
   if (filters.startYearFrom !== undefined || filters.startYearTo !== undefined) {
     where.startYear = { gte: filters.startYearFrom, lte: filters.startYearTo };
   }
-  if (filters.beneficiaryYear !== undefined) {
-    where.projectBeneficiaries = { some: { year: filters.beneficiaryYear } };
+  if (filters.beneficiaryYear !== undefined || filters.beneficiaryCategoryId) {
+    where.projectBeneficiaries = {
+      some: {
+        year: filters.beneficiaryYear,
+        values: filters.beneficiaryCategoryId
+          ? { some: { categoryId: filters.beneficiaryCategoryId, value: { gt: 0 } } }
+          : undefined,
+      },
+    };
+  }
+  if (filters.strategicLineId) {
+    where.strategicLines = { some: { id: filters.strategicLineId } };
   }
 
   return where;
@@ -130,7 +140,7 @@ export async function listBeneficiaryYears(): Promise<number[]> {
 }
 
 export async function listProjectFilterOptions() {
-  const [departments, topics] = await Promise.all([
+  const [departments, topics, strategicLines, beneficiaryCategories] = await Promise.all([
     prisma.department.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
@@ -140,7 +150,17 @@ export async function listProjectFilterOptions() {
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     }),
+    prisma.strategicLine.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.beneficiaryCategory.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
   ]);
 
-  return { departments, topics };
+  return { departments, topics, strategicLines, beneficiaryCategories };
 }

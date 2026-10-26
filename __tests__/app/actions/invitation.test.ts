@@ -1,19 +1,36 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { AuthError } from 'next-auth';
 import { acceptInvitation } from '@/app/actions/invitation';
+import {
+  SESSION_EXPIRATION_COOKIE,
+  SESSION_EXPIRATION_COOKIE_OPTIONS,
+} from '@/lib/auth/session-expiration';
 import prisma from '@/lib/prisma';
 
-const { redirectMock, logAuditMock, hashMock, findValidUserTokenMock, consumeUserTokenMock } =
-  vi.hoisted(() => ({
-    redirectMock: vi.fn((url: string) => {
-      throw new Error(`NEXT_REDIRECT:${url}`);
-    }),
-    logAuditMock: vi.fn(),
-    hashMock: vi.fn(),
-    findValidUserTokenMock: vi.fn(),
-    consumeUserTokenMock: vi.fn(),
-  }));
+const {
+  redirectMock,
+  logAuditMock,
+  hashMock,
+  findValidUserTokenMock,
+  consumeUserTokenMock,
+  signInMock,
+  cookieStore,
+} = vi.hoisted(() => ({
+  redirectMock: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`);
+  }),
+  logAuditMock: vi.fn(),
+  hashMock: vi.fn(),
+  findValidUserTokenMock: vi.fn(),
+  consumeUserTokenMock: vi.fn(),
+  signInMock: vi.fn(),
+  cookieStore: { set: vi.fn() },
+}));
 
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
+vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieStore) }));
+vi.mock('next-auth', () => import('@auth/core/errors'));
+vi.mock('@/auth', () => ({ signIn: signInMock }));
 vi.mock('@/lib/audit-log', () => ({ logAudit: logAuditMock }));
 vi.mock('@/lib/credentials', () => ({ hashPassword: hashMock }));
 vi.mock('@/lib/auth/user-tokens', () => ({
@@ -22,6 +39,7 @@ vi.mock('@/lib/auth/user-tokens', () => ({
 }));
 
 const USER_ID = 42;
+const DOCUMENT_ID = '12345672';
 const TOKEN_ID = 9;
 
 function buildFormData(overrides: Record<string, string> = {}) {
@@ -49,22 +67,22 @@ function setupTransaction({ updatedCount = 1 } = {}) {
 beforeEach(() => {
   redirectMock.mockClear();
   logAuditMock.mockReset();
+  signInMock.mockReset();
+  cookieStore.set.mockReset();
   hashMock.mockResolvedValue('new-hash');
   consumeUserTokenMock.mockResolvedValue(true);
   findValidUserTokenMock.mockResolvedValue({
     valid: true,
     tokenId: TOKEN_ID,
-    user: { id: USER_ID, status: 'pendingInvitation' },
+    user: { id: USER_ID, documentId: DOCUMENT_ID, status: 'pendingInvitation' },
   });
 });
 
 describe('acceptInvitation', () => {
-  test('activates the user with the chosen password and redirects to login', async () => {
+  test('activates the user with the chosen password, signs them in and redirects to the dashboard', async () => {
     const tx = setupTransaction();
 
-    await expect(acceptInvitation({}, buildFormData())).rejects.toThrow(
-      'NEXT_REDIRECT:/login?invitationAccepted=1'
-    );
+    await expect(acceptInvitation({}, buildFormData())).rejects.toThrow('NEXT_REDIRECT:/dashboard');
 
     expect(findValidUserTokenMock).toHaveBeenCalledWith('invitation-token', 'invitation');
     expect(hashMock).toHaveBeenCalledWith('NewPassword1');
@@ -85,6 +103,27 @@ describe('acceptInvitation', () => {
       entityId: USER_ID,
       details: { changes: [{ field: 'status', from: 'pendingInvitation', to: 'active' }] },
     });
+    expect(signInMock).toHaveBeenCalledWith('credentials', {
+      documentId: DOCUMENT_ID,
+      password: 'NewPassword1',
+      remember: 'false',
+      redirect: false,
+    });
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      SESSION_EXPIRATION_COOKIE,
+      expect.any(String),
+      SESSION_EXPIRATION_COOKIE_OPTIONS
+    );
+  });
+
+  test('redirects to login when the automatic sign in fails', async () => {
+    setupTransaction();
+    signInMock.mockRejectedValue(new AuthError('CredentialsSignin'));
+
+    await expect(acceptInvitation({}, buildFormData())).rejects.toThrow(
+      'NEXT_REDIRECT:/login?invitationAccepted=1'
+    );
+    expect(cookieStore.set).not.toHaveBeenCalled();
   });
 
   test('returns field errors for an invalid password', async () => {

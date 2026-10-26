@@ -552,7 +552,6 @@ describe('updateProject persistence', () => {
           generalObjective: '',
           publicDescription: '',
           internalNotes: '',
-          cities: undefined,
           families: '',
         })
       )
@@ -563,8 +562,6 @@ describe('updateProject persistence', () => {
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
-        cities: [],
-        neighborhoods: [],
       }),
     });
     expect(mocks.upsertBeneficiary).toHaveBeenCalledWith(
@@ -578,6 +575,13 @@ describe('updateProject persistence', () => {
         }),
       })
     );
+  });
+
+  it('requires a city for a national project without accessing the database', async () => {
+    const result = await updateProject(10, {}, formData({ cities: undefined }));
+
+    expect(result.errors?.cities).toEqual(['Ingresá al menos una ciudad']);
+    expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
   it('returns specific field errors together without accessing the database', async () => {

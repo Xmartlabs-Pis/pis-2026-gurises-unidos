@@ -370,13 +370,17 @@ describe('listBeneficiaryYears', () => {
 });
 
 describe('listProjectFilterOptions', () => {
-  test('returns all departments and only active topics, including those without projects', async () => {
+  test('returns all departments and only active topics, strategic lines and beneficiary categories, including those without projects', async () => {
     prismaMock.department.findMany.mockResolvedValue([MONTEVIDEO]);
     prismaMock.topic.findMany.mockResolvedValue([{ id: 1, name: 'Education' }]);
+    prismaMock.strategicLine.findMany.mockResolvedValue([{ id: 5, name: 'Formación' }]);
+    prismaMock.beneficiaryCategory.findMany.mockResolvedValue([{ id: 3, name: 'Familias' }]);
 
     expect(await listProjectFilterOptions()).toEqual({
       departments: [MONTEVIDEO],
       topics: [{ id: 1, name: 'Education' }],
+      strategicLines: [{ id: 5, name: 'Formación' }],
+      beneficiaryCategories: [{ id: 3, name: 'Familias' }],
     });
     expect(prismaMock.department.findMany).toHaveBeenCalledWith({
       select: { id: true, name: true },
@@ -387,13 +391,24 @@ describe('listProjectFilterOptions', () => {
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     });
+    expect(prismaMock.strategicLine.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+    expect(prismaMock.beneficiaryCategory.findMany).toHaveBeenCalledWith({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
   });
 });
 
-test('combines topic and department with the other project filters', async () => {
+test('combines topic, department and strategic line with the other project filters', async () => {
   await listWith({
     topicId: '2',
     departmentId: '3',
+    strategicLineId: '5',
     beneficiaryYear: '2025',
     status: 'active',
     intensity: 'high',
@@ -403,6 +418,7 @@ test('combines topic and department with the other project filters', async () =>
     deletedAt: null,
     topics: { some: { id: 2 } },
     departments: { some: { id: 3 } },
+    strategicLines: { some: { id: 5 } },
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',
@@ -410,9 +426,32 @@ test('combines topic and department with the other project filters', async () =>
   });
 });
 
-test('ignores invalid topic and department IDs', () => {
-  expect(parseProjectFilters({ topicId: '-1', departmentId: 'invalid' })).toMatchObject({
+test('filters by a beneficiary category with values in any year when no year is selected', async () => {
+  await listWith({ beneficiaryCategoryId: '3' });
+  expect(findManyArgs().where.projectBeneficiaries).toEqual({
+    some: { values: { some: { categoryId: 3, value: { gt: 0 } } } },
+  });
+});
+
+test('requires the beneficiary category values to belong to the selected year', async () => {
+  await listWith({ beneficiaryCategoryId: '3', beneficiaryYear: '2025' });
+  expect(findManyArgs().where.projectBeneficiaries).toEqual({
+    some: { year: 2025, values: { some: { categoryId: 3, value: { gt: 0 } } } },
+  });
+});
+
+test('ignores invalid topic, department, strategic line and beneficiary category IDs', () => {
+  expect(
+    parseProjectFilters({
+      topicId: '-1',
+      departmentId: 'invalid',
+      strategicLineId: '2.5',
+      beneficiaryCategoryId: '0',
+    })
+  ).toMatchObject({
     topicId: undefined,
     departmentId: undefined,
+    strategicLineId: undefined,
+    beneficiaryCategoryId: undefined,
   });
 });

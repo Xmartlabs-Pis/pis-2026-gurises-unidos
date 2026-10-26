@@ -182,7 +182,7 @@ async function main() {
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
           zone: ZONES[index % ZONES.length],
-          cities: index % 3 === 0 ? [] : [`Ciudad ${index + 1}`],
+          cities: [`Ciudad ${index + 1}`],
           neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,

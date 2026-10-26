@@ -96,6 +96,8 @@ type ListProps = {
   search?: string;
   departmentId?: number;
   topicId?: number;
+  strategicLineId?: number;
+  beneficiaryCategoryId?: number;
 };
 
 function buildList({
@@ -108,6 +110,8 @@ function buildList({
   search,
   departmentId,
   topicId,
+  strategicLineId,
+  beneficiaryCategoryId,
 }: ListProps = {}) {
   return (
     <ProjectsCardList
@@ -127,8 +131,18 @@ function buildList({
         { id: 1, name: 'Education' },
         { id: 2, name: 'Health' },
       ]}
+      strategicLines={[
+        { id: 5, name: 'Formación' },
+        { id: 6, name: 'Incidencia en Políticas Públicas' },
+      ]}
+      beneficiaryCategories={[
+        { id: 3, name: 'Familias' },
+        { id: 4, name: 'Jóvenes (18 a 29)' },
+      ]}
       departmentId={departmentId}
       topicId={topicId}
+      strategicLineId={strategicLineId}
+      beneficiaryCategoryId={beneficiaryCategoryId}
     />
   );
 }
@@ -401,9 +415,11 @@ test('restarts the loaded list when the filters change', async () => {
   expect(screen.queryByText('Second page project')).toBeNull();
 });
 
-test('shows the selected department and topic in the filter menu', async () => {
-  mocks.searchParams = new URLSearchParams('departmentId=2&topicId=1&beneficiaryYear=2025');
-  renderList({ departmentId: 2, topicId: 1 });
+test('shows the selected department, topic, strategic line and beneficiary category in the filter menu', async () => {
+  mocks.searchParams = new URLSearchParams(
+    'departmentId=2&topicId=1&strategicLineId=6&beneficiaryCategoryId=4&beneficiaryYear=2025'
+  );
+  renderList({ departmentId: 2, topicId: 1, strategicLineId: 6, beneficiaryCategoryId: 4 });
   fireEvent.click(screen.getAllByRole('button', { name: 'Filtros de proyectos' })[0]);
   expect(
     (await screen.findByRole('combobox', { name: 'Filtrar por departamento' })).textContent
@@ -411,6 +427,12 @@ test('shows the selected department and topic in the filter menu', async () => {
   expect(screen.getByRole('combobox', { name: 'Filtrar por tem\u00e1tica' }).textContent).toContain(
     'Education'
   );
+  expect(
+    screen.getByRole('combobox', { name: 'Filtrar por l\u00ednea estrat\u00e9gica' }).textContent
+  ).toContain('Incidencia en Políticas Públicas');
+  expect(
+    screen.getByRole('combobox', { name: 'Filtrar por categoría de beneficiarios' }).textContent
+  ).toContain('Jóvenes (18 a 29)');
 });
 
 test('clears a department while keeping the topic, year and search', async () => {
@@ -430,21 +452,40 @@ test('clears a department while keeping the topic, year and search', async () =>
   );
 });
 
-test('keeps the department and topic when loading more projects', async () => {
+test('keeps the department, topic, strategic line and beneficiary category when loading more projects', async () => {
   mocks.loadProjectsPage.mockResolvedValue(buildPage([buildProject(2, 'Second project')], 2, 2));
-  renderList({ departmentId: 2, topicId: 1, totalPages: 2 });
+  renderList({
+    departmentId: 2,
+    topicId: 1,
+    strategicLineId: 5,
+    beneficiaryCategoryId: 3,
+    totalPages: 2,
+  });
   await revealSentinel();
   expect(mocks.loadProjectsPage).toHaveBeenCalledWith(
-    expect.objectContaining({ departmentId: '2', topicId: '1', beneficiaryYear: '2025' }),
+    expect.objectContaining({
+      departmentId: '2',
+      topicId: '1',
+      strategicLineId: '5',
+      beneficiaryCategoryId: '3',
+      beneficiaryYear: '2025',
+    }),
     2
   );
 });
 
 test('clears the menu filters and restores the default year while preserving status and search', async () => {
   mocks.searchParams = new URLSearchParams(
-    'departmentId=2&topicId=1&beneficiaryYear=2025&status=inactive&search=Centro&page=3'
+    'departmentId=2&topicId=1&strategicLineId=5&beneficiaryCategoryId=3&beneficiaryYear=2025&status=inactive&search=Centro&page=3'
   );
-  renderList({ departmentId: 2, topicId: 1, status: 'inactive', search: 'Centro' });
+  renderList({
+    departmentId: 2,
+    topicId: 1,
+    strategicLineId: 5,
+    beneficiaryCategoryId: 3,
+    status: 'inactive',
+    search: 'Centro',
+  });
   fireEvent.click(screen.getAllByRole('button', { name: 'Filtros de proyectos' })[0]);
   fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
   expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=inactive&search=Centro', {
@@ -452,11 +493,11 @@ test('clears the menu filters and restores the default year while preserving sta
   });
 });
 
-test('counts department and topic without counting the default year', () => {
-  renderList({ departmentId: 2, topicId: 1 });
+test('counts department, topic, strategic line and beneficiary category without counting the default year', () => {
+  renderList({ departmentId: 2, topicId: 1, strategicLineId: 5, beneficiaryCategoryId: 3 });
   for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
-    expect(button.textContent).toBe('2');
-    expect(button.getAttribute('aria-description')).toBe('2 filtros activos');
+    expect(button.textContent).toBe('4');
+    expect(button.getAttribute('aria-description')).toBe('4 filtros activos');
   }
 });
 

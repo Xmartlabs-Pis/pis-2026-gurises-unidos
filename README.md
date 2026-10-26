@@ -1,4 +1,98 @@
-# pis-2026-gurises-unidos
+<div align="center">
+
+# Gurises Unidos · Plataforma de proyectos e impacto
+
+Una plataforma web para que [Gurises Unidos](https://gurisesunidos.org.uy) registre sus proyectos y
+beneficiarios, y pueda mostrar con datos el trabajo que hace todos los años con niñas, niños y
+adolescentes de Uruguay.
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+
+</div>
+
+## Sobre Gurises Unidos
+
+[Gurises Unidos](https://gurisesunidos.org.uy/quienes-somos/) es una organización de la sociedad
+civil uruguaya que trabaja desde 1989 por los derechos de niñas, niños y adolescentes (NNA). Empezó
+como un proyecto piloto para gurises en situación de calle y hoy acompaña a NNA, a sus familias y a
+sus comunidades, sobre todo en los barrios más vulnerables. Su trabajo se basa en la Convención
+sobre los Derechos del Niño.
+
+Si querés conocer más o darles una mano, mirá [cómo colaborar](https://gurisesunidos.org.uy/como-colaborar/).
+
+## Por qué existe este proyecto
+
+Cada año, los proyectos de Gurises Unidos llegan a miles de personas. En el último período fueron
+6.315 NNA, 800 familias y 4.498 docentes y educadores. Hasta ahora, esos números vivían en planillas
+de Excel y se convertían a mano en presentaciones de PowerPoint. Eso lleva mucho tiempo, depende de
+quién lo arme y hace difícil tener una foto completa del impacto.
+
+Esta plataforma busca que cargar los datos sea simple y que las métricas salgan solas.
+
+## Qué hace
+
+- **Gestión de proyectos y beneficiarios.** Coordinadores y administradores registran cada proyecto
+  (territorio, temáticas, líneas estratégicas, intensidad, equipo) y cuántas personas alcanza cada año.
+- **Dashboard público de impacto.** Muestra métricas agregadas y anónimas para que financiadores,
+  socios y cualquier persona interesada puedan ver el alcance de la organización.
+- **Métricas internas.** Un panel privado para el equipo, con indicadores más detallados y
+  exportación de reportes.
+- **Usuarios y permisos.** Roles de administrador y coordinador, con alta de usuarios por
+  invitación.
+
+## Contexto académico
+
+Este proyecto se hizo en el curso **Proyecto de Ingeniería de Software (PIS) 2026** del
+[Instituto de Computación](https://www.fing.edu.uy/inco) de la
+[Facultad de Ingeniería](https://www.fing.edu.uy) de la [Universidad de la República](https://udelar.edu.uy).
+Lo propuso [Xmartlabs](https://xmartlabs.com), que nos acompañó durante todo el proyecto, y lo
+trabajamos siguiendo el proceso ágil PISAgile.
+
+## Equipo
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/agus5513"><img src="https://github.com/agus5513.png?size=100" width="100" alt=""/><br/><sub><b>Agustín Cabrera Bertucci</b></sub></a></td>
+    <td align="center"><a href="https://github.com/alvaroroyes1"><img src="https://github.com/alvaroroyes1.png?size=100" width="100" alt=""/><br/><sub><b>Álvaro Royes</b></sub></a></td>
+    <td align="center"><a href="https://github.com/bmontenegrom"><img src="https://github.com/bmontenegrom.png?size=100" width="100" alt=""/><br/><sub><b>Benjamín Montenegro</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Bruno-Romero"><img src="https://github.com/Bruno-Romero.png?size=100" width="100" alt=""/><br/><sub><b>Bruno Romero García</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/CataSegui"><img src="https://github.com/CataSegui.png?size=100" width="100" alt=""/><br/><sub><b>Catalina Segui Fígoli</b></sub></a></td>
+    <td align="center"><a href="https://github.com/CristianCriales"><img src="https://github.com/CristianCriales.png?size=100" width="100" alt=""/><br/><sub><b>Cristian Criales</b></sub></a></td>
+    <td align="center"><a href="https://github.com/nachodla"><img src="https://github.com/nachodla.png?size=100" width="100" alt=""/><br/><sub><b>Ignacio de León</b></sub></a></td>
+    <td align="center"><a href="https://github.com/j04kh"><img src="https://github.com/j04kh.png?size=100" width="100" alt=""/><br/><sub><b>Joaquín Hernández</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/franciscocros"><img src="https://github.com/franciscocros.png?size=100" width="100" alt=""/><br/><sub><b>Juan Francisco Cros</b></sub></a></td>
+    <td align="center"><a href="https://github.com/takealuk"><img src="https://github.com/takealuk.png?size=100" width="100" alt=""/><br/><sub><b>Luca Scaboni Morales</b></sub></a></td>
+    <td align="center"><a href="https://github.com/marcerg"><img src="https://github.com/marcerg.png?size=100" width="100" alt=""/><br/><sub><b>Marcelo Rodríguez Gaete</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Marcos-Craviotto"><img src="https://github.com/Marcos-Craviotto.png?size=100" width="100" alt=""/><br/><sub><b>Marcos Craviotto</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/marto0108"><img src="https://github.com/marto0108.png?size=100" width="100" alt=""/><br/><sub><b>Martín Antúnez Quintero</b></sub></a></td>
+    <td align="center"><a href="https://github.com/MartinMayora"><img src="https://github.com/MartinMayora.png?size=100" width="100" alt=""/><br/><sub><b>Martín Mayora Roth</b></sub></a></td>
+    <td align="center"><a href="https://github.com/nicolas-rojo"><img src="https://github.com/nicolas-rojo.png?size=100" width="100" alt=""/><br/><sub><b>Nicolás Rojo Ferraro</b></sub></a></td>
+    <td align="center"><a href="https://github.com/olizorrilla"><img src="https://github.com/olizorrilla.png?size=100" width="100" alt=""/><br/><sub><b>Olivia Zorrilla</b></sub></a></td>
+  </tr>
+</table>
+
+## Agradecimientos
+
+A **Gurises Unidos**, por el trabajo que hacen todos los días y por dejarnos aportar un poco a él.
+
+A **[Xmartlabs](https://xmartlabs.com)**, por proponer el proyecto, darnos el repositorio y el
+servidor, enseñarnos Next.js y Docker en sus talleres, y por todas las revisiones. Gracias en
+especial a Maité Martínez, Matías Lorenzo, Andrés Pérez y Jonathan Lifschitz.
+
+## Cómo empezar
+
+Todo lo necesario para levantar la app en tu máquina (Node, base de datos, tests y Docker) está en
+[Correr la app](#correr-la-app).
 
 ## Correr la app
 
@@ -16,7 +110,7 @@ La app queda corriendo en **http://localhost:3000** (`dev`, `start` y Docker usa
 
 Otros scripts: `npm run build`, `npm start` (sirve el build en el mismo puerto), `npm run lint`,
 `npm test` (Vitest), `npm run test:watch`, `npm run test:e2e` (Playwright), `npm run typecheck`,
-`npm run format`.
+`npm run format`, `npm run email` (preview de templates en http://localhost:3333).
 
 ### Con Docker
 
@@ -71,7 +165,7 @@ npx auth secret               # genera AUTH_SECRET y lo escribe en .env
 
 ## Email (Resend)
 
-Los mails (por ahora, el de recuperación de contraseña) salen por [Resend](https://resend.com).
+Los mails de invitación y de recuperación de contraseña salen por [Resend](https://resend.com).
 
 | Variable         | Uso                                                                                 |
 | ---------------- | ----------------------------------------------------------------------------------- |
@@ -86,6 +180,15 @@ En local alcanza con no definir `RESEND_API_KEY`: el mail no se envía y se impr
 
 Sin un dominio verificado en Resend, el remitente `onboarding@resend.dev` solo entrega al mail del
 dueño de la cuenta. Hasta que haya dominio, los usuarios reales no reciben los mails.
+
+Los templates están en `src/emails`. Para verlos en el browser, sin mandar nada:
+
+```bash
+npm run email   # http://localhost:3333
+```
+
+Usa el puerto 3333 para no pisar `npm run dev` en `:3000`. En el previewer el logo sale de
+`src/emails/static`; en los mails reales usa `AUTH_URL` + `/images/logo.png`.
 
 ## Tests end to end
 
@@ -159,7 +262,9 @@ archivos corren de a uno (`fileParallelism: false`) porque comparten la base. En
 workflow `Integration`, con un Postgres propio.
 
 `integration/setup.ts` mockea lo que depende de Next: `auth()` devuelve la sesión que armes con
-`signInAs`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no hace nada.
+`signInAs` (`signInAs(id, role, { remember: true })` simula "recordarme"),
+`signIn` es un `vi.fn()`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no
+hace nada.
 
 ### Escribir un test nuevo
 
@@ -195,7 +300,7 @@ afterEach(async () => {
 describe('someAction (integration)', () => {
   test('does the thing', async () => {
     const id = await createFixture();
-    signInAs(seed.adminId);
+    signInAs(seed.adminId, 'admin');
 
     await expect(someAction(id, {}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/somewhere$/);
 
@@ -214,7 +319,7 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Cada test crea sus propios datos** y guarda los ids, y el `afterEach` los borra. Incluí los
   `AuditLog` y las filas hijas que genere la action. Crear los datos dentro de cada test, y no en un
   `beforeEach`, deja que cada uno arme exactamente lo que necesita.
-- **Logueate antes de llamar a la action** con `signInAs(userId)`. La sesión se cierra sola al
+- **Logueate antes de llamar a la action** con `signInAs(userId, role)`. La sesión se cierra sola al
   terminar cada test. Sin `signInAs`, la action ve un usuario no logueado.
 - **Anclá los regex de redirect** (`^...$`): comparar un substring deja pasar
   `/dashboard/projects/11` cuando esperabas `/dashboard/projects/1`.

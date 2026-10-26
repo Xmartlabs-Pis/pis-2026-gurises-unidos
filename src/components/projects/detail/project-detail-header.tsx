@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { COUNTERPARTY_LABEL, INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
@@ -81,16 +82,23 @@ export function ProjectDetailHeader({
 
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
           {canEdit && (
-            <Link
-              href={`/dashboard/projects/${project.id}/edit`}
-              className={buttonVariants({
-                variant: 'outline',
-                size: 'lg',
-                className: 'h-9 px-4 shadow-sm',
-              })}
-            >
-              Editar proyecto
-            </Link>
+            <>
+              <ExportPdfButton
+                href={`/api/reports/projects/${project.id}?year=${selectedYear}`}
+                label="Exportar"
+                className="h-9 px-4 shadow-sm"
+              />
+              <Link
+                href={`/dashboard/projects/${project.id}/edit`}
+                className={buttonVariants({
+                  variant: 'outline',
+                  size: 'lg',
+                  className: 'h-9 px-4 shadow-sm',
+                })}
+              >
+                Editar proyecto
+              </Link>
+            </>
           )}
         </div>
       </div>

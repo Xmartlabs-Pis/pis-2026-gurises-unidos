@@ -6,6 +6,7 @@ import {
   deleteStrategicLine,
   type StrategicLineActionState,
 } from '@/app/actions/strategic-lines';
+import { ProjectCountLink } from '@/components/project-count-link';
 import { strategicLineSchema } from '@/lib/validation/strategic-line';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
@@ -122,13 +123,16 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-foreground text-sm leading-5 font-medium">{line.name}</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-foreground min-w-0 text-sm leading-5 font-medium break-words">
+          {line.name}
+        </span>
 
-        <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs leading-4 font-normal">
-            {line._count.projects === 1 ? '1 proyecto' : `${line._count.projects} proyectos`}
-          </span>
+        <div className="flex shrink-0 items-center gap-3">
+          <ProjectCountLink
+            projectCount={line._count.projects}
+            href={`/dashboard/projects?strategicLineId=${line.id}&status=all&beneficiaryYear=all`}
+          />
 
           {line._count.projects > 0 ? (
             <AlertDialog>
@@ -154,7 +158,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Eliminar línea estratégica?</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="wrap-anywhere">
                       Esta acción dejará de mostrar “{line.name}” como línea estratégica.
                     </AlertDialogDescription>
                   </AlertDialogHeader>

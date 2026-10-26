@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '../ui/alert-dialog';
+import { ProjectCountLink } from '@/components/project-count-link';
 
 type BeneficiaryCategoriesManagementProps = {
   categories: Category[];
@@ -127,9 +128,10 @@ function CategoryRow({ category }: { category: Category }) {
         <span className="text-foreground text-sm leading-5 font-medium">{category.name}</span>
 
         <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs leading-4 font-normal">
-            {category.projectCount === 1 ? '1 proyecto' : `${category.projectCount} proyectos`}
-          </span>
+          <ProjectCountLink
+            projectCount={category.projectCount}
+            href={`/dashboard/projects?beneficiaryCategoryId=${category.id}&status=all&beneficiaryYear=all`}
+          />
 
           {category.isSystem ? (
             <span className="text-muted-foreground inline-flex h-8 items-center px-2.5 text-xs leading-4 font-medium">

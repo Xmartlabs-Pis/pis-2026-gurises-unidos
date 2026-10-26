@@ -96,4 +96,6 @@ export async function fillRequiredProjectFields(page: Page, name: string) {
   await pickOption(page, 'Coordinador responsable', COORDINATOR_NAME);
   await pickOption(page, 'Líneas Estratégicas', STRATEGIC_LINES[0]);
   await pickOption(page, 'Departamentos', E2E_DEPARTMENT);
+  await page.getByLabel('Ciudades', { exact: true }).fill('Montevideo');
+  await page.keyboard.press('Enter');
 }

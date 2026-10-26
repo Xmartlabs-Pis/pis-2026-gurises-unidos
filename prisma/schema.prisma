@@ -270,6 +270,8 @@ model AuditLog {
   occurredAt DateTime    @default(now())
 
   author User @relation(fields: [authorId], references: [id])
+
+  @@index([occurredAt])
 }
 
 model UserToken {
