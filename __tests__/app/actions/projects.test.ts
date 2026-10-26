@@ -9,6 +9,7 @@ import {
 import { BENEFICIARY_CATEGORY_KEYS, beneficiaryValueRows } from '../../mocks/beneficiary-values';
 import { formCategoryValuesWhere, toBeneficiaryValuesCreate } from '@/lib/project-display';
 import { BENEFICIARY_VALUES_SELECT } from '@/lib/projects/beneficiary-values';
+import { PROJECT_AUDIT_INCLUDE } from '@/lib/projects/audit-changes';
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -132,9 +133,10 @@ beforeEach(() => {
   mocks.findProject.mockResolvedValue({
     id: 10,
     leadCoordinatorId: 2,
-    topics: [{ id: 1 }],
-    strategicLines: [{ id: 1 }],
-    departments: [{ id: 3 }],
+    leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
+    topics: [{ id: 1, name: 'Topic 1' }],
+    strategicLines: [{ id: 1, name: 'Line 1' }],
+    departments: [{ id: 3, name: 'Department 3' }],
   });
   mocks.countTopics.mockImplementation(
     ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
@@ -149,7 +151,26 @@ beforeEach(() => {
   });
   mocks.transaction.mockImplementation(async (callback) => callback(TX));
   mocks.createProject.mockResolvedValue({ id: 10 });
-  mocks.updateProject.mockResolvedValue({ id: 10 });
+  mocks.updateProject.mockImplementation(async ({ data }) => {
+    const { topics, strategicLines, departments, ...fields } = data;
+    return {
+      id: 10,
+      ...fields,
+      leadCoordinator: { firstName: `Coordinator ${fields.leadCoordinatorId}`, lastName: 'User' },
+      topics: (topics?.set ?? [{ id: 1 }]).map(({ id }: { id: number }) => ({
+        id,
+        name: `Topic ${id}`,
+      })),
+      strategicLines: (strategicLines?.set ?? [{ id: 1 }]).map(({ id }: { id: number }) => ({
+        id,
+        name: `Line ${id}`,
+      })),
+      departments: (departments?.set ?? [{ id: 3 }]).map(({ id }: { id: number }) => ({
+        id,
+        name: `Department ${id}`,
+      })),
+    };
+  });
   mocks.createBeneficiary.mockResolvedValue({ id: 20 });
   mocks.findBeneficiary.mockResolvedValue({ values: [] });
   mocks.findLaterBeneficiary.mockResolvedValue(null);
@@ -467,6 +488,7 @@ describe('updateProject persistence', () => {
         updateProject(10, {}, formData({ createdBy: '999', id: '999' }))
       ).rejects.toThrow('Redirect: /dashboard/projects/10');
       expect(mocks.updateProject).toHaveBeenCalledWith({
+        include: PROJECT_AUDIT_INCLUDE,
         where: { id: 10 },
         data: {
           name: 'Updated project',
@@ -527,7 +549,7 @@ describe('updateProject persistence', () => {
           action: 'update',
           entity: 'project',
           entityId: 10,
-          details: { changedFields: expect.any(Array) },
+          details: { changedFields: expect.any(Array), changes: expect.any(Array) },
         },
       });
       expect(mocks.audit).toHaveBeenNthCalledWith(2, {
@@ -557,6 +579,7 @@ describe('updateProject persistence', () => {
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject).toHaveBeenCalledWith({
+      include: PROJECT_AUDIT_INCLUDE,
       where: { id: 10 },
       data: expect.objectContaining({
         generalObjective: null,
@@ -715,9 +738,10 @@ function unchangedRecords() {
   mocks.findProject.mockResolvedValue({
     id: 10,
     ...projectData,
-    topics: [{ id: 1 }],
-    strategicLines: [{ id: 1 }],
-    departments: [{ id: 3 }],
+    leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
+    topics: [{ id: 1, name: 'Topic 1' }],
+    strategicLines: [{ id: 1, name: 'Line 1' }],
+    departments: [{ id: 3, name: 'Department 3' }],
   });
   mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows(beneficiaryData.counts) });
 }
@@ -780,6 +804,7 @@ describe('project review regressions', () => {
       select: { id: true },
     });
     expect(mocks.updateProject).toHaveBeenCalledWith({
+      include: PROJECT_AUDIT_INCLUDE,
       where: { id: 10 },
       data: expect.objectContaining({ leadCoordinatorId: 9 }),
     });
@@ -884,7 +909,19 @@ describe('project review regressions', () => {
         action: 'update',
         entity: 'project',
         entityId: 10,
-        details: { changedFields: ['departments'] },
+        details: {
+          changedFields: ['departments'],
+          changes: [
+            {
+              field: 'departments',
+              from: [{ id: 3, name: 'Department 3' }],
+              to: [
+                { id: 3, name: 'Department 3' },
+                { id: 4, name: 'Department 4' },
+              ],
+            },
+          ],
+        },
       },
     });
   });
@@ -899,7 +936,12 @@ describe('project review regressions', () => {
     expect(data).not.toHaveProperty('departments');
     expect(mocks.audit).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
-        data: expect.objectContaining({ details: { changedFields: ['cities'] } }),
+        data: expect.objectContaining({
+          details: {
+            changedFields: ['cities'],
+            changes: [{ field: 'cities', from: ['City'], to: ['City', 'Other city'] }],
+          },
+        }),
       })
     );
   });
@@ -951,7 +993,19 @@ describe('project review regressions', () => {
         action: 'update',
         entity: 'project',
         entityId: 10,
-        details: { changedFields: ['topics'] },
+        details: {
+          changedFields: ['topics'],
+          changes: [
+            {
+              field: 'topics',
+              from: [{ id: 1, name: 'Topic 1' }],
+              to: [
+                { id: 2, name: 'Topic 2' },
+                { id: 3, name: 'Topic 3' },
+              ],
+            },
+          ],
+        },
       },
     });
     expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
@@ -1119,5 +1173,112 @@ describe('deleteProject', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+});
+
+describe('project audit details', () => {
+  it.each([
+    ['name', 'Renamed project', 'Updated project', 'Renamed project'],
+    ['startYear', '2020', 2019, 2020],
+    ['zone', 'rural', 'city', 'rural'],
+    ['counterpartyType', 'privateSector', 'publicSector', 'privateSector'],
+    ['intensity', 'high', 'medium', 'high'],
+    ['generalObjective', '', 'Objective', null],
+    ['publicDescription', 'New description', 'Description', 'New description'],
+    ['internalNotes', '', 'Team notes', null],
+    ['showOnLanding', 'false', true, false],
+    ['cities', ['City', 'Other city'], ['City'], ['City', 'Other city']],
+    ['neighborhoods', ['Other neighborhood'], ['Neighborhood'], ['Other neighborhood']],
+  ] satisfies [
+    string,
+    string | string[],
+    Prisma.InputJsonValue | null,
+    Prisma.InputJsonValue | null,
+  ][])('records the old and persisted values of %s', async (field, submitted, from, to) => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ [field]: submitted }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.audit).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        authorId: 7,
+        action: 'update',
+        entity: 'project',
+        entityId: 10,
+        details: { changedFields: [field], changes: [{ field, from, to }] },
+      },
+    });
+  });
+
+  it('records the identities and names of both responsible coordinators', async () => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ leadCoordinatorId: '9' }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      {
+        field: 'leadCoordinatorId',
+        from: { id: 2, name: 'Coordinator 2 User' },
+        to: { id: 9, name: 'Coordinator 9 User' },
+      },
+    ]);
+  });
+
+  it('records strategic line names and identities', async () => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ strategicLineIds: ['2'] }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      {
+        field: 'strategicLines',
+        from: [{ id: 1, name: 'Line 1' }],
+        to: [{ id: 2, name: 'Line 2' }],
+      },
+    ]);
+  });
+
+  it('records status and end year together when a project becomes inactive', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ status: 'inactive', endYear: '2024' }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      { field: 'status', from: 'active', to: 'inactive' },
+      { field: 'endYear', from: null, to: 2024 },
+    ]);
+  });
+
+  it('records all cleared national fields when the scope becomes international', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({ geographicScope: 'international', countries: ['Argentina'] })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual(
+      expect.arrayContaining([
+        { field: 'geographicScope', from: 'national', to: 'international' },
+        { field: 'countries', from: [], to: ['Argentina'] },
+        { field: 'cities', from: ['City'], to: [] },
+        { field: 'neighborhoods', from: ['Neighborhood'], to: [] },
+        { field: 'departments', from: [{ id: 3, name: 'Department 3' }], to: [] },
+      ])
+    );
+  });
+
+  it('records normalized intensity instead of the submitted intensity', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ directChildrenAdolescents: '0', intensity: 'high' }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      { field: 'intensity', from: 'medium', to: null },
+    ]);
+    expect(mocks.audit.mock.calls[1][0].data.details.changes).toEqual([
+      { field: 'directChildrenAdolescents', from: 42, to: 0 },
+    ]);
   });
 });
