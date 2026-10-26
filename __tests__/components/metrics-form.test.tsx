@@ -5,6 +5,10 @@ import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 
 const { saveMock } = vi.hoisted(() => ({ saveMock: vi.fn() }));
 vi.mock('@/app/actions/metrics', () => ({ saveMetricSettings: saveMock }));
+vi.mock('@/app/actions/contributors', () => ({
+  createContributor: vi.fn(),
+  deleteContributor: vi.fn(),
+}));
 vi.mock('@/lib/notify', () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),

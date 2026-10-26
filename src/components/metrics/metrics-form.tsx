@@ -1,5 +1,8 @@
 'use client';
 
+import { ContributorsManager } from '@/components/metrics/contributors-manager';
+import type { Contributor } from '@/lib/contributors';
+
 import Link from 'next/link';
 import { Info } from 'lucide-react';
 import { useState, useTransition } from 'react';
@@ -40,7 +43,9 @@ export function MetricsForm({
   initialTopics,
   years,
   initialPublishedYears,
+  contributors = [],
 }: {
+  contributors?: Contributor[];
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];
@@ -216,6 +221,7 @@ export function MetricsForm({
               </div>
             )}
           </section>
+          <ContributorsManager contributors={contributors} />
         </section>
         <aside
           aria-label="Vista previa del sitio público"
