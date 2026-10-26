@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { ListFilter } from 'lucide-react';
 import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
@@ -33,8 +34,20 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
 
   const activeFilterCount = FILTER_KEYS.filter((key) => filters[key] !== undefined).length;
 
+  const dateInputRefs = {
+    from: useRef<HTMLInputElement>(null),
+    to: useRef<HTMLInputElement>(null),
+  };
+
   function commitDate(key: 'from' | 'to', value: string) {
     if (value !== (filters[key] ?? '')) updateFilters({ [key]: value || null });
+  }
+
+  function commitPendingDates() {
+    for (const key of ['from', 'to'] as const) {
+      const input = dateInputRefs[key].current;
+      if (input) commitDate(key, input.value);
+    }
   }
 
   const entityOptions = [
@@ -92,7 +105,11 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
         </p>
       </div>
 
-      <Popover>
+      <Popover
+        onOpenChange={(open) => {
+          if (!open) commitPendingDates();
+        }}
+      >
         <PopoverTrigger
           render={<Button variant="outline" className="relative h-9 w-fit gap-2" />}
           aria-description={`${activeFilterCount} filtros activos`}
@@ -146,6 +163,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
                 <span>{label}</span>
                 <Input
                   key={value}
+                  ref={dateInputRefs[key]}
                   type="date"
                   defaultValue={value ?? ''}
                   onBlur={(event) => commitDate(key, event.currentTarget.value)}

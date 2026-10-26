@@ -47,6 +47,15 @@ describe('AuditLogToolbar date filters', () => {
     expect(updateFilters).toHaveBeenCalledWith({ from: '2026-05-10' });
   });
 
+  it('applies the pending date when the popover is closed with Escape', () => {
+    const from = renderToolbar();
+
+    fireEvent.change(from, { target: { value: '2026-05-10' } });
+    fireEvent.keyDown(from, { key: 'Escape' });
+
+    expect(updateFilters).toHaveBeenCalledWith({ from: '2026-05-10' });
+  });
+
   it('removes the filter when the date is cleared', () => {
     const from = renderToolbar({ from: '2026-05-10' });
 
