@@ -9,15 +9,9 @@ import {
   SESSION_EXPIRATION_REASON,
 } from '@/lib/auth/session-expiration';
 
-const PUBLIC_ROUTES = [
-  '/',
-  '/embed',
-  '/login',
-  '/forgot-password',
-  '/reset-password',
-  '/accept-invitation',
-];
+const PUBLIC_ROUTES = ['/', '/login', '/forgot-password', '/reset-password', '/accept-invitation'];
 const PASSWORD_RESET_ROUTE = '/password-reset';
+const EMBED_ROUTE = '/embed';
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
@@ -25,6 +19,16 @@ function isPublicRoute(pathname: string) {
 
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
+
+  if (pathname === EMBED_ROUTE) {
+    const response = NextResponse.next();
+    response.headers.set(
+      'Content-Security-Policy',
+      `frame-ancestors ${process.env.EMBED_FRAME_ANCESTORS || "'none'"}`
+    );
+    return response;
+  }
+
   const mustChangePassword = request.auth?.user?.mustChangePassword === true;
 
   if (mustChangePassword && pathname !== PASSWORD_RESET_ROUTE) {

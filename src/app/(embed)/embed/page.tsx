@@ -1,5 +1,5 @@
 import { formatNumber } from '@/lib/format';
-import { getMetricSettings, getMetricValues, getReferenceYear } from '@/lib/metrics/queries';
+import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { Button } from '@/components/ui/button';
 
 const SINGLE_ROW_MAX = 4;
@@ -25,7 +25,7 @@ function getDesktopLayout(count: number) {
 }
 
 export default async function EmbedPage() {
-  const year = await getReferenceYear();
+  const [year] = await getPublishedYears();
   const [values, settings] = await Promise.all([getMetricValues(year), getMetricSettings()]);
   const stats = settings
     .filter((metric) => metric.showPublicly)
@@ -39,7 +39,11 @@ export default async function EmbedPage() {
   return (
     <div className="bg-background mx-auto flex h-fit w-full max-w-300 flex-col gap-6 rounded-[12px] p-6 md:gap-7 md:rounded-[16px] md:p-10">
       <p className="text-lg leading-7 font-semibold md:text-xl">Nuestro impacto en {year}</p>
-      <div className={`grid grid-cols-2 gap-5 md:gap-7 ${layout.columns}`}>
+      <div
+        role="group"
+        aria-label={`Impacto ${year}`}
+        className={`grid grid-cols-2 gap-5 md:gap-7 ${layout.columns}`}
+      >
         {stats.map((stat) => (
           <div
             key={stat.key}

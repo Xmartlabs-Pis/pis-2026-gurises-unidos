@@ -326,6 +326,43 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Verificá la base, no solo lo que devuelve la action.** Para los casos de error, leé la fila antes
   y después y compará con `toEqual`, así se ve que la transacción no dejó nada a medias.
 
+## Embed de impacto
+
+`/embed` muestra la tarjeta "Nuestro impacto en {año}" para insertarla en la web de Gurises Unidos.
+Es pública y es la única ruta que se puede cargar en un iframe: el resto responde con
+`Content-Security-Policy: frame-ancestors 'none'` (`next.config.ts`).
+
+Los sitios que pueden embeberla se configuran con `EMBED_FRAME_ANCESTORS` en el `.env` de cada
+entorno (separados por espacio, o `*` para cualquiera). Se lee en cada request desde `src/proxy.ts`,
+así que alcanza con reiniciar el contenedor. Si no está definida, el embed no carga en ningún sitio.
+
+```
+EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy https://www.gurisesunidos.org.uy"
+```
+
+### Snippet para la web de Gurises Unidos
+
+El embed le avisa su altura al sitio con `postMessage`, y el script ajusta el iframe. Así, si se
+publican o despublican métricas, no hay que tocar nada del lado de su web.
+
+```html
+<iframe
+  id="gurises-unidos-impacto"
+  src="https://<dominio>/embed"
+  title="Impacto de Gurises Unidos"
+  loading="lazy"
+  style="display: block; width: 100%; max-width: 1200px; height: 400px; border: 0"
+></iframe>
+<script>
+  window.addEventListener('message', function (event) {
+    var iframe = document.getElementById('gurises-unidos-impacto');
+    if (!iframe || event.source !== iframe.contentWindow) return;
+    if (!event.data || event.data.type !== 'gurises-unidos:embed-height') return;
+    iframe.style.height = event.data.height + 'px';
+  });
+</script>
+```
+
 ## Deploy
 
 Hay dos workflows, los dos **buildean la imagen en GitHub Actions**, la publican en GHCR y después
