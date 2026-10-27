@@ -2,14 +2,15 @@
 
 import { startTransition, useActionState, useEffect, useState, type SubmitEvent } from 'react';
 import Link from 'next/link';
-import { FormProvider, useForm, type Resolver } from 'react-hook-form';
+import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { login } from '@/app/actions/auth';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { loginSchema } from '@/lib/validation/auth';
+import { loginSchema, type LoginFormState } from '@/lib/validation/auth';
+import { normalizeDocumentId } from '@/lib/utils';
 import InputVisibilityToggle from './ui/forms/input-visibility-toggle';
 
 type LoginFormValues = {
@@ -18,16 +19,40 @@ type LoginFormValues = {
 };
 
 export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean }) {
-  const [state, formAction, pending] = useActionState(login, {});
+  const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(() => Date.now());
+  const [state, formAction, pending] = useActionState(submitLogin, {});
   const [showPassword, setShowPassword] = useState(false);
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema) as Resolver<LoginFormValues>,
     defaultValues: { documentId: '', password: '' },
   });
   const { handleSubmit, setError, clearErrors, getFieldState } = form;
+  const documentId = useWatch({ control: form.control, name: 'documentId' });
+  const nextAllowedAt = cooldowns[normalizeDocumentId(documentId.trim())];
+  const remainingSeconds = nextAllowedAt ? Math.max(0, Math.ceil((nextAllowedAt - now) / 1000)) : 0;
+  const isBlocked = remainingSeconds > 0;
+  const hasActiveCooldown = Object.values(cooldowns).some((blockedUntil) => blockedUntil > now);
+
+  async function submitLogin(previousState: LoginFormState, formData: FormData) {
+    const nextState = await login(previousState, formData);
+    if (nextState.nextAllowedAt && nextState.documentId) {
+      const blockedDocumentId = normalizeDocumentId(nextState.documentId.trim());
+      const blockedUntil = new Date(nextState.nextAllowedAt).getTime();
+      setCooldowns((current) => ({ ...current, [blockedDocumentId]: blockedUntil }));
+    }
+    setNow(Date.now());
+    return nextState;
+  }
 
   useEffect(() => {
-    if (!state.formError) return;
+    if (!hasActiveCooldown) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [hasActiveCooldown]);
+
+  useEffect(() => {
+    if (!state.formError || state.nextAllowedAt) return;
     setError('password', { type: 'server', message: 'Credenciales incorrectas' });
   }, [state, setError]);
 
@@ -39,6 +64,7 @@ export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isBlocked || pending) return;
     const formElement = event.currentTarget;
     const submitter = event.nativeEvent.submitter;
     return handleSubmit(() => {
@@ -107,7 +133,13 @@ export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean
             ¿Olvidaste tu contraseña?
           </Link>
         </div>
-        <Button type="submit" disabled={pending} className="h-9 w-full shadow-xs/10">
+        {isBlocked && (
+          <p role="status" className="text-destructive text-sm">
+            Demasiados intentos. Podés volver a intentar con esta cédula en{' '}
+            {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}.
+          </p>
+        )}
+        <Button type="submit" disabled={pending || isBlocked} className="h-9 w-full shadow-xs/10">
           Ingresar
         </Button>
       </form>

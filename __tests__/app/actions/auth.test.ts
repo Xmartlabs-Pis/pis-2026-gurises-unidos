@@ -3,6 +3,7 @@ import { AuthError, CredentialsSignin } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { login, logout } from '@/app/actions/auth';
 import { auth, signIn, signOut } from '@/auth';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 import {
   SESSION_EXPIRATION_COOKIE,
   SESSION_EXPIRATION_COOKIE_OPTIONS,
@@ -131,6 +132,20 @@ describe('login', () => {
     vi.mocked(signIn).mockRejectedValue(new Error('network'));
 
     await expect(login({}, makeFormData('11111111', 'password'))).rejects.toThrow('network');
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  test('returns the persisted next attempt date and normalized document id on cooldown', async () => {
+    const nextAllowedAt = new Date('2026-10-26T15:05:00Z');
+    vi.mocked(signIn).mockRejectedValue(new LoginCooldownError(nextAllowedAt));
+
+    await expect(login({}, makeFormData('1.111.111-1', 'password'))).resolves.toEqual({
+      formError: 'Login cooldown',
+      documentId: '11111111',
+      nextAllowedAt: nextAllowedAt.toISOString(),
+    });
+    expect(cookieStore.set).not.toHaveBeenCalled();
+    expect(auth).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
   });
 

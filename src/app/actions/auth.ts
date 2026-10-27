@@ -11,6 +11,7 @@ import {
   SESSION_EXPIRATION_COOKIE_OPTIONS,
 } from '@/lib/auth/session-expiration';
 import { loginSchema, type LoginFormState } from '@/lib/validation/auth';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 
 export async function login(
   _prevState: LoginFormState,
@@ -34,6 +35,13 @@ export async function login(
       redirect: false,
     });
   } catch (error) {
+    if (error instanceof LoginCooldownError) {
+      return {
+        formError: 'Login cooldown',
+        documentId,
+        nextAllowedAt: error.nextAllowedAt.toISOString(),
+      };
+    }
     if (error instanceof AuthError) {
       return { formError: 'Invalid credentials', documentId: rawDocumentId };
     }

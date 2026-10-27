@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import bcrypt from 'bcryptjs';
 import { decode } from 'next-auth/jwt';
 import { login } from '@/app/actions/auth';
 import {
@@ -6,13 +7,16 @@ import {
   SESSION_EXPIRATION_COOKIE,
   SESSION_EXPIRATION_COOKIE_OPTIONS,
 } from '@/lib/auth/session-expiration';
-import { hashPassword } from '@/lib/credentials';
+import { hashPassword, verifyUserCredentials } from '@/lib/credentials';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 import prisma from '@/lib/prisma';
 import type { User } from '@/generated/prisma/client';
 
 const SESSION_COOKIE = '__Secure-authjs.session-token';
 const PASSWORD = 'integration-login-password';
 const DOCUMENT_IDS = ['65432105', '65432111', '65432127', '65432133', '65432149'];
+const LOGIN_TIME = new Date('2026-10-26T15:00:00.000Z');
+const LOGIN_COOLDOWN_MS = 5 * 60 * 1000;
 
 type StoredCookie = { value: string; options?: Record<string, unknown> };
 
@@ -96,9 +100,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   const ids = createdUserIds;
   createdUserIds = [];
   await prisma.user.deleteMany({ where: { id: { in: ids } } });
+  await prisma.loginThrottle.deleteMany({ where: { documentId: { in: DOCUMENT_IDS } } });
 });
 
 describe('login (integration)', () => {
@@ -211,5 +217,218 @@ describe('login (integration)', () => {
       documentId: '12345678',
     });
     expect(cookieJar.size).toBe(0);
+    expect(
+      await prisma.loginThrottle.findUnique({
+        where: { documentId: '12345678' },
+      })
+    ).toBeNull();
+  });
+});
+
+describe('login cooldown (integration)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(LOGIN_TIME);
+  });
+
+  async function expectFreeFailedAttempts(documentId: string, count = 4) {
+    for (let attempt = 0; attempt < count; attempt++) {
+      expect(await login({}, buildFormData(documentId, 'wrong-password'))).toEqual({
+        formError: 'Invalid credentials',
+        documentId,
+      });
+    }
+  }
+
+  test('allows five attempts and persists the cooldown when the fifth one fails', async () => {
+    const user = await createUser();
+    await expectFreeFailedAttempts(user.documentId);
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({
+        where: { documentId: user.documentId },
+      })
+    ).toMatchObject({ failedAttempts: 4, blockedUntil: null });
+
+    const result = await login({}, buildFormData('6.543.210-5', 'wrong-password'));
+    const blockedUntil = new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS);
+
+    expect(result).toEqual({
+      formError: 'Login cooldown',
+      documentId: user.documentId,
+      nextAllowedAt: blockedUntil.toISOString(),
+    });
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({
+        where: { documentId: user.documentId },
+      })
+    ).toMatchObject({ failedAttempts: 5, blockedUntil });
+    expect(cookieJar.size).toBe(0);
+    expect((await loadUser(user.id)).lastAccess).toBeNull();
+  });
+
+  test('rejects correct credentials during the wait without extending the deadline', async () => {
+    const user = await createUser();
+    const blockedUntil = new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS);
+    await prisma.loginThrottle.create({
+      data: { documentId: user.documentId, failedAttempts: 5, blockedUntil },
+    });
+    vi.setSystemTime(blockedUntil.getTime() - 1);
+
+    expect(await login({}, buildFormData(user.documentId))).toEqual({
+      formError: 'Login cooldown',
+      documentId: user.documentId,
+      nextAllowedAt: blockedUntil.toISOString(),
+    });
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({
+        where: { documentId: user.documentId },
+      })
+    ).toMatchObject({ failedAttempts: 5, blockedUntil });
+    expect(cookieJar.size).toBe(0);
+  });
+
+  test('allows only one new attempt at each deadline and restarts the wait after every failure', async () => {
+    const user = await createUser();
+    const firstDeadline = new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS);
+    await prisma.loginThrottle.create({
+      data: { documentId: user.documentId, failedAttempts: 5, blockedUntil: firstDeadline },
+    });
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      vi.setSystemTime(LOGIN_TIME.getTime() + attempt * LOGIN_COOLDOWN_MS);
+      const nextDeadline = new Date(Date.now() + LOGIN_COOLDOWN_MS);
+
+      expect(await login({}, buildFormData(user.documentId, 'wrong-password'))).toEqual({
+        formError: 'Login cooldown',
+        documentId: user.documentId,
+        nextAllowedAt: nextDeadline.toISOString(),
+      });
+      expect(
+        await prisma.loginThrottle.findUniqueOrThrow({
+          where: { documentId: user.documentId },
+        })
+      ).toMatchObject({ failedAttempts: 5, blockedUntil: nextDeadline });
+      expect(await login({}, buildFormData(user.documentId))).toMatchObject({
+        formError: 'Login cooldown',
+        nextAllowedAt: nextDeadline.toISOString(),
+      });
+    }
+    expect(cookieJar.size).toBe(0);
+  });
+
+  test('resets the cooldown after a successful login at the deadline and restores five attempts', async () => {
+    const user = await createUser();
+    const blockedUntil = new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS);
+    await prisma.loginThrottle.create({
+      data: { documentId: user.documentId, failedAttempts: 5, blockedUntil },
+    });
+    vi.setSystemTime(blockedUntil);
+
+    await expectRedirectToDashboard(login({}, buildFormData(user.documentId)));
+
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({
+        where: { documentId: user.documentId },
+      })
+    ).toMatchObject({ failedAttempts: 0, blockedUntil: null });
+    expect((await decodeSessionCookie())?.sub).toBe(String(user.id));
+    await expectFreeFailedAttempts(user.documentId);
+    expect((await login({}, buildFormData(user.documentId, 'wrong-password'))).formError).toBe(
+      'Login cooldown'
+    );
+  });
+
+  test('resets failures after a successful login before reaching the limit', async () => {
+    const user = await createUser();
+    await expectFreeFailedAttempts(user.documentId);
+
+    await expectRedirectToDashboard(login({}, buildFormData(user.documentId)));
+
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({
+        where: { documentId: user.documentId },
+      })
+    ).toMatchObject({ failedAttempts: 0, blockedUntil: null });
+    await expectFreeFailedAttempts(user.documentId);
+  });
+
+  test('applies the same cooldown to document ids without an account', async () => {
+    const documentId = DOCUMENT_IDS[4];
+    await expectFreeFailedAttempts(documentId);
+
+    expect(await login({}, buildFormData(documentId, 'wrong-password'))).toEqual({
+      formError: 'Login cooldown',
+      documentId,
+      nextAllowedAt: new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS).toISOString(),
+    });
+    expect(await prisma.user.findUnique({ where: { documentId } })).toBeNull();
+  });
+
+  test('keeps failures when attempts are days apart', async () => {
+    const user = await createUser();
+    await expectFreeFailedAttempts(user.documentId);
+    vi.setSystemTime(LOGIN_TIME.getTime() + 24 * 60 * 60 * 1000);
+
+    expect(await login({}, buildFormData(user.documentId, 'wrong-password'))).toMatchObject({
+      formError: 'Login cooldown',
+      nextAllowedAt: new Date(Date.now() + LOGIN_COOLDOWN_MS).toISOString(),
+    });
+  });
+
+  test('counts concurrent attempts for a new document id without losing failures', async () => {
+    const user = await createUser();
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 7 }, () => verifyUserCredentials(user.documentId, 'wrong-password'))
+    );
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(4);
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        expect(result.value).toBeNull();
+      } else {
+        expect(result.reason).toBeInstanceOf(LoginCooldownError);
+      }
+    }
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({
+        where: { documentId: user.documentId },
+      })
+    ).toMatchObject({
+      failedAttempts: 5,
+      blockedUntil: new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS),
+    });
+  });
+
+  test('serializes concurrent retries after the cooldown expires', async () => {
+    const user = await createUser();
+    await prisma.loginThrottle.create({
+      data: { documentId: user.documentId, failedAttempts: 5, blockedUntil: LOGIN_TIME },
+    });
+
+    const compare = vi.spyOn(bcrypt, 'compare');
+    try {
+      const results = await Promise.allSettled(
+        Array.from({ length: 3 }, () => verifyUserCredentials(user.documentId, 'wrong-password'))
+      );
+
+      for (const result of results) {
+        expect(result).toMatchObject({
+          status: 'rejected',
+          reason: expect.any(LoginCooldownError),
+        });
+      }
+      expect(compare).toHaveBeenCalledOnce();
+      expect(
+        await prisma.loginThrottle.findUniqueOrThrow({
+          where: { documentId: user.documentId },
+        })
+      ).toMatchObject({
+        failedAttempts: 5,
+        blockedUntil: new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS),
+      });
+    } finally {
+      compare.mockRestore();
+    }
   });
 });

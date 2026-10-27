@@ -6,6 +6,7 @@ export type LoginFormState = {
   formError?: string;
   errors?: Record<string, string[]>;
   documentId?: string;
+  nextAllowedAt?: string;
 };
 
 export const loginSchema = z.object({
