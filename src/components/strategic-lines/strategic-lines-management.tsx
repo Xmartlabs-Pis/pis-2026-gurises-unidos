@@ -137,6 +137,14 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
     initialState
   );
 
+  function handleEditOpenChange(open: boolean) {
+    setIsEditOpen(open);
+    if (open) {
+      setEditedName(line.name);
+      setEditAttempted(false);
+    }
+  }
+
   return (
     <li className="border-b border-[#eff2f4] py-3">
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
@@ -163,7 +171,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
                 }
               />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>Editar</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>Editar</DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
                   Eliminar
                 </DropdownMenuItem>
@@ -173,13 +181,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
 
           <AlertDialog
             open={isEditOpen && !(editAttempted && editState.success)}
-            onOpenChange={(open) => {
-              setIsEditOpen(open);
-              if (open) {
-                setEditedName(line.name);
-                setEditAttempted(false);
-              }
-            }}
+            onOpenChange={handleEditOpenChange}
           >
             <AlertDialogTrigger
               render={

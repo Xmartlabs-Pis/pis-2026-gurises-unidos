@@ -46,13 +46,27 @@ export async function createTopic(
 
   try {
     const reactivated = await prisma.topic.updateMany({
-      where: { name: parsed.data.name, isActive: false },
+      where: {
+        name: { equals: parsed.data.name, mode: 'insensitive' },
+        isActive: false,
+      },
       data: { isActive: true },
     });
 
     if (reactivated.count > 0) {
       revalidateTopics();
       return { success: true };
+    }
+
+    const existing = await prisma.topic.findFirst({
+      where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
+    });
+
+    if (existing) {
+      return {
+        formError: 'Ya existe una temática con ese nombre.',
+        values: { name },
+      };
     }
 
     await prisma.topic.create({
@@ -156,14 +170,28 @@ export async function editTopic(
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    const error = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${topicId} FOR UPDATE`;
+
+      const duplicate = await tx.topic.findFirst({
+        where: {
+          id: { not: topicId },
+          name: { equals: parsed.data.name, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      if (duplicate) return 'Ya existe una temática con ese nombre.';
 
       await tx.topic.update({
         where: { id: topicId },
         data: { name: parsed.data.name },
       });
+      return null;
     });
+
+    if (error) {
+      return { formError: error, values: { name } };
+    }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return {
