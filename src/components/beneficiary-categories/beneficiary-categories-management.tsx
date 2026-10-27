@@ -201,10 +201,7 @@ function CategoryRow({ category }: { category: Category }) {
             </DropdownMenu>
           </div>
 
-          <AlertDialog
-            open={isEditOpen}
-            onOpenChange={handleEditOpenChange}
-          >
+          <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
             <AlertDialogTrigger
               render={
                 <Button

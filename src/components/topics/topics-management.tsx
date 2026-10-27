@@ -191,10 +191,7 @@ function TopicRow({ topic }: { topic: Topic }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <AlertDialog
-            open={isEditOpen}
-            onOpenChange={handleEditOpenChange}
-          >
+          <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
             <AlertDialogTrigger
               render={
                 <Button
