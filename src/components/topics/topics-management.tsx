@@ -285,7 +285,7 @@ function TopicRow({ topic }: { topic: Topic }) {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Eliminar temática?</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="wrap-anywhere">
                       Esta acción dejará de mostrar “{topic.name}” como temática disponible.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
