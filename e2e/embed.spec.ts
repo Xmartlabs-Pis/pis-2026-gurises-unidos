@@ -7,7 +7,8 @@ test.use({ viewport: DESKTOP });
 const ALLOWED_HOST = 'http://localhost:4100';
 const OTHER_HOST = 'http://localhost:4200';
 const HIDDEN_METRIC = 'Familias acompañadas';
-const VISIBLE_METRIC = 'Departamentos';
+const OTHER_HIDDEN_METRIC = 'Instituciones vinculadas';
+const VISIBLE_METRIC = 'Proyectos con actividad';
 
 let auditLogIdBeforeTest: number;
 
@@ -106,7 +107,7 @@ test.describe('without a session', () => {
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto('/embed');
 
-    expect(await statsPerRow(stats(page))).toEqual([2, 2, 1]);
+    expect(await statsPerRow(stats(page))).toEqual([2, 2]);
     const button = await page.getByRole('button', { name: 'Ver informe completo' }).boundingBox();
     const card = await stats(page).boundingBox();
     expect(button!.width).toBeCloseTo(card!.width, 0);
@@ -148,16 +149,17 @@ test.describe('without a session', () => {
 
 test('reflects the metrics the admin publishes', async ({ page }) => {
   await page.goto('/embed');
-  expect(await statsPerRow(stats(page))).toEqual([3, 2]);
+  expect(await statsPerRow(stats(page))).toEqual([4]);
 
   await setMetricVisibility(page, [VISIBLE_METRIC]);
   await page.goto('/embed');
   await expect(stats(page)).not.toContainText(VISIBLE_METRIC);
-  expect(await statsPerRow(stats(page))).toEqual([4]);
+  expect(await statsPerRow(stats(page))).toEqual([3]);
 
-  await setMetricVisibility(page, [HIDDEN_METRIC, VISIBLE_METRIC]);
+  await setMetricVisibility(page, [HIDDEN_METRIC, OTHER_HIDDEN_METRIC, VISIBLE_METRIC]);
   await page.goto('/embed');
   await expect(stats(page)).toContainText(HIDDEN_METRIC);
+  await expect(stats(page)).toContainText(OTHER_HIDDEN_METRIC);
   await expect(stats(page)).toContainText(VISIBLE_METRIC);
   expect(await statsPerRow(stats(page))).toEqual([3, 3]);
 });
