@@ -4,9 +4,11 @@ import { useActionState, useState } from 'react';
 import {
   createBeneficiaryCategory,
   deleteBeneficiaryCategory,
+  editBeneficiaryCategory,
   type BeneficiaryCategoryActionState,
 } from '@/app/actions/beneficiary-categories';
 import { beneficiaryCategorySchema } from '@/lib/validation/beneficiary-category';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -117,6 +119,13 @@ export function BeneficiaryCategoriesManagement({
 }
 
 function CategoryRow({ category }: { category: Category }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editedName, setEditedName] = useState(category.name);
+  const [editAttempted, setEditAttempted] = useState(false);
+  const [editState, editFormAction, editPending] = useActionState(
+    editBeneficiaryCategory.bind(null, category.id),
+    INITIAL_STATE
+  );
   const [state, formAction, pending] = useActionState(
     deleteBeneficiaryCategory.bind(null, category.id),
     INITIAL_STATE
@@ -124,22 +133,89 @@ function CategoryRow({ category }: { category: Category }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-foreground text-sm leading-5 font-medium">{category.name}</span>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+        <span
+          lang="es"
+          className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
+        >
+          {category.name}
+        </span>
 
-        <div className="flex items-center gap-3">
+        <div className="contents">
           <ProjectCountLink
             projectCount={category.projectCount}
             href={`/dashboard/projects?beneficiaryCategoryId=${category.id}&status=all&beneficiaryYear=all`}
           />
 
+          <AlertDialog
+            open={isEditOpen && !(editAttempted && editState.success)}
+            onOpenChange={(open) => {
+              setIsEditOpen(open);
+              if (open) {
+                setEditedName(category.name);
+                setEditAttempted(false);
+              }
+            }}
+          >
+            <AlertDialogTrigger
+              render={
+                <Button variant="ghost" aria-label="Editar categoría" title="Editar categoría" />
+              }
+            >
+              <Pencil aria-hidden="true" className="size-4 lg:hidden" />
+              <span className="sr-only lg:not-sr-only">Editar</span>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Editar categoría</AlertDialogTitle>
+                <AlertDialogDescription>Cambiá el nombre de la categoría.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <form
+                action={editFormAction}
+                onSubmit={() => setEditAttempted(true)}
+                className="flex flex-col gap-4"
+              >
+                <Input
+                  name="name"
+                  value={editedName}
+                  onChange={(event) => setEditedName(event.target.value)}
+                  maxLength={50}
+                  required
+                  disabled={editPending}
+                />
+                {editAttempted && (editState.errors?.name?.[0] ?? editState.formError) && (
+                  <p className="text-destructive text-sm">
+                    {editState.errors?.name?.[0] ?? editState.formError}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
+                  <Button type="submit" disabled={editPending}>
+                    Guardar
+                  </Button>
+                </AlertDialogFooter>
+              </form>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {category.isSystem ? (
-            <span className="text-muted-foreground inline-flex h-8 items-center px-2.5 text-xs leading-4 font-medium">
+            <span className="text-muted-foreground inline-flex h-8 items-center px-2.5 text-sm leading-5 font-medium">
               Sistema
             </span>
           ) : category.projectCount > 0 ? (
             <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost">Eliminar</Button>} />
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    aria-label="Eliminar categoría"
+                    title="Eliminar categoría"
+                  />
+                }
+              >
+                <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
+                <span className="sr-only lg:not-sr-only">Eliminar</span>
+              </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>No se puede eliminar la categoría</AlertDialogTitle>
@@ -155,8 +231,18 @@ function CategoryRow({ category }: { category: Category }) {
           ) : (
             <form id={`delete-category-${category.id}`} action={formAction}>
               <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="ghost" disabled={pending} />}>
-                  Eliminar
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      disabled={pending}
+                      aria-label="Eliminar categoría"
+                      title="Eliminar categoría"
+                    />
+                  }
+                >
+                  <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
+                  <span className="sr-only lg:not-sr-only">Eliminar</span>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>

@@ -4,10 +4,12 @@ import { useActionState, useState } from 'react';
 import {
   createStrategicLine,
   deleteStrategicLine,
+  editStrategicLine,
   type StrategicLineActionState,
 } from '@/app/actions/strategic-lines';
 import { ProjectCountLink } from '@/components/project-count-link';
 import { strategicLineSchema } from '@/lib/validation/strategic-line';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -116,6 +118,13 @@ export function StrategicLinesManagement({ lines }: StrategicLinesManagementProp
 }
 
 function StrategicLineRow({ line }: { line: StrategicLine }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editedName, setEditedName] = useState(line.name);
+  const [editAttempted, setEditAttempted] = useState(false);
+  const [editState, editFormAction, editPending] = useActionState(
+    editStrategicLine.bind(null, line.id),
+    initialState
+  );
   const [state, formAction, pending] = useActionState(
     deleteStrategicLine.bind(null, line.id),
     initialState
@@ -123,20 +132,91 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-foreground min-w-0 text-sm leading-5 font-medium break-words">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+        <span
+          lang="es"
+          className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
+        >
           {line.name}
         </span>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="contents">
           <ProjectCountLink
             projectCount={line._count.projects}
             href={`/dashboard/projects?strategicLineId=${line.id}&status=all&beneficiaryYear=all`}
           />
 
+          <AlertDialog
+            open={isEditOpen && !(editAttempted && editState.success)}
+            onOpenChange={(open) => {
+              setIsEditOpen(open);
+              if (open) {
+                setEditedName(line.name);
+                setEditAttempted(false);
+              }
+            }}
+          >
+            <AlertDialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  aria-label="Editar línea estratégica"
+                  title="Editar línea estratégica"
+                />
+              }
+            >
+              <Pencil aria-hidden="true" className="size-4 lg:hidden" />
+              <span className="sr-only lg:not-sr-only">Editar</span>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Editar línea estratégica</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cambiá el nombre de la línea estratégica.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <form
+                action={editFormAction}
+                onSubmit={() => setEditAttempted(true)}
+                className="flex flex-col gap-4"
+              >
+                <Input
+                  name="name"
+                  value={editedName}
+                  onChange={(event) => setEditedName(event.target.value)}
+                  maxLength={100}
+                  required
+                  disabled={editPending}
+                />
+                {editAttempted && (editState.errors?.name?.[0] ?? editState.formError) && (
+                  <p className="text-destructive text-sm">
+                    {editState.errors?.name?.[0] ?? editState.formError}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
+                  <Button type="submit" disabled={editPending}>
+                    Guardar
+                  </Button>
+                </AlertDialogFooter>
+              </form>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {line._count.projects > 0 ? (
             <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost">Eliminar</Button>} />
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    aria-label="Eliminar línea estratégica"
+                    title="Eliminar línea estratégica"
+                  />
+                }
+              >
+                <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
+                <span className="sr-only lg:not-sr-only">Eliminar</span>
+              </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>No se puede eliminar la línea estratégica</AlertDialogTitle>
@@ -152,8 +232,18 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
           ) : (
             <form id={`delete-strategic-line-${line.id}`} action={formAction}>
               <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="ghost" disabled={pending} />}>
-                  Eliminar
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      disabled={pending}
+                      aria-label="Eliminar línea estratégica"
+                      title="Eliminar línea estratégica"
+                    />
+                  }
+                >
+                  <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
+                  <span className="sr-only lg:not-sr-only">Eliminar</span>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>

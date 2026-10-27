@@ -91,6 +91,77 @@ export async function createStrategicLine(
   return { success: true };
 }
 
+export async function editStrategicLine(
+  id: number,
+  _previousState: StrategicLineActionState,
+  formData: FormData
+): Promise<StrategicLineActionState> {
+  const user = await requireUser();
+  if (user.role !== 'admin') {
+    return { formError: 'No tenés permisos para realizar esta acción.' };
+  }
+
+  if (!parseId(id)) {
+    return { formError: 'La línea estratégica no es válida.' };
+  }
+
+  const name = String(formData.get('name') ?? '');
+  const parsed = strategicLineSchema.safeParse({ name });
+
+  if (!parsed.success) {
+    return {
+      errors: z.flattenError(parsed.error).fieldErrors,
+      values: { name },
+    };
+  }
+
+  try {
+    const error = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "StrategicLine" WHERE "id" = ${id} FOR UPDATE`;
+
+      const line = await tx.strategicLine.findFirst({
+        where: { id, isActive: true },
+        select: { id: true },
+      });
+      if (!line) return 'La línea estratégica no existe o ya fue eliminada.';
+
+      const duplicate = await tx.strategicLine.findFirst({
+        where: {
+          id: { not: id },
+          name: { equals: parsed.data.name, mode: 'insensitive' },
+        },
+        select: { id: true },
+      });
+      if (duplicate) return 'Ya existe una línea estratégica con ese nombre.';
+
+      await tx.strategicLine.update({
+        where: { id },
+        data: { name: parsed.data.name },
+      });
+      return null;
+    });
+
+    if (error) {
+      return { formError: error, values: { name } };
+    }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return {
+        formError: 'Ya existe una línea estratégica con ese nombre.',
+        values: { name },
+      };
+    }
+
+    return {
+      formError: 'No se pudo editar la línea estratégica. Intentá de nuevo.',
+      values: { name },
+    };
+  }
+
+  revalidateStrategicLines();
+  return { success: true };
+}
+
 export async function deleteStrategicLine(id: number): Promise<StrategicLineActionState> {
   const user = await requireUser();
   if (user.role !== 'admin') {

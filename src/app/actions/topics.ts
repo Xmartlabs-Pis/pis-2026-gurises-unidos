@@ -126,3 +126,57 @@ export async function deleteTopic(topicId: number): Promise<TopicActionState> {
 
   return { success: true };
 }
+
+export async function editTopic(
+  topicId: number,
+  _previousState: TopicActionState,
+  formData: FormData
+): Promise<TopicActionState> {
+  const user = await requireUser();
+
+  if (user.role !== 'admin') {
+    return {
+      formError: 'No tenés permisos para realizar esta acción.',
+    };
+  }
+
+  if (!parseId(topicId)) {
+    return {
+      formError: 'La temática no es válida.',
+    };
+  }
+  const name = String(formData.get('name') ?? '');
+  const parsed = topicSchema.safeParse({ name });
+
+  if (!parsed.success) {
+    return {
+      errors: z.flattenError(parsed.error).fieldErrors,
+      values: { name },
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${topicId} FOR UPDATE`;
+
+      await tx.topic.update({
+        where: { id: topicId },
+        data: { name: parsed.data.name },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return {
+        formError: 'Ya existe una temática con ese nombre.',
+        values: { name: parsed.data.name },
+      };
+    }
+    return {
+      formError: 'No se pudo editar la temática. Intentá de nuevo.',
+    };
+  }
+
+  revalidateTopics();
+
+  return { success: true };
+}

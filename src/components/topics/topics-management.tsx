@@ -1,9 +1,10 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { createTopic, deleteTopic, type TopicActionState } from '@/app/actions/topics';
+import { createTopic, deleteTopic, editTopic, type TopicActionState } from '@/app/actions/topics';
 import { ProjectCountLink } from '@/components/project-count-link';
 import { topicSchema } from '@/lib/validation/topic';
+import { Pencil, Trash2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -112,6 +113,13 @@ export function TopicsManagement({ topics }: TopicsManagementProps) {
 }
 
 function TopicRow({ topic }: { topic: Topic }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editedName, setEditedName] = useState(topic.name);
+  const [editAttempted, setEditAttempted] = useState(false);
+  const [editState, editFormAction, editPending] = useActionState(
+    editTopic.bind(null, topic.id),
+    initialState
+  );
   const [state, formAction, pending] = useActionState(
     deleteTopic.bind(null, topic.id),
     initialState
@@ -119,18 +127,83 @@ function TopicRow({ topic }: { topic: Topic }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-foreground text-sm leading-5 font-medium">{topic.name}</span>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+        <span
+          lang="es"
+          className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
+        >
+          {topic.name}
+        </span>
 
-        <div className="flex items-center gap-3">
+        <div className="contents">
           <ProjectCountLink
             projectCount={topic._count.projects}
             href={`/dashboard/projects?topicId=${topic.id}&status=all&beneficiaryYear=all`}
           />
-
+          <AlertDialog
+            open={isEditOpen && !(editAttempted && editState.success)}
+            onOpenChange={(open) => {
+              setIsEditOpen(open);
+              if (open) {
+                setEditedName(topic.name);
+                setEditAttempted(false);
+              }
+            }}
+          >
+            <AlertDialogTrigger
+              render={
+                <Button variant="ghost" aria-label="Editar temática" title="Editar temática" />
+              }
+            >
+              <Pencil aria-hidden="true" className="size-4 lg:hidden" />
+              <span className="sr-only lg:not-sr-only">Editar</span>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Editar temática</AlertDialogTitle>
+                <AlertDialogDescription>Cambiá el nombre de la temática.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <form
+                action={editFormAction}
+                onSubmit={() => setEditAttempted(true)}
+                className="flex flex-col gap-4"
+              >
+                <Input
+                  name="name"
+                  value={editedName}
+                  onChange={(event) => setEditedName(event.target.value)}
+                  maxLength={30}
+                  required
+                  disabled={editPending}
+                />
+                {editAttempted && (editState.errors?.name?.[0] ?? editState.formError) && (
+                  <p className="text-destructive text-sm">
+                    {editState.errors?.name?.[0] ?? editState.formError}
+                  </p>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
+                  <Button type="submit" disabled={editPending}>
+                    Guardar
+                  </Button>
+                </AlertDialogFooter>
+              </form>
+            </AlertDialogContent>
+          </AlertDialog>
           {topic._count.projects > 0 ? (
             <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost">Eliminar</Button>} />
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    aria-label="Eliminar temática"
+                    title="Eliminar temática"
+                  />
+                }
+              >
+                <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
+                <span className="sr-only lg:not-sr-only">Eliminar</span>
+              </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>No se puede eliminar la temática</AlertDialogTitle>
@@ -146,8 +219,18 @@ function TopicRow({ topic }: { topic: Topic }) {
           ) : (
             <form id={`delete-topic-${topic.id}`} action={formAction}>
               <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="ghost" disabled={pending} />}>
-                  Eliminar
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      disabled={pending}
+                      aria-label="Eliminar temática"
+                      title="Eliminar temática"
+                    />
+                  }
+                >
+                  <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
+                  <span className="sr-only lg:not-sr-only">Eliminar</span>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
