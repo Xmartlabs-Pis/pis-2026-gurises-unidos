@@ -30,6 +30,16 @@ LEFT JOIN LATERAL unnest(
 WHERE "department"."id" IS NOT NULL
 ORDER BY "project"."id", "city"."position", "neighborhood"."position";
 
+INSERT INTO "ProjectLocality" ("projectId", "departmentId", "city")
+SELECT "link"."B", "link"."A", "department"."name"
+FROM "_DepartmentToProject" AS "link"
+JOIN "Department" AS "department" ON "department"."id" = "link"."A"
+WHERE NOT EXISTS (
+    SELECT 1 FROM "ProjectLocality" AS "locality"
+    WHERE "locality"."projectId" = "link"."B" AND "locality"."departmentId" = "link"."A"
+)
+ORDER BY "link"."B", "department"."name";
+
 ALTER TABLE "Project"
 DROP COLUMN "cities",
 DROP COLUMN "neighborhoods";
