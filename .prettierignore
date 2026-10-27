@@ -8,6 +8,7 @@ coverage
 # Don't format these files
 package-lock.json
 yarn.lock
+src/lib/map/uruguay-departments.json
 .env
 .env.local
 
