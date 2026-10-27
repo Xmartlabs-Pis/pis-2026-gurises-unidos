@@ -2,6 +2,8 @@ import { connection } from 'next/server';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getPublicStats } from '@/lib/metrics/public-stats';
 import { Button } from '@/components/ui/button';
+import logo from '@/assets/logo.png';
+import Image from 'next/image';
 
 const SINGLE_ROW_MAX = 4;
 
@@ -34,24 +36,40 @@ export default async function EmbedPage() {
 
   return (
     <div className="bg-background mx-auto flex h-fit w-full max-w-300 flex-col gap-6 rounded-[12px] p-6 md:gap-7 md:rounded-[16px] md:p-10">
-      <p className="text-lg leading-7 font-semibold md:text-xl">Nuestro impacto en {year}</p>
-      <div
-        role="group"
-        aria-label={`Impacto ${year}`}
-        className={`grid grid-cols-2 gap-5 md:gap-7 ${layout.columns}`}
-      >
-        {stats.map((stat) => (
+      {stats.length > 0 ? (
+        <>
+          <p className="text-lg leading-7 font-semibold md:text-xl">Nuestro impacto en {year}</p>
           <div
-            key={stat.key}
-            className={`border-muted-foreground flex flex-col gap-1 pr-3 max-md:last:odd:col-span-2 max-md:even:border-l max-md:even:pl-3 md:pr-6 ${layout.divider}`}
+            role="group"
+            aria-label={`Impacto ${year}`}
+            className={`grid grid-cols-2 gap-5 md:gap-7 ${layout.columns}`}
           >
-            <span className="text-primary text-3xl leading-9 font-bold md:text-4xl md:leading-10 md:font-black">
-              {stat.value}
-            </span>
-            <span className="text-sm leading-5 font-normal">{stat.description}</span>
+            {stats.map((stat) => (
+              <div
+                key={stat.key}
+                className={`border-muted-foreground flex flex-col gap-1 pr-3 max-md:last:odd:col-span-2 max-md:even:border-l max-md:even:pl-3 md:pr-6 ${layout.divider}`}
+              >
+                <span className="text-primary text-3xl leading-9 font-bold md:text-4xl md:leading-10 md:font-black">
+                  {stat.value}
+                </span>
+                <span className="text-sm leading-5 font-normal">{stat.description}</span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-3 pb-2">
+          <div className="flex flex-row items-center gap-2">
+            <Image className="size-9 shrink-0 rounded-md md:size-10" src={logo} alt="" />
+            <h1 className="text-3xl leading-9 font-extrabold md:text-4xl md:font-black">
+              Gurises Unidos
+            </h1>
+          </div>
+          <p className="text-muted-foreground text-sm font-medium md:text-base">
+            Transformando vidas en Uruguay
+          </p>
+        </div>
+      )}
       <Button
         nativeButton={false}
         render={<a href="/" target="_blank" rel="noopener noreferrer" />}
