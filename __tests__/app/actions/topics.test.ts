@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   findTopic: vi.fn(),
   reactivateTopic: vi.fn(),
   updateTopic: vi.fn(),
+  createAuditLog: vi.fn(),
   countProjects: vi.fn(),
   transaction: vi.fn(),
   queryRaw: vi.fn(),
@@ -45,6 +46,7 @@ beforeEach(() => {
       $queryRaw: mocks.queryRaw,
       project: { count: mocks.countProjects },
       topic: { findFirst: mocks.findTopic, update: mocks.updateTopic },
+      auditLog: { create: mocks.createAuditLog },
     })
   );
 });
@@ -96,6 +98,7 @@ describe('createTopic', () => {
 
 describe('editTopic', () => {
   test('renames a topic and refreshes affected routes', async () => {
+    mocks.findTopic.mockResolvedValueOnce({ name: 'Health Studies' });
     const data = new FormData();
     data.set('name', 'Health');
 
@@ -105,7 +108,29 @@ describe('editTopic', () => {
       where: { id: 4 },
       data: { name: 'Health' },
     });
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        authorId: 1,
+        action: 'update',
+        entity: 'topic',
+        entityId: 4,
+        details: { previousName: 'Health Studies', name: 'Health' },
+      },
+    });
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/management/topics');
+  });
+
+  test('rejects renaming a topic that does not exist or is inactive', async () => {
+    const data = new FormData();
+    data.set('name', 'Health');
+
+    await expect(editTopic(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'La temática no existe o ya fue eliminada.',
+      values: { name: 'Health' },
+    });
+
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
 
   test('rejects a name used by another topic with different casing', async () => {

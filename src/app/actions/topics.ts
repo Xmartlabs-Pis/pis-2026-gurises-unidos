@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
 import { requireUser } from '@/lib/auth/require-user';
+import { logAudit } from '@/lib/audit-log';
 import { parseId } from '@/lib/validation/ids';
 import { topicSchema } from '@/lib/validation/topic';
 import prisma from '@/lib/prisma';
@@ -173,6 +174,12 @@ export async function editTopic(
     const error = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${topicId} FOR UPDATE`;
 
+      const topic = await tx.topic.findFirst({
+        where: { id: topicId, isActive: true },
+        select: { name: true },
+      });
+      if (!topic) return 'La temática no existe o ya fue eliminada.';
+
       const duplicate = await tx.topic.findFirst({
         where: {
           id: { not: topicId },
@@ -185,6 +192,13 @@ export async function editTopic(
       await tx.topic.update({
         where: { id: topicId },
         data: { name: parsed.data.name },
+      });
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'update',
+        entity: 'topic',
+        entityId: topicId,
+        details: { previousName: topic.name, name: parsed.data.name },
       });
       return null;
     });

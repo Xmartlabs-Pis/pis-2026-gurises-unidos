@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@/generated/prisma/client';
 import { requireUser } from '@/lib/auth/require-user';
+import { logAudit } from '@/lib/audit-log';
 import { parseId } from '@/lib/validation/ids';
 import { strategicLineSchema } from '@/lib/validation/strategic-line';
 import prisma from '@/lib/prisma';
@@ -121,7 +122,7 @@ export async function editStrategicLine(
 
       const line = await tx.strategicLine.findFirst({
         where: { id, isActive: true },
-        select: { id: true },
+        select: { name: true },
       });
       if (!line) return 'La línea estratégica no existe o ya fue eliminada.';
 
@@ -137,6 +138,13 @@ export async function editStrategicLine(
       await tx.strategicLine.update({
         where: { id },
         data: { name: parsed.data.name },
+      });
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'update',
+        entity: 'strategicLine',
+        entityId: id,
+        details: { previousName: line.name, name: parsed.data.name },
       });
       return null;
     });

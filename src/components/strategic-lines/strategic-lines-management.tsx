@@ -127,9 +127,13 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(line.name);
-  const [editAttempted, setEditAttempted] = useState(false);
+  const [editClientError, setEditClientError] = useState<string>();
   const [editState, editFormAction, editPending] = useActionState(
-    editStrategicLine.bind(null, line.id),
+    async (previousState: StrategicLineActionState, formData: FormData) => {
+      const result = await editStrategicLine(line.id, previousState, formData);
+      if (result.success) setIsEditOpen(false);
+      return result;
+    },
     initialState
   );
   const [state, formAction, pending] = useActionState(
@@ -141,8 +145,21 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
     setIsEditOpen(open);
     if (open) {
       setEditedName(line.name);
-      setEditAttempted(false);
+      setEditClientError(undefined);
     }
+  }
+
+  function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const result = strategicLineSchema.safeParse({ name: formData.get('name') });
+
+    if (!result.success) {
+      event.preventDefault();
+      setEditClientError(result.error.issues[0].message);
+      return;
+    }
+
+    setEditClientError(undefined);
   }
 
   return (
@@ -182,7 +199,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
           </div>
 
           <AlertDialog
-            open={isEditOpen && !(editAttempted && editState.success)}
+            open={isEditOpen}
             onOpenChange={handleEditOpenChange}
           >
             <AlertDialogTrigger
@@ -206,7 +223,8 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
               </AlertDialogHeader>
               <form
                 action={editFormAction}
-                onSubmit={() => setEditAttempted(true)}
+                onSubmit={handleEditSubmit}
+                noValidate
                 className="flex flex-col gap-4"
               >
                 <Input
@@ -217,9 +235,9 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
                   required
                   disabled={editPending}
                 />
-                {editAttempted && (editState.errors?.name?.[0] ?? editState.formError) && (
+                {(editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
                   <p className="text-destructive text-sm">
-                    {editState.errors?.name?.[0] ?? editState.formError}
+                    {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
                   </p>
                 )}
                 <AlertDialogFooter>

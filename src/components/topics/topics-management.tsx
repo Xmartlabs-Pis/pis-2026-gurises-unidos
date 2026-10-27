@@ -122,9 +122,13 @@ function TopicRow({ topic }: { topic: Topic }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(topic.name);
-  const [editAttempted, setEditAttempted] = useState(false);
+  const [editClientError, setEditClientError] = useState<string>();
   const [editState, editFormAction, editPending] = useActionState(
-    editTopic.bind(null, topic.id),
+    async (previousState: TopicActionState, formData: FormData) => {
+      const result = await editTopic(topic.id, previousState, formData);
+      if (result.success) setIsEditOpen(false);
+      return result;
+    },
     initialState
   );
   const [state, formAction, pending] = useActionState(
@@ -136,8 +140,21 @@ function TopicRow({ topic }: { topic: Topic }) {
     setIsEditOpen(open);
     if (open) {
       setEditedName(topic.name);
-      setEditAttempted(false);
+      setEditClientError(undefined);
     }
+  }
+
+  function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const result = topicSchema.safeParse({ name: formData.get('name') });
+
+    if (!result.success) {
+      event.preventDefault();
+      setEditClientError(result.error.issues[0].message);
+      return;
+    }
+
+    setEditClientError(undefined);
   }
 
   return (
@@ -175,7 +192,7 @@ function TopicRow({ topic }: { topic: Topic }) {
             </DropdownMenu>
           </div>
           <AlertDialog
-            open={isEditOpen && !(editAttempted && editState.success)}
+            open={isEditOpen}
             onOpenChange={handleEditOpenChange}
           >
             <AlertDialogTrigger
@@ -197,7 +214,8 @@ function TopicRow({ topic }: { topic: Topic }) {
               </AlertDialogHeader>
               <form
                 action={editFormAction}
-                onSubmit={() => setEditAttempted(true)}
+                onSubmit={handleEditSubmit}
+                noValidate
                 className="flex flex-col gap-4"
               >
                 <Input
@@ -208,9 +226,9 @@ function TopicRow({ topic }: { topic: Topic }) {
                   required
                   disabled={editPending}
                 />
-                {editAttempted && (editState.errors?.name?.[0] ?? editState.formError) && (
+                {(editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
                   <p className="text-destructive text-sm">
-                    {editState.errors?.name?.[0] ?? editState.formError}
+                    {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
                   </p>
                 )}
                 <AlertDialogFooter>

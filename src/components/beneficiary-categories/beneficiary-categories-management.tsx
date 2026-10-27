@@ -128,9 +128,13 @@ function CategoryRow({ category }: { category: Category }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(category.name);
-  const [editAttempted, setEditAttempted] = useState(false);
+  const [editClientError, setEditClientError] = useState<string>();
   const [editState, editFormAction, editPending] = useActionState(
-    editBeneficiaryCategory.bind(null, category.id),
+    async (previousState: BeneficiaryCategoryActionState, formData: FormData) => {
+      const result = await editBeneficiaryCategory(category.id, previousState, formData);
+      if (result.success) setIsEditOpen(false);
+      return result;
+    },
     INITIAL_STATE
   );
   const [state, formAction, pending] = useActionState(
@@ -142,8 +146,21 @@ function CategoryRow({ category }: { category: Category }) {
     setIsEditOpen(open);
     if (open) {
       setEditedName(category.name);
-      setEditAttempted(false);
+      setEditClientError(undefined);
     }
+  }
+
+  function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const result = beneficiaryCategorySchema.safeParse({ name: formData.get('name') });
+
+    if (!result.success) {
+      event.preventDefault();
+      setEditClientError(result.error.issues[0].message);
+      return;
+    }
+
+    setEditClientError(undefined);
   }
 
   return (
@@ -185,7 +202,7 @@ function CategoryRow({ category }: { category: Category }) {
           </div>
 
           <AlertDialog
-            open={isEditOpen && !(editAttempted && editState.success)}
+            open={isEditOpen}
             onOpenChange={handleEditOpenChange}
           >
             <AlertDialogTrigger
@@ -207,7 +224,8 @@ function CategoryRow({ category }: { category: Category }) {
               </AlertDialogHeader>
               <form
                 action={editFormAction}
-                onSubmit={() => setEditAttempted(true)}
+                onSubmit={handleEditSubmit}
+                noValidate
                 className="flex flex-col gap-4"
               >
                 <Input
@@ -218,9 +236,9 @@ function CategoryRow({ category }: { category: Category }) {
                   required
                   disabled={editPending}
                 />
-                {editAttempted && (editState.errors?.name?.[0] ?? editState.formError) && (
+                {(editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
                   <p className="text-destructive text-sm">
-                    {editState.errors?.name?.[0] ?? editState.formError}
+                    {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
                   </p>
                 )}
                 <AlertDialogFooter>
