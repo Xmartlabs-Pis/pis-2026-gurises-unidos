@@ -172,7 +172,9 @@ function CategoryRow({ category }: { category: Category }) {
                 }
               />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>Editar</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>
+                  Editar
+                </DropdownMenuItem>
                 {!category.isSystem && (
                   <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
                     Eliminar

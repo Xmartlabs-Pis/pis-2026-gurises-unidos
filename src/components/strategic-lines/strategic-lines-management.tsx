@@ -171,7 +171,9 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
                 }
               />
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>Editar</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>
+                  Editar
+                </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
                   Eliminar
                 </DropdownMenuItem>
