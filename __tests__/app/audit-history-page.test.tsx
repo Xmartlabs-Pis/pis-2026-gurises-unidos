@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
+  forbidden: vi.fn(() => {
+    throw new Error('NEXT_FORBIDDEN');
+  }),
   listAuditLog: vi.fn(),
   listAuditLogAuthors: vi.fn(),
   redirect: vi.fn((url: string) => {
@@ -12,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth', () => ({ auth: mocks.auth }));
-vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
+vi.mock('next/navigation', () => ({ forbidden: mocks.forbidden, redirect: mocks.redirect }));
 vi.mock('@/lib/audit-log/list', () => ({
   listAuditLog: mocks.listAuditLog,
   listAuditLogAuthors: mocks.listAuditLogAuthors,
@@ -54,14 +57,13 @@ beforeEach(() => {
 
 describe('AuditHistoryPage', () => {
   it.each([
-    ['a coordinator', { user: { id: '2', role: 'coordinator' } }],
-    ['an anonymous visitor', null],
-  ])('denies access to %s without querying the log', async (_, session) => {
+    ['a coordinator', { user: { id: '2', role: 'coordinator' } }, 'NEXT_FORBIDDEN'],
+    ['an anonymous visitor', null, 'NEXT_REDIRECT:/login'],
+  ])('denies access to %s without querying the log', async (_, session, error) => {
     mocks.auth.mockResolvedValue(session);
 
-    render((await renderPage()) as ReactElement);
+    await expect(renderPage()).rejects.toThrow(error);
 
-    expect(screen.getByText('Acceso denegado')).toBeDefined();
     expect(mocks.listAuditLog).not.toHaveBeenCalled();
   });
 
