@@ -1,3 +1,4 @@
+import { connection } from 'next/server';
 import { formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ function getDesktopLayout(count: number) {
 }
 
 export default async function EmbedPage() {
+  await connection();
   const [year] = await getPublishedYears();
   const [values, settings] = await Promise.all([getMetricValues(year), getMetricSettings()]);
   const stats = settings
