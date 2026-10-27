@@ -6,7 +6,7 @@ import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-benefici
 
 export const MAX_STRATEGIC_LINES = 3;
 export const TOPICS_ERROR_MESSAGE = 'Elegí temáticas válidas';
-export const MAX_PLACE_NAME_LENGTH = 100;
+export const MAX_PLACE_NAME_LENGTH = 50;
 export const LOCATIONS_ERROR_MESSAGE = 'Elegí departamentos válidos';
 export const CITIES_REQUIRED_MESSAGE = 'Ingresá al menos una ciudad';
 

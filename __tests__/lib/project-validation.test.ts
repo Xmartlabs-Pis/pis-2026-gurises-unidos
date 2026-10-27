@@ -311,13 +311,13 @@ describe('geographic scope', () => {
     }
   });
 
-  it('bounds each place name to 100 characters', () => {
+  it('bounds each place name to 50 characters', () => {
     const location = (city: string) => [{ departmentId: '1', city, neighborhood: '' }];
-    expect(schema.safeParse({ ...input, locations: location('a'.repeat(100)) }).success).toBe(true);
+    expect(schema.safeParse({ ...input, locations: location('a'.repeat(50)) }).success).toBe(true);
     expect(
-      schema.safeParse({ ...input, locations: location('a'.repeat(101)) }).error?.flatten()
+      schema.safeParse({ ...input, locations: location('a'.repeat(51)) }).error?.flatten()
         .fieldErrors.locations
-    ).toEqual(['Máx. 100 caracteres por valor']);
+    ).toEqual(['Máx. 50 caracteres por valor']);
   });
 
   it('splits the locations into departments and localities for a national project', () => {

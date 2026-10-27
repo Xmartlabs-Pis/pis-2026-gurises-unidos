@@ -101,9 +101,12 @@ export function TerritorySection({
       {isEditing && (
         <div className="bg-muted rounded-[10px] px-3.5 py-3">
           <p className="text-muted-foreground text-sm leading-5">Cobertura</p>
-          <p className="mt-1 flex items-center gap-1 text-sm leading-5">
-            <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
-            {coverageLabel || (isInternational ? 'Ingresá un país' : 'Seleccioná un departamento')}
+          <p className="mt-1 flex items-start gap-1 text-sm leading-5">
+            <MapPin aria-hidden="true" className="mt-0.75 size-3.5 shrink-0" />
+            <span className="min-w-0 wrap-anywhere">
+              {coverageLabel ||
+                (isInternational ? 'Ingresá un país' : 'Seleccioná un departamento')}
+            </span>
           </p>
         </div>
       )}

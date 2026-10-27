@@ -205,8 +205,8 @@ export function LocationListField({
                       <span
                         className={
                           partIndex === 0
-                            ? 'truncate font-medium'
-                            : 'text-muted-foreground truncate'
+                            ? 'min-w-0 font-medium wrap-anywhere'
+                            : 'text-muted-foreground min-w-0 wrap-anywhere'
                         }
                       >
                         {part}
