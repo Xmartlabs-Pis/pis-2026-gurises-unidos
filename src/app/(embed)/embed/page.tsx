@@ -1,6 +1,6 @@
 import { connection } from 'next/server';
-import { formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
+import { getPublicStats } from '@/lib/metrics/public-stats';
 import { Button } from '@/components/ui/button';
 
 const SINGLE_ROW_MAX = 4;
@@ -29,13 +29,7 @@ export default async function EmbedPage() {
   await connection();
   const [year] = await getPublishedYears();
   const [values, settings] = await Promise.all([getMetricValues(year), getMetricSettings()]);
-  const stats = settings
-    .filter((metric) => metric.showPublicly)
-    .map((metric) => ({
-      key: metric.key,
-      value: formatNumber(values[metric.key]),
-      description: metric.name,
-    }));
+  const stats = getPublicStats(settings, values);
   const layout = getDesktopLayout(stats.length);
 
   return (
