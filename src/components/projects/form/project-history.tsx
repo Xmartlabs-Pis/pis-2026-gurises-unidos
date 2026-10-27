@@ -2,13 +2,8 @@ import type { AuditAction, AuditEntity } from '@/generated/prisma/enums';
 import { FormSection } from '@/components/ui/forms/form-section';
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import {
-  COUNTERPARTY_LABEL,
-  GEOGRAPHIC_SCOPE_OPTIONS,
-  INTENSITY_LABEL,
-  STATUS_LABEL,
-  ZONE_OPTIONS,
-} from '@/lib/project-display';
+import { PROJECT_FIELD_LABELS, PROJECT_TEXT_CHANGE_LABELS } from '@/lib/audit-log/constants';
+import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
 
 type ProjectHistoryProps = {
   entries: {
@@ -29,38 +24,6 @@ const PROJECT_ACTION_LABELS: Partial<Record<AuditAction, string>> = {
 };
 
 const BENEFICIARY_ACTION_LABEL = 'actualizó el número de beneficiarios';
-
-const PROJECT_FIELD_LABELS: Record<string, string> = {
-  name: 'Nombre del proyecto',
-  status: 'Estado',
-  intensity: 'Intensidad',
-  startYear: 'Año de inicio',
-  endYear: 'Año de fin',
-  leadCoordinatorId: 'Coordinador responsable',
-  counterpartyType: 'Contraparte',
-  geographicScope: 'Alcance geográfico',
-  countries: 'Países',
-  cities: 'Ciudades',
-  neighborhoods: 'Barrios',
-  zone: 'Zona',
-  generalObjective: 'Objetivo general',
-  publicDescription: 'Descripción pública',
-  internalNotes: 'Notas internas',
-  showOnLanding: 'Mostrar en la página de inicio',
-  topics: 'Temáticas',
-  strategicLines: 'Líneas estratégicas',
-  departments: 'Departamentos',
-};
-
-const PROJECT_VALUE_LABELS: Record<string, Record<string, string>> = {
-  status: STATUS_LABEL,
-  intensity: INTENSITY_LABEL,
-  counterpartyType: COUNTERPARTY_LABEL,
-  geographicScope: Object.fromEntries(
-    GEOGRAPHIC_SCOPE_OPTIONS.map(({ value, label }) => [value, label])
-  ),
-  zone: Object.fromEntries(ZONE_OPTIONS.map(({ value, label }) => [value, label])),
-};
 
 const namedValueSchema = z.object({
   id: z.number(),
@@ -109,22 +72,6 @@ type AuditChange = {
   from: AuditValue;
   to: AuditValue;
 };
-
-function formatAuditValue(field: string, value: AuditValue): string {
-  if (value === null || value === '') return 'Sin datos';
-
-  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
-
-  if (Array.isArray(value)) {
-    return value.length
-      ? value.map((item) => formatAuditValue(field, item)).join(', ')
-      : 'Sin datos';
-  }
-
-  if (typeof value === 'object') return value.name;
-
-  return PROJECT_VALUE_LABELS[field]?.[String(value)] ?? String(value);
-}
 
 function describeEntry(
   entry: ProjectHistoryProps['entries'][number]
@@ -194,15 +141,43 @@ export function ProjectHistory({ entries, fieldLabels }: ProjectHistoryProps) {
 
                 {changes.length > 0 && (
                   <ul className="text-muted-foreground mt-1 space-y-0.5">
-                    {changes.map((change) => (
-                      <li key={change.field} className="break-words whitespace-pre-wrap">
-                        {(entry.entity === 'project' ? PROJECT_FIELD_LABELS : fieldLabels)[
-                          change.field
-                        ] ?? change.field}
-                        : {formatAuditValue(change.field, change.from)} →{' '}
-                        {formatAuditValue(change.field, change.to)}
-                      </li>
-                    ))}
+                    {changes.map((change) => {
+                      const isProject = entry.entity === 'project';
+                      const labels = isProject ? PROJECT_FIELD_LABELS : fieldLabels;
+                      const fieldLabel = labels[change.field] ?? change.field;
+                      const valueLabels = isProject ? PROJECT_VALUE_LABELS : {};
+                      const from = formatAuditValue(change.field, change.from, valueLabels);
+                      const to = formatAuditValue(change.field, change.to, valueLabels);
+                      const textChangeLabel = isProject
+                        ? PROJECT_TEXT_CHANGE_LABELS[change.field]
+                        : undefined;
+
+                      return (
+                        <li key={change.field} className="break-words whitespace-pre-wrap">
+                          {typeof textChangeLabel === 'string' ? (
+                            <details>
+                              <summary className="cursor-pointer font-medium">
+                                {fieldLabel}: {textChangeLabel}
+                              </summary>
+                              <dl className="mt-1 space-y-2">
+                                <div>
+                                  <dt className="text-foreground text-xs font-medium">Antes</dt>
+                                  <dd className="mt-0.5">{from}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-foreground text-xs font-medium">Después</dt>
+                                  <dd className="mt-0.5">{to}</dd>
+                                </div>
+                              </dl>
+                            </details>
+                          ) : (
+                            <>
+                              {fieldLabel}: {from} → {to}
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </li>
