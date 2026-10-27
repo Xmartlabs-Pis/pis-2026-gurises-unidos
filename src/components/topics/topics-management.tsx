@@ -119,10 +119,12 @@ function TopicRow({ topic }: { topic: Topic }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-foreground text-sm leading-5 font-medium">{topic.name}</span>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-foreground min-w-0 text-sm leading-5 font-medium break-words">
+          {topic.name}
+        </span>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <ProjectCountLink
             projectCount={topic._count.projects}
             href={`/dashboard/projects?topicId=${topic.id}&status=all&beneficiaryYear=all`}
@@ -152,7 +154,7 @@ function TopicRow({ topic }: { topic: Topic }) {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Eliminar temática?</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="wrap-anywhere">
                       Esta acción dejará de mostrar “{topic.name}” como temática disponible.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
