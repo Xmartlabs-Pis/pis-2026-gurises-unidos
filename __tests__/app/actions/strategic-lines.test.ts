@@ -129,6 +129,48 @@ describe('editStrategicLine', () => {
       },
     });
   });
+
+  test('explains when the requested name belongs to an inactive strategic line', async () => {
+    mocks.findStrategicLine.mockResolvedValueOnce({ name: 'Youth Support' });
+    mocks.findStrategicLine.mockResolvedValueOnce({ id: 8, isActive: false });
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ese nombre pertenece a una línea estratégica dada de baja. Elegí otro nombre.',
+      values: { name: 'Youth Development' },
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+  });
+
+  test('rejects a name already used by another active strategic line', async () => {
+    mocks.findStrategicLine.mockResolvedValueOnce({ name: 'Youth Support' });
+    mocks.findStrategicLine.mockResolvedValueOnce({ id: 8, isActive: true });
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una línea estratégica con ese nombre.',
+      values: { name: 'Youth Development' },
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test('rejects editing a strategic line that does not exist or is inactive', async () => {
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'La línea estratégica no existe o ya fue eliminada.',
+      values: { name: 'Youth Development' },
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+  });
 });
 
 describe('deleteStrategicLine', () => {

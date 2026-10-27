@@ -129,6 +129,7 @@ function CategoryRow({ category }: { category: Category }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(category.name);
   const [editClientError, setEditClientError] = useState<string>();
+  const [showEditErrors, setShowEditErrors] = useState(false);
   const [editState, editFormAction, editPending] = useActionState(
     async (previousState: BeneficiaryCategoryActionState, formData: FormData) => {
       const result = await editBeneficiaryCategory(category.id, previousState, formData);
@@ -147,10 +148,12 @@ function CategoryRow({ category }: { category: Category }) {
     if (open) {
       setEditedName(category.name);
       setEditClientError(undefined);
+      setShowEditErrors(false);
     }
   }
 
   function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    setShowEditErrors(true);
     const formData = new FormData(event.currentTarget);
     const result = beneficiaryCategorySchema.safeParse({ name: formData.get('name') });
 
@@ -165,7 +168,7 @@ function CategoryRow({ category }: { category: Category }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
         <span
           lang="es"
           className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
@@ -203,14 +206,7 @@ function CategoryRow({ category }: { category: Category }) {
 
           <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
             <AlertDialogTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  className="hidden lg:inline-flex"
-                  aria-label="Editar categoría"
-                  title="Editar categoría"
-                />
-              }
+              render={<Button variant="ghost" className="hidden lg:inline-flex" />}
             >
               Editar
             </AlertDialogTrigger>
@@ -233,11 +229,12 @@ function CategoryRow({ category }: { category: Category }) {
                   required
                   disabled={editPending}
                 />
-                {(editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
-                  <p className="text-destructive text-sm">
-                    {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
-                  </p>
-                )}
+                {showEditErrors &&
+                  (editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
+                    <p className="text-destructive text-sm">
+                      {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
+                    </p>
+                  )}
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
                   <Button type="submit" disabled={editPending}>
@@ -255,14 +252,7 @@ function CategoryRow({ category }: { category: Category }) {
           ) : category.projectCount > 0 ? (
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
               <AlertDialogTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    className="hidden lg:inline-flex"
-                    aria-label="Eliminar categoría"
-                    title="Eliminar categoría"
-                  />
-                }
+                render={<Button variant="ghost" className="hidden lg:inline-flex" />}
               >
                 Eliminar
               </AlertDialogTrigger>
@@ -283,13 +273,7 @@ function CategoryRow({ category }: { category: Category }) {
               <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogTrigger
                   render={
-                    <Button
-                      variant="ghost"
-                      className="hidden lg:inline-flex"
-                      disabled={pending}
-                      aria-label="Eliminar categoría"
-                      title="Eliminar categoría"
-                    />
+                    <Button variant="ghost" className="hidden lg:inline-flex" disabled={pending} />
                   }
                 >
                   Eliminar

@@ -140,9 +140,13 @@ export async function editBeneficiaryCategory(
           id: { not: categoryId },
           name: { equals: parsed.data.name, mode: 'insensitive' },
         },
-        select: { id: true },
+        select: { id: true, isActive: true },
       });
-      if (duplicate) return DUPLICATE_NAME_MESSAGE;
+      if (duplicate) {
+        return duplicate.isActive
+          ? DUPLICATE_NAME_MESSAGE
+          : 'Ese nombre pertenece a una categoría dada de baja. Elegí otro nombre.';
+      }
 
       await tx.beneficiaryCategory.update({
         where: { id: categoryId },

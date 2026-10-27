@@ -131,9 +131,13 @@ export async function editStrategicLine(
           id: { not: id },
           name: { equals: parsed.data.name, mode: 'insensitive' },
         },
-        select: { id: true },
+        select: { id: true, isActive: true },
       });
-      if (duplicate) return 'Ya existe una línea estratégica con ese nombre.';
+      if (duplicate) {
+        return duplicate.isActive
+          ? 'Ya existe una línea estratégica con ese nombre.'
+          : 'Ese nombre pertenece a una línea estratégica dada de baja. Elegí otro nombre.';
+      }
 
       await tx.strategicLine.update({
         where: { id },

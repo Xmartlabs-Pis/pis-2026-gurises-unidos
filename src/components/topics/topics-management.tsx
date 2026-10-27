@@ -123,6 +123,7 @@ function TopicRow({ topic }: { topic: Topic }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(topic.name);
   const [editClientError, setEditClientError] = useState<string>();
+  const [showEditErrors, setShowEditErrors] = useState(false);
   const [editState, editFormAction, editPending] = useActionState(
     async (previousState: TopicActionState, formData: FormData) => {
       const result = await editTopic(topic.id, previousState, formData);
@@ -141,10 +142,12 @@ function TopicRow({ topic }: { topic: Topic }) {
     if (open) {
       setEditedName(topic.name);
       setEditClientError(undefined);
+      setShowEditErrors(false);
     }
   }
 
   function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    setShowEditErrors(true);
     const formData = new FormData(event.currentTarget);
     const result = topicSchema.safeParse({ name: formData.get('name') });
 
@@ -193,14 +196,7 @@ function TopicRow({ topic }: { topic: Topic }) {
           </div>
           <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
             <AlertDialogTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  className="hidden lg:inline-flex"
-                  aria-label="Editar temática"
-                  title="Editar temática"
-                />
-              }
+              render={<Button variant="ghost" className="hidden lg:inline-flex" />}
             >
               Editar
             </AlertDialogTrigger>
@@ -223,11 +219,12 @@ function TopicRow({ topic }: { topic: Topic }) {
                   required
                   disabled={editPending}
                 />
-                {(editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
-                  <p className="text-destructive text-sm">
-                    {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
-                  </p>
-                )}
+                {showEditErrors &&
+                  (editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
+                    <p className="text-destructive text-sm">
+                      {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
+                    </p>
+                  )}
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
                   <Button type="submit" disabled={editPending}>
@@ -240,14 +237,7 @@ function TopicRow({ topic }: { topic: Topic }) {
           {topic._count.projects > 0 ? (
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
               <AlertDialogTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    className="hidden lg:inline-flex"
-                    aria-label="Eliminar temática"
-                    title="Eliminar temática"
-                  />
-                }
+                render={<Button variant="ghost" className="hidden lg:inline-flex" />}
               >
                 Eliminar
               </AlertDialogTrigger>
@@ -268,13 +258,7 @@ function TopicRow({ topic }: { topic: Topic }) {
               <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogTrigger
                   render={
-                    <Button
-                      variant="ghost"
-                      className="hidden lg:inline-flex"
-                      disabled={pending}
-                      aria-label="Eliminar temática"
-                      title="Eliminar temática"
-                    />
+                    <Button variant="ghost" className="hidden lg:inline-flex" disabled={pending} />
                   }
                 >
                   Eliminar

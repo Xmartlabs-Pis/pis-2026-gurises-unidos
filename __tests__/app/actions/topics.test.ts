@@ -134,7 +134,8 @@ describe('editTopic', () => {
   });
 
   test('rejects a name used by another topic with different casing', async () => {
-    mocks.findTopic.mockResolvedValue({ id: 2 });
+    mocks.findTopic.mockResolvedValueOnce({ name: 'Health' });
+    mocks.findTopic.mockResolvedValueOnce({ id: 2, isActive: true });
     const data = new FormData();
     data.set('name', 'HEALTH');
 
@@ -145,8 +146,22 @@ describe('editTopic', () => {
 
     expect(mocks.findTopic).toHaveBeenCalledWith({
       where: { id: { not: 4 }, name: { equals: 'HEALTH', mode: 'insensitive' } },
-      select: { id: true },
+      select: { id: true, isActive: true },
     });
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+  });
+
+  test('explains when the requested name belongs to an inactive topic', async () => {
+    mocks.findTopic.mockResolvedValueOnce({ name: 'Health Studies' });
+    mocks.findTopic.mockResolvedValueOnce({ id: 2, isActive: false });
+    const data = new FormData();
+    data.set('name', 'Health');
+
+    await expect(editTopic(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ese nombre pertenece a una temática dada de baja. Elegí otro nombre.',
+      values: { name: 'Health' },
+    });
+
     expect(mocks.updateTopic).not.toHaveBeenCalled();
   });
 });

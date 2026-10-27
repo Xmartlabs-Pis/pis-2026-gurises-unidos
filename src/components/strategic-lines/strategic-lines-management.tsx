@@ -128,6 +128,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(line.name);
   const [editClientError, setEditClientError] = useState<string>();
+  const [showEditErrors, setShowEditErrors] = useState(false);
   const [editState, editFormAction, editPending] = useActionState(
     async (previousState: StrategicLineActionState, formData: FormData) => {
       const result = await editStrategicLine(line.id, previousState, formData);
@@ -146,10 +147,12 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
     if (open) {
       setEditedName(line.name);
       setEditClientError(undefined);
+      setShowEditErrors(false);
     }
   }
 
   function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    setShowEditErrors(true);
     const formData = new FormData(event.currentTarget);
     const result = strategicLineSchema.safeParse({ name: formData.get('name') });
 
@@ -200,14 +203,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
 
           <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
             <AlertDialogTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  className="hidden lg:inline-flex"
-                  aria-label="Editar línea estratégica"
-                  title="Editar línea estratégica"
-                />
-              }
+              render={<Button variant="ghost" className="hidden lg:inline-flex" />}
             >
               Editar
             </AlertDialogTrigger>
@@ -232,11 +228,12 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
                   required
                   disabled={editPending}
                 />
-                {(editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
-                  <p className="text-destructive text-sm">
-                    {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
-                  </p>
-                )}
+                {showEditErrors &&
+                  (editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
+                    <p className="text-destructive text-sm">
+                      {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
+                    </p>
+                  )}
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
                   <Button type="submit" disabled={editPending}>
@@ -250,14 +247,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
           {line._count.projects > 0 ? (
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
               <AlertDialogTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    className="hidden lg:inline-flex"
-                    aria-label="Eliminar línea estratégica"
-                    title="Eliminar línea estratégica"
-                  />
-                }
+                render={<Button variant="ghost" className="hidden lg:inline-flex" />}
               >
                 Eliminar
               </AlertDialogTrigger>
@@ -278,13 +268,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
               <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogTrigger
                   render={
-                    <Button
-                      variant="ghost"
-                      className="hidden lg:inline-flex"
-                      disabled={pending}
-                      aria-label="Eliminar línea estratégica"
-                      title="Eliminar línea estratégica"
-                    />
+                    <Button variant="ghost" className="hidden lg:inline-flex" disabled={pending} />
                   }
                 >
                   Eliminar

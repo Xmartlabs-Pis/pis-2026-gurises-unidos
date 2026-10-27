@@ -185,9 +185,13 @@ export async function editTopic(
           id: { not: topicId },
           name: { equals: parsed.data.name, mode: 'insensitive' },
         },
-        select: { id: true },
+        select: { id: true, isActive: true },
       });
-      if (duplicate) return 'Ya existe una temática con ese nombre.';
+      if (duplicate) {
+        return duplicate.isActive
+          ? 'Ya existe una temática con ese nombre.'
+          : 'Ese nombre pertenece a una temática dada de baja. Elegí otro nombre.';
+      }
 
       await tx.topic.update({
         where: { id: topicId },
