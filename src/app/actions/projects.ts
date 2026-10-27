@@ -179,15 +179,15 @@ function hasSameIds(ids: number[], previousIds: number[]) {
   return ids.length === previousIds.length && ids.every((id) => previousIds.includes(id));
 }
 
+function localityKey({ departmentId, city, neighborhood }: ProjectLocality) {
+  return JSON.stringify([departmentId, city, neighborhood ?? null]);
+}
+
 function hasSameLocalities(localities: ProjectLocality[], previousLocalities: ProjectLocality[]) {
+  const previousKeys = new Set(previousLocalities.map(localityKey));
   return (
     localities.length === previousLocalities.length &&
-    localities.every(
-      (locality, index) =>
-        locality.departmentId === previousLocalities[index].departmentId &&
-        locality.city === previousLocalities[index].city &&
-        locality.neighborhood === previousLocalities[index].neighborhood
-    )
+    localities.every((locality) => previousKeys.has(localityKey(locality)))
   );
 }
 

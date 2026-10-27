@@ -224,7 +224,7 @@ describe('geographic scope', () => {
   it('requires at least one department for a national project', () => {
     expect(
       schema.safeParse({ ...input, locations: [] }).error?.flatten().fieldErrors.locations
-    ).toEqual(['Agregá al menos un departamento']);
+    ).toEqual(['Agregá al menos una ubicación']);
   });
 
   it('requires a city for each department of a national project', () => {

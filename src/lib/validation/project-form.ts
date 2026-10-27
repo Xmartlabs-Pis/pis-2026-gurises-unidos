@@ -114,7 +114,7 @@ export function buildProjectFormSchema(keys: readonly string[]) {
       { message: INTENSITY_REQUIRED_MESSAGE, path: ['intensity'] }
     )
     .refine((data) => data.geographicScope !== 'national' || data.locations.length > 0, {
-      message: 'Agregá al menos un departamento',
+      message: 'Agregá al menos una ubicación',
       path: ['locations'],
     })
     .refine((data) => data.geographicScope !== 'international' || data.countries.length > 0, {

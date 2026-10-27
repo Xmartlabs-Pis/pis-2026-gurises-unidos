@@ -988,6 +988,38 @@ describe('project review regressions', () => {
     );
   });
 
+  it('keeps the localities when only their order changes', async () => {
+    unchangedRecords();
+    mocks.findProject.mockResolvedValue({
+      ...(await mocks.findProject()),
+      departments: [{ id: 4 }, { id: 3 }],
+      localities: [{ departmentId: 4, city: 'Other city', neighborhood: null }, ...LOCALITIES],
+    });
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          locations: [location('3', 'City', 'Neighborhood'), location('4', 'Other city')],
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it('saves a locality whose only change is its case', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ locations: location('3', 'City', 'neighborhood') }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.localities).toEqual({
+      deleteMany: {},
+      create: [{ departmentId: 3, city: 'City', neighborhood: 'neighborhood' }],
+    });
+    expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(['localities']);
+  });
+
   it('audits a neighborhood moved to another city of the same department', async () => {
     unchangedRecords();
     await expect(

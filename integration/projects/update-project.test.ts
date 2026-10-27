@@ -289,6 +289,49 @@ describe('updateProject (integration)', () => {
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 
+  test('writes nothing when the edit form lists the same localities in another order', async () => {
+    const projectId = await createProjectFixture();
+    const [first, second] = (
+      await prisma.department.findMany({
+        where: { id: { in: seed.departmentIds } },
+        orderBy: { name: 'asc' },
+        select: { id: true },
+      })
+    ).map(({ id }) => id);
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        departments: { set: [{ id: second }, { id: first }] },
+        localities: {
+          deleteMany: {},
+          create: [
+            { departmentId: second, city: 'Paysandú', neighborhood: null },
+            { departmentId: first, city: 'Colonia del Sacramento', neighborhood: 'Barrio Sur' },
+          ],
+        },
+      },
+    });
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          locations: [
+            location(first, 'Colonia del Sacramento', 'Barrio Sur'),
+            location(second, 'Paysandú'),
+          ],
+        })
+      ),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
   test('updates the beneficiaries of an existing year in place', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);

@@ -174,12 +174,29 @@ it('removes a single location', async () => {
   ]);
 });
 
-it('requires at least one department for a national project', async () => {
+it('requires at least one location for a national project', async () => {
   const { submitAction, submit } = renderForm();
 
   await submit();
 
-  expect(await screen.findByText('Agregá al menos un departamento')).toBeTruthy();
+  expect(await screen.findByText('Agregá al menos una ubicación')).toBeTruthy();
+  expect(submitAction).not.toHaveBeenCalled();
+});
+
+it('asks to add a typed location that was not added before saving', async () => {
+  const { submitAction, submit } = renderForm();
+
+  await selectDepartment('Canelones');
+  type('Ciudad', 'Las Piedras');
+  expect(
+    screen.getByText('Presioná "Agregar" para sumar la ubicación. El barrio es opcional')
+  ).toBeTruthy();
+
+  await submit();
+
+  expect(
+    await screen.findByText('Presioná "Agregar" para sumar la ubicación que escribiste')
+  ).toBeTruthy();
   expect(submitAction).not.toHaveBeenCalled();
 });
 

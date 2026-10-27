@@ -19,6 +19,7 @@ import type { ProjectFormValues, ProjectLocationFormValue } from './project-form
 const INPUT_CLASS_NAME =
   'border-input bg-background h-9 min-w-0 rounded-lg px-3 text-base md:text-sm';
 const LABEL_CLASS_NAME = 'text-foreground text-xs leading-4 font-medium';
+const PENDING_LOCATION_MESSAGE = 'Presioná "Agregar" para sumar la ubicación que escribiste';
 
 function insertLocation(
   locations: ProjectLocationFormValue[],
@@ -46,7 +47,10 @@ export function LocationListField({
   const locations = field.value;
   const departmentNames = new Map(departmentOptions.map(({ value, label }) => [value, label]));
   const hasCity = city.trim() !== '';
-  const errorMessage = draftError ?? fieldState.error?.message;
+  const hasPendingLocation = Boolean(departmentId) && hasCity;
+  const errorMessage =
+    draftError ??
+    (fieldState.error && hasPendingLocation ? PENDING_LOCATION_MESSAGE : fieldState.error?.message);
 
   function addLocation() {
     if (!departmentId || !hasCity) return;
@@ -168,9 +172,11 @@ export function LocationListField({
         <FieldError className="text-xs leading-4">{errorMessage}</FieldError>
       ) : (
         <FieldDescription className="text-muted-foreground text-xs leading-4">
-          {departmentId
-            ? 'Dejá el barrio vacío para cubrir toda la ciudad'
-            : 'Seleccioná un departamento para agregar una ubicación'}
+          {hasPendingLocation
+            ? 'Presioná "Agregar" para sumar la ubicación. El barrio es opcional'
+            : departmentId
+              ? 'Escribí una ciudad para agregar la ubicación'
+              : 'Seleccioná un departamento para agregar una ubicación'}
         </FieldDescription>
       )}
       {locations.length > 0 && (

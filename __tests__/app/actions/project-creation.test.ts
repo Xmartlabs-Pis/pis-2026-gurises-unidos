@@ -369,7 +369,7 @@ describe('createProject', () => {
   test('requires a department for a national project without accessing the database', async () => {
     const result = await createProject(EMPTY_STATE, buildFormData({ locations: undefined }));
 
-    expect(result.errors?.locations).toEqual(['Agregá al menos un departamento']);
+    expect(result.errors?.locations).toEqual(['Agregá al menos una ubicación']);
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
