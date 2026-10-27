@@ -8,10 +8,16 @@ import {
   type BeneficiaryCategoryActionState,
 } from '@/app/actions/beneficiary-categories';
 import { beneficiaryCategorySchema } from '@/lib/validation/beneficiary-category';
-import { Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Separator } from '../ui/separator';
 import {
   AlertDialog,
@@ -120,6 +126,7 @@ export function BeneficiaryCategoriesManagement({
 
 function CategoryRow({ category }: { category: Category }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(category.name);
   const [editAttempted, setEditAttempted] = useState(false);
   const [editState, editFormAction, editPending] = useActionState(
@@ -147,6 +154,26 @@ function CategoryRow({ category }: { category: Category }) {
             href={`/dashboard/projects?beneficiaryCategoryId=${category.id}&status=all&beneficiaryYear=all`}
           />
 
+          <div className="contents lg:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon" aria-label={`Acciones para ${category.name}`}>
+                    <MoreHorizontal />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>Editar</DropdownMenuItem>
+                {!category.isSystem && (
+                  <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+                    Eliminar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           <AlertDialog
             open={isEditOpen && !(editAttempted && editState.success)}
             onOpenChange={(open) => {
@@ -159,11 +186,15 @@ function CategoryRow({ category }: { category: Category }) {
           >
             <AlertDialogTrigger
               render={
-                <Button variant="ghost" aria-label="Editar categoría" title="Editar categoría" />
+                <Button
+                  variant="ghost"
+                  className="hidden lg:inline-flex"
+                  aria-label="Editar categoría"
+                  title="Editar categoría"
+                />
               }
             >
-              <Pencil aria-hidden="true" className="size-4 lg:hidden" />
-              <span className="sr-only lg:not-sr-only">Editar</span>
+              Editar
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -199,22 +230,22 @@ function CategoryRow({ category }: { category: Category }) {
           </AlertDialog>
 
           {category.isSystem ? (
-            <span className="text-muted-foreground inline-flex h-8 items-center px-2.5 text-sm leading-5 font-medium">
+            <span className="text-muted-foreground hidden h-8 items-center px-2.5 text-sm leading-5 font-medium lg:inline-flex">
               Sistema
             </span>
           ) : category.projectCount > 0 ? (
-            <AlertDialog>
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
               <AlertDialogTrigger
                 render={
                   <Button
                     variant="ghost"
+                    className="hidden lg:inline-flex"
                     aria-label="Eliminar categoría"
                     title="Eliminar categoría"
                   />
                 }
               >
-                <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
-                <span className="sr-only lg:not-sr-only">Eliminar</span>
+                Eliminar
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -229,20 +260,20 @@ function CategoryRow({ category }: { category: Category }) {
               </AlertDialogContent>
             </AlertDialog>
           ) : (
-            <form id={`delete-category-${category.id}`} action={formAction}>
-              <AlertDialog>
+            <form id={`delete-category-${category.id}`} action={formAction} className="contents">
+              <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogTrigger
                   render={
                     <Button
                       variant="ghost"
+                      className="hidden lg:inline-flex"
                       disabled={pending}
                       aria-label="Eliminar categoría"
                       title="Eliminar categoría"
                     />
                   }
                 >
-                  <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
-                  <span className="sr-only lg:not-sr-only">Eliminar</span>
+                  Eliminar
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>

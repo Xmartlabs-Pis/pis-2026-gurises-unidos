@@ -9,10 +9,16 @@ import {
 } from '@/app/actions/strategic-lines';
 import { ProjectCountLink } from '@/components/project-count-link';
 import { strategicLineSchema } from '@/lib/validation/strategic-line';
-import { Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Separator } from '../ui/separator';
 import {
   AlertDialog,
@@ -119,6 +125,7 @@ export function StrategicLinesManagement({ lines }: StrategicLinesManagementProp
 
 function StrategicLineRow({ line }: { line: StrategicLine }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(line.name);
   const [editAttempted, setEditAttempted] = useState(false);
   const [editState, editFormAction, editPending] = useActionState(
@@ -132,7 +139,7 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
 
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
         <span
           lang="es"
           className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
@@ -145,6 +152,24 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
             projectCount={line._count.projects}
             href={`/dashboard/projects?strategicLineId=${line.id}&status=all&beneficiaryYear=all`}
           />
+
+          <div className="contents lg:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon" aria-label={`Acciones para ${line.name}`}>
+                    <MoreHorizontal />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsEditOpen(true)}>Editar</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           <AlertDialog
             open={isEditOpen && !(editAttempted && editState.success)}
@@ -160,13 +185,13 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
               render={
                 <Button
                   variant="ghost"
+                  className="hidden lg:inline-flex"
                   aria-label="Editar línea estratégica"
                   title="Editar línea estratégica"
                 />
               }
             >
-              <Pencil aria-hidden="true" className="size-4 lg:hidden" />
-              <span className="sr-only lg:not-sr-only">Editar</span>
+              Editar
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -204,18 +229,18 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
           </AlertDialog>
 
           {line._count.projects > 0 ? (
-            <AlertDialog>
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
               <AlertDialogTrigger
                 render={
                   <Button
                     variant="ghost"
+                    className="hidden lg:inline-flex"
                     aria-label="Eliminar línea estratégica"
                     title="Eliminar línea estratégica"
                   />
                 }
               >
-                <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
-                <span className="sr-only lg:not-sr-only">Eliminar</span>
+                Eliminar
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -230,20 +255,20 @@ function StrategicLineRow({ line }: { line: StrategicLine }) {
               </AlertDialogContent>
             </AlertDialog>
           ) : (
-            <form id={`delete-strategic-line-${line.id}`} action={formAction}>
-              <AlertDialog>
+            <form id={`delete-strategic-line-${line.id}`} action={formAction} className="contents">
+              <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
                 <AlertDialogTrigger
                   render={
                     <Button
                       variant="ghost"
+                      className="hidden lg:inline-flex"
                       disabled={pending}
                       aria-label="Eliminar línea estratégica"
                       title="Eliminar línea estratégica"
                     />
                   }
                 >
-                  <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
-                  <span className="sr-only lg:not-sr-only">Eliminar</span>
+                  Eliminar
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
