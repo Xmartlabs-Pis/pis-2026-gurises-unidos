@@ -18,6 +18,7 @@ import {
   buildProjectFormSchema,
   readProjectFormData,
   splitProjectFormData,
+  LOCATIONS_ERROR_MESSAGE,
   TOPICS_ERROR_MESSAGE,
 } from '@/lib/validation/project-form';
 import type { Prisma } from '@/generated/prisma/client';
@@ -33,6 +34,7 @@ import { DUPLICATE_PROJECT_MESSAGE } from '@/lib/projects/map-project-db-error';
 import { PROJECT_LIST_PAGE_SIZE, parseProjectFilters } from '@/lib/validation/project-filters';
 import { listProjects, type ProjectListPage } from '@/lib/projects/list';
 import { getProjectAuditChanges, PROJECT_AUDIT_INCLUDE } from '@/lib/projects/audit-changes';
+import type { ProjectLocality } from '@/lib/projects/location';
 
 async function lockTopics(tx: Prisma.TransactionClient, topicIds: number[]) {
   const ids = [...new Set(topicIds)].sort((a, b) => a - b);
@@ -96,7 +98,7 @@ async function validateDepartments(
   const count = await tx.department.count({ where: { id: { in: departmentIds } } });
   return count === departmentIds.length
     ? null
-    : { errors: { departmentIds: ['Elegí departamentos válidos'] } };
+    : { errors: { locations: [LOCATIONS_ERROR_MESSAGE] } };
 }
 
 async function validateUniqueName(
@@ -177,6 +179,18 @@ function hasSameIds(ids: number[], previousIds: number[]) {
   return ids.length === previousIds.length && ids.every((id) => previousIds.includes(id));
 }
 
+function hasSameLocalities(localities: ProjectLocality[], previousLocalities: ProjectLocality[]) {
+  return (
+    localities.length === previousLocalities.length &&
+    localities.every(
+      (locality, index) =>
+        locality.departmentId === previousLocalities[index].departmentId &&
+        locality.city === previousLocalities[index].city &&
+        locality.neighborhood === previousLocalities[index].neighborhood
+    )
+  );
+}
+
 function changedFields<T extends object>(data: T, previous: T) {
   return (Object.keys(data) as (keyof T & string)[]).filter(
     (key) => !isSameValue(data[key], previous[key])
@@ -200,7 +214,7 @@ export async function createProject(
   );
   if ('error' in resolved) return resolved.error;
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
-  const { topicIds, strategicLineIds, departmentIds } = parsed;
+  const { topicIds, strategicLineIds, departmentIds, localities } = parsed;
   const submittedPlaceholder = formData.get('projectPlaceholder');
   const coverPhoto = isProjectPlaceholder(submittedPlaceholder)
     ? submittedPlaceholder
@@ -227,6 +241,7 @@ export async function createProject(
             topics: { connect: topicIds.map((id) => ({ id })) },
             strategicLines: { connect: strategicLineIds.map((id) => ({ id })) },
             departments: { connect: departmentIds.map((id) => ({ id })) },
+            localities: { create: localities },
             coverPhoto,
             createdBy: user.id,
           },
@@ -280,7 +295,15 @@ export async function updateProject(
   if (!parseId(projectId)) return { formError: 'El proyecto no es válido.' };
   const parsed = await parseProjectForm(formData);
   if ('errors' in parsed) return { errors: parsed.errors };
-  const { keys, projectData, beneficiaryData, topicIds, strategicLineIds, departmentIds } = parsed;
+  const {
+    keys,
+    projectData,
+    beneficiaryData,
+    topicIds,
+    strategicLineIds,
+    departmentIds,
+    localities,
+  } = parsed;
   try {
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
@@ -355,11 +378,13 @@ export async function updateProject(
           departmentIds,
           previous.departments.map(({ id }) => id)
         );
+        const localitiesChanged = !hasSameLocalities(localities, previous.localities);
         const fields = [
           ...changedFields(nextProjectData, previous),
           ...(topicsChanged ? ['topics'] : []),
           ...(strategicLinesChanged ? ['strategicLines'] : []),
           ...(departmentsChanged ? ['departments'] : []),
+          ...(localitiesChanged ? ['localities'] : []),
         ];
         if (fields.length) {
           const updated = await tx.project.update({
@@ -373,6 +398,7 @@ export async function updateProject(
               ...(departmentsChanged
                 ? { departments: { set: departmentIds.map((id) => ({ id })) } }
                 : {}),
+              ...(localitiesChanged ? { localities: { deleteMany: {}, create: localities } } : {}),
             },
             include: PROJECT_AUDIT_INCLUDE,
           });

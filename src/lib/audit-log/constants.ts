@@ -36,6 +36,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   departments: 'Departamentos',
   cities: 'Ciudades',
   neighborhoods: 'Barrios',
+  localities: 'Ubicaciones',
   zone: 'Zona',
   generalObjective: 'Objetivo general',
   publicDescription: 'Descripción pública',

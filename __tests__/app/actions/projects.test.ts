@@ -80,6 +80,18 @@ const TX = {
   },
   auditLog: { create: mocks.audit },
 };
+const LOCALITIES = [{ departmentId: 3, city: 'City', neighborhood: 'Neighborhood' }];
+
+function withDepartmentName<T extends { departmentId: number }>(locality: T) {
+  return { ...locality, department: { name: `Department ${locality.departmentId}` } };
+}
+
+const AUDIT_LOCALITIES = LOCALITIES.map(withDepartmentName);
+
+function location(departmentId: string, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId, city, neighborhood });
+}
+
 const VALID_DATA = {
   name: '  Updated project  ',
   topicIds: '1',
@@ -89,9 +101,7 @@ const VALID_DATA = {
   startYear: '2019',
   leadCoordinatorId: '2',
   geographicScope: 'national',
-  departmentIds: '3',
-  cities: 'City',
-  neighborhoods: 'Neighborhood',
+  locations: location('3', 'City', 'Neighborhood'),
   generalObjective: 'Objective',
   publicDescription: 'Description',
   internalNotes: 'Team notes',
@@ -136,6 +146,7 @@ beforeEach(() => {
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
     departments: [{ id: 3, name: 'Department 3' }],
+    localities: AUDIT_LOCALITIES,
   });
   mocks.countTopics.mockImplementation(
     ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
@@ -151,7 +162,7 @@ beforeEach(() => {
   mocks.transaction.mockImplementation(async (callback) => callback(TX));
   mocks.createProject.mockResolvedValue({ id: 10 });
   mocks.updateProject.mockImplementation(async ({ data }) => {
-    const { topics, strategicLines, departments, ...fields } = data;
+    const { topics, strategicLines, departments, localities, ...fields } = data;
     return {
       id: 10,
       ...fields,
@@ -168,6 +179,7 @@ beforeEach(() => {
         id,
         name: `Department ${id}`,
       })),
+      localities: (localities?.create ?? LOCALITIES).map(withDepartmentName),
     };
   });
   mocks.createBeneficiary.mockResolvedValue({ id: 20 });
@@ -219,8 +231,10 @@ describe.each([
 
   it('rejects departments that do not exist before writing', async () => {
     mocks.countDepartments.mockResolvedValue(1);
-    expect(await submit(formData({ departmentIds: ['3', '999'] }))).toEqual({
-      errors: { departmentIds: ['Elegí departamentos válidos'] },
+    expect(
+      await submit(formData({ locations: [location('3', 'City'), location('999', 'City')] }))
+    ).toEqual({
+      errors: { locations: ['Elegí departamentos válidos'] },
     });
     expect(mocks.countDepartments).toHaveBeenCalledWith({ where: { id: { in: [3, 999] } } });
     expect(mocks.createProject).not.toHaveBeenCalled();
@@ -251,7 +265,7 @@ describe.each([
   it.each([
     ['name', ''],
     ['status', 'invalid'],
-    ['departmentIds', '0'],
+    ['locations', location('0', 'City')],
     ['leadCoordinatorId', '0'],
     ['startYear', '1800'],
     ['year', '1800'],
@@ -388,6 +402,8 @@ it('creates the project, topics, strategic lines and beneficiaries with audit en
       createdBy: 7,
       topics: { connect: [{ id: 1 }] },
       strategicLines: { connect: [{ id: 1 }] },
+      departments: { connect: [{ id: 3 }] },
+      localities: { create: LOCALITIES },
     }),
   });
   expect(mocks.createBeneficiary).toHaveBeenCalledWith({
@@ -499,8 +515,6 @@ describe('updateProject persistence', () => {
           leadCoordinatorId: 2,
           geographicScope: 'national',
           countries: [],
-          cities: ['City'],
-          neighborhoods: ['Neighborhood'],
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
@@ -599,9 +613,9 @@ describe('updateProject persistence', () => {
   });
 
   it('requires a city for a national project without accessing the database', async () => {
-    const result = await updateProject(10, {}, formData({ cities: undefined }));
+    const result = await updateProject(10, {}, formData({ locations: location('3') }));
 
-    expect(result.errors?.cities).toEqual(['Ingresá al menos una ciudad']);
+    expect(result.errors?.locations).toEqual(['Ingresá al menos una ciudad']);
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
@@ -740,6 +754,7 @@ function unchangedRecords() {
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
     departments: [{ id: 3, name: 'Department 3' }],
+    localities: AUDIT_LOCALITIES,
   });
   mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows(beneficiaryData.counts) });
 }
@@ -891,11 +906,15 @@ describe('project review regressions', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it('replaces the departments and audits a departments-only change', async () => {
+  it('replaces the departments and audits the new department with its locality', async () => {
     unchangedRecords();
-    await expect(updateProject(10, {}, formData({ departmentIds: ['3', '4'] }))).rejects.toThrow(
-      'Redirect:'
-    );
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({ locations: [location('3', 'City', 'Neighborhood'), location('4', 'City')] })
+      )
+    ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ departments: { set: [{ id: 3 }, { id: 4 }] } }),
@@ -908,7 +927,7 @@ describe('project review regressions', () => {
         entity: 'project',
         entityId: 10,
         details: {
-          changedFields: ['departments'],
+          changedFields: ['departments', 'localities'],
           changes: [
             {
               field: 'departments',
@@ -918,30 +937,67 @@ describe('project review regressions', () => {
                 { id: 4, name: 'Department 4' },
               ],
             },
+            {
+              field: 'localities',
+              from: [{ name: 'Department 3, City, Neighborhood' }],
+              to: [{ name: 'Department 3, City, Neighborhood' }, { name: 'Department 4, City' }],
+            },
           ],
         },
       },
     });
   });
 
-  it('audits changed cities without rewriting the departments', async () => {
+  it('replaces and audits changed localities without rewriting the departments', async () => {
     unchangedRecords();
     await expect(
-      updateProject(10, {}, formData({ cities: ['City', 'Other city'] }))
+      updateProject(
+        10,
+        {},
+        formData({
+          locations: [location('3', 'City', 'Neighborhood'), location('3', 'Other city')],
+        })
+      )
     ).rejects.toThrow('Redirect:');
     const { data } = mocks.updateProject.mock.calls[0][0];
-    expect(data).toMatchObject({ cities: ['City', 'Other city'] });
+    expect(data).toMatchObject({
+      localities: {
+        deleteMany: {},
+        create: [...LOCALITIES, { departmentId: 3, city: 'Other city', neighborhood: null }],
+      },
+    });
     expect(data).not.toHaveProperty('departments');
     expect(mocks.audit).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         data: expect.objectContaining({
           details: {
-            changedFields: ['cities'],
-            changes: [{ field: 'cities', from: ['City'], to: ['City', 'Other city'] }],
+            changedFields: ['localities'],
+            changes: [
+              {
+                field: 'localities',
+                from: [{ name: 'Department 3, City, Neighborhood' }],
+                to: [
+                  { name: 'Department 3, City, Neighborhood' },
+                  { name: 'Department 3, Other city' },
+                ],
+              },
+            ],
           },
         }),
       })
     );
+  });
+
+  it('audits a neighborhood moved to another city of the same department', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ locations: location('3', 'Other city', 'Neighborhood') }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.localities).toEqual({
+      deleteMany: {},
+      create: [{ departmentId: 3, city: 'Other city', neighborhood: 'Neighborhood' }],
+    });
+    expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(['localities']);
   });
 
   it('clears the national location when the project becomes international', async () => {
@@ -958,20 +1014,13 @@ describe('project review regressions', () => {
         data: expect.objectContaining({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
-          cities: [],
-          neighborhoods: [],
           departments: { set: [] },
+          localities: { deleteMany: {}, create: [] },
         }),
       })
     );
     expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(
-      expect.arrayContaining([
-        'geographicScope',
-        'countries',
-        'cities',
-        'neighborhoods',
-        'departments',
-      ])
+      expect.arrayContaining(['geographicScope', 'countries', 'departments', 'localities'])
     );
   });
 
@@ -1064,6 +1113,7 @@ describe('project review regressions', () => {
       topics: [{ id: 3 }, { id: 2 }],
       strategicLines: [{ id: 1 }],
       departments: [{ id: 3 }],
+      localities: LOCALITIES,
     });
     await expect(updateProject(10, {}, formData({ topicIds: ['2', '3'] }))).rejects.toThrow(
       'Redirect:'
@@ -1184,8 +1234,6 @@ describe('project audit details', () => {
     ['publicDescription', 'New description', 'Description', 'New description'],
     ['internalNotes', '', 'Team notes', null],
     ['showOnLanding', 'false', true, false],
-    ['cities', ['City', 'Other city'], ['City'], ['City', 'Other city']],
-    ['neighborhoods', ['Other neighborhood'], ['Neighborhood'], ['Other neighborhood']],
   ] satisfies [
     string,
     string | string[],
@@ -1205,6 +1253,26 @@ describe('project audit details', () => {
         details: { changedFields: [field], changes: [{ field, from, to }] },
       },
     });
+  });
+
+  it('records the old and persisted localities by name', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          locations: [location('3', 'City', 'Other neighborhood'), location('3', 'Town')],
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      {
+        field: 'localities',
+        from: [{ name: 'Department 3, City, Neighborhood' }],
+        to: [{ name: 'Department 3, City, Other neighborhood' }, { name: 'Department 3, Town' }],
+      },
+    ]);
   });
 
   it('records the identities and names of both responsible coordinators', async () => {
@@ -1259,9 +1327,8 @@ describe('project audit details', () => {
       expect.arrayContaining([
         { field: 'geographicScope', from: 'national', to: 'international' },
         { field: 'countries', from: [], to: ['Argentina'] },
-        { field: 'cities', from: ['City'], to: [] },
-        { field: 'neighborhoods', from: ['Neighborhood'], to: [] },
         { field: 'departments', from: [{ id: 3, name: 'Department 3' }], to: [] },
+        { field: 'localities', from: [{ name: 'Department 3, City, Neighborhood' }], to: [] },
       ])
     );
   });

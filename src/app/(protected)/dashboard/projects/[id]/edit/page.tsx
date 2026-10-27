@@ -33,7 +33,11 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     include: {
       topics: { select: { id: true } },
       strategicLines: { select: { id: true } },
-      departments: { select: { id: true } },
+      departments: { select: { id: true }, orderBy: { name: 'asc' } },
+      localities: {
+        select: { departmentId: true, city: true, neighborhood: true },
+        orderBy: { id: 'asc' },
+      },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
         select: { id: true, year: true, ...BENEFICIARY_VALUES_SELECT },

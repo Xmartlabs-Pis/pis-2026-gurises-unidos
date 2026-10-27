@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useController, useFormContext, useWatch } from 'react-hook-form';
 import { MapPin } from 'lucide-react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
@@ -8,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { GEOGRAPHIC_SCOPE_OPTIONS } from '@/lib/project-display';
 import { MAX_PLACE_NAME_LENGTH } from '@/lib/validation/project-form';
-import { MultiSelectField } from '@/components/ui/forms/multi-select-field';
 import { TagInputField } from '@/components/ui/forms/tag-input-field';
 import { FormSection } from '@/components/ui/forms/form-section';
+import { LocationListField } from '../location-list-field';
 import type { ProjectFormValues } from '../project-form-values';
 import type { SectionProps } from './section-props';
 
@@ -69,23 +68,11 @@ export function TerritorySection({
   departmentOptions,
   coverageLabel,
 }: Pick<SectionProps, 'isEditing' | 'departmentOptions' | 'coverageLabel'>) {
-  const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
+  const { clearErrors } = useFormContext<ProjectFormValues>();
   const geographicScope = useWatch<ProjectFormValues, 'geographicScope'>({
     name: 'geographicScope',
   });
-  const departmentIds = useWatch<ProjectFormValues, 'departmentIds'>({ name: 'departmentIds' });
-  const cities = useWatch<ProjectFormValues, 'cities'>({ name: 'cities' });
   const isInternational = geographicScope === 'international';
-  const hasDepartments = departmentIds.length > 0;
-  const hasCities = cities.length > 0;
-
-  useEffect(() => {
-    if (!hasDepartments) setValue('cities', []);
-  }, [hasDepartments, setValue]);
-
-  useEffect(() => {
-    if (!hasCities) setValue('neighborhoods', []);
-  }, [hasCities, setValue]);
 
   return (
     <FormSection
@@ -97,7 +84,7 @@ export function TerritorySection({
         name="geographicScope"
         label="Alcance geográfico"
         options={GEOGRAPHIC_SCOPE_OPTIONS}
-        onValueChange={() => clearErrors(['departmentIds', 'countries', 'cities'])}
+        onValueChange={() => clearErrors(['locations', 'countries'])}
       />
       {isInternational ? (
         <TagInputField
@@ -109,43 +96,7 @@ export function TerritorySection({
           maxLength={MAX_PLACE_NAME_LENGTH}
         />
       ) : (
-        <>
-          <MultiSelectField
-            id="departmentIds"
-            name="departmentIds"
-            label="Departamentos"
-            placeholder="Seleccionar..."
-            options={departmentOptions}
-            required
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <TagInputField
-              id="cities"
-              name="cities"
-              label="Ciudades"
-              placeholder="Ej: Las Piedras"
-              description={
-                hasDepartments
-                  ? 'Escribí una ciudad y presioná Enter'
-                  : 'Seleccioná un departamento primero'
-              }
-              disabled={!hasDepartments}
-              maxLength={MAX_PLACE_NAME_LENGTH}
-              required
-            />
-            <TagInputField
-              id="neighborhoods"
-              name="neighborhoods"
-              label="Barrios (opcional)"
-              placeholder="Ej: Malvín Norte"
-              description={
-                hasCities ? 'Escribí un barrio y presioná Enter' : 'Ingresá una ciudad primero'
-              }
-              disabled={!hasCities}
-              maxLength={MAX_PLACE_NAME_LENGTH}
-            />
-          </div>
-        </>
+        <LocationListField departmentOptions={departmentOptions} />
       )}
       {isEditing && (
         <div className="bg-muted rounded-[10px] px-3.5 py-3">

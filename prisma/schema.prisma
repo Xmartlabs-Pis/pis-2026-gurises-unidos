@@ -138,7 +138,8 @@ model Department {
   id   Int    @id @default(autoincrement())
   name String @unique
 
-  projects Project[]
+  projects   Project[]
+  localities ProjectLocality[]
 }
 
 model Project {
@@ -153,8 +154,6 @@ model Project {
   leadCoordinatorId Int
   geographicScope   GeographicScope  @default(national)
   countries         String[]         @default([])
-  cities            String[]         @default([])
-  neighborhoods     String[]         @default([])
   zone              Zone?
   generalObjective  String?          @db.VarChar(500)
   publicDescription String?          @db.VarChar(1000)
@@ -167,15 +166,30 @@ model Project {
   deletedAt         DateTime?
   deletedBy         Int?
 
-  leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
+  leadCoordinator User              @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
   departments     Department[]
-  creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
-  deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
+  localities      ProjectLocality[]
+  creator         User?             @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
+  deleter         User?             @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
   topics          Topic[]
   strategicLines  StrategicLine[]
 
   projectCoordinators  ProjectCoordinator[]
   projectBeneficiaries ProjectBeneficiary[]
+}
+
+model ProjectLocality {
+  id           Int     @id @default(autoincrement())
+  projectId    Int
+  departmentId Int
+  city         String  @db.VarChar(100)
+  neighborhood String? @db.VarChar(100)
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([projectId])
+  @@index([departmentId])
 }
 
 model ProjectCoordinator {

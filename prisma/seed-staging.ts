@@ -182,8 +182,6 @@ async function main() {
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
           zone: ZONES[index % ZONES.length],
-          cities: [`Ciudad ${index + 1}`],
-          neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
@@ -196,6 +194,13 @@ async function main() {
           select: { id: true },
         });
         const projectDepartments = [{ id: departments.get(departmentName)! }];
+        const localities = [
+          {
+            departmentId: departments.get(departmentName)!,
+            city: `Ciudad ${index + 1}`,
+            neighborhood: index % 3 === 1 ? `Barrio ${index + 1}` : null,
+          },
+        ];
         const topics = [topicIds[index % topicIds.length]];
         if (index % 4 === 0) topics.push(topicIds[(index + 1) % topicIds.length]);
         const topicRefs = topics.map((id) => ({ id }));
@@ -205,6 +210,7 @@ async function main() {
               data: {
                 ...data,
                 departments: { set: projectDepartments },
+                localities: { deleteMany: {}, create: localities },
                 topics: { set: topicRefs },
               },
             })
@@ -212,6 +218,7 @@ async function main() {
               data: {
                 ...data,
                 departments: { connect: projectDepartments },
+                localities: { create: localities },
                 topics: { connect: topicRefs },
               },
             });

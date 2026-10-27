@@ -12,7 +12,11 @@ import {
 } from '@/lib/project-display';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { getChildrenReached } from '@/lib/projects/detail-metrics';
-import { PROJECT_LOCATION_SELECT, getTerritoryNames } from '@/lib/projects/location';
+import {
+  PROJECT_LOCATION_SELECT,
+  getLocationLabel,
+  getTerritoryNames,
+} from '@/lib/projects/location';
 import { canEditProject } from '@/lib/projects/permissions';
 import { formatDelta, toFileNameSegment } from '@/lib/reports/format';
 import type { ReportBar, ReportKpi } from '@/lib/reports/impact-report';
@@ -148,8 +152,10 @@ export async function getProjectSheetData(
         label: 'Líneas estratégicas',
         value: joinList(project.strategicLines.map(({ name }) => name)),
       },
-      { label: 'Ciudades', value: joinList(project.cities) },
-      { label: 'Barrios', value: joinList(project.neighborhoods) },
+      {
+        label: 'Ubicaciones',
+        value: project.geographicScope === 'national' ? getLocationLabel(project) : EMPTY_VALUE,
+      },
       { label: 'Visible en la web', value: project.showOnLanding ? 'Sí' : 'No' },
     ],
     longFields: [{ label: 'Descripción pública', value: project.publicDescription ?? '' }].filter(
