@@ -1,7 +1,6 @@
 import { getContributors } from '@/lib/contributors';
 import { MetricsForm } from '@/components/metrics/metrics-form';
-import { redirect } from 'next/navigation';
-import { auth } from '@/auth';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import {
   getMetricSettings,
   getMetricValues,
@@ -9,7 +8,6 @@ import {
   getPublishedYears,
 } from '@/lib/metrics/queries';
 import { getCurrentYear, resolveYearParam } from '@/lib/metrics/year';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 
@@ -18,9 +16,7 @@ export default async function MetricsPage({
 }: {
   searchParams: Promise<{ year?: string | string[] }>;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect('/login');
-  if (session.user.role !== 'admin') return <ErrorScreen code={403} />;
+  await requireAdmin();
 
   const currentYear = getCurrentYear();
   const [years, publishedYears] = await Promise.all([

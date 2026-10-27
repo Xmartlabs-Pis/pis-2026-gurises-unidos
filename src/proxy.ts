@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { ACCESS_DENIED_ROUTE, canAccessRoute } from '@/lib/auth/route-access';
 import {
   getSessionExpirationTimestamp,
   hasSessionExpired,
@@ -28,7 +29,9 @@ export const proxy = auth((request) => {
   }
 
   if (request.auth) {
-    const response = NextResponse.next();
+    const response = canAccessRoute(pathname, request.auth.user.role)
+      ? NextResponse.next()
+      : NextResponse.rewrite(new URL(ACCESS_DENIED_ROUTE, request.nextUrl));
     response.cookies.set(
       SESSION_EXPIRATION_COOKIE,
       String(getSessionExpirationTimestamp(Boolean(request.auth.user.remember))),
