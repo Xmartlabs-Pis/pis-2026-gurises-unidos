@@ -12,15 +12,16 @@ import {
 } from '@/components/ui/sheet';
 import Image from 'next/image';
 import logo from '@/assets/logo.png';
+import { PublicHeaderSurface } from '@/components/public-header-surface';
 
 export async function Header() {
   const session = await auth();
   const projectsHref = '/dashboard/projects';
 
   return (
-    <header className="bg-background sticky top-0 z-10">
+    <PublicHeaderSurface>
       <div className="flex h-16 items-center justify-between px-4 md:px-16">
-        <Link href="/" className="flex items-center gap-2 text-white">
+        <Link href="/" className="text-foreground flex items-center gap-2">
           <Image
             src={logo}
             alt="Gurises Unidos"
@@ -32,7 +33,7 @@ export async function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-8 text-sm text-emerald-100 md:flex">
+        <nav className="text-muted-foreground hidden items-center gap-8 text-sm md:flex">
           {/* TODO: re-enable once the public landing content exists (Impacto 2026 / Sobre nosotros) */}
           {/* <Link href="#impacto" className="hover:text-white">
             Impacto 2026
@@ -42,14 +43,14 @@ export async function Header() {
           </Link> */}
           {session?.user ? (
             <>
-              <Link href={projectsHref} className="hover:text-white">
+              <Link href={projectsHref} className="hover:text-foreground">
                 Proyectos
               </Link>
-              <span className="text-xs text-emerald-300">{session.user.email}</span>
+              <span className="text-muted-foreground text-xs">{session.user.email}</span>
               <form action={logout}>
                 <button
                   type="submit"
-                  className="rounded-full border border-emerald-700 px-3.5 py-1.5 hover:border-emerald-400 hover:text-white"
+                  className="border-border hover:border-primary hover:text-foreground rounded-full border px-3.5 py-1.5"
                 >
                   Cerrar sesión
                 </button>
@@ -58,7 +59,7 @@ export async function Header() {
           ) : (
             <Link
               href="/login"
-              className="rounded-full bg-white px-4 py-1.5 text-sm text-emerald-950 hover:opacity-90"
+              className="bg-primary text-primary-foreground rounded-full px-4 py-1.5 text-sm hover:opacity-90"
             >
               Iniciar sesión
             </Link>
@@ -67,10 +68,10 @@ export async function Header() {
 
         {/* Mobile nav */}
         <Sheet>
-          <SheetTrigger className="text-white md:hidden" aria-label="Abrir menú">
+          <SheetTrigger className="text-foreground md:hidden" aria-label="Abrir menú">
             <Menu className="size-6" />
           </SheetTrigger>
-          <SheetContent side="right" className="w-72">
+          <SheetContent side="right" className="theme-public w-72">
             <SheetHeader>
               <SheetTitle>Menú</SheetTitle>
             </SheetHeader>
@@ -114,6 +115,6 @@ export async function Header() {
           </SheetContent>
         </Sheet>
       </div>
-    </header>
+    </PublicHeaderSurface>
   );
 }

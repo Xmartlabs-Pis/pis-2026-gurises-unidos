@@ -33,13 +33,13 @@ export type ProjectCardProps = InternalProjectCardProps | PublicProjectCardProps
 
 const PUBLIC_VARIANT_STYLES = {
   'public-dark': {
-    card: 'bg-card border-primary',
-    image: 'bg-status-success/25',
+    card: 'bg-card border-border',
+    image: 'bg-background',
     dot: 'bg-primary',
     territory: 'text-foreground',
     name: 'text-foreground',
     description: 'text-muted-foreground',
-    reach: 'text-primary',
+    reach: 'text-foreground',
     reachLabel: 'text-muted-foreground',
   },
 };
