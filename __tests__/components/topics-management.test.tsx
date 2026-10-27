@@ -5,6 +5,7 @@ import { TopicsManagement } from '@/components/topics/topics-management';
 vi.mock('@/app/actions/topics', () => ({
   createTopic: vi.fn(),
   deleteTopic: vi.fn(),
+  editTopic: vi.fn(),
 }));
 
 const TOPICS = [

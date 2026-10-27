@@ -5,6 +5,7 @@ import { StrategicLinesManagement } from '@/components/strategic-lines/strategic
 vi.mock('@/app/actions/strategic-lines', () => ({
   createStrategicLine: vi.fn(),
   deleteStrategicLine: vi.fn(),
+  editStrategicLine: vi.fn(),
 }));
 
 const LINES = [
