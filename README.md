@@ -351,7 +351,7 @@ publican o despublican métricas, no hay que tocar nada del lado de su web.
   src="https://<dominio>/embed"
   title="Impacto de Gurises Unidos"
   loading="lazy"
-  style="display: block; width: 100%; max-width: 1200px; height: 400px; border: 0"
+  style="display: block; width: 100%; max-width: 1200px; height: 400px; margin: 0 auto; border: 0"
 ></iframe>
 <script>
   window.addEventListener('message', function (event) {
@@ -362,6 +362,28 @@ publican o despublican métricas, no hay que tocar nada del lado de su web.
   });
 </script>
 ```
+
+`<dominio>` es el dominio de producción de la plataforma. Tiene que ser HTTPS: su web lo es, y el
+navegador bloquea un iframe `http://` dentro de una página `https://`. Los `400px` son solo la altura
+inicial, hasta que el embed manda la suya.
+
+### Cómo instalarlo
+
+Su web es WordPress:
+
+1. En la página donde va la tarjeta, agregar un bloque **HTML personalizado** y pegar el snippet
+   entero, iframe y script juntos.
+2. Guardarlo con un usuario **administrador**. WordPress solo conserva los `<script>` de usuarios
+   con el permiso `unfiltered_html`; si lo guarda otro rol, el script se borra sin aviso y el iframe
+   queda fijo en 400 px, lo que en mobile puede cortar la tarjeta.
+3. Si `EMBED_FRAME_ANCESTORS` no incluye el dominio de su web, el iframe aparece vacío.
+
+Para verificar que quedó bien, en desktop y en el celular:
+
+- Se ven el título y todas las cifras publicadas, sin scroll dentro del iframe ni espacio vacío
+  abajo.
+- Después de recargar la página, el código del bloque sigue teniendo el `<script>`.
+- "Ver informe completo" abre la vista pública en una pestaña nueva.
 
 ## Deploy
 
