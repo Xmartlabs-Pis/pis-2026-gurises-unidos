@@ -10,7 +10,7 @@ import {
 
 describe('formatAuditTime', () => {
   test('formats the time in the Montevideo timezone', () => {
-    expect(formatAuditTime(new Date('2026-10-21T19:42:00.000Z'))).toBe('16:42');
+    expect(formatAuditTime(new Date('2026-10-21T19:42:13.000Z'))).toBe('16:42:13');
   });
 });
 

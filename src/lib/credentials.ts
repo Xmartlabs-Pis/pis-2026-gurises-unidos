@@ -4,6 +4,7 @@ import prisma from './prisma';
 import { normalizeDocumentId } from './utils';
 import { getAvatarColorIndex } from './users/avatar';
 import { LoginCooldownError } from './auth/login-cooldown-error';
+import { logFailedLoginAttempt } from './audit-log';
 
 const DUMMY_PASSWORD_HASH = '$2b$10$qYzMcJ.E4lnDm6ffrfnKjuksp7QvpqWK1L476sVjmNEqsJyQMuz.O';
 const FREE_LOGIN_ATTEMPTS = 5;
@@ -28,6 +29,7 @@ export async function verifyUserCredentials(
       `;
 
       if (throttle.blockedUntil && throttle.blockedUntil.getTime() > Date.now()) {
+        await logFailedLoginAttempt(tx, normalizedDocumentId, 'blocked');
         return { user: null, blockedUntil: throttle.blockedUntil };
       }
 
@@ -58,6 +60,7 @@ export async function verifyUserCredentials(
         where: { documentId: normalizedDocumentId },
         data: { failedAttempts, blockedUntil },
       });
+      await logFailedLoginAttempt(tx, normalizedDocumentId, 'invalidCredentials');
       return { user: null, blockedUntil };
     },
     { maxWait: 10_000, timeout: 15_000 }

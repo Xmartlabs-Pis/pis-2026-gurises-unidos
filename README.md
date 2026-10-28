@@ -170,6 +170,16 @@ cinco minutos. Después de ese plazo se habilitan otros cinco intentos. Un ingre
 reinicia el contador. Restablecer la contraseña por mail o mediante un administrador elimina el
 bloqueo y devuelve los cinco intentos.
 
+Cada autenticación fallida se guarda en `AuditLog` con la cédula normalizada y la fecha y hora del
+servidor. Los envíos durante el bloqueo también se registran con el motivo `blocked`, sin extender
+la espera. Los errores de validación del formulario no cuentan como intentos de autenticación.
+El registro y el contador se actualizan en la misma transacción; un ingreso exitoso conserva el historial.
+
+Los administradores pueden consultarlos en **Historial de cambios**, junto con los demás eventos,
+o elegir **Accesos fallidos**. Se pueden filtrar por cédula exacta (con o sin puntos y guiones),
+entidad **Autenticación** y fechas. El autor figura como **Sin autenticar**: la cédula ingresada
+no identifica a quien realizó el intento.
+
 El estado se guarda en `LoginThrottle`, en PostgreSQL, usando la cédula normalizada. Se comparte
 entre navegadores e instancias y también se aplica a cédulas sin cuenta. Los envíos durante la espera
 no comprueban la contraseña ni extienden el bloqueo. El formulario muestra una cuenta regresiva,

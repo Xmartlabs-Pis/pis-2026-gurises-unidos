@@ -78,6 +78,24 @@ describe('AuditLogToolbar date filters', () => {
 
     expect(screen.getByRole('button', { name: /Filtros/ }).textContent).toContain('2');
     fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
-    expect(clearFilters).toHaveBeenCalledWith(['entity', 'authorId', 'from', 'to']);
+    expect(clearFilters).toHaveBeenCalledWith(['entity', 'authorId', 'documentId', 'from', 'to']);
+  });
+
+  it('filters failed logins from the action tabs', () => {
+    render(<AuditLogToolbar filters={parseAuditLogFilters({})} total={3} authors={[]} />);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Accesos fallidos' }));
+
+    expect(updateFilters).toHaveBeenCalledWith({ action: 'loginFailure' });
+  });
+
+  it('normalizes an entered document id and applies it on Enter', () => {
+    renderToolbar();
+    const input = screen.getByLabelText('Cédula ingresada');
+
+    fireEvent.change(input, { target: { value: '6.543.210-5' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(updateFilters).toHaveBeenCalledWith({ documentId: '65432105' });
   });
 });
