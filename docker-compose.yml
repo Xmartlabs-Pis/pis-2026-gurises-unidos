@@ -5,6 +5,8 @@ services:
     ports:
       - '${PORT:-3000}:3000'
     env_file: .env
+    environment:
+      COVER_UPLOAD_DIR: /app/public/uploads
     volumes:
       - ${UPLOADS_DIR:-./uploads}:/app/public/uploads
     depends_on:

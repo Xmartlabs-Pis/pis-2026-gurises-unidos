@@ -10,7 +10,10 @@ cd "/srv/pis-$BRANCH"
 
 export COMPOSE_PROJECT_NAME="pis-$BRANCH" PORT TAG
 export UPLOADS_DIR="/srv/pis-uploads/$BRANCH"
-mkdir -p "$UPLOADS_DIR"
+mkdir -p "$UPLOADS_DIR/covers"
+if ! grep -q '^UPLOADS_DIR=.' .env; then
+  echo "UPLOADS_DIR=$UPLOADS_DIR" >> .env
+fi
 docker compose pull
 docker compose up -d
 docker image prune -f              # ponytail: sin esto el disco de la VM se llena en semanas

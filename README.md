@@ -511,9 +511,9 @@ Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `AUTH_URL`, `D
 que completar a mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
 
 Si el `.env` ya existía, agregarle a mano `DB_PORT` (es la única fuente del puerto y el deploy corta
-si falta) y `UPLOADS_DIR=/srv/pis-uploads/<rama>`. Lo mismo con `RESEND_API_KEY`: sin ella la app
-levanta, pero no manda mails. Sin `UPLOADS_DIR`, un `docker compose up` a mano monta `./uploads`
-dentro del clon en vez de la carpeta de la VM.
+si falta). `deploy.sh` escribe `UPLOADS_DIR=/srv/pis-uploads/<rama>` si falta. Lo mismo con
+`RESEND_API_KEY`: sin ella la app levanta, pero no manda mails. Sin `UPLOADS_DIR`, un
+`docker compose up` a mano monta `./uploads` dentro del clon en vez de la carpeta de la VM.
 
 ### Migraciones en el deploy
 
