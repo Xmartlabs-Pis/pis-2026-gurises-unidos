@@ -39,7 +39,7 @@ export function ImageUploadField({
   }
 
   return (
-    <Field className="min-w-0 gap-1.5" data-invalid={Boolean(error)}>
+    <Field className="min-w-0 gap-1.5">
       <FieldLabel htmlFor={id} className="text-foreground text-xs leading-4 font-medium">
         {label}
       </FieldLabel>
@@ -99,7 +99,7 @@ export function ImageUploadField({
           type="button"
           variant="outline"
           size="sm"
-          className="self-start"
+          className="text-foreground self-start"
           onClick={() => {
             if (value) {
               if (inputRef.current) inputRef.current.value = '';
