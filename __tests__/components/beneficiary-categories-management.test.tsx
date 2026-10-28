@@ -5,6 +5,7 @@ import { BeneficiaryCategoriesManagement } from '@/components/beneficiary-catego
 vi.mock('@/app/actions/beneficiary-categories', () => ({
   createBeneficiaryCategory: vi.fn(),
   deleteBeneficiaryCategory: vi.fn(),
+  editBeneficiaryCategory: vi.fn(),
 }));
 
 const CATEGORIES = [

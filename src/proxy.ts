@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { ACCESS_DENIED_ROUTE, canAccessRoute } from '@/lib/auth/route-access';
 import {
   getSessionExpirationTimestamp,
   hasSessionExpired,
@@ -10,6 +11,7 @@ import {
 
 const PUBLIC_ROUTES = ['/', '/login', '/forgot-password', '/reset-password', '/accept-invitation'];
 const PASSWORD_RESET_ROUTE = '/password-reset';
+const EMBED_ROUTE = '/embed';
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
@@ -17,6 +19,16 @@ function isPublicRoute(pathname: string) {
 
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
+
+  if (pathname === EMBED_ROUTE) {
+    const response = NextResponse.next();
+    response.headers.set(
+      'Content-Security-Policy',
+      `frame-ancestors ${process.env.EMBED_FRAME_ANCESTORS || "'none'"}`
+    );
+    return response;
+  }
+
   const mustChangePassword = request.auth?.user?.mustChangePassword === true;
 
   if (mustChangePassword && pathname !== PASSWORD_RESET_ROUTE) {
@@ -28,7 +40,9 @@ export const proxy = auth((request) => {
   }
 
   if (request.auth) {
-    const response = NextResponse.next();
+    const response = canAccessRoute(pathname, request.auth.user.role)
+      ? NextResponse.next()
+      : NextResponse.rewrite(new URL(ACCESS_DENIED_ROUTE, request.nextUrl));
     response.cookies.set(
       SESSION_EXPIRATION_COOKIE,
       String(getSessionExpirationTimestamp(Boolean(request.auth.user.remember))),

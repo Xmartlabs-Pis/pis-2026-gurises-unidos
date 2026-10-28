@@ -326,6 +326,65 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Verificá la base, no solo lo que devuelve la action.** Para los casos de error, leé la fila antes
   y después y compará con `toEqual`, así se ve que la transacción no dejó nada a medias.
 
+## Embed de impacto
+
+`/embed` muestra la tarjeta "Nuestro impacto en {año}" para insertarla en la web de Gurises Unidos.
+Es pública y es la única ruta que se puede cargar en un iframe: el resto responde con
+`Content-Security-Policy: frame-ancestors 'none'` (`next.config.ts`).
+
+Los sitios que pueden embeberla se configuran con `EMBED_FRAME_ANCESTORS` en el `.env` de cada
+entorno (separados por espacio, o `*` para cualquiera). Se lee en cada request desde `src/proxy.ts`,
+así que alcanza con reiniciar el contenedor. Si no está definida, el embed no carga en ningún sitio.
+
+```
+EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy"
+```
+
+### Snippet para la web de Gurises Unidos
+
+El embed le avisa su altura al sitio con `postMessage`, y el script ajusta el iframe. Así, si se
+publican o despublican métricas, no hay que tocar nada del lado de su web.
+
+```html
+<iframe
+  id="gurises-unidos-impacto"
+  src="https://<dominio>/embed"
+  title="Impacto de Gurises Unidos"
+  loading="lazy"
+  style="display: block; width: 100%; max-width: 1200px; height: 400px; margin: 0 auto; border: 0"
+></iframe>
+<script>
+  window.addEventListener('message', function (event) {
+    var iframe = document.getElementById('gurises-unidos-impacto');
+    if (!iframe || event.source !== iframe.contentWindow) return;
+    if (!event.data || event.data.type !== 'gurises-unidos:embed-height') return;
+    iframe.style.height = event.data.height + 'px';
+  });
+</script>
+```
+
+`<dominio>` es el dominio de producción de la plataforma. Tiene que ser HTTPS: su web lo es, y el
+navegador bloquea un iframe `http://` dentro de una página `https://`. Los `400px` son solo la altura
+inicial, hasta que el embed manda la suya.
+
+### Cómo instalarlo
+
+Su web es WordPress:
+
+1. En la página donde va la tarjeta, agregar un bloque **HTML personalizado** y pegar el snippet
+   entero, iframe y script juntos.
+2. Guardarlo con un usuario **administrador**. WordPress solo conserva los `<script>` de usuarios
+   con el permiso `unfiltered_html`; si lo guarda otro rol, el script se borra sin aviso y el iframe
+   queda fijo en 400 px, lo que en mobile puede cortar la tarjeta.
+3. Si `EMBED_FRAME_ANCESTORS` no incluye el dominio de su web, el iframe aparece vacío.
+
+Para verificar que quedó bien, en desktop y en el celular:
+
+- Se ven el título y todas las cifras publicadas, sin scroll dentro del iframe ni espacio vacío
+  abajo.
+- Después de recargar la página, el código del bloque sigue teniendo el `<script>`.
+- "Ver informe completo" abre la vista pública en una pestaña nueva.
+
 ## Deploy
 
 Hay dos workflows, los dos **buildean la imagen en GitHub Actions**, la publican en GHCR y después

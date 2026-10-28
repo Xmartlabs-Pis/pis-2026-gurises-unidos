@@ -59,6 +59,7 @@ enum AuditEntity {
   beneficiaryCategory
   metric
   topic
+  strategicLine
   contributor
 }
 

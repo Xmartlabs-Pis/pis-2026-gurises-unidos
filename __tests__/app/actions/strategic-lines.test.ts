@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   findStrategicLine: vi.fn(),
   reactivateStrategicLine: vi.fn(),
   updateStrategicLine: vi.fn(),
+  createAuditLog: vi.fn(),
   countProjects: vi.fn(),
   transaction: vi.fn(),
   queryRaw: vi.fn(),
@@ -27,7 +28,11 @@ vi.mock('@/lib/prisma', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
-import { createStrategicLine, deleteStrategicLine } from '@/app/actions/strategic-lines';
+import {
+  createStrategicLine,
+  deleteStrategicLine,
+  editStrategicLine,
+} from '@/app/actions/strategic-lines';
 
 const EMPTY_STATE = {};
 
@@ -44,7 +49,8 @@ beforeEach(() => {
     callback({
       $queryRaw: mocks.queryRaw,
       project: { count: mocks.countProjects },
-      strategicLine: { update: mocks.updateStrategicLine },
+      strategicLine: { findFirst: mocks.findStrategicLine, update: mocks.updateStrategicLine },
+      auditLog: { create: mocks.createAuditLog },
     })
   );
 });
@@ -98,6 +104,72 @@ describe('createStrategicLine', () => {
       formError: 'No tenés permisos para realizar esta acción.',
     });
     expect(mocks.createStrategicLine).not.toHaveBeenCalled();
+  });
+});
+
+describe('editStrategicLine', () => {
+  test('renames an active strategic line and records the audit event', async () => {
+    mocks.findStrategicLine.mockResolvedValueOnce({ name: 'Youth Support' });
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({ success: true });
+
+    expect(mocks.updateStrategicLine).toHaveBeenCalledWith({
+      where: { id: 4 },
+      data: { name: 'Youth Development' },
+    });
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        authorId: 1,
+        action: 'update',
+        entity: 'strategicLine',
+        entityId: 4,
+        details: { previousName: 'Youth Support', name: 'Youth Development' },
+      },
+    });
+  });
+
+  test('explains when the requested name belongs to an inactive strategic line', async () => {
+    mocks.findStrategicLine.mockResolvedValueOnce({ name: 'Youth Support' });
+    mocks.findStrategicLine.mockResolvedValueOnce({ id: 8, isActive: false });
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ese nombre pertenece a una línea estratégica dada de baja. Elegí otro nombre.',
+      values: { name: 'Youth Development' },
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+  });
+
+  test('rejects a name already used by another active strategic line', async () => {
+    mocks.findStrategicLine.mockResolvedValueOnce({ name: 'Youth Support' });
+    mocks.findStrategicLine.mockResolvedValueOnce({ id: 8, isActive: true });
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una línea estratégica con ese nombre.',
+      values: { name: 'Youth Development' },
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test('rejects editing a strategic line that does not exist or is inactive', async () => {
+    const data = new FormData();
+    data.set('name', 'Youth Development');
+
+    await expect(editStrategicLine(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'La línea estratégica no existe o ya fue eliminada.',
+      values: { name: 'Youth Development' },
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
 });
 
