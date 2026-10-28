@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from 'cn';
 import { buttonVariants } from '@/components/ui/button';
+import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
 
 type ProjectPublicCardProps = {
   name: string;
@@ -18,7 +19,13 @@ export function ProjectPublicCard({ name, coverPhoto }: ProjectPublicCardProps) 
         )}
       >
         {coverPhoto && (
-          <Image src={coverPhoto} alt={`Portada de ${name}`} fill className="object-cover" />
+          <Image
+            src={coverPhoto}
+            alt={`Portada de ${name}`}
+            fill
+            unoptimized={isUploadedCoverPath(coverPhoto)}
+            className="object-cover"
+          />
         )}
       </div>
       <div className="min-w-0">

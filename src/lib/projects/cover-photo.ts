@@ -17,7 +17,7 @@ export const INVALID_IMAGE_MESSAGE = 'La imagen debe ser JPG o PNG.';
 export const TOO_LARGE_MESSAGE = 'La imagen no puede superar los 5 MB.';
 
 export function coverUploadRoot() {
-  return process.env.COVER_UPLOAD_DIR ?? path.join(process.cwd(), 'public', 'uploads');
+  return process.env.COVER_UPLOAD_DIR ?? path.join(process.cwd(), 'uploads');
 }
 
 type CoverUpload = {

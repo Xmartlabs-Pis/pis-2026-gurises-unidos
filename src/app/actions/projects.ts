@@ -308,12 +308,12 @@ export async function createProject(
       { maxWait: 10_000, timeout: 30_000 }
     );
     if ('error' in result) {
-      await discardUploadedCover(uploadedPath);
+      await discardUnusedUploadedCover(uploadedPath);
       return result.error;
     }
     projectId = result.projectId;
   } catch (error) {
-    await discardUploadedCover(uploadedPath);
+    await discardUnusedUploadedCover(uploadedPath);
     const mapped = mapProjectDbError(error);
     if (mapped) return mapped;
     console.error('Failed to create project', error);
@@ -504,14 +504,14 @@ export async function updateProject(
       { maxWait: 10_000, timeout: 30_000 }
     );
     if (error) {
-      await discardUploadedCover(uploadedPath);
+      await discardUnusedUploadedCover(uploadedPath);
       return error;
     }
     if (requestedCover && previousCover !== requestedCover) {
       await discardUnusedUploadedCover(previousCover);
     }
   } catch (error) {
-    await discardUploadedCover(uploadedPath);
+    await discardUnusedUploadedCover(uploadedPath);
     const mapped = mapProjectDbError(error);
     if (mapped) return mapped;
     console.error('Failed to update project', error);

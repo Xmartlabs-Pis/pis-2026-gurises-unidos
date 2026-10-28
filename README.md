@@ -490,10 +490,10 @@ hay que revertir el commit en la rama.
 
 Las portadas subidas no van a la base. Staging las guarda en `/srv/pis-uploads/staging` y
 producción en `/srv/pis-uploads/main`. `deploy.sh` crea esa carpeta y exporta `UPLOADS_DIR` para
-montarla en el contenedor en `/app/public/uploads`. Un deploy reemplaza el contenedor y deja los
-archivos. En local, `next dev` escribe en `public/uploads` (está en `.gitignore`).
+montarla en el contenedor en `/app/uploads`. Un deploy reemplaza el contenedor y deja los
+archivos. En local, `next dev` escribe en `uploads` (está en `.gitignore`).
 
-Se sirven como estáticos en `/uploads/covers/<uuid>.webp`, sin autenticación. Quien tenga la URL
+Se sirven en `/uploads/covers/<uuid>.webp`, sin autenticación. Quien tenga la URL
 puede bajar la imagen aunque el proyecto esté oculto, inactivo o borrado. `showOnLanding` y
 `deletedAt` filtran listados y la landing, no el archivo. El UUID es lo único que impide adivinarla.
 

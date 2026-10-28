@@ -4,15 +4,17 @@ import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProjectFormState } from '@/lib/validation/project';
 
-const { authMock, redirectMock, logAuditMock, transactionMock, findUserMock } = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  redirectMock: vi.fn((url: string) => {
-    throw new Error(`NEXT_REDIRECT:${url}`);
-  }),
-  logAuditMock: vi.fn(),
-  transactionMock: vi.fn(),
-  findUserMock: vi.fn(),
-}));
+const { authMock, redirectMock, logAuditMock, transactionMock, findUserMock, findLiveCoverMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    redirectMock: vi.fn((url: string) => {
+      throw new Error(`NEXT_REDIRECT:${url}`);
+    }),
+    logAuditMock: vi.fn(),
+    transactionMock: vi.fn(),
+    findUserMock: vi.fn(),
+    findLiveCoverMock: vi.fn(),
+  }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
@@ -21,6 +23,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     $transaction: transactionMock,
     user: { findUnique: findUserMock },
+    project: { findFirst: findLiveCoverMock },
   },
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -115,6 +118,7 @@ function knownRequestError(code: string, meta: Record<string, unknown>) {
 beforeEach(() => {
   authMock.mockResolvedValue({ user: { id: '7' } });
   findUserMock.mockResolvedValue({ id: 7, role: 'admin', status: 'active', deletedAt: null });
+  findLiveCoverMock.mockResolvedValue(null);
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   });
@@ -274,6 +278,29 @@ describe('createProject', () => {
         errors: { departmentIds: ['Elegí departamentos válidos'] },
       });
       expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('leaves a cover in place when another live project still uses it', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(coverPhotoPath)), 'keep');
+      findLiveCoverMock.mockResolvedValue({ id: 99 });
+      setupTransaction({ existingDepartments: 0 });
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { departmentIds: ['Elegí departamentos válidos'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([
+        path.basename(coverPhotoPath),
+      ]);
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
       await rm(directory, { recursive: true, force: true });

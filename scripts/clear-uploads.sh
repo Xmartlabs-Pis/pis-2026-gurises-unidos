@@ -26,7 +26,7 @@ docker compose exec -T db \
   psql -U postgres -d app -v ON_ERROR_STOP=1 -c "$sql" </dev/null
 
 if ! docker compose exec -T -u root web \
-  sh -c 'mkdir -p /app/public/uploads && find /app/public/uploads -mindepth 1 -delete' </dev/null; then
+  sh -c 'mkdir -p /app/uploads && find /app/uploads -mindepth 1 -delete' </dev/null; then
   echo "no pude borrar las portadas: el contenedor web tiene que estar arriba" >&2
   exit 1
 fi
