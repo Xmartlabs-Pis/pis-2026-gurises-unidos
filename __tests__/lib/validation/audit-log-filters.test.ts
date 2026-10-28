@@ -6,10 +6,31 @@ import {
 } from '@/lib/validation/audit-log-filters';
 
 describe('parseAuditLogFilters', () => {
+  it('accepts failed login filters and normalizes a formatted document id', () => {
+    expect(
+      parseAuditLogFilters({
+        action: 'loginFailure',
+        entity: 'authentication',
+        documentId: '6.543.210-5',
+      })
+    ).toMatchObject({
+      action: 'loginFailure',
+      entity: 'authentication',
+      documentId: '65432105',
+    });
+  });
+
+  it.each(['letters', '123', '65432105abc'])(
+    'drops an invalid document filter: %s',
+    (documentId) => {
+      expect(parseAuditLogFilters({ documentId }).documentId).toBeUndefined();
+    }
+  );
   it('applies the defaults when there are no params', () => {
     expect(parseAuditLogFilters({})).toEqual({
       action: undefined,
       entity: undefined,
+      documentId: undefined,
       authorId: undefined,
       from: undefined,
       to: undefined,
@@ -32,6 +53,7 @@ describe('parseAuditLogFilters', () => {
     ).toEqual({
       action: 'deletion',
       entity: 'project',
+      documentId: undefined,
       authorId: 4,
       from: '2026-10-01',
       to: '2026-10-21',
@@ -54,6 +76,7 @@ describe('parseAuditLogFilters', () => {
     ).toEqual({
       action: undefined,
       entity: undefined,
+      documentId: undefined,
       authorId: undefined,
       from: undefined,
       to: undefined,
@@ -87,6 +110,7 @@ describe('toCanonicalAuditLogQuery', () => {
     expect(toCanonicalAuditLogQuery(parseAuditLogFilters({ action: 'update' }))).toEqual({
       action: 'update',
       entity: undefined,
+      documentId: undefined,
       authorId: undefined,
       from: undefined,
       to: undefined,

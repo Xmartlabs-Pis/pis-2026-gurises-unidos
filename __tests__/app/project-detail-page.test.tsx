@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { TopbarProvider } from '@/components/layout/topbar-context';
 
@@ -47,6 +47,7 @@ const DETAIL = {
       neighborhoods: ['Casavalle'],
       generalObjective: 'Support adolescents and families.',
       publicDescription: 'Community support project.',
+      internalNotes: 'Coordinate with the education team.',
       coverPhoto: '/images/project-placeholders/1.webp',
       leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
       departments: [{ id: 1, name: 'Montevideo' }],
@@ -184,6 +185,71 @@ test('renders the selected project year and its main sections', async () => {
     '/dashboard/projects/42/edit'
   );
   expect(screen.getByRole('link', { name: 'Ver vista pública →' }).getAttribute('href')).toBe('/');
+});
+
+test.each([true, false])(
+  'shows full project information when beneficiary data is available: %s',
+  async (hasData) => {
+    const publicDescription = `Public description\n${'description'.repeat(80)}`;
+    const internalNotes = `Internal notes\n${'note'.repeat(200)}`;
+    getProjectDetailMock.mockResolvedValue({
+      ...DETAIL,
+      data: {
+        ...DETAIL.data,
+        hasData,
+        canEdit: false,
+        project: { ...DETAIL.data.project, publicDescription, internalNotes },
+      },
+    });
+
+    render(
+      <TopbarProvider>
+        {await ProjectDetailPage({
+          params: Promise.resolve({ id: '42' }),
+          searchParams: Promise.resolve({}),
+        })}
+      </TopbarProvider>
+    );
+
+    const description = screen.getByRole('region', { name: 'Descripción pública' });
+    const notes = screen.getByRole('region', { name: 'Notas internas' });
+    expect(within(description).getByRole('heading').textContent).toBe('Descripción pública');
+    expect(description.querySelector('p')?.textContent).toBe(publicDescription);
+    expect(notes.querySelector('p')?.textContent).toBe(internalNotes);
+    expect(screen.getAllByText(publicDescription, { normalizer: (text) => text })).toHaveLength(1);
+    expect(screen.getByText('Temáticas:')).toBeDefined();
+    expect(screen.getByText('Educación')).toBeDefined();
+  }
+);
+
+test('shows empty messages for missing descriptions and notes', async () => {
+  getProjectDetailMock.mockResolvedValue({
+    ...DETAIL,
+    data: {
+      ...DETAIL.data,
+      project: { ...DETAIL.data.project, publicDescription: null, internalNotes: null },
+    },
+  });
+
+  render(
+    <TopbarProvider>
+      {await ProjectDetailPage({
+        params: Promise.resolve({ id: '42' }),
+        searchParams: Promise.resolve({}),
+      })}
+    </TopbarProvider>
+  );
+
+  expect(
+    within(screen.getByRole('region', { name: 'Descripción pública' })).getByText(
+      'Este proyecto todavía no tiene una descripción pública.'
+    )
+  ).toBeDefined();
+  expect(
+    within(screen.getByRole('region', { name: 'Notas internas' })).getByText(
+      'Este proyecto todavía no tiene notas internas.'
+    )
+  ).toBeDefined();
 });
 
 test('returns not found for invalid project input', async () => {

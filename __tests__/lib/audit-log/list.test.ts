@@ -12,8 +12,8 @@ import { parseAuditLogFilters } from '@/lib/validation/audit-log-filters';
 
 const AUTHOR = { id: 1, firstName: 'Lucía', lastName: 'Fernández', role: 'admin' };
 const OCCURRED_AT = new Date('2026-10-21T15:00:00.000Z');
-const LISTED_ACTIONS = { in: ['creation', 'update', 'deletion'] };
-const LISTED_ENTITIES = { in: ['project', 'beneficiary', 'user'] };
+const LISTED_ACTIONS = { in: ['creation', 'update', 'deletion', 'loginFailure'] };
+const LISTED_ENTITIES = { in: ['project', 'beneficiary', 'user', 'authentication'] };
 
 function row(id: number, entity: string, entityId: number, details: unknown = null) {
   return {
@@ -70,6 +70,16 @@ describe('buildAuditLogWhere', () => {
     });
   });
 
+  test('searches failed attempts by the normalized document id without replacing the action filter', () => {
+    expect(
+      buildAuditLogWhere(parseAuditLogFilters({ action: 'creation', documentId: '6.543.210-5' }))
+    ).toMatchObject({
+      action: 'creation',
+      details: { path: ['documentId'], equals: '65432105' },
+      AND: [{ action: 'loginFailure' }],
+    });
+  });
+
   test('supports an open-ended range', () => {
     expect(buildAuditLogWhere(parseAuditLogFilters({ from: '2026-10-01' }))).toMatchObject({
       occurredAt: { gte: new Date('2026-10-01T03:00:00.000Z'), lte: undefined },
@@ -78,6 +88,28 @@ describe('buildAuditLogWhere', () => {
 });
 
 describe('listAuditLog', () => {
+  test('shows the entered document without attributing a failed login to a user', async () => {
+    prismaMock.auditLog.count.mockResolvedValue(1);
+    prismaMock.auditLog.findMany.mockResolvedValue([
+      {
+        ...row(1, 'authentication', 0),
+        action: 'loginFailure',
+        entityId: null,
+        author: null,
+        details: { documentId: '65432105', reason: 'blocked' },
+      },
+    ]);
+    mockEntityLookups();
+
+    const { items } = await listAuditLog(parseAuditLogFilters({ action: 'loginFailure' }));
+
+    expect(items[0]).toMatchObject({
+      entityId: null,
+      author: null,
+      entityName: 'Cédula ingresada: 65432105',
+      summary: 'Bloqueo temporal',
+    });
+  });
   test('pages the entries newest first', async () => {
     prismaMock.auditLog.count.mockResolvedValue(45);
     prismaMock.auditLog.findMany.mockResolvedValue([]);
