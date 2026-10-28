@@ -7,7 +7,6 @@ import { formatNumber } from '@/lib/format';
 import { STATUS_LABEL, getIntensityLabel } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectListItem } from '@/lib/projects/list';
-import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
 
 type InternalProjectCardProps = {
   variant?: 'internal';
@@ -75,7 +74,6 @@ function PublicProjectCard({
             alt={`Portada de ${name}`}
             fill
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            unoptimized={isUploadedCoverPath(coverPhoto)}
             className="object-cover"
           />
         )}

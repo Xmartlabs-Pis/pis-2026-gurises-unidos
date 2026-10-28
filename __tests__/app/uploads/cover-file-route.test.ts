@@ -46,7 +46,7 @@ describe('GET /uploads/covers/[file]', () => {
   });
 
   it('returns the stored webp', async () => {
-    const saved = await saveCoverPhoto(await jpegCover());
+    const saved = await saveCoverPhoto(await jpegCover(), 7);
     if (!('path' in saved)) throw new Error('expected a stored cover');
     const file = path.basename(saved.path);
     const response = await getCover(file);

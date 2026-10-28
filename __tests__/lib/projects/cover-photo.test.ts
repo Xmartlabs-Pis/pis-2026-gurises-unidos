@@ -4,9 +4,16 @@ import path from 'node:path';
 import { access } from 'node:fs/promises';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { coverPathFromForm, deleteUploadedCover, saveCoverPhoto } from '@/lib/projects/cover-photo';
+import {
+  coverPathFromForm,
+  deleteUploadedCover,
+  readCoverOwner,
+  saveCoverPhoto,
+} from '@/lib/projects/cover-photo';
 import { PROJECT_PLACEHOLDERS } from '@/lib/projects/project-placeholders';
 import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
+
+const OWNER_ID = 7;
 
 const UPLOADED_COVER = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
 
@@ -40,8 +47,8 @@ async function imageFile(format: 'jpeg' | 'png', width: number, height: number, 
 
 describe('saveCoverPhoto', () => {
   it('stores a resized webp and leaves a small image at its original size', async () => {
-    const large = await saveCoverPhoto(await imageFile('jpeg', 2000, 1000, 'large.jpg'));
-    const small = await saveCoverPhoto(await imageFile('png', 80, 40, 'small.png'));
+    const large = await saveCoverPhoto(await imageFile('jpeg', 2000, 1000, 'large.jpg'), OWNER_ID);
+    const small = await saveCoverPhoto(await imageFile('png', 80, 40, 'small.png'), OWNER_ID);
 
     expect(large).toEqual({
       path: expect.stringMatching(
@@ -58,13 +65,18 @@ describe('saveCoverPhoto', () => {
     ).metadata();
     expect(largeMeta).toMatchObject({ format: 'webp', width: 1600, height: 800 });
     expect(smallMeta).toMatchObject({ format: 'webp', width: 80, height: 40 });
+    await expect(readCoverOwner(large.path)).resolves.toEqual({
+      path: large.path,
+      userId: OWNER_ID,
+      createdAt: expect.any(Date),
+    });
   });
 
   it('rejects a file that is not a jpeg or png', async () => {
     const file = new File([new TextEncoder().encode('not an image')], 'note.jpg', {
       type: 'image/jpeg',
     });
-    await expect(saveCoverPhoto(file)).resolves.toEqual({
+    await expect(saveCoverPhoto(file, OWNER_ID)).resolves.toEqual({
       error: 'La imagen debe ser JPG o PNG.',
     });
   });
@@ -73,7 +85,7 @@ describe('saveCoverPhoto', () => {
     const file = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.jpg', {
       type: 'image/jpeg',
     });
-    await expect(saveCoverPhoto(file)).resolves.toEqual({
+    await expect(saveCoverPhoto(file, OWNER_ID)).resolves.toEqual({
       error: 'La imagen no puede superar los 5 MB.',
     });
     await expect(access(path.join(directory, 'covers'))).rejects.toMatchObject({ code: 'ENOENT' });
@@ -82,12 +94,14 @@ describe('saveCoverPhoto', () => {
 
 describe('deleteUploadedCover', () => {
   it('deletes an uploaded cover and ignores placeholders and other paths', async () => {
-    const saved = await saveCoverPhoto(await imageFile('jpeg', 20, 20, 'cover.jpg'));
+    const saved = await saveCoverPhoto(await imageFile('jpeg', 20, 20, 'cover.jpg'), OWNER_ID);
     if (!('path' in saved)) throw new Error('expected a stored cover');
     const stored = path.join(directory, 'covers', path.basename(saved.path));
+    const owner = path.join(directory, 'covers', `${path.basename(saved.path, '.webp')}.json`);
 
     await deleteUploadedCover(saved.path);
     await expect(access(stored)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(access(owner)).rejects.toMatchObject({ code: 'ENOENT' });
 
     await expect(deleteUploadedCover(PROJECT_PLACEHOLDERS[0])).resolves.toBeUndefined();
     await expect(

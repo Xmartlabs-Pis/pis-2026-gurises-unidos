@@ -7,12 +7,12 @@ import { requireUser } from '@/lib/auth/require-user';
 import { canEditProject } from '@/lib/projects/permissions';
 import { mapProjectDbError } from '@/lib/projects/map-project-db-error';
 import { revalidateProject } from '@/lib/projects/revalidate-project';
+import { coverPathFromForm, wantsCoverRemoved } from '@/lib/projects/cover-photo';
 import {
-  coverPathFromForm,
-  deleteUploadedCover,
-  wantsCoverRemoved,
-} from '@/lib/projects/cover-photo';
-import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
+  discardOwnedUnusedCover,
+  discardUnusedUploadedCover,
+  ownedUploadedCoverPath,
+} from '@/lib/projects/pending-cover';
 import {
   getRandomProjectPlaceholder,
   isProjectPlaceholder,
@@ -158,29 +158,6 @@ function submittedPlaceholder(formData: FormData) {
   return isProjectPlaceholder(submitted) ? submitted : getRandomProjectPlaceholder();
 }
 
-async function discardUploadedCover(coverPath: string | null) {
-  if (!coverPath) return;
-  try {
-    await deleteUploadedCover(coverPath);
-  } catch (error) {
-    console.error('Failed to delete cover photo', error);
-  }
-}
-
-async function discardUnusedUploadedCover(coverPath: string | null) {
-  if (!coverPath || !isUploadedCoverPath(coverPath)) return;
-  try {
-    const inUse = await prisma.project.findFirst({
-      where: { coverPhoto: coverPath, deletedAt: null },
-      select: { id: true },
-    });
-    if (inUse) return;
-    await discardUploadedCover(coverPath);
-  } catch (error) {
-    console.error('Failed to delete cover photo', error);
-  }
-}
-
 async function lockBeneficiaryCategories(tx: Prisma.TransactionClient, keys: string[]) {
   const active = await tx.$queryRaw<{ key: string }[]>`
     SELECT "key" FROM "BeneficiaryCategory"
@@ -239,21 +216,27 @@ export async function createProject(
   if (user.role === 'coordinator') {
     formData.set('leadCoordinatorId', String(user.id));
   }
+  const uploadedPath = coverPathFromForm(formData);
   const parsed = await parseProjectForm(formData);
-  if ('errors' in parsed) return { errors: parsed.errors };
+  if ('errors' in parsed) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return { errors: parsed.errors };
+  }
   const { keys, beneficiaryData } = parsed;
   const resolved = resolveIntensity(
     parsed.projectData.intensity,
     beneficiaryData.counts[DIRECT_CHILDREN_KEY] > 0
   );
-  if ('error' in resolved) return resolved.error;
+  if ('error' in resolved) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return resolved.error;
+  }
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
   const { topicIds, strategicLineIds, departmentIds, localities } = parsed;
   let projectId: number;
-  let uploadedPath: string | null = null;
   try {
-    uploadedPath = coverPathFromForm(formData);
-    const coverPhoto = uploadedPath ?? submittedPlaceholder(formData);
+    const coverPhoto =
+      (await ownedUploadedCoverPath(uploadedPath, user.id)) ?? submittedPlaceholder(formData);
     const result = await prisma.$transaction(
       async (tx): Promise<{ error: ProjectFormState } | { projectId: number }> => {
         await lockTopics(tx, topicIds);
@@ -308,12 +291,12 @@ export async function createProject(
       { maxWait: 10_000, timeout: 30_000 }
     );
     if ('error' in result) {
-      await discardUnusedUploadedCover(uploadedPath);
+      await discardOwnedUnusedCover(uploadedPath, user.id);
       return result.error;
     }
     projectId = result.projectId;
   } catch (error) {
-    await discardUnusedUploadedCover(uploadedPath);
+    await discardOwnedUnusedCover(uploadedPath, user.id);
     const mapped = mapProjectDbError(error);
     if (mapped) return mapped;
     console.error('Failed to create project', error);
@@ -329,9 +312,16 @@ export async function updateProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   const user = await requireUser();
-  if (!parseId(projectId)) return { formError: 'El proyecto no es válido.' };
+  const uploadedPath = coverPathFromForm(formData);
+  if (!parseId(projectId)) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return { formError: 'El proyecto no es válido.' };
+  }
   const parsed = await parseProjectForm(formData);
-  if ('errors' in parsed) return { errors: parsed.errors };
+  if ('errors' in parsed) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return { errors: parsed.errors };
+  }
   const {
     keys,
     projectData,
@@ -341,12 +331,11 @@ export async function updateProject(
     departmentIds,
     localities,
   } = parsed;
-  let uploadedPath: string | null = null;
   let previousCover: string | null = null;
   try {
-    uploadedPath = coverPathFromForm(formData);
     const requestedCover =
-      uploadedPath ?? (wantsCoverRemoved(formData) ? submittedPlaceholder(formData) : null);
+      (await ownedUploadedCoverPath(uploadedPath, user.id)) ??
+      (wantsCoverRemoved(formData) ? submittedPlaceholder(formData) : null);
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
         await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -504,14 +493,14 @@ export async function updateProject(
       { maxWait: 10_000, timeout: 30_000 }
     );
     if (error) {
-      await discardUnusedUploadedCover(uploadedPath);
+      await discardOwnedUnusedCover(uploadedPath, user.id);
       return error;
     }
     if (requestedCover && previousCover !== requestedCover) {
       await discardUnusedUploadedCover(previousCover);
     }
   } catch (error) {
-    await discardUnusedUploadedCover(uploadedPath);
+    await discardOwnedUnusedCover(uploadedPath, user.id);
     const mapped = mapProjectDbError(error);
     if (mapped) return mapped;
     console.error('Failed to update project', error);

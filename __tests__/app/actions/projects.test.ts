@@ -124,6 +124,21 @@ const VALID_DATA = {
   strategicLineIds: '1',
 };
 
+async function writeOwnedCover(
+  directory: string,
+  coverPath: string,
+  userId: number,
+  contents = 'new'
+) {
+  const id = path.basename(coverPath, '.webp');
+  await mkdir(path.join(directory, 'covers'), { recursive: true });
+  await writeFile(path.join(directory, 'covers', `${id}.webp`), contents);
+  await writeFile(
+    path.join(directory, 'covers', `${id}.json`),
+    JSON.stringify({ userId, createdAt: new Date().toISOString() })
+  );
+}
+
 function formData(overrides: Record<string, string | string[] | undefined> = {}) {
   const data = new FormData();
   Object.entries({ ...VALID_DATA, ...overrides }).forEach(([key, value]) => {
@@ -1186,9 +1201,8 @@ describe('project review regressions', () => {
     const previousPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
     const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
     try {
-      await mkdir(path.join(directory, 'covers'), { recursive: true });
-      await writeFile(path.join(directory, 'covers', path.basename(previousPath)), 'old');
-      await writeFile(path.join(directory, 'covers', path.basename(nextPath)), 'new');
+      await writeOwnedCover(directory, previousPath, 7, 'old');
+      await writeOwnedCover(directory, nextPath, 7, 'new');
       mocks.findProject.mockResolvedValue({
         id: 10,
         leadCoordinatorId: 2,
@@ -1201,7 +1215,10 @@ describe('project review regressions', () => {
         'Redirect:'
       );
       expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(nextPath);
-      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(nextPath)]);
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(nextPath, '.webp')}.json`,
+        path.basename(nextPath),
+      ]);
       expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toContain('coverPhoto');
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
@@ -1215,9 +1232,8 @@ describe('project review regressions', () => {
     const previousPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
     const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
     try {
-      await mkdir(path.join(directory, 'covers'), { recursive: true });
-      await writeFile(path.join(directory, 'covers', path.basename(previousPath)), 'old');
-      await writeFile(path.join(directory, 'covers', path.basename(nextPath)), 'new');
+      await writeOwnedCover(directory, previousPath, 7, 'old');
+      await writeOwnedCover(directory, nextPath, 7, 'new');
       mocks.findProject.mockResolvedValue({
         id: 10,
         leadCoordinatorId: 2,
@@ -1271,15 +1287,14 @@ describe('project review regressions', () => {
     );
   });
 
-  it('deletes a new cover when the update is rejected', async () => {
+  it('deletes the owned pending cover when the update is rejected', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
     process.env.COVER_UPLOAD_DIR = directory;
     const previousPath = '/uploads/covers/22222222-2222-4222-8222-222222222222.webp';
     const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
     try {
-      await mkdir(path.join(directory, 'covers'), { recursive: true });
-      await writeFile(path.join(directory, 'covers', path.basename(previousPath)), 'old');
-      await writeFile(path.join(directory, 'covers', path.basename(nextPath)), 'new');
+      await writeOwnedCover(directory, previousPath, 7, 'old');
+      await writeOwnedCover(directory, nextPath, 7, 'new');
       mocks.findProject.mockResolvedValue({
         id: 10,
         leadCoordinatorId: 2,
@@ -1294,7 +1309,62 @@ describe('project review regressions', () => {
       expect(await updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).toEqual({
         errors: { strategicLineIds: ['Elegí líneas estratégicas activas'] },
       });
-      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(previousPath)]);
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(previousPath, '.webp')}.json`,
+        path.basename(previousPath),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('deletes the owned pending cover when form parsing fails', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await writeOwnedCover(directory, nextPath, 7, 'new');
+      expect(await updateProject(10, {}, formData({ name: '', coverPhotoPath: nextPath }))).toEqual(
+        {
+          errors: { name: ['El nombre es obligatorio'] },
+        }
+      );
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not delete a submitted cover when the coordinator cannot edit the project', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const existingCover = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, existingCover, 7, 'keep');
+      mocks.findUser.mockResolvedValue({
+        id: 3,
+        role: 'coordinator',
+        status: 'active',
+        deletedAt: null,
+      });
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+      });
+      expect(await updateProject(10, {}, formData({ coverPhotoPath: existingCover }))).toEqual({
+        formError: 'No tenés permiso para editar este proyecto.',
+      });
+      expect(mocks.updateProject).not.toHaveBeenCalled();
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(existingCover, '.webp')}.json`,
+        path.basename(existingCover),
+      ]);
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
       await rm(directory, { recursive: true, force: true });

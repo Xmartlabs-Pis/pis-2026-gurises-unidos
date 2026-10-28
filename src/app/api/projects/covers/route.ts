@@ -7,6 +7,7 @@ import {
   saveCoverPhoto,
   TOO_LARGE_MESSAGE,
 } from '@/lib/projects/cover-photo';
+import { discardExpiredUnusedCovers } from '@/lib/projects/pending-cover';
 import { canEditProject } from '@/lib/projects/permissions';
 import { parseId } from '@/lib/validation/ids';
 
@@ -41,7 +42,12 @@ export async function POST(request: Request) {
   const file = coverFileFromForm(formData);
   if (!file) return jsonError(INVALID_IMAGE_MESSAGE, 400);
 
-  const saved = await saveCoverPhoto(file);
+  const saved = await saveCoverPhoto(file, user.id);
   if ('error' in saved) return jsonError(saved.error, 400);
+  try {
+    await discardExpiredUnusedCovers();
+  } catch (error) {
+    console.error('Failed to expire pending covers', error);
+  }
   return Response.json({ path: saved.path }, { headers: { 'Cache-Control': 'no-store' } });
 }

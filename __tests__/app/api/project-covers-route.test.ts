@@ -88,7 +88,10 @@ describe('POST /api/projects/covers', () => {
     expect(body.path).toMatch(
       /^\/uploads\/covers\/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/
     );
-    expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(body.path)]);
+    expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+      `${path.basename(body.path, '.webp')}.json`,
+      path.basename(body.path),
+    ]);
     expect(prisma.project.findFirst).not.toHaveBeenCalled();
   });
 

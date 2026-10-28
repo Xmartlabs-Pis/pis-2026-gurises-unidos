@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { cn } from 'cn';
 import { Card } from '@/components/ui/card';
-import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
 import type { ProjectFormValues } from './project-form-values';
 
 export function ProjectPreview({
@@ -43,13 +42,7 @@ export function ProjectPreview({
             }
           >
             {values.coverPhotoUrl && !values.coverPhotoUrl.startsWith('blob:') && (
-              <Image
-                src={values.coverPhotoUrl}
-                alt=""
-                fill
-                unoptimized={isUploadedCoverPath(values.coverPhotoUrl)}
-                className="object-cover"
-              />
+              <Image src={values.coverPhotoUrl} alt="" fill className="object-cover" />
             )}
           </div>
 
