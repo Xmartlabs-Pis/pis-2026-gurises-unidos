@@ -10,7 +10,9 @@ import {
 import { hashPassword, verifyUserCredentials } from '@/lib/credentials';
 import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 import prisma from '@/lib/prisma';
-import type { User } from '@/generated/prisma/client';
+import type { Prisma, User } from '@/generated/prisma/client';
+import { listAuditLog } from '@/lib/audit-log/list';
+import { parseAuditLogFilters } from '@/lib/validation/audit-log-filters';
 
 const SESSION_COOKIE = '__Secure-authjs.session-token';
 const PASSWORD = 'integration-login-password';
@@ -105,7 +107,22 @@ afterEach(async () => {
   createdUserIds = [];
   await prisma.user.deleteMany({ where: { id: { in: ids } } });
   await prisma.loginThrottle.deleteMany({ where: { documentId: { in: DOCUMENT_IDS } } });
+  await prisma.auditLog.deleteMany({
+    where: {
+      action: 'loginFailure',
+      OR: DOCUMENT_IDS.map((documentId) => ({
+        details: { path: ['documentId'], equals: documentId },
+      })),
+    },
+  });
 });
+
+function failedLoginEntries(documentId: string) {
+  return prisma.auditLog.findMany({
+    where: { action: 'loginFailure', details: { path: ['documentId'], equals: documentId } },
+    orderBy: { id: 'asc' },
+  });
+}
 
 describe('login (integration)', () => {
   test('signs in an active user, sets the session cookies and records the access', async () => {
@@ -125,6 +142,7 @@ describe('login (integration)', () => {
     expectSessionToExpireAround(token, before + getSessionMaxAge(false) * 1000);
     const { lastAccess } = await loadUser(user.id);
     expect(lastAccess?.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(await failedLoginEntries(user.documentId)).toEqual([]);
   });
 
   test('extends the session when remember me is checked', async () => {
@@ -162,12 +180,24 @@ describe('login (integration)', () => {
 
   test('rejects a wrong password without signing in', async () => {
     const user = await createUser();
+    const before = Date.now();
 
     const result = await login({}, buildFormData(user.documentId, 'wrong-password'));
 
     expect(result).toEqual({ formError: 'Invalid credentials', documentId: user.documentId });
     expect(cookieJar.size).toBe(0);
     expect((await loadUser(user.id)).lastAccess).toBeNull();
+    const entries = await failedLoginEntries(user.documentId);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      authorId: null,
+      entityId: null,
+      action: 'loginFailure',
+      entity: 'authentication',
+      details: { documentId: user.documentId, reason: 'invalidCredentials' },
+    });
+    expect(entries[0].occurredAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(entries[0].occurredAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
 
   test('rejects a disabled user even with the right password', async () => {
@@ -178,6 +208,7 @@ describe('login (integration)', () => {
     expect(result.formError).toBe('Invalid credentials');
     expect(cookieJar.size).toBe(0);
     expect((await loadUser(user.id)).lastAccess).toBeNull();
+    expect(await failedLoginEntries(user.documentId)).toHaveLength(1);
   });
 
   test('rejects a user with a pending invitation', async () => {
@@ -187,6 +218,7 @@ describe('login (integration)', () => {
 
     expect(result.formError).toBe('Invalid credentials');
     expect(cookieJar.size).toBe(0);
+    expect(await failedLoginEntries(user.documentId)).toHaveLength(1);
   });
 
   test('rejects a deleted user', async () => {
@@ -197,6 +229,7 @@ describe('login (integration)', () => {
     expect(result.formError).toBe('Invalid credentials');
     expect(cookieJar.size).toBe(0);
     expect((await loadUser(user.id)).lastAccess).toBeNull();
+    expect(await failedLoginEntries(user.documentId)).toHaveLength(1);
   });
 
   test('rejects a document id that does not belong to any user', async () => {
@@ -204,6 +237,7 @@ describe('login (integration)', () => {
 
     expect(result).toEqual({ formError: 'Invalid credentials', documentId: DOCUMENT_IDS[4] });
     expect(cookieJar.size).toBe(0);
+    expect(await failedLoginEntries(DOCUMENT_IDS[4])).toHaveLength(1);
   });
 
   test('returns field errors for an invalid document id without signing in', async () => {
@@ -222,6 +256,117 @@ describe('login (integration)', () => {
         where: { documentId: '12345678' },
       })
     ).toBeNull();
+    expect(await failedLoginEntries('12345678')).toEqual([]);
+  });
+});
+
+describe('failed login audit (integration)', () => {
+  test('rolls back the failure counter when the audit insert fails', async () => {
+    const user = await createUser();
+    await verifyUserCredentials(user.documentId, 'wrong-password');
+    const transaction = prisma.$transaction.bind(prisma);
+    const transactionSpy = vi.spyOn(prisma, '$transaction');
+    transactionSpy.mockImplementationOnce((async (
+      callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+      options?: {
+        maxWait?: number;
+        timeout?: number;
+        isolationLevel?: Prisma.TransactionIsolationLevel;
+      }
+    ) =>
+      transaction(async (tx) => {
+        const create = vi
+          .spyOn(tx.auditLog, 'create')
+          .mockRejectedValue(new Error('audit unavailable'));
+        try {
+          return await callback(tx);
+        } finally {
+          create.mockRestore();
+        }
+      }, options)) as (
+      callback: (tx: Prisma.TransactionClient) => Promise<unknown>
+    ) => Promise<unknown>);
+
+    try {
+      await expect(verifyUserCredentials(user.documentId, 'wrong-password')).rejects.toThrow(
+        'audit unavailable'
+      );
+    } finally {
+      transactionSpy.mockRestore();
+    }
+
+    expect(
+      await prisma.loginThrottle.findUniqueOrThrow({ where: { documentId: user.documentId } })
+    ).toMatchObject({ failedAttempts: 1, blockedUntil: null });
+    expect(await failedLoginEntries(user.documentId)).toHaveLength(1);
+  });
+
+  test('includes failed logins in the shared history and applies filters and pagination in the database', async () => {
+    const user = await createUser();
+    await verifyUserCredentials('6.543.210-5', 'wrong-password');
+    const [entry] = await failedLoginEntries(user.documentId);
+    const filters = { action: 'loginFailure', entity: 'authentication', documentId: '6.543.210-5' };
+
+    const history = await listAuditLog(parseAuditLogFilters(filters));
+
+    expect(history).toMatchObject({ total: 1, page: 1, totalPages: 1 });
+    expect(history.items[0]).toMatchObject({
+      id: entry.id,
+      author: null,
+      entityName: `Cédula ingresada: ${user.documentId}`,
+      summary: 'Autenticación fallida',
+    });
+    expect((await listAuditLog(parseAuditLogFilters({ documentId: user.documentId }))).total).toBe(
+      1
+    );
+    expect(
+      (await listAuditLog(parseAuditLogFilters({ ...filters, action: 'creation' }))).total
+    ).toBe(0);
+    expect(
+      (await listAuditLog(parseAuditLogFilters({ ...filters, authorId: String(user.id) }))).total
+    ).toBe(0);
+    expect((await listAuditLog(parseAuditLogFilters({ ...filters, to: '2000-01-01' }))).total).toBe(
+      0
+    );
+
+    await prisma.auditLog.createMany({
+      data: Array.from({ length: 20 }, () => ({
+        action: 'loginFailure' as const,
+        entity: 'authentication' as const,
+        details: { documentId: user.documentId, reason: 'blocked' },
+      })),
+    });
+    const firstPage = await listAuditLog(parseAuditLogFilters(filters));
+    const secondPage = await listAuditLog(parseAuditLogFilters({ ...filters, page: '2' }));
+    expect(firstPage).toMatchObject({ total: 21, page: 1, totalPages: 2 });
+    expect(firstPage.items).toHaveLength(20);
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.items[0].id).toBe(entry.id);
+    expect(new Set([...firstPage.items, ...secondPage.items].map(({ id }) => id)).size).toBe(21);
+  });
+
+  test('keeps author and record requirements for regular audits and validates login details', async () => {
+    await expect(
+      prisma.auditLog.create({ data: { action: 'creation', entity: 'user' } })
+    ).rejects.toThrow();
+    await expect(
+      prisma.auditLog.create({
+        data: {
+          action: 'loginFailure',
+          entity: 'authentication',
+          details: { documentId: DOCUMENT_IDS[0] },
+        },
+      })
+    ).rejects.toThrow();
+    await expect(
+      prisma.auditLog.create({
+        data: {
+          action: 'loginFailure',
+          entity: 'user',
+          details: { documentId: DOCUMENT_IDS[0], reason: 'blocked' },
+        },
+      })
+    ).rejects.toThrow();
   });
 });
 
@@ -265,6 +410,7 @@ describe('login cooldown (integration)', () => {
     ).toMatchObject({ failedAttempts: 5, blockedUntil });
     expect(cookieJar.size).toBe(0);
     expect((await loadUser(user.id)).lastAccess).toBeNull();
+    expect(await failedLoginEntries(user.documentId)).toHaveLength(5);
   });
 
   test('rejects correct credentials during the wait without extending the deadline', async () => {
@@ -287,6 +433,9 @@ describe('login cooldown (integration)', () => {
       })
     ).toMatchObject({ failedAttempts: 5, blockedUntil });
     expect(cookieJar.size).toBe(0);
+    expect(await failedLoginEntries(user.documentId)).toMatchObject([
+      { details: { documentId: user.documentId, reason: 'blocked' } },
+    ]);
   });
 
   test('restores five attempts at each deadline and blocks again only after the fifth failure', async () => {
@@ -357,6 +506,7 @@ describe('login cooldown (integration)', () => {
         where: { documentId: user.documentId },
       })
     ).toMatchObject({ failedAttempts: 0, blockedUntil: null });
+    expect(await failedLoginEntries(user.documentId)).toHaveLength(4);
     await expectFreeFailedAttempts(user.documentId);
   });
 
@@ -407,6 +557,12 @@ describe('login cooldown (integration)', () => {
       failedAttempts: 5,
       blockedUntil: new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS),
     });
+    const entries = await failedLoginEntries(user.documentId);
+    expect(entries).toHaveLength(7);
+    expect(entries.map(({ details }) => (details as { reason: string }).reason)).toEqual([
+      ...Array(5).fill('invalidCredentials'),
+      ...Array(2).fill('blocked'),
+    ]);
   });
 
   test('serializes concurrent retries after the cooldown expires', async () => {
