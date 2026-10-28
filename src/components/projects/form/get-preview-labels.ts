@@ -9,17 +9,24 @@ export function getPreviewLabels(
   categories: BeneficiaryCategoryOption[]
 ) {
   const isNational = values.geographicScope !== 'international';
+  const locations = isNational ? values.locations : [];
   const location: ProjectLocation = {
     geographicScope: isNational ? 'national' : 'international',
-    departments: isNational
-      ? departments.filter(({ id }) => values.departmentIds.includes(String(id)))
-      : [],
+    departments: departments.filter(({ id }) =>
+      locations.some(({ departmentId }) => departmentId === String(id))
+    ),
     countries: isNational ? [] : values.countries,
-    cities: isNational ? values.cities : [],
-    neighborhoods: isNational ? values.neighborhoods : [],
+    localities: locations
+      .filter(({ city }) => city)
+      .map(({ departmentId, city, neighborhood }) => ({
+        departmentId: Number(departmentId),
+        city,
+        neighborhood: neighborhood || null,
+      })),
   };
+  const firstLocality = location.localities[0];
   const locationLabel =
-    (isEditing && (location.neighborhoods[0] ?? location.cities[0])) ||
+    (isEditing && (firstLocality?.neighborhood || firstLocality?.city)) ||
     getTerritoryLabel(location) ||
     PREVIEW_LOCATION_FALLBACK;
   const coverageLabel = getLocationLabel(location);

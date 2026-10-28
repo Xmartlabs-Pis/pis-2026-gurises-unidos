@@ -52,8 +52,7 @@ const PROJECT = {
   zone: 'city',
   geographicScope: 'national',
   countries: [],
-  cities: ['Montevideo'],
-  neighborhoods: ['Casavalle'],
+  localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
   leadCoordinator: {
     id: 2,
     firstName: 'Ana',

@@ -30,6 +30,10 @@ export async function loadProject(id: number) {
       topics: { orderBy: { id: 'asc' }, select: { id: true } },
       strategicLines: { select: { id: true } },
       departments: { select: { id: true }, orderBy: { id: 'asc' } },
+      localities: {
+        select: { departmentId: true, city: true, neighborhood: true },
+        orderBy: { id: 'asc' },
+      },
       projectBeneficiaries: {
         orderBy: { year: 'asc' },
         include: BENEFICIARY_VALUES_SELECT,

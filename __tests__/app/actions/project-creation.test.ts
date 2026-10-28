@@ -34,6 +34,10 @@ const EMPTY_STATE: ProjectFormState = {};
 
 type FormDataInput = Record<string, string | string[] | undefined>;
 
+function location(departmentId: string, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId, city, neighborhood });
+}
+
 const VALID_FIELDS: FormDataInput = {
   name: 'Community Center',
   topicIds: '1',
@@ -43,8 +47,7 @@ const VALID_FIELDS: FormDataInput = {
   startYear: '2020',
   leadCoordinatorId: '1',
   geographicScope: 'national',
-  departmentIds: '2',
-  cities: 'Las Piedras',
+  locations: location('2', 'Las Piedras'),
   generalObjective: '',
   publicDescription: '',
   internalNotes: '',
@@ -180,8 +183,6 @@ describe('createProject', () => {
         leadCoordinatorId: 1,
         geographicScope: 'national',
         countries: [],
-        cities: ['Las Piedras'],
-        neighborhoods: [],
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
@@ -191,6 +192,7 @@ describe('createProject', () => {
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
         departments: { connect: [{ id: 2 }] },
+        localities: { create: [{ departmentId: 2, city: 'Las Piedras', neighborhood: null }] },
       },
     });
     expect(beneficiaryCreate).toHaveBeenCalledWith({
@@ -306,16 +308,19 @@ describe('createProject', () => {
     });
   });
 
-  test('creates a national project with several departments, cities and neighborhoods', async () => {
+  test('creates a national project with each city and neighborhood tied to its department', async () => {
     const { projectCreate } = setupTransaction();
 
     await expect(
       createProject(
         EMPTY_STATE,
         buildFormData({
-          departmentIds: ['2', '5'],
-          cities: ['Las Piedras', 'Pando'],
-          neighborhoods: ['Centro', 'Barrio Obrero'],
+          locations: [
+            location('2', 'Las Piedras', 'Centro'),
+            location('2', 'Las Piedras', 'Barrio Obrero'),
+            location('5', 'Pando'),
+            location('6', 'Salto'),
+          ],
         })
       )
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
@@ -324,9 +329,15 @@ describe('createProject', () => {
       data: expect.objectContaining({
         geographicScope: 'national',
         countries: [],
-        cities: ['Las Piedras', 'Pando'],
-        neighborhoods: ['Centro', 'Barrio Obrero'],
-        departments: { connect: [{ id: 2 }, { id: 5 }] },
+        departments: { connect: [{ id: 2 }, { id: 5 }, { id: 6 }] },
+        localities: {
+          create: [
+            { departmentId: 2, city: 'Las Piedras', neighborhood: 'Centro' },
+            { departmentId: 2, city: 'Las Piedras', neighborhood: 'Barrio Obrero' },
+            { departmentId: 5, city: 'Pando', neighborhood: null },
+            { departmentId: 6, city: 'Salto', neighborhood: null },
+          ],
+        },
       }),
     });
   });
@@ -340,7 +351,7 @@ describe('createProject', () => {
         buildFormData({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
-          cities: ['Pando'],
+          locations: location('2', 'Pando'),
         })
       )
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
@@ -349,24 +360,23 @@ describe('createProject', () => {
       data: expect.objectContaining({
         geographicScope: 'international',
         countries: ['Argentina', 'Brasil'],
-        cities: [],
-        neighborhoods: [],
         departments: { connect: [] },
+        localities: { create: [] },
       }),
     });
   });
 
   test('requires a department for a national project without accessing the database', async () => {
-    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: undefined }));
+    const result = await createProject(EMPTY_STATE, buildFormData({ locations: undefined }));
 
-    expect(result.errors?.departmentIds).toEqual(['Seleccioná al menos un departamento']);
+    expect(result.errors?.locations).toEqual(['Agregá al menos una ubicación']);
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
   test('requires a city for a national project without accessing the database', async () => {
-    const result = await createProject(EMPTY_STATE, buildFormData({ cities: undefined }));
+    const result = await createProject(EMPTY_STATE, buildFormData({ locations: location('2') }));
 
-    expect(result.errors?.cities).toEqual(['Ingresá al menos una ciudad']);
+    expect(result.errors?.locations).toEqual(['Ingresá al menos una ciudad']);
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
@@ -383,9 +393,12 @@ describe('createProject', () => {
   test('rejects departments that do not exist before creating the project', async () => {
     const { projectCreate } = setupTransaction({ existingDepartments: 1 });
 
-    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: ['2', '999'] }));
+    const result = await createProject(
+      EMPTY_STATE,
+      buildFormData({ locations: [location('2', 'Las Piedras'), location('999', 'Pando')] })
+    );
 
-    expect(result).toEqual({ errors: { departmentIds: ['Elegí departamentos válidos'] } });
+    expect(result).toEqual({ errors: { locations: ['Elegí departamentos válidos'] } });
     expect(projectCreate).not.toHaveBeenCalled();
   });
 

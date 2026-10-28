@@ -5,6 +5,15 @@ export const PROJECT_AUDIT_INCLUDE = {
   topics: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
   strategicLines: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
   departments: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
+  localities: {
+    select: {
+      departmentId: true,
+      city: true,
+      neighborhood: true,
+      department: { select: { name: true } },
+    },
+    orderBy: { id: 'asc' },
+  },
 } satisfies Prisma.ProjectInclude;
 
 type AuditProject = Prisma.ProjectGetPayload<{
@@ -21,6 +30,12 @@ function getAuditValue(project: AuditProject, field: string): Prisma.InputJsonVa
 
   if (field === 'topics' || field === 'strategicLines' || field === 'departments') {
     return project[field].map(({ id, name }) => ({ id, name }));
+  }
+
+  if (field === 'localities') {
+    return project.localities.map(({ department, city, neighborhood }) => ({
+      name: [department.name, city, neighborhood].filter(Boolean).join(', '),
+    }));
   }
 
   const value = project[field as keyof AuditProject];
