@@ -22,6 +22,7 @@ export const CONTRIBUTORS = [
 ] as const;
 
 export const TABLES = [
+  'LoginThrottle',
   'ProjectCoordinator',
   'ProjectBeneficiaryValue',
   'ProjectBeneficiary',

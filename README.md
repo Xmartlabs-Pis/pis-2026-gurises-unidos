@@ -163,6 +163,20 @@ npx auth secret               # genera AUTH_SECRET y lo escribe en .env
 `SEED_USER_PASSWORD` es la contraseña de los usuarios de prueba del seed. Poné cualquier valor en
 `.env` antes de correr `npx prisma db seed`. Si la cambiás, volvé a ejecutar el seed para actualizar los hashes.
 
+### Cooldown de inicio de sesión
+
+Cada cédula tiene cinco intentos sin espera. Si el quinto falla, se bloquean nuevos intentos durante
+cinco minutos. Después de ese plazo se habilitan otros cinco intentos. Un ingreso exitoso también
+reinicia el contador. Restablecer la contraseña por mail o mediante un administrador elimina el
+bloqueo y devuelve los cinco intentos.
+
+El estado se guarda en `LoginThrottle`, en PostgreSQL, usando la cédula normalizada. Se comparte
+entre navegadores e instancias y también se aplica a cédulas sin cuenta. Los envíos durante la espera
+no comprueban la contraseña ni extienden el bloqueo. El formulario muestra una cuenta regresiva,
+calculada con los segundos restantes que devuelve el servidor y un reloj monotónico del navegador,
+para que la hora configurada en el equipo no la altere. El servidor controla cada intento.
+Las sesiones existentes no se cierran por este bloqueo.
+
 ## Email (Resend)
 
 Los mails de invitación y de recuperación de contraseña salen por [Resend](https://resend.com).

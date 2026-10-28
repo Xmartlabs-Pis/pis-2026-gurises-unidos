@@ -76,6 +76,12 @@ enum UserTokenType {
 
 // ---------- TABLES ----------
 
+model LoginThrottle {
+  documentId     String    @id
+  failedAttempts Int       @default(0)
+  blockedUntil   DateTime?
+}
+
 model User {
   id                 Int        @id @default(autoincrement())
   firstName          String
