@@ -15,7 +15,7 @@ import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skel
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { getVisibleTopics } from '@/lib/metrics/visible-topics';
 
-const GURISES_UNIDOS_URL = 'https://gurisesunidos.org.uy/';
+const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
 
 const LEVELS = [
   {
@@ -256,12 +256,7 @@ export default async function Home({
             <Button
               nativeButton={false}
               render={
-                <a
-                  href={GURISES_UNIDOS_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  role="link"
-                />
+                <a href={COLLABORATE_URL} target="_blank" rel="noopener noreferrer" role="link" />
               }
               className="bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2"
             >
