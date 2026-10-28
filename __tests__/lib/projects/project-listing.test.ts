@@ -51,7 +51,6 @@ const PROJECTS = [
     zone: 'city',
     geographicScope: 'national',
     countries: [],
-    localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Cerro' }],
     leadCoordinator: CARLOS,
     departments: [MONTEVIDEO],
     projectBeneficiaries: [toBeneficiaryRow(RECORD_2025), toBeneficiaryRow(RECORD_2024)],
@@ -65,7 +64,6 @@ const PROJECTS = [
     zone: 'rural',
     geographicScope: 'national',
     countries: [],
-    localities: [],
     leadCoordinator: DIANA,
     departments: [CANELONES],
     projectBeneficiaries: [],
@@ -96,7 +94,6 @@ describe('AC1: paginated listing with each project data', () => {
       zone: 'city',
       geographicScope: 'national',
       countries: [],
-      localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Cerro' }],
       leadCoordinator: CARLOS,
       departments: [MONTEVIDEO],
       beneficiaries: [
@@ -105,6 +102,16 @@ describe('AC1: paginated listing with each project data', () => {
       ],
     });
     expect(items[1].beneficiaries).toEqual([]);
+  });
+
+  test('requests the territory without the localities of each project', async () => {
+    await listWith({});
+
+    const { select } = findManyArgs();
+
+    expect(select).toMatchObject({ geographicScope: true, countries: true });
+    expect(select.departments).toBeDefined();
+    expect(select).not.toHaveProperty('localities');
   });
 
   test('requests only the latest beneficiary year', async () => {

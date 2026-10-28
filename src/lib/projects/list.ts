@@ -2,7 +2,7 @@ import prisma from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
 import { sumBeneficiaries, type BeneficiaryCounts } from '@/lib/project-display';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
-import { PROJECT_LOCATION_SELECT } from '@/lib/projects/location';
+import { PROJECT_TERRITORY_SELECT } from '@/lib/projects/location';
 import type { ProjectFilters } from '@/lib/validation/project-filters';
 
 const PROJECT_LIST_SELECT = {
@@ -12,7 +12,7 @@ const PROJECT_LIST_SELECT = {
   intensity: true,
   startYear: true,
   zone: true,
-  ...PROJECT_LOCATION_SELECT,
+  ...PROJECT_TERRITORY_SELECT,
   publicDescription: true,
   coverPhoto: true,
   leadCoordinator: { select: { id: true, firstName: true, lastName: true } },

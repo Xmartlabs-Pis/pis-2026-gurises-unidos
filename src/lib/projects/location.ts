@@ -14,10 +14,14 @@ export type ProjectLocation = {
   localities: ProjectLocality[];
 };
 
-export const PROJECT_LOCATION_SELECT = {
+export const PROJECT_TERRITORY_SELECT = {
   geographicScope: true,
   countries: true,
   departments: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
+} satisfies Prisma.ProjectSelect;
+
+export const PROJECT_LOCATION_SELECT = {
+  ...PROJECT_TERRITORY_SELECT,
   localities: {
     select: { departmentId: true, city: true, neighborhood: true },
     orderBy: { id: 'asc' },
