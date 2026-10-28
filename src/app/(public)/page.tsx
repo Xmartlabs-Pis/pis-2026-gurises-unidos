@@ -255,7 +255,14 @@ export default async function Home({
           <div className="mx-auto flex h-11 w-39.25 flex-col pt-2">
             <Button
               nativeButton={false}
-              render={<a href={GURISES_UNIDOS_URL} target="_blank" rel="noopener noreferrer" />}
+              render={
+                <a
+                  href={GURISES_UNIDOS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  role="link"
+                />
+              }
               className="bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2"
             >
               Quiero colaborar

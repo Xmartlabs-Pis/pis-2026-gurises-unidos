@@ -57,6 +57,14 @@ test('hides the contributors section when none are published', async () => {
   expect(screen.queryByRole('heading', { name: 'Quienes nos acompañan' })).toBeNull();
 });
 
+test('links the collaborate button to the Gurises Unidos website in a new tab', async () => {
+  render(await Home({ searchParams: Promise.resolve({}) }));
+  const link = screen.getByRole('link', { name: 'Quiero colaborar' });
+  expect(link.getAttribute('href')).toBe('https://gurisesunidos.org.uy/');
+  expect(link.getAttribute('target')).toBe('_blank');
+  expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+});
+
 test('shows separate child totals and year-over-year changes on the public page', async () => {
   render(await Home({ searchParams: Promise.resolve({}) }));
 
