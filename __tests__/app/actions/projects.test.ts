@@ -92,7 +92,6 @@ const VALID_DATA = {
   departmentIds: '3',
   cities: 'City',
   neighborhoods: 'Neighborhood',
-  zone: 'city',
   generalObjective: 'Objective',
   publicDescription: 'Description',
   internalNotes: 'Team notes',
@@ -502,7 +501,6 @@ describe('updateProject persistence', () => {
           countries: [],
           cities: ['City'],
           neighborhoods: ['Neighborhood'],
-          zone: 'city',
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
@@ -1180,7 +1178,6 @@ describe('project audit details', () => {
   it.each([
     ['name', 'Renamed project', 'Updated project', 'Renamed project'],
     ['startYear', '2020', 2019, 2020],
-    ['zone', 'rural', 'city', 'rural'],
     ['counterpartyType', 'privateSector', 'publicSector', 'privateSector'],
     ['intensity', 'high', 'medium', 'high'],
     ['generalObjective', '', 'Objective', null],

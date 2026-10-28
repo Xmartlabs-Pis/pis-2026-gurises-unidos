@@ -12,7 +12,7 @@ type ProjectHistoryProps = {
     entity: AuditEntity;
     details: Prisma.JsonValue | null;
     occurredAt: Date;
-    author: { firstName: string; lastName: string };
+    author: { firstName: string; lastName: string } | null;
   }[];
   fieldLabels: Record<string, string>;
 };
@@ -136,7 +136,10 @@ export function ProjectHistory({ entries, fieldLabels }: ProjectHistoryProps) {
                 </time>
 
                 <p className="mt-[3px]">
-                  {entry.author.firstName} {entry.author.lastName} {label}
+                  {entry.author
+                    ? `${entry.author.firstName} ${entry.author.lastName}`
+                    : 'Usuario no disponible'}{' '}
+                  {label}
                 </p>
 
                 {changes.length > 0 && (

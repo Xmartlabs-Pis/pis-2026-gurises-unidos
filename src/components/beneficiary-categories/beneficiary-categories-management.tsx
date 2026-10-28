@@ -281,7 +281,7 @@ function CategoryRow({ category }: { category: Category }) {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="wrap-anywhere">
                       Esta acción dejará de mostrar “{category.name}” en el formulario de proyectos.
                     </AlertDialogDescription>
                   </AlertDialogHeader>

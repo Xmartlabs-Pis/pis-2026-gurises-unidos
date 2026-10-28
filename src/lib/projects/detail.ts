@@ -51,6 +51,7 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       leadCoordinatorId: true,
       generalObjective: true,
       publicDescription: true,
+      internalNotes: true,
       coverPhoto: true,
       zone: true,
       ...PROJECT_LOCATION_SELECT,

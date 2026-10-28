@@ -12,6 +12,7 @@ export function formatAuditTime(date: Date) {
   return new Date(date).toLocaleTimeString('es-UY', {
     hour: '2-digit',
     minute: '2-digit',
+    second: '2-digit',
     hour12: false,
     timeZone: 'America/Montevideo',
   });
@@ -22,7 +23,12 @@ export function auditEntityName({
   entityId,
   entityName,
 }: Pick<AuditLogListItem, 'entity' | 'entityId' | 'entityName'>) {
-  return entityName ?? `${AUDIT_ENTITY_LABELS[entity]} #${entityId}`;
+  return (
+    entityName ??
+    (entityId === null
+      ? AUDIT_ENTITY_LABELS[entity]
+      : `${AUDIT_ENTITY_LABELS[entity]} #${entityId}`)
+  );
 }
 
 export const PAGE_GAP = 'gap';

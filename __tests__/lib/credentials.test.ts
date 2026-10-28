@@ -32,6 +32,7 @@ describe('verifyUserCredentials', () => {
     $executeRaw: vi.fn(),
     $queryRaw: vi.fn(),
     loginThrottle: { update: vi.fn() },
+    auditLog: { create: vi.fn() },
   };
 
   beforeEach(() => {
@@ -41,6 +42,7 @@ describe('verifyUserCredentials', () => {
       .mockReset()
       .mockResolvedValue([{ failedAttempts: 0, blockedUntil: null }]);
     transaction.loginThrottle.update.mockReset();
+    transaction.auditLog.create.mockReset();
     prismaMock.$transaction.mockImplementation(async (callback) => callback(transaction));
     compare = vi.spyOn(bcrypt, 'compare');
   });
@@ -90,6 +92,7 @@ describe('verifyUserCredentials', () => {
     await expect(verifyUserCredentials(user.documentId, TEST_PASSWORD)).resolves.toEqual(user);
     expect(compare).toHaveBeenCalledOnce();
     expect(compare).toHaveBeenCalledWith(TEST_PASSWORD, user.passwordHash);
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
   });
 
   test('returns null and compares against a dummy hash when the user is missing', async () => {
@@ -153,6 +156,13 @@ describe('verifyUserCredentials', () => {
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
     expect(compare).not.toHaveBeenCalled();
     expect(transaction.loginThrottle.update).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        action: 'loginFailure',
+        entity: 'authentication',
+        details: { documentId: '11111111', reason: 'blocked' },
+      },
+    });
   });
 
   test('throws the cooldown error only after committing the fifth failure', async () => {
@@ -172,6 +182,13 @@ describe('verifyUserCredentials', () => {
     );
 
     expect(committed).toBe(true);
+    expect(transaction.auditLog.create).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        action: 'loginFailure',
+        entity: 'authentication',
+        details: { documentId: '11111111', reason: 'invalidCredentials' },
+      },
+    });
     expect(transaction.loginThrottle.update).toHaveBeenCalledWith({
       where: { documentId: '11111111' },
       data: { failedAttempts: 5, blockedUntil: new Date('2026-10-26T15:05:00.000Z') },
@@ -191,6 +208,20 @@ describe('verifyUserCredentials', () => {
       where: { documentId: '11111111' },
       data: { failedAttempts: 1, blockedUntil: null },
     });
+    expect(transaction.auditLog.create).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        action: 'loginFailure',
+        entity: 'authentication',
+        details: { documentId: '11111111', reason: 'invalidCredentials' },
+      },
+    });
+  });
+
+  test('propagates an audit failure so that the transaction cannot commit', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    transaction.auditLog.create.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(verifyUserCredentials('11111111', 'wrong')).rejects.toThrow('audit unavailable');
   });
 });
 

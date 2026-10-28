@@ -4,6 +4,21 @@ import { describeAuditDetails } from '@/lib/audit-log/summary';
 const CATEGORY_LABELS = { families: 'Familias', earlyChildhood: 'Primera infancia' };
 
 describe('describeAuditDetails', () => {
+  test.each([
+    ['invalidCredentials', 'Autenticación fallida'],
+    ['blocked', 'Bloqueo temporal'],
+  ])('describes the failed login reason %s', (reason, expected) => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'loginFailure',
+          entity: 'authentication',
+          details: { documentId: '65432105', reason },
+        },
+        {}
+      )
+    ).toBe(expected);
+  });
   test('describes a user status change with readable values', () => {
     expect(
       describeAuditDetails(
