@@ -32,9 +32,19 @@ test('requests a reset link from the login page', async ({ page }) => {
   await expect.poll(() => hasActiveUserToken(DOCUMENT_ID, 'passwordReset')).toBe(true);
 });
 
-test('resets the password with an emailed link', async ({ page }) => {
+test('resets the password with an emailed link and clears an active login cooldown', async ({
+  page,
+}) => {
   createActiveUser(DOCUMENT_ID);
   const { token } = issueUserToken(DOCUMENT_ID, 'passwordReset');
+
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    await login(page, DOCUMENT_ID, 'wrong-password');
+    if (attempt < 5) {
+      await expect(page.getByText('Credenciales incorrectas')).toBeVisible();
+    }
+  }
+  await expect(page.getByRole('status')).toContainText('Demasiados intentos');
 
   await page.goto(`/reset-password?token=${token}`);
   await page.getByLabel('Nueva contraseña', { exact: true }).fill(NEW_PASSWORD);

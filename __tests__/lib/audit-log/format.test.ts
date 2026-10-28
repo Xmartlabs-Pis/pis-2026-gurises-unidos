@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
   auditEntityName,
+  formatAuditValue,
+  PROJECT_VALUE_LABELS,
   formatAuditLogCount,
   formatAuditTime,
   pageNumbers,
@@ -8,7 +10,7 @@ import {
 
 describe('formatAuditTime', () => {
   test('formats the time in the Montevideo timezone', () => {
-    expect(formatAuditTime(new Date('2026-10-21T19:42:00.000Z'))).toBe('16:42');
+    expect(formatAuditTime(new Date('2026-10-21T19:42:13.000Z'))).toBe('16:42:13');
   });
 });
 
@@ -47,5 +49,39 @@ describe('formatAuditLogCount', () => {
     [37, '37 registros'],
   ])('formats %i', (count, expected) => {
     expect(formatAuditLogCount(count)).toBe(expected);
+  });
+});
+
+describe('formatAuditValue', () => {
+  test.each([
+    ['status', 'active', 'Activo'],
+    ['status', 'inactive', 'Inactivo'],
+    ['zone', 'city', 'Montevideo'],
+    ['zone', 'rural', 'Rural'],
+    ['intensity', 'high', 'Alta'],
+    ['counterpartyType', 'privateSector', 'Sector Privado'],
+    ['geographicScope', 'international', 'Internacional'],
+    ['endYear', null, 'Sin datos'],
+    ['endYear', undefined, 'Sin datos'],
+    ['name', '', 'Sin datos'],
+    ['countries', [], 'Sin datos'],
+    ['countries', ['Argentina', 'Brasil'], 'Argentina, Brasil'],
+    [
+      'topics',
+      [
+        { id: 1, name: 'Salud' },
+        { id: 2, name: 'Educación' },
+      ],
+      'Salud, Educación',
+    ],
+    ['leadCoordinatorId', { id: 1, name: 'Ana Pérez' }, 'Ana Pérez'],
+    ['leadCoordinatorId', { id: 1 }, 'Sin datos'],
+    ['leadCoordinatorId', {}, 'Sin datos'],
+    ['showOnLanding', false, 'No'],
+    ['showOnLanding', true, 'Sí'],
+    ['families', 0, '0'],
+    ['status', '__proto__', '__proto__'],
+  ] satisfies [string, unknown, string][])('formats %s values', (field, value, expected) => {
+    expect(formatAuditValue(field, value, PROJECT_VALUE_LABELS)).toBe(expected);
   });
 });

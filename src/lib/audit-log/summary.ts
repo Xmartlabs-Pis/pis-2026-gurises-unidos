@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import { PROJECT_FIELD_LABELS } from '@/lib/audit-log/constants';
+import { PROJECT_FIELD_LABELS, PROJECT_TEXT_CHANGE_LABELS } from '@/lib/audit-log/constants';
+import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
+import {
+  loginFailureDetailsSchema,
+  LOGIN_FAILURE_REASON_LABELS,
+} from '@/lib/audit-log/login-failure';
 import { ROLE_LABELS, STATUS_LABELS } from '@/lib/users/constants';
 import type { ListedAuditAction, ListedAuditEntity } from '@/lib/validation/audit-log-filters';
 
@@ -28,16 +33,18 @@ const USER_VALUE_LABELS: Record<string, Record<string, string>> = {
 function formatChanges(
   changes: AuditChange[],
   fieldLabels: Record<string, string>,
-  valueLabels: Record<string, Record<string, string>> = {}
+  valueLabels: Record<string, Record<string, string>> = {},
+  changeLabels: Record<string, string> = {}
 ) {
-  const formatValue = (field: string, value: unknown) =>
-    valueLabels[field]?.[String(value)] ?? String(value ?? '—');
-
   return changes
-    .map(
-      ({ field, from, to }) =>
-        `${fieldLabels[field] ?? field}: ${formatValue(field, from)} → ${formatValue(field, to)}`
-    )
+    .map(({ field, from, to }) => {
+      const fieldLabel = fieldLabels[field] ?? field;
+      const changeLabel = changeLabels[field];
+
+      if (typeof changeLabel === 'string') return `${fieldLabel}: ${changeLabel}`;
+
+      return `${fieldLabel}: ${formatAuditValue(field, from, valueLabels)} → ${formatAuditValue(field, to, valueLabels)}`;
+    })
     .join(', ');
 }
 
@@ -63,6 +70,10 @@ export function describeAuditDetails(
   entry: { action: ListedAuditAction; entity: ListedAuditEntity; details: Prisma.JsonValue },
   categoryLabels: Record<string, string>
 ) {
+  if (entry.action === 'loginFailure') {
+    const parsed = loginFailureDetailsSchema.safeParse(entry.details);
+    return parsed.success ? LOGIN_FAILURE_REASON_LABELS[parsed.data.reason] : null;
+  }
   const details = auditDetailsSchema.parse(entry.details ?? {});
 
   if (entry.entity === 'beneficiary') {
@@ -74,7 +85,14 @@ export function describeAuditDetails(
       ? formatChanges(details.changes, USER_FIELD_LABELS, USER_VALUE_LABELS)
       : null;
   }
-  if (details.changes?.length) return formatChanges(details.changes, PROJECT_FIELD_LABELS);
+  if (details.changes?.length) {
+    return formatChanges(
+      details.changes,
+      PROJECT_FIELD_LABELS,
+      PROJECT_VALUE_LABELS,
+      PROJECT_TEXT_CHANGE_LABELS
+    );
+  }
   if (details.changedFields?.length) {
     const fields = details.changedFields.map((field) => PROJECT_FIELD_LABELS[field] ?? field);
     return `Cambió: ${fields.join(', ')}`;

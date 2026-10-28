@@ -52,8 +52,18 @@ async function deleteUsers(documentIds: string[]) {
   });
   const ids = users.map((user) => user.id);
   await prisma.$transaction([
+    prisma.loginThrottle.deleteMany({ where: { documentId: { in: documentIds } } }),
     prisma.auditLog.deleteMany({
-      where: { OR: [{ entity: 'user', entityId: { in: ids } }, { authorId: { in: ids } }] },
+      where: {
+        OR: [
+          { entity: 'user', entityId: { in: ids } },
+          { authorId: { in: ids } },
+          ...documentIds.map((documentId) => ({
+            action: 'loginFailure' as const,
+            details: { path: ['documentId'], equals: documentId },
+          })),
+        ],
+      },
     }),
     prisma.user.deleteMany({ where: { id: { in: ids } } }),
   ]);

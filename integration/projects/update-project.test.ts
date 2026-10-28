@@ -118,11 +118,20 @@ describe('updateProject (integration)', () => {
         expect((await loadProject(projectId)).counterpartyType).toBe(counterpartyType);
       }
       expect(await auditLogsFor(projectId)).toEqual(
-        Array.from({ length: 3 }, () =>
+        ['publicSector', 'privateSector', 'internationalCooperation'].map((from, index) =>
           expect.objectContaining({
             entity: 'project',
             action: 'update',
-            details: { changedFields: ['counterpartyType'] },
+            details: {
+              changedFields: ['counterpartyType'],
+              changes: [
+                {
+                  field: 'counterpartyType',
+                  from,
+                  to: ['privateSector', 'internationalCooperation', 'publicSector'][index],
+                },
+              ],
+            },
           })
         )
       );
@@ -215,7 +224,25 @@ describe('updateProject (integration)', () => {
         entity: 'project',
         action: 'update',
         authorId: seed.adminId,
-        details: { changedFields: ['name', 'zone', 'topics', 'departments'] },
+        details: {
+          changedFields: ['name', 'zone', 'topics', 'departments'],
+          changes: [
+            { field: 'name', from: 'Project under edit', to: 'Renamed project' },
+            { field: 'zone', from: 'rural', to: 'city' },
+            {
+              field: 'topics',
+              from: [{ id: seed.topicIds[0], name: expect.any(String) }],
+              to: [...newTopicIds]
+                .sort((a, b) => a - b)
+                .map((id) => ({ id, name: expect.any(String) })),
+            },
+            {
+              field: 'departments',
+              from: [{ id: seed.departmentIds[0], name: expect.any(String) }],
+              to: [{ id: seed.departmentIds[1], name: expect.any(String) }],
+            },
+          ],
+        },
       }),
     ]);
   });

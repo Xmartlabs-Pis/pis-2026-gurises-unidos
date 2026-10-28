@@ -4,6 +4,8 @@ import type { MockInstance } from 'vitest';
 import { makeUser, TEST_PASSWORD, TEST_PASSWORD_HASH } from '../fixtures/user';
 import { hashPassword, toAuthUser, verifyPassword, verifyUserCredentials } from '@/lib/credentials';
 import prisma from '@/lib/prisma';
+import { prismaMock } from '../mocks/prisma';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 
 describe('toAuthUser', () => {
   test.each([
@@ -25,14 +27,29 @@ describe('toAuthUser', () => {
 
 describe('verifyUserCredentials', () => {
   let compare: MockInstance<typeof bcrypt.compare>;
+  const transaction = {
+    user: prismaMock.user,
+    $executeRaw: vi.fn(),
+    $queryRaw: vi.fn(),
+    loginThrottle: { update: vi.fn() },
+    auditLog: { create: vi.fn() },
+  };
 
   beforeEach(() => {
     vi.mocked(prisma.user.findUnique).mockReset();
+    transaction.$executeRaw.mockReset();
+    transaction.$queryRaw
+      .mockReset()
+      .mockResolvedValue([{ failedAttempts: 0, blockedUntil: null }]);
+    transaction.loginThrottle.update.mockReset();
+    transaction.auditLog.create.mockReset();
+    prismaMock.$transaction.mockImplementation(async (callback) => callback(transaction));
     compare = vi.spyOn(bcrypt, 'compare');
   });
 
   afterEach(() => {
     compare.mockRestore();
+    vi.useRealTimers();
   });
 
   function dummyHashFromCompare() {
@@ -75,6 +92,7 @@ describe('verifyUserCredentials', () => {
     await expect(verifyUserCredentials(user.documentId, TEST_PASSWORD)).resolves.toEqual(user);
     expect(compare).toHaveBeenCalledOnce();
     expect(compare).toHaveBeenCalledWith(TEST_PASSWORD, user.passwordHash);
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
   });
 
   test('returns null and compares against a dummy hash when the user is missing', async () => {
@@ -125,6 +143,85 @@ describe('verifyUserCredentials', () => {
 
     await expect(verifyUserCredentials('41234567', TEST_PASSWORD)).rejects.toThrow('db down');
     expect(compare).not.toHaveBeenCalled();
+  });
+
+  test('rejects a blocked attempt without checking the password or changing the deadline', async () => {
+    const blockedUntil = new Date(Date.now() + 300_000);
+    transaction.$queryRaw.mockResolvedValue([{ failedAttempts: 5, blockedUntil }]);
+
+    await expect(verifyUserCredentials('11111111', TEST_PASSWORD)).rejects.toMatchObject({
+      nextAllowedAt: blockedUntil,
+    });
+
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(compare).not.toHaveBeenCalled();
+    expect(transaction.loginThrottle.update).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        action: 'loginFailure',
+        entity: 'authentication',
+        details: { documentId: '11111111', reason: 'blocked' },
+      },
+    });
+  });
+
+  test('throws the cooldown error only after committing the fifth failure', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T15:00:00.000Z'));
+    transaction.$queryRaw.mockResolvedValue([{ failedAttempts: 4, blockedUntil: null }]);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    let committed = false;
+    prismaMock.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(transaction);
+      committed = true;
+      return result;
+    });
+
+    await expect(verifyUserCredentials('11111111', 'wrong')).rejects.toBeInstanceOf(
+      LoginCooldownError
+    );
+
+    expect(committed).toBe(true);
+    expect(transaction.auditLog.create).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        action: 'loginFailure',
+        entity: 'authentication',
+        details: { documentId: '11111111', reason: 'invalidCredentials' },
+      },
+    });
+    expect(transaction.loginThrottle.update).toHaveBeenCalledWith({
+      where: { documentId: '11111111' },
+      data: { failedAttempts: 5, blockedUntil: new Date('2026-10-26T15:05:00.000Z') },
+    });
+  });
+
+  test('counts the first failure after an expired cooldown as the first of five new attempts', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const deadline = new Date('2026-10-26T15:05:00Z');
+    vi.setSystemTime(deadline);
+    transaction.$queryRaw.mockResolvedValue([{ failedAttempts: 5, blockedUntil: deadline }]);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    await expect(verifyUserCredentials('11111111', 'wrong')).resolves.toBeNull();
+
+    expect(transaction.loginThrottle.update).toHaveBeenCalledWith({
+      where: { documentId: '11111111' },
+      data: { failedAttempts: 1, blockedUntil: null },
+    });
+    expect(transaction.auditLog.create).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        action: 'loginFailure',
+        entity: 'authentication',
+        details: { documentId: '11111111', reason: 'invalidCredentials' },
+      },
+    });
+  });
+
+  test('propagates an audit failure so that the transaction cannot commit', async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    transaction.auditLog.create.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(verifyUserCredentials('11111111', 'wrong')).rejects.toThrow('audit unavailable');
   });
 });
 

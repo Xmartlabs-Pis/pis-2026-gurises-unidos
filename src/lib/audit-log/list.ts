@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import type { Prisma } from '@/generated/prisma/client';
 import { describeAuditDetails } from '@/lib/audit-log/summary';
+import { loginFailureDetailsSchema } from '@/lib/audit-log/login-failure';
 import { getBeneficiaryCategoryLabels } from '@/lib/beneficiary-categories';
 import {
   LISTED_AUDIT_ACTIONS,
@@ -61,6 +62,10 @@ export function buildAuditLogWhere(filters: AuditLogFilters): Prisma.AuditLogWhe
   if (filters.authorId) {
     where.authorId = filters.authorId;
   }
+  if (filters.documentId) {
+    where.details = { path: ['documentId'], equals: filters.documentId };
+    where.AND = [{ action: 'loginFailure' }];
+  }
   if (filters.from || filters.to) {
     where.occurredAt = {
       gte: filters.from ? new Date(`${filters.from}T00:00:00.000${MONTEVIDEO_OFFSET}`) : undefined,
@@ -72,7 +77,14 @@ export function buildAuditLogWhere(filters: AuditLogFilters): Prisma.AuditLogWhe
 }
 
 function idsOf(rows: ListedAuditLogRow[], entity: ListedAuditEntity) {
-  return [...new Set(rows.filter((row) => row.entity === entity).map((row) => row.entityId))];
+  return [
+    ...new Set(
+      rows
+        .filter((row) => row.entity === entity)
+        .map((row) => row.entityId)
+        .filter((id): id is number => id !== null)
+    ),
+  ];
 }
 
 async function resolveEntityNames(rows: ListedAuditLogRow[]) {
@@ -97,10 +109,11 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
       beneficiaries.map(({ id, year, project }) => [id, `${project.name} (${year})`])
     ),
     user: new Map(users.map(({ id, firstName, lastName }) => [id, `${firstName} ${lastName}`])),
+    authentication: new Map(),
   };
 
   return (row: Pick<ListedAuditLogRow, 'entity' | 'entityId'>) =>
-    names[row.entity].get(row.entityId) ?? null;
+    row.entityId === null ? null : (names[row.entity].get(row.entityId) ?? null);
 }
 
 export async function listAuditLog(filters: AuditLogFilters): Promise<AuditLogPage> {
@@ -130,11 +143,17 @@ export async function listAuditLog(filters: AuditLogFilters): Promise<AuditLogPa
   ]);
 
   return {
-    items: listedRows.map(({ details, ...row }) => ({
-      ...row,
-      entityName: entityNameOf(row),
-      summary: describeAuditDetails({ ...row, details }, categoryLabels),
-    })),
+    items: listedRows.map(({ details, ...row }) => {
+      const loginFailure =
+        row.action === 'loginFailure' ? loginFailureDetailsSchema.safeParse(details) : null;
+      return {
+        ...row,
+        entityName: loginFailure?.success
+          ? `Cédula ingresada: ${loginFailure.data.documentId}`
+          : entityNameOf(row),
+        summary: describeAuditDetails({ ...row, details }, categoryLabels),
+      };
+    }),
     total,
     page,
     pageSize: filters.pageSize,

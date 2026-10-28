@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { E2E_ADMIN, E2E_COORDINATOR } from '../prisma/e2e-fixtures';
-import { NO_SESSION, login, loginAs } from './helpers';
+import { NO_SESSION, createActiveUser, deleteUsers, login, loginAs } from './helpers';
 
 test.use({ storageState: NO_SESSION });
 
@@ -17,6 +17,48 @@ test('rejects wrong credentials', async ({ page }) => {
 
   await expect(page.getByText('Credenciales incorrectas')).toBeVisible();
   await expect(page).toHaveURL('/login');
+});
+
+test('blocks the sixth attempt and shows the correct countdown with an inaccurate client clock', async ({
+  page,
+}) => {
+  const documentId = '65432127';
+  createActiveUser(documentId);
+  await page.addInitScript(() => {
+    const browserNow = Date.now;
+    Date.now = () => browserNow() - 10 * 60_000;
+  });
+
+  try {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      await login(page, documentId, 'wrong-password');
+      if (attempt < 5) {
+        await expect(page.getByText('Credenciales incorrectas')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+      }
+    }
+
+    await expect(page.getByRole('status')).toContainText('Demasiados intentos');
+    await expect(page.getByRole('status')).toContainText(/en (5:00|4:5\d)\./);
+    await expect(page.getByRole('button', { name: 'Ingresar' })).toBeDisabled();
+
+    await login(page, documentId);
+
+    await expect(page).toHaveURL('/login');
+    await expect(page.getByRole('status')).toContainText('Demasiados intentos');
+    await expect(page.getByRole('button', { name: 'Ingresar' })).toBeDisabled();
+    await expect(page.getByRole('link', { name: '¿Olvidaste tu contraseña?' })).toBeVisible();
+
+    await page.getByLabel('Cédula').fill(E2E_ADMIN.documentId);
+    await expect(page.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+    await expect(page.getByRole('status')).toHaveCount(0);
+
+    await page.getByLabel('Cédula').fill('6.543.212-7');
+    await expect(page.getByRole('button', { name: 'Ingresar' })).toBeDisabled();
+    await expect(page.getByRole('status')).toContainText('Demasiados intentos');
+  } finally {
+    deleteUsers([documentId]);
+  }
 });
 
 test('rejects a malformed document id', async ({ page }) => {

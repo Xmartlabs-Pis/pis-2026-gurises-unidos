@@ -50,6 +50,7 @@ enum AuditAction {
   deletion
   passwordChange
   passwordReset
+  loginFailure
 }
 
 enum AuditEntity {
@@ -61,6 +62,7 @@ enum AuditEntity {
   topic
   strategicLine
   contributor
+  authentication
 }
 
 enum CounterpartyType {
@@ -75,6 +77,12 @@ enum UserTokenType {
 }
 
 // ---------- TABLES ----------
+
+model LoginThrottle {
+  documentId     String    @id
+  failedAttempts Int       @default(0)
+  blockedUntil   DateTime?
+}
 
 model User {
   id                 Int        @id @default(autoincrement())
@@ -263,16 +271,17 @@ model Report {
 
 model AuditLog {
   id         Int         @id @default(autoincrement())
-  authorId   Int
+  authorId   Int?
   action     AuditAction
   entity     AuditEntity
-  entityId   Int
+  entityId   Int?
   details    Json?
   occurredAt DateTime    @default(now())
 
-  author User @relation(fields: [authorId], references: [id])
+  author User? @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   @@index([occurredAt])
+  @@index([action, occurredAt])
 }
 
 model UserToken {
