@@ -117,7 +117,7 @@ test('keeps the cooldown for each document after submitting a different one', as
   expect(screen.getByRole('status').textContent).toContain('5:00');
 });
 
-test.each([-10, 10])(
+test.each([-60, 60])(
   'keeps a five-minute countdown when the client clock is offset by %i minutes',
   async (offsetMinutes) => {
     vi.useFakeTimers();

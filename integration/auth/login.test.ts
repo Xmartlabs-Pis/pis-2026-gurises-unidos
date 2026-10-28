@@ -469,6 +469,11 @@ describe('login cooldown (integration)', () => {
         formError: 'Login cooldown',
         nextAllowedAt: nextDeadline.toISOString(),
       });
+      const entries = await failedLoginEntries(user.documentId);
+      expect(entries).toHaveLength(attempt * 6);
+      expect(
+        entries.slice(-6).map(({ details }) => (details as { reason: string }).reason)
+      ).toEqual([...Array(5).fill('invalidCredentials'), 'blocked']);
     }
     expect(cookieJar.size).toBe(0);
   });
@@ -586,6 +591,12 @@ describe('login cooldown (integration)', () => {
         }
       }
       expect(compare).toHaveBeenCalledTimes(5);
+      const entries = await failedLoginEntries(user.documentId);
+      expect(entries).toHaveLength(7);
+      expect(entries.map(({ details }) => (details as { reason: string }).reason)).toEqual([
+        ...Array(5).fill('invalidCredentials'),
+        ...Array(2).fill('blocked'),
+      ]);
       expect(
         await prisma.loginThrottle.findUniqueOrThrow({
           where: { documentId: user.documentId },
