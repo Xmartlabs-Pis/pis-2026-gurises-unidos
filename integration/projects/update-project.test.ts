@@ -23,7 +23,6 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     departmentIds: [String(seed.departmentIds[0])],
     cities: ['Colonia del Sacramento'],
     neighborhoods: ['Barrio Sur'],
-    zone: 'rural',
     generalObjective: 'Objective',
     publicDescription: '',
     internalNotes: '',
@@ -202,7 +201,6 @@ describe('updateProject (integration)', () => {
         {},
         buildFormData({
           name: 'Renamed project',
-          zone: 'city',
           departmentIds: [String(seed.departmentIds[1])],
           topicIds: newTopicIds.map(String),
         })
@@ -213,7 +211,7 @@ describe('updateProject (integration)', () => {
     const project = await loadProject(projectId);
     expect(project).toMatchObject({
       name: 'Renamed project',
-      zone: 'city',
+      zone: 'rural',
       departments: [{ id: seed.departmentIds[1] }],
       status: 'active',
       startYear: 2020,
@@ -225,10 +223,9 @@ describe('updateProject (integration)', () => {
         action: 'update',
         authorId: seed.adminId,
         details: {
-          changedFields: ['name', 'zone', 'topics', 'departments'],
+          changedFields: ['name', 'topics', 'departments'],
           changes: [
             { field: 'name', from: 'Project under edit', to: 'Renamed project' },
-            { field: 'zone', from: 'rural', to: 'city' },
             {
               field: 'topics',
               from: [{ id: seed.topicIds[0], name: expect.any(String) }],
@@ -255,6 +252,21 @@ describe('updateProject (integration)', () => {
     await expectRedirectToProject(updateProject(projectId, {}, buildFormData()), projectId);
 
     expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
+  test('ignores a submitted zone and keeps the stored one', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ zone: 'city' })),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(before.zone).toBe('rural');
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 

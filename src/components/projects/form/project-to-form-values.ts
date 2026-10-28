@@ -29,7 +29,6 @@ export function projectToFormValues(
     countries: project.countries,
     cities: project.cities,
     neighborhoods: project.neighborhoods,
-    zone: project.zone,
     generalObjective: project.generalObjective ?? '',
     publicDescription: project.publicDescription ?? '',
     internalNotes: project.internalNotes ?? '',
