@@ -3,6 +3,7 @@ import { ProjectTopbarRegistration } from '@/components/layout/topbar-context';
 import { BeneficiaryDistribution } from '@/components/projects/detail/beneficiary-distribution';
 import { InstitutionalContribution } from '@/components/projects/detail/institutional-contribution';
 import { ProjectDetailHeader } from '@/components/projects/detail/project-detail-header';
+import { ProjectInformation } from '@/components/projects/detail/project-information';
 import { ProjectMetrics } from '@/components/projects/detail/project-metrics';
 import { ProjectPublicCard } from '@/components/projects/detail/project-public-card';
 import { ProjectRecentActivity } from '@/components/projects/detail/project-recent-activity';
@@ -49,17 +50,18 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
           canEdit={canEdit}
         />
 
+        <ProjectInformation
+          publicDescription={project.publicDescription}
+          internalNotes={project.internalNotes}
+        />
+
         {hasData ? (
           <>
             <ProjectMetrics metrics={metrics} comparisonYear={comparisonYear} />
             <div className="grid items-stretch gap-4 lg:grid-cols-2">
               <div className="flex min-w-0 flex-col gap-4">
                 <BeneficiaryDistribution data={distribution} year={selectedYear} />
-                <ProjectPublicCard
-                  name={project.name}
-                  description={project.publicDescription}
-                  coverPhoto={project.coverPhoto}
-                />
+                <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
               </div>
               <InstitutionalContribution data={institutionalContribution} />
             </div>
@@ -67,11 +69,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
         ) : (
           <>
             <ProjectYearEmptyState year={selectedYear} />
-            <ProjectPublicCard
-              name={project.name}
-              description={project.publicDescription}
-              coverPhoto={project.coverPhoto}
-            />
+            <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
           </>
         )}
         <ProjectRecentActivity />

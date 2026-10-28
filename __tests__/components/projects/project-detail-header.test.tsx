@@ -28,6 +28,7 @@ const PROJECT: ProjectDetail['project'] = {
   neighborhoods: ['Casavalle'],
   generalObjective: 'Support adolescents and families.',
   publicDescription: 'Community support project.',
+  internalNotes: null,
   coverPhoto: null,
   leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
   departments: [{ id: 1, name: 'Montevideo' }],
@@ -101,6 +102,26 @@ test('shows the project counterparty', () => {
 
   expect(screen.getByText('Contraparte:')).toBeDefined();
   expect(screen.getByText('Sector Público')).toBeDefined();
+});
+
+test('shows all project topics', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        topics: [
+          { id: 1, name: 'Educación' },
+          { id: 2, name: 'Participación' },
+        ],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.getByText('Temáticas:')).toBeDefined();
+  expect(screen.getByText('Educación, Participación')).toBeDefined();
 });
 
 test('shows the end year of a finished project', () => {
