@@ -50,6 +50,7 @@ enum AuditAction {
   deletion
   passwordChange
   passwordReset
+  loginFailure
 }
 
 enum AuditEntity {
@@ -61,6 +62,7 @@ enum AuditEntity {
   topic
   strategicLine
   contributor
+  authentication
 }
 
 enum CounterpartyType {
@@ -153,7 +155,7 @@ model Project {
   countries         String[]         @default([])
   cities            String[]         @default([])
   neighborhoods     String[]         @default([])
-  zone              Zone
+  zone              Zone?
   generalObjective  String?          @db.VarChar(500)
   publicDescription String?          @db.VarChar(1000)
   coverPhoto        String?
@@ -269,16 +271,17 @@ model Report {
 
 model AuditLog {
   id         Int         @id @default(autoincrement())
-  authorId   Int
+  authorId   Int?
   action     AuditAction
   entity     AuditEntity
-  entityId   Int
+  entityId   Int?
   details    Json?
   occurredAt DateTime    @default(now())
 
-  author User @relation(fields: [authorId], references: [id])
+  author User? @relation(fields: [authorId], references: [id], onDelete: Restrict)
 
   @@index([occurredAt])
+  @@index([action, occurredAt])
 }
 
 model UserToken {

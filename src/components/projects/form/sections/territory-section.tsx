@@ -6,7 +6,7 @@ import { MapPin } from 'lucide-react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { GEOGRAPHIC_SCOPE_OPTIONS, ZONE_OPTIONS } from '@/lib/project-display';
+import { GEOGRAPHIC_SCOPE_OPTIONS } from '@/lib/project-display';
 import { MAX_PLACE_NAME_LENGTH } from '@/lib/validation/project-form';
 import { MultiSelectField } from '@/components/ui/forms/multi-select-field';
 import { TagInputField } from '@/components/ui/forms/tag-input-field';
@@ -20,7 +20,7 @@ function PillRadioField({
   options,
   onValueChange,
 }: {
-  name: 'zone' | 'geographicScope';
+  name: 'geographicScope';
   label: string;
   options: readonly { value: string; label: string }[];
   onValueChange?: (value: string) => void;
@@ -147,7 +147,6 @@ export function TerritorySection({
           </div>
         </>
       )}
-      <PillRadioField name="zone" label="Zona" options={ZONE_OPTIONS} />
       {isEditing && (
         <div className="bg-muted rounded-[10px] px-3.5 py-3">
           <p className="text-muted-foreground text-sm leading-5">Cobertura</p>

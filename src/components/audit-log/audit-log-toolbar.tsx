@@ -20,8 +20,9 @@ import { formatAuditLogCount } from '@/lib/audit-log/format';
 import { ALL_FILTER_VALUE } from '@/lib/url-filters';
 import { fullName } from '@/lib/users/format';
 import type { AuditLogFilters } from '@/lib/validation/audit-log-filters';
+import { normalizeDocumentId } from '@/lib/utils';
 
-const FILTER_KEYS: (keyof AuditLogFilters)[] = ['entity', 'authorId', 'from', 'to'];
+const FILTER_KEYS: (keyof AuditLogFilters)[] = ['entity', 'authorId', 'documentId', 'from', 'to'];
 
 type AuditLogToolbarProps = {
   filters: AuditLogFilters;
@@ -38,16 +39,26 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
     from: useRef<HTMLInputElement>(null),
     to: useRef<HTMLInputElement>(null),
   };
+  const documentIdInputRef = useRef<HTMLInputElement>(null);
+
+  function commitDocumentId(value: string) {
+    const documentId = normalizeDocumentId(value.trim());
+    if (documentId !== (filters.documentId ?? '')) {
+      updateFilters({ documentId: documentId || null });
+    }
+  }
 
   function commitDate(key: 'from' | 'to', value: string) {
     if (value !== (filters[key] ?? '')) updateFilters({ [key]: value || null });
   }
 
-  function commitPendingDates() {
+  function commitPendingFilters() {
     for (const key of ['from', 'to'] as const) {
       const input = dateInputRefs[key].current;
       if (input) commitDate(key, input.value);
     }
+    const documentIdInput = documentIdInputRef.current;
+    if (documentIdInput) commitDocumentId(documentIdInput.value);
   }
 
   const entityOptions = [
@@ -76,14 +87,15 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
 
   return (
     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <Tabs
+          className="min-w-0"
           value={filters.action ?? ALL_FILTER_VALUE}
           onValueChange={(value) =>
             updateFilters({ action: value === ALL_FILTER_VALUE ? null : String(value) })
           }
         >
-          <div className="bg-secondary flex h-9 w-fit flex-row items-center rounded-lg px-0.5 py-0.75">
+          <div className="bg-secondary flex h-9 max-w-full flex-row items-center overflow-x-auto rounded-lg px-0.5 py-0.75">
             <TabsList aria-label="Filtrar por acción">
               {AUDIT_ACTION_TABS.map((tab) => (
                 <TabsTrigger
@@ -107,7 +119,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
 
       <Popover
         onOpenChange={(open) => {
-          if (!open) commitPendingDates();
+          if (!open) commitPendingFilters();
         }}
       >
         <PopoverTrigger
@@ -126,6 +138,19 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
           )}
         </PopoverTrigger>
         <PopoverContent align="end" className="w-72 gap-4 p-4">
+          <label className="flex flex-col gap-2">
+            <span>Cédula ingresada</span>
+            <Input
+              key={filters.documentId}
+              ref={documentIdInputRef}
+              defaultValue={filters.documentId ?? ''}
+              placeholder="Ej.: 1.234.567-2"
+              onBlur={(event) => commitDocumentId(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') commitDocumentId(event.currentTarget.value);
+              }}
+            />
+          </label>
           {selectFilters.map(({ key, label, options, value }) => (
             <div key={key} className="flex flex-col gap-2">
               <span>{label}</span>

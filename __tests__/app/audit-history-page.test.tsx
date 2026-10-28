@@ -84,6 +84,34 @@ describe('AuditHistoryPage', () => {
     );
   });
 
+  it('renders failed logins without an authenticated author', async () => {
+    mocks.listAuditLog.mockResolvedValue({
+      items: [
+        {
+          id: 2,
+          action: 'loginFailure',
+          entity: 'authentication',
+          entityId: null,
+          entityName: 'Cédula ingresada: 65432105',
+          summary: 'Autenticación fallida',
+          occurredAt: new Date('2026-10-27T17:35:12.000Z'),
+          author: null,
+        },
+      ],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+      totalPages: 1,
+    });
+
+    render((await renderPage({ action: 'loginFailure' })) as ReactElement);
+
+    expect(screen.getAllByText('Sin autenticar')).toHaveLength(2);
+    expect(screen.getAllByText('Acceso fallido')).toHaveLength(2);
+    expect(screen.getAllByText('Cédula ingresada: 65432105')).toHaveLength(2);
+    expect(screen.getAllByText(/14:35:12/)).toHaveLength(2);
+  });
+
   it('redirects to the canonical url when params are invalid', async () => {
     await expect(renderPage({ action: 'foo', page: '1' })).rejects.toThrow(
       'NEXT_REDIRECT:/management/history'

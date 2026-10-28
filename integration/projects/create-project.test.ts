@@ -30,7 +30,6 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     departmentIds: [String(seed.departmentIds[0])],
     cities: ['Colonia del Sacramento'],
     neighborhoods: ['Barrio Sur'],
-    zone: 'rural',
     generalObjective: 'Objective',
     publicDescription: 'Public description',
     internalNotes: '',
@@ -127,7 +126,7 @@ describe('createProject (integration)', () => {
       countries: [],
       cities: ['Colonia del Sacramento'],
       neighborhoods: ['Barrio Sur'],
-      zone: 'rural',
+      zone: null,
       generalObjective: 'Objective',
       publicDescription: 'Public description',
       internalNotes: null,
@@ -174,6 +173,16 @@ describe('createProject (integration)', () => {
         },
       }),
     ]);
+  });
+
+  test('ignores a submitted zone and stores the project without one', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ zone: 'city' }))
+    );
+
+    expect((await loadProject(projectId)).zone).toBeNull();
   });
 
   test('stores an inactive project with its end year', async () => {
