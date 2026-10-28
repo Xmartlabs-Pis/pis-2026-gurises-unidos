@@ -11,6 +11,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  useCarousel,
   type CarouselApi,
 } from '@/components/ui/carousel';
 
@@ -22,6 +23,19 @@ type TopicCarouselProps = {
   topic: string;
   initialPage: PublicProjectsPage;
 };
+
+function TopicCarouselControls() {
+  const { canScrollPrev, canScrollNext } = useCarousel();
+
+  if (!canScrollPrev && !canScrollNext) return null;
+
+  return (
+    <div className="flex flex-row gap-2">
+      <CarouselPrevious className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
+      <CarouselNext className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
+    </div>
+  );
+}
 
 export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarouselProps) {
   const [projects, setProjects] = useState(initialPage.items);
@@ -66,10 +80,7 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
         <div className="flex flex-row items-center gap-3">
           <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
         </div>
-        <div className="flex flex-row gap-2">
-          <CarouselPrevious className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
-          <CarouselNext className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
-        </div>
+        <TopicCarouselControls />
       </div>
       <CarouselContent>
         {projects.map((project) => (

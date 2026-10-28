@@ -107,7 +107,7 @@ export default async function Home({
                     {stat.description}
                   </span>
                   {stat.increment && (
-                    <span className="text-primary w-full text-xs leading-4 font-normal tracking-normal">
+                    <span className="text-primary w-full text-xs leading-4 font-bold tracking-normal">
                       {stat.increment}
                     </span>
                   )}
@@ -119,7 +119,7 @@ export default async function Home({
       </section>
       {visibleTopics.length > 0 && (
         <section aria-labelledby="public-topic-statistics-heading" className="w-full">
-          <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 pt-2 pb-6 sm:px-6 lg:px-16">
+          <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 pt-14 pb-14 sm:px-6 lg:px-16">
             <div className="flex flex-col gap-1">
               <h2
                 id="public-topic-statistics-heading"
