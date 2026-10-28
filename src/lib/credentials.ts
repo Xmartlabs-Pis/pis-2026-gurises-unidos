@@ -48,7 +48,9 @@ export async function verifyUserCredentials(
         return { user, blockedUntil: null };
       }
 
-      const failedAttempts = Math.min(throttle.failedAttempts + 1, FREE_LOGIN_ATTEMPTS);
+      const failedAttempts = throttle.blockedUntil
+        ? 1
+        : Math.min(throttle.failedAttempts + 1, FREE_LOGIN_ATTEMPTS);
       const blockedUntil =
         failedAttempts >= FREE_LOGIN_ATTEMPTS ? new Date(Date.now() + LOGIN_COOLDOWN_MS) : null;
 

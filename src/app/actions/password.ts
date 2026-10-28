@@ -211,6 +211,8 @@ export async function resetPassword(
           },
         });
 
+        await tx.loginThrottle.deleteMany({ where: { documentId: targetUser.documentId } });
+
         await logAudit(tx, {
           authorId: adminId,
           action: 'passwordReset',

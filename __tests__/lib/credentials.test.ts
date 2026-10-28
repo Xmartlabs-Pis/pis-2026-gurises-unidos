@@ -177,6 +177,21 @@ describe('verifyUserCredentials', () => {
       data: { failedAttempts: 5, blockedUntil: new Date('2026-10-26T15:05:00.000Z') },
     });
   });
+
+  test('counts the first failure after an expired cooldown as the first of five new attempts', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const deadline = new Date('2026-10-26T15:05:00Z');
+    vi.setSystemTime(deadline);
+    transaction.$queryRaw.mockResolvedValue([{ failedAttempts: 5, blockedUntil: deadline }]);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+
+    await expect(verifyUserCredentials('11111111', 'wrong')).resolves.toBeNull();
+
+    expect(transaction.loginThrottle.update).toHaveBeenCalledWith({
+      where: { documentId: '11111111' },
+      data: { failedAttempts: 1, blockedUntil: null },
+    });
+  });
 });
 
 describe('hashPassword', () => {

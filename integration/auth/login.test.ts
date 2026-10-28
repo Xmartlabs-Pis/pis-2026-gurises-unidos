@@ -256,6 +256,7 @@ describe('login cooldown (integration)', () => {
       formError: 'Login cooldown',
       documentId: user.documentId,
       nextAllowedAt: blockedUntil.toISOString(),
+      retryAfterSeconds: 300,
     });
     expect(
       await prisma.loginThrottle.findUniqueOrThrow({
@@ -278,6 +279,7 @@ describe('login cooldown (integration)', () => {
       formError: 'Login cooldown',
       documentId: user.documentId,
       nextAllowedAt: blockedUntil.toISOString(),
+      retryAfterSeconds: 1,
     });
     expect(
       await prisma.loginThrottle.findUniqueOrThrow({
@@ -287,7 +289,7 @@ describe('login cooldown (integration)', () => {
     expect(cookieJar.size).toBe(0);
   });
 
-  test('allows only one new attempt at each deadline and restarts the wait after every failure', async () => {
+  test('restores five attempts at each deadline and blocks again only after the fifth failure', async () => {
     const user = await createUser();
     const firstDeadline = new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS);
     await prisma.loginThrottle.create({
@@ -298,10 +300,16 @@ describe('login cooldown (integration)', () => {
       vi.setSystemTime(LOGIN_TIME.getTime() + attempt * LOGIN_COOLDOWN_MS);
       const nextDeadline = new Date(Date.now() + LOGIN_COOLDOWN_MS);
 
+      await expectFreeFailedAttempts(user.documentId);
+      expect(
+        await prisma.loginThrottle.findUniqueOrThrow({ where: { documentId: user.documentId } })
+      ).toMatchObject({ failedAttempts: 4, blockedUntil: null });
+
       expect(await login({}, buildFormData(user.documentId, 'wrong-password'))).toEqual({
         formError: 'Login cooldown',
         documentId: user.documentId,
         nextAllowedAt: nextDeadline.toISOString(),
+        retryAfterSeconds: 300,
       });
       expect(
         await prisma.loginThrottle.findUniqueOrThrow({
@@ -360,6 +368,7 @@ describe('login cooldown (integration)', () => {
       formError: 'Login cooldown',
       documentId,
       nextAllowedAt: new Date(LOGIN_TIME.getTime() + LOGIN_COOLDOWN_MS).toISOString(),
+      retryAfterSeconds: 300,
     });
     expect(await prisma.user.findUnique({ where: { documentId } })).toBeNull();
   });
@@ -409,16 +418,18 @@ describe('login cooldown (integration)', () => {
     const compare = vi.spyOn(bcrypt, 'compare');
     try {
       const results = await Promise.allSettled(
-        Array.from({ length: 3 }, () => verifyUserCredentials(user.documentId, 'wrong-password'))
+        Array.from({ length: 7 }, () => verifyUserCredentials(user.documentId, 'wrong-password'))
       );
 
+      expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(4);
       for (const result of results) {
-        expect(result).toMatchObject({
-          status: 'rejected',
-          reason: expect.any(LoginCooldownError),
-        });
+        if (result.status === 'fulfilled') {
+          expect(result.value).toBeNull();
+        } else {
+          expect(result.reason).toBeInstanceOf(LoginCooldownError);
+        }
       }
-      expect(compare).toHaveBeenCalledOnce();
+      expect(compare).toHaveBeenCalledTimes(5);
       expect(
         await prisma.loginThrottle.findUniqueOrThrow({
           where: { documentId: user.documentId },

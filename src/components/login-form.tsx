@@ -20,7 +20,7 @@ type LoginFormValues = {
 
 export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean }) {
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(0);
   const [state, formAction, pending] = useActionState(submitLogin, {});
   const [showPassword, setShowPassword] = useState(false);
   const form = useForm<LoginFormValues>({
@@ -36,18 +36,18 @@ export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean
 
   async function submitLogin(previousState: LoginFormState, formData: FormData) {
     const nextState = await login(previousState, formData);
-    if (nextState.nextAllowedAt && nextState.documentId) {
+    if (nextState.retryAfterSeconds !== undefined && nextState.documentId) {
       const blockedDocumentId = normalizeDocumentId(nextState.documentId.trim());
-      const blockedUntil = new Date(nextState.nextAllowedAt).getTime();
+      const blockedUntil = performance.now() + nextState.retryAfterSeconds * 1000;
       setCooldowns((current) => ({ ...current, [blockedDocumentId]: blockedUntil }));
     }
-    setNow(Date.now());
+    setNow(performance.now());
     return nextState;
   }
 
   useEffect(() => {
     if (!hasActiveCooldown) return;
-    const interval = setInterval(() => setNow(Date.now()), 1000);
+    const interval = setInterval(() => setNow(performance.now()), 1000);
     return () => clearInterval(interval);
   }, [hasActiveCooldown]);
 

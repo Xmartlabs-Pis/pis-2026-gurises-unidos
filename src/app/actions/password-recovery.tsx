@@ -112,6 +112,8 @@ export async function resetPasswordWithToken(
           return 'userInactive';
         }
 
+        await tx.loginThrottle.deleteMany({ where: { documentId: lookup.user.documentId } });
+
         await logAudit(tx, {
           authorId: userId,
           action: 'passwordReset',

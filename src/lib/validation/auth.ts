@@ -7,6 +7,7 @@ export type LoginFormState = {
   errors?: Record<string, string[]>;
   documentId?: string;
   nextAllowedAt?: string;
+  retryAfterSeconds?: number;
 };
 
 export const loginSchema = z.object({

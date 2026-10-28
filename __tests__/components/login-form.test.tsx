@@ -47,6 +47,7 @@ test('counts down only for the blocked document and enables submission when the 
     formError: 'Login cooldown',
     documentId: '11111111',
     nextAllowedAt: '2026-10-26T15:05:00.000Z',
+    retryAfterSeconds: 300,
   });
   render(<LoginForm />);
   const documentInput = screen.getByLabelText('Cédula');
@@ -95,6 +96,7 @@ test('keeps the cooldown for each document after submitting a different one', as
       formError: 'Login cooldown',
       documentId: '11111111',
       nextAllowedAt: '2026-10-26T15:05:00.000Z',
+      retryAfterSeconds: 300,
     })
     .mockResolvedValueOnce({ formError: 'Invalid credentials', documentId: '77777777' });
   render(<LoginForm />);
@@ -114,3 +116,38 @@ test('keeps the cooldown for each document after submitting a different one', as
   expect(button.disabled).toBe(true);
   expect(screen.getByRole('status').textContent).toContain('5:00');
 });
+
+test.each([-10, 10])(
+  'keeps a five-minute countdown when the client clock is offset by %i minutes',
+  async (offsetMinutes) => {
+    vi.useFakeTimers();
+    const serverTime = new Date('2026-10-26T15:00:00Z').getTime();
+    vi.setSystemTime(serverTime + offsetMinutes * 60_000);
+    vi.mocked(login).mockResolvedValueOnce({
+      formError: 'Login cooldown',
+      documentId: '11111111',
+      nextAllowedAt: new Date(serverTime + 300_000).toISOString(),
+      retryAfterSeconds: 300,
+    });
+    render(<LoginForm />);
+    fireEvent.change(screen.getByLabelText('Cédula'), { target: { value: '11111111' } });
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
+    const button = screen.getByRole('button', { name: 'Ingresar' }) as HTMLButtonElement;
+
+    await act(async () => {
+      fireEvent.submit(button.closest('form')!);
+    });
+
+    expect(button.disabled).toBe(true);
+    expect(screen.getByRole('status').textContent).toContain('5:00');
+    vi.setSystemTime(serverTime + 60 * 60_000);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(screen.getByRole('status').textContent).toContain('4:00');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(240_000);
+    });
+    expect(button.disabled).toBe(false);
+  }
+);

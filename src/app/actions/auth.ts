@@ -40,6 +40,10 @@ export async function login(
         formError: 'Login cooldown',
         documentId,
         nextAllowedAt: error.nextAllowedAt.toISOString(),
+        retryAfterSeconds: Math.max(
+          0,
+          Math.ceil((error.nextAllowedAt.getTime() - Date.now()) / 1000)
+        ),
       };
     }
     if (error instanceof AuthError) {

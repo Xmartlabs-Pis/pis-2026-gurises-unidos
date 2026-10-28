@@ -19,11 +19,15 @@ test('rejects wrong credentials', async ({ page }) => {
   await expect(page).toHaveURL('/login');
 });
 
-test('blocks the sixth attempt even with the correct password after reloading', async ({
+test('blocks the sixth attempt and shows the correct countdown with an inaccurate client clock', async ({
   page,
 }) => {
   const documentId = '65432127';
   createActiveUser(documentId);
+  await page.addInitScript(() => {
+    const browserNow = Date.now;
+    Date.now = () => browserNow() - 10 * 60_000;
+  });
 
   try {
     for (let attempt = 1; attempt <= 5; attempt++) {
@@ -35,6 +39,7 @@ test('blocks the sixth attempt even with the correct password after reloading', 
     }
 
     await expect(page.getByRole('status')).toContainText('Demasiados intentos');
+    await expect(page.getByRole('status')).toContainText(/en (5:00|4:5\d)\./);
     await expect(page.getByRole('button', { name: 'Ingresar' })).toBeDisabled();
 
     await login(page, documentId);

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuthError, CredentialsSignin } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { login, logout } from '@/app/actions/auth';
@@ -41,6 +41,9 @@ function makeFormData(documentId: string, password: string, remember = false) {
 }
 
 describe('login', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   beforeEach(() => {
     vi.mocked(signIn).mockReset();
     vi.mocked(auth).mockReset();
@@ -136,6 +139,8 @@ describe('login', () => {
   });
 
   test('returns the persisted next attempt date and normalized document id on cooldown', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T15:00:00Z'));
     const nextAllowedAt = new Date('2026-10-26T15:05:00Z');
     vi.mocked(signIn).mockRejectedValue(new LoginCooldownError(nextAllowedAt));
 
@@ -143,10 +148,21 @@ describe('login', () => {
       formError: 'Login cooldown',
       documentId: '11111111',
       nextAllowedAt: nextAllowedAt.toISOString(),
+      retryAfterSeconds: 300,
     });
     expect(cookieStore.set).not.toHaveBeenCalled();
     expect(auth).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  test('returns the remaining wait rounded up to a whole second', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T15:04:58.100Z'));
+    vi.mocked(signIn).mockRejectedValue(new LoginCooldownError(new Date('2026-10-26T15:05:00Z')));
+
+    expect(await login({}, makeFormData('11111111', 'password'))).toMatchObject({
+      retryAfterSeconds: 2,
+    });
   });
 
   test('ignores previous login state', async () => {
