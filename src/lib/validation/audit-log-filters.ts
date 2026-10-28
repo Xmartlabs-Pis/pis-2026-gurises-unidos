@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { toSingleValues, type CanonicalQuery, type RawSearchParams } from '@/lib/url-filters';
 import { parseId } from '@/lib/validation/ids';
+import { normalizeDocumentId } from '@/lib/utils';
 
 export const AUDIT_LOG_PAGE_SIZES = [20, 50, 100] as const;
 export const AUDIT_LOG_DEFAULT_PAGE_SIZE = AUDIT_LOG_PAGE_SIZES[0];
-export const LISTED_AUDIT_ACTIONS = ['creation', 'update', 'deletion'] as const;
-export const LISTED_AUDIT_ENTITIES = ['project', 'beneficiary', 'user'] as const;
+export const LISTED_AUDIT_ACTIONS = ['creation', 'update', 'deletion', 'loginFailure'] as const;
+export const LISTED_AUDIT_ENTITIES = ['project', 'beneficiary', 'user', 'authentication'] as const;
 
 export type ListedAuditAction = (typeof LISTED_AUDIT_ACTIONS)[number];
 export type ListedAuditEntity = (typeof LISTED_AUDIT_ENTITIES)[number];
@@ -16,6 +17,14 @@ export const auditLogFiltersSchema = z
   .object({
     action: z.enum(LISTED_AUDIT_ACTIONS).optional().catch(undefined),
     entity: z.enum(LISTED_AUDIT_ENTITIES).optional().catch(undefined),
+    documentId: z
+      .string()
+      .trim()
+      .regex(/^[\d.\s-]+$/)
+      .transform(normalizeDocumentId)
+      .pipe(z.string().regex(/^\d{7,8}$/))
+      .optional()
+      .catch(undefined),
     authorId: z
       .unknown()
       .transform((value) => parseId(value) ?? undefined)
@@ -46,6 +55,7 @@ export function toCanonicalAuditLogQuery(filters: AuditLogFilters): CanonicalQue
   return {
     action: filters.action,
     entity: filters.entity,
+    documentId: filters.documentId,
     authorId: filters.authorId,
     from: filters.from,
     to: filters.to,

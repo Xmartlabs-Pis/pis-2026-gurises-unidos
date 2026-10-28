@@ -2,6 +2,10 @@ import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import { PROJECT_FIELD_LABELS, PROJECT_TEXT_CHANGE_LABELS } from '@/lib/audit-log/constants';
 import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
+import {
+  loginFailureDetailsSchema,
+  LOGIN_FAILURE_REASON_LABELS,
+} from '@/lib/audit-log/login-failure';
 import { ROLE_LABELS, STATUS_LABELS } from '@/lib/users/constants';
 import type { ListedAuditAction, ListedAuditEntity } from '@/lib/validation/audit-log-filters';
 
@@ -66,6 +70,10 @@ export function describeAuditDetails(
   entry: { action: ListedAuditAction; entity: ListedAuditEntity; details: Prisma.JsonValue },
   categoryLabels: Record<string, string>
 ) {
+  if (entry.action === 'loginFailure') {
+    const parsed = loginFailureDetailsSchema.safeParse(entry.details);
+    return parsed.success ? LOGIN_FAILURE_REASON_LABELS[parsed.data.reason] : null;
+  }
   const details = auditDetailsSchema.parse(entry.details ?? {});
 
   if (entry.entity === 'beneficiary') {

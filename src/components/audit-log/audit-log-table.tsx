@@ -18,7 +18,7 @@ import type { AuditLogListItem } from '@/lib/audit-log/list';
 import { ROLE_LABELS } from '@/lib/users/constants';
 import { formatDate, fullName } from '@/lib/users/format';
 
-const EMPTY_MESSAGE = 'No hay cambios registrados con estos filtros';
+const EMPTY_MESSAGE = 'No hay registros con estos filtros';
 
 function ActionBadge({ action }: Pick<AuditLogListItem, 'action'>) {
   return <Badge className={AUDIT_ACTION_CLASSNAMES[action]}>{AUDIT_ACTION_LABELS[action]}</Badge>;
@@ -51,7 +51,9 @@ export function AuditLogTable({ entries }: { entries: AuditLogListItem[] }) {
                 <p className="text-muted-foreground text-sm break-words">{entry.summary}</p>
               )}
               <p className="text-muted-foreground mt-1 truncate text-sm">
-                {fullName(entry.author)} · {ROLE_LABELS[entry.author.role]}
+                {entry.author
+                  ? `${fullName(entry.author)} · ${ROLE_LABELS[entry.author.role]}`
+                  : 'Sin autenticar'}
               </p>
             </CardContent>
           </Card>
@@ -91,8 +93,14 @@ export function AuditLogTable({ entries }: { entries: AuditLogListItem[] }) {
                   </time>
                 </TableCell>
                 <TableCell className="h-15 px-4 py-3">
-                  <p className="text-foreground truncate font-medium">{fullName(entry.author)}</p>
-                  <p className="text-muted-foreground text-xs">{ROLE_LABELS[entry.author.role]}</p>
+                  <p className="text-foreground truncate font-medium">
+                    {entry.author ? fullName(entry.author) : 'Sin autenticar'}
+                  </p>
+                  {entry.author && (
+                    <p className="text-muted-foreground text-xs">
+                      {ROLE_LABELS[entry.author.role]}
+                    </p>
+                  )}
                 </TableCell>
                 <TableCell className="h-15 px-4 py-3">
                   <ActionBadge action={entry.action} />
