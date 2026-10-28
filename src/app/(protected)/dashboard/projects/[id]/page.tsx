@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ProjectTopbarRegistration } from '@/components/layout/topbar-context';
+import { ProjectHistory } from '@/components/projects/form/project-history';
 import { BeneficiaryDistribution } from '@/components/projects/detail/beneficiary-distribution';
 import { InstitutionalContribution } from '@/components/projects/detail/institutional-contribution';
 import { ProjectDetailHeader } from '@/components/projects/detail/project-detail-header';
@@ -7,7 +8,9 @@ import { ProjectMetrics } from '@/components/projects/detail/project-metrics';
 import { ProjectPublicCard } from '@/components/projects/detail/project-public-card';
 import { ProjectRecentActivity } from '@/components/projects/detail/project-recent-activity';
 import { ProjectYearEmptyState } from '@/components/projects/detail/project-year-empty-state';
+import { getBeneficiaryCategoryLabels } from '@/lib/beneficiary-categories';
 import { getProjectDetail } from '@/lib/projects/detail';
+import { getProjectHistory } from '@/lib/projects/history';
 
 type ProjectDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -33,6 +36,10 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
     distribution,
     institutionalContribution,
   } = result.data;
+
+  const [history, fieldLabels] = canEdit
+    ? await Promise.all([getProjectHistory(project.id), getBeneficiaryCategoryLabels()])
+    : [null, null];
 
   return (
     <div className="bg-surface-page flex-1">
@@ -74,6 +81,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
             />
           </>
         )}
+        {history && fieldLabels && <ProjectHistory entries={history} fieldLabels={fieldLabels} />}
         <ProjectRecentActivity />
       </div>
     </div>

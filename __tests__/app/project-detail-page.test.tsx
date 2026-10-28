@@ -2,8 +2,9 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { TopbarProvider } from '@/components/layout/topbar-context';
 
-const { getProjectDetailMock, notFoundMock } = vi.hoisted(() => ({
+const { getProjectDetailMock, getProjectHistoryMock, notFoundMock } = vi.hoisted(() => ({
   getProjectDetailMock: vi.fn(),
+  getProjectHistoryMock: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -11,6 +12,12 @@ const { getProjectDetailMock, notFoundMock } = vi.hoisted(() => ({
 
 vi.mock('@/lib/projects/detail', () => ({
   getProjectDetail: getProjectDetailMock,
+}));
+vi.mock('@/lib/projects/history', () => ({
+  getProjectHistory: getProjectHistoryMock,
+}));
+vi.mock('@/lib/beneficiary-categories', () => ({
+  getBeneficiaryCategoryLabels: vi.fn().mockResolvedValue({}),
 }));
 vi.mock('next/navigation', () => ({
   notFound: notFoundMock,
@@ -110,6 +117,46 @@ beforeEach(() => {
     throw new Error('NEXT_NOT_FOUND');
   });
   getProjectDetailMock.mockResolvedValue(DETAIL);
+  getProjectHistoryMock.mockReset();
+  getProjectHistoryMock.mockResolvedValue([
+    {
+      id: 1,
+      action: 'update',
+      entity: 'project',
+      details: { changes: [{ field: 'name', from: 'Resorte', to: 'El Resorte' }] },
+      occurredAt: new Date('2026-05-10T15:00:00Z'),
+      author: { firstName: 'Ana', lastName: 'García' },
+    },
+  ]);
+});
+
+async function renderPage() {
+  render(
+    <TopbarProvider>
+      {await ProjectDetailPage({
+        params: Promise.resolve({ id: '42' }),
+        searchParams: Promise.resolve({}),
+      })}
+    </TopbarProvider>
+  );
+}
+
+test('shows the project change history to users who can edit the project', async () => {
+  await renderPage();
+
+  expect(getProjectHistoryMock).toHaveBeenCalledWith(42);
+  expect(screen.getByRole('heading', { name: 'Historial' })).toBeDefined();
+  expect(screen.getByText('Ana García actualizó el proyecto')).toBeDefined();
+  expect(screen.getByText('Nombre: Resorte → El Resorte')).toBeDefined();
+});
+
+test('hides the project change history from users who cannot edit the project', async () => {
+  getProjectDetailMock.mockResolvedValue({ ...DETAIL, data: { ...DETAIL.data, canEdit: false } });
+
+  await renderPage();
+
+  expect(getProjectHistoryMock).not.toHaveBeenCalled();
+  expect(screen.queryByRole('heading', { name: 'Historial' })).toBeNull();
 });
 
 test('renders the selected project year and its main sections', async () => {
