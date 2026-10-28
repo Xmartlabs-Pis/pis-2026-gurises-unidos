@@ -21,7 +21,6 @@ export function getDefaultValues(
     countries: [],
     cities: [],
     neighborhoods: [],
-    zone: 'city',
     generalObjective: '',
     publicDescription: '',
     internalNotes: '',
