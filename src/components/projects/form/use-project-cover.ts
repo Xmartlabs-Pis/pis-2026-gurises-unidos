@@ -1,23 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getRandomProjectPlaceholder } from '@/lib/projects/project-placeholders';
 import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
 
 export function useProjectCover(savedUrl: string | null) {
   const [file, setFile] = useState<File | null>(null);
   const [removedPlaceholder, setRemovedPlaceholder] = useState<string | null>(null);
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const objectUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
 
   useEffect(() => {
-    if (!file) {
-      setObjectUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setObjectUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    if (!objectUrl) return;
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [objectUrl]);
 
   return {
     file,

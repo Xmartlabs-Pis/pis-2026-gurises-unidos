@@ -1,3 +1,4 @@
+/** @vitest-environment node */
 import { access, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -32,13 +33,12 @@ async function jpegCover() {
 }
 
 async function coverRequest(body: FormData, headers?: HeadersInit) {
-  return POST(
-    new NextRequest('http://localhost/api/projects/covers', {
-      method: 'POST',
-      body,
-      headers,
-    })
-  );
+  const request = new NextRequest('http://localhost/api/projects/covers', {
+    method: 'POST',
+    headers,
+  });
+  vi.spyOn(request, 'formData').mockResolvedValue(body);
+  return POST(request);
 }
 
 describe('POST /api/projects/covers', () => {

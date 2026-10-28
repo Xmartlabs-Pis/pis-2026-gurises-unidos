@@ -84,7 +84,7 @@ export function ImageUploadField({
         onClick={openPicker}
       >
         {value ? (
-          <span className="flex min-w-0 max-w-full items-center justify-center">
+          <span className="flex max-w-full min-w-0 items-center justify-center">
             <span className="truncate">{value.name}</span>
             <span className="shrink-0"> · Cambiar imagen</span>
           </span>
