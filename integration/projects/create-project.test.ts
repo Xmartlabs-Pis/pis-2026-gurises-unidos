@@ -175,6 +175,16 @@ describe('createProject (integration)', () => {
     ]);
   });
 
+  test('ignores a submitted zone and stores the project without one', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ zone: 'city' }))
+    );
+
+    expect((await loadProject(projectId)).zone).toBeNull();
+  });
+
   test('stores an inactive project with its end year', async () => {
     signInAs(seed.adminId);
 

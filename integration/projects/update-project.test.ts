@@ -255,6 +255,21 @@ describe('updateProject (integration)', () => {
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 
+  test('ignores a submitted zone and keeps the stored one', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ zone: 'city' })),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(before.zone).toBe('rural');
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
   test('updates the beneficiaries of an existing year in place', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);
