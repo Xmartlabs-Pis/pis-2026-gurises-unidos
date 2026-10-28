@@ -109,11 +109,7 @@ test('shows every beneficiary category in the provided order', () => {
 test('keeps the public card horizontal and separates contribution rows on mobile', () => {
   const { container } = render(
     <>
-      <ProjectPublicCard
-        name="El Resorte"
-        description="Community support project."
-        coverPhoto={null}
-      />
+      <ProjectPublicCard name="El Resorte" coverPhoto={null} />
       <InstitutionalContribution
         data={{
           nationalReach: { projectValue: 342, nationalValue: 4286, percentage: 8 },

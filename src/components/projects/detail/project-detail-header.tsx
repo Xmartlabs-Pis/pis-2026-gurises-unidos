@@ -41,7 +41,7 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   ];
   const classifications = [
     { label: 'Líneas Estratégicas:', value: strategicLines },
-    { label: 'Temáticas:', value: topics || 'Sin temáticas' },
+    { label: 'Temáticas:', value: topics },
   ];
 
   return (

@@ -61,11 +61,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
             <div className="grid items-stretch gap-4 lg:grid-cols-2">
               <div className="flex min-w-0 flex-col gap-4">
                 <BeneficiaryDistribution data={distribution} year={selectedYear} />
-                <ProjectPublicCard
-                  name={project.name}
-                  description={project.publicDescription}
-                  coverPhoto={project.coverPhoto}
-                />
+                <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
               </div>
               <InstitutionalContribution data={institutionalContribution} />
             </div>
@@ -73,11 +69,7 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
         ) : (
           <>
             <ProjectYearEmptyState year={selectedYear} />
-            <ProjectPublicCard
-              name={project.name}
-              description={project.publicDescription}
-              coverPhoto={project.coverPhoto}
-            />
+            <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
           </>
         )}
         <ProjectRecentActivity />

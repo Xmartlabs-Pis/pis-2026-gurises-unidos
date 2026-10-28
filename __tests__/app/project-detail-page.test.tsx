@@ -169,6 +169,7 @@ test.each([true, false])(
     expect(within(description).getByRole('heading').textContent).toBe('Descripción pública');
     expect(description.querySelector('p')?.textContent).toBe(publicDescription);
     expect(notes.querySelector('p')?.textContent).toBe(internalNotes);
+    expect(screen.getAllByText(publicDescription, { normalizer: (text) => text })).toHaveLength(1);
     expect(screen.getByText('Temáticas:')).toBeDefined();
     expect(screen.getByText('Educación')).toBeDefined();
   }
@@ -179,7 +180,7 @@ test('shows empty messages for missing descriptions and notes', async () => {
     ...DETAIL,
     data: {
       ...DETAIL.data,
-      project: { ...DETAIL.data.project, publicDescription: null, internalNotes: '   ' },
+      project: { ...DETAIL.data.project, publicDescription: null, internalNotes: null },
     },
   });
 

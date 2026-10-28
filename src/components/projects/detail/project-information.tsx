@@ -33,7 +33,7 @@ export function ProjectInformation({ publicDescription, internalNotes }: Project
             {title}
           </h2>
           <p className="text-muted-foreground mt-2 text-sm leading-5 [overflow-wrap:anywhere] whitespace-pre-wrap">
-            {content?.trim() ? content : emptyMessage}
+            {content ?? emptyMessage}
           </p>
         </section>
       ))}

@@ -145,6 +145,8 @@ test.describe('creating a project', () => {
       await expect(notes).toBeVisible();
       await expect(description.locator('p')).toHaveText(publicDescription);
       await expect(notes.locator('p')).toHaveText(internalNotes);
+      await expect(page.getByText(publicDescription, { exact: true })).toHaveCount(1);
+      await expect(page.getByRole('link', { name: 'Ver vista pública →' })).toBeVisible();
       await expect(
         page.getByText(`${E2E_TOPICS[0]}, ${E2E_TOPICS[1]}`, { exact: true })
       ).toBeVisible();
