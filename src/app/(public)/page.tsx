@@ -2,6 +2,7 @@ import { getContributors } from '@/lib/contributors';
 import { Button } from '@/components/ui/button';
 import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
+import { getPublicStats } from '@/lib/metrics/public-stats';
 import { resolveYearParam } from '@/lib/metrics/year';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
@@ -51,14 +52,10 @@ export default async function Home({
     getTopicStatistics(year),
     getContributors(),
   ]);
-  const stats = settings
-    .filter((metric) => metric.showPublicly)
-    .map((metric) => ({
-      key: metric.key,
-      value: formatNumber(values[metric.key]),
-      description: metric.name,
-      increment: formatIncrement(values[metric.key], previousValues[metric.key], year - 1),
-    }));
+  const stats = getPublicStats(settings, values).map((stat) => ({
+    ...stat,
+    increment: formatIncrement(values[stat.key], previousValues[stat.key], year - 1),
+  }));
 
   const visibleTopics = getVisibleTopics(topics);
   const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));

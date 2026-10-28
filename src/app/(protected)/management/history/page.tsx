@@ -1,9 +1,8 @@
-import { auth } from '@/auth';
 import { AuditLogPagination } from '@/components/audit-log/audit-log-pagination';
 import { AuditLogTable } from '@/components/audit-log/audit-log-table';
 import { AuditLogToolbar } from '@/components/audit-log/audit-log-toolbar';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { listAuditLog, listAuditLogAuthors } from '@/lib/audit-log/list';
 import { redirectToCanonical, type RawSearchParams } from '@/lib/url-filters';
 import { parseAuditLogFilters, toCanonicalAuditLogQuery } from '@/lib/validation/audit-log-filters';
@@ -13,11 +12,7 @@ export default async function AuditHistoryPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  const session = await auth();
-
-  if (session?.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  await requireAdmin();
 
   const rawParams = await searchParams;
   const filters = parseAuditLogFilters(rawParams);

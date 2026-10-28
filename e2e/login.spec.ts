@@ -49,3 +49,26 @@ test('blocks non admin users from the users management page', async ({ page }) =
   await expect(page.getByRole('heading', { level: 1, name: 'Acceso denegado' })).toBeVisible();
   await expect(page.getByRole('table')).toHaveCount(0);
 });
+
+for (const path of [
+  '/management/users/new',
+  '/management/topics',
+  '/management/beneficiary-categories',
+  '/management/strategic-lines',
+  '/management/metrics',
+]) {
+  test(`blocks non admin users from ${path}`, async ({ page }) => {
+    await loginAs(page, E2E_COORDINATOR.documentId);
+    const response = await page.goto(path);
+
+    expect(response?.status()).toBe(403);
+    await expect(page.getByRole('heading', { level: 1, name: 'Acceso denegado' })).toBeVisible();
+  });
+}
+
+test('lets non admin users open their profile', async ({ page }) => {
+  await loginAs(page, E2E_COORDINATOR.documentId);
+  await page.goto('/management/profile');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Mi perfil' })).toBeVisible();
+});
