@@ -150,7 +150,10 @@ export async function getProjectSheetData(
         label: 'Líneas estratégicas',
         value: joinList(project.strategicLines.map(({ name }) => name)),
       },
-      { label: 'Zona', value: optionLabel(ZONE_OPTIONS, project.zone) },
+      {
+        label: 'Zona',
+        value: project.zone ? optionLabel(ZONE_OPTIONS, project.zone) : EMPTY_VALUE,
+      },
       { label: 'Ciudades', value: joinList(project.cities) },
       { label: 'Barrios', value: joinList(project.neighborhoods) },
       { label: 'Visible en la web', value: project.showOnLanding ? 'Sí' : 'No' },
