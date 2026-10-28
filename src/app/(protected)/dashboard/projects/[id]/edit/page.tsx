@@ -36,7 +36,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
       departments: { select: { id: true } },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
-        select: { year: true, ...BENEFICIARY_VALUES_SELECT },
+        select: { id: true, year: true, ...BENEFICIARY_VALUES_SELECT },
       },
     },
   });
@@ -65,7 +65,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
       select: { id: true, firstName: true, lastName: true },
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
-    getProjectHistory(project.id),
+    getProjectHistory(project.id, project.projectBeneficiaries.map(({ id }) => id)),
     prisma.topic.findMany({
       where: {
         OR: [{ isActive: true }, { id: { in: project.topics.map(({ id }) => id) } }],
