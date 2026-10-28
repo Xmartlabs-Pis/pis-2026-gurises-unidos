@@ -1,5 +1,12 @@
 import { AUDIT_ENTITY_LABELS } from '@/lib/audit-log/constants';
 import type { AuditLogListItem } from '@/lib/audit-log/list';
+import {
+  COUNTERPARTY_LABEL,
+  GEOGRAPHIC_SCOPE_OPTIONS,
+  INTENSITY_LABEL,
+  STATUS_LABEL,
+  ZONE_OPTIONS,
+} from '@/lib/project-display';
 
 export function formatAuditTime(date: Date) {
   return new Date(date).toLocaleTimeString('es-UY', {
@@ -34,4 +41,40 @@ export function formatAuditLogCount(count: number) {
   if (count === 0) return 'No hay resultados';
   if (count === 1) return '1 registro';
   return `${count} registros`;
+}
+
+export const PROJECT_VALUE_LABELS: Record<string, Record<string, string>> = {
+  status: STATUS_LABEL,
+  intensity: INTENSITY_LABEL,
+  counterpartyType: COUNTERPARTY_LABEL,
+  geographicScope: Object.fromEntries(
+    GEOGRAPHIC_SCOPE_OPTIONS.map(({ value, label }) => [value, label])
+  ),
+  zone: Object.fromEntries(ZONE_OPTIONS.map(({ value, label }) => [value, label])),
+};
+
+export function formatAuditValue(
+  field: string,
+  value: unknown,
+  valueLabels: Record<string, Record<string, string>> = {}
+): string {
+  if (value === null || value === undefined || value === '') return 'Sin datos';
+
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+
+  if (Array.isArray(value)) {
+    return value.length
+      ? value.map((item) => formatAuditValue(field, item, valueLabels)).join(', ')
+      : 'Sin datos';
+  }
+
+  if (typeof value === 'object') {
+    return 'name' in value && typeof value.name === 'string' && value.name
+      ? value.name
+      : 'Sin datos';
+  }
+
+  const label = valueLabels[field]?.[String(value)];
+
+  return typeof label === 'string' ? label : String(value);
 }

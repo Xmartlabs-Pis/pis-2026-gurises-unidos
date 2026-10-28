@@ -48,3 +48,9 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   beneficiary: 'Beneficiarios',
   user: 'Usuario',
 };
+
+export const PROJECT_TEXT_CHANGE_LABELS: Record<string, string> = {
+  generalObjective: 'modificado',
+  publicDescription: 'modificada',
+  internalNotes: 'modificadas',
+};
