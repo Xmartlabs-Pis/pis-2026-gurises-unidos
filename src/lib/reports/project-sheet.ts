@@ -6,7 +6,6 @@ import {
   COUNTERPARTY_LABEL,
   GEOGRAPHIC_SCOPE_OPTIONS,
   STATUS_LABEL,
-  ZONE_OPTIONS,
   getIntensityLabel,
   sumBeneficiaries,
   type BeneficiaryCounts,
@@ -65,7 +64,6 @@ export async function getProjectSheetData(
       startYear: true,
       endYear: true,
       leadCoordinatorId: true,
-      zone: true,
       generalObjective: true,
       publicDescription: true,
       showOnLanding: true,
@@ -149,10 +147,6 @@ export async function getProjectSheetData(
       {
         label: 'Líneas estratégicas',
         value: joinList(project.strategicLines.map(({ name }) => name)),
-      },
-      {
-        label: 'Zona',
-        value: project.zone ? optionLabel(ZONE_OPTIONS, project.zone) : EMPTY_VALUE,
       },
       { label: 'Ciudades', value: joinList(project.cities) },
       { label: 'Barrios', value: joinList(project.neighborhoods) },
