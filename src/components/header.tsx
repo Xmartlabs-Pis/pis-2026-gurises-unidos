@@ -12,14 +12,13 @@ import {
 } from '@/components/ui/sheet';
 import Image from 'next/image';
 import logo from '@/assets/logo.png';
-import { PublicHeaderSurface } from '@/components/public-header-surface';
 
 export async function Header() {
   const session = await auth();
   const projectsHref = '/dashboard/projects';
 
   return (
-    <PublicHeaderSurface>
+    <header className="bg-background fixed inset-x-0 top-0 z-40">
       <div className="flex h-16 items-center justify-between px-4 md:px-16">
         <Link href="/" className="text-foreground flex items-center gap-2">
           <Image
@@ -115,6 +114,6 @@ export async function Header() {
           </SheetContent>
         </Sheet>
       </div>
-    </PublicHeaderSurface>
+    </header>
   );
 }

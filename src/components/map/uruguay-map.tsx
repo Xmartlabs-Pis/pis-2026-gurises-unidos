@@ -23,7 +23,8 @@ const HINT_DURATION_MS = 500;
 const FIT_PADDING_PX = 12;
 
 const DEPARTMENT_STYLE: PathOptions = {
-  color: 'var(--surface-brand-deep)',
+  color: 'var(--primary)',
+  opacity: 1,
   weight: 1,
   fillColor: 'var(--surface-page)',
   fillOpacity: 1,
@@ -31,8 +32,8 @@ const DEPARTMENT_STYLE: PathOptions = {
 
 const HIGHLIGHT_STYLE: PathOptions = {
   weight: 2,
-  fillColor: 'var(--surface-brand-deep)',
-  fillOpacity: 0.4,
+  fillColor: 'var(--primary)',
+  fillOpacity: 0.7,
 };
 
 type UruguayMapProps = {

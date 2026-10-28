@@ -205,6 +205,16 @@
   --sidebar-ring: #f5970c;
 }
 
+.theme-public main > section:nth-child(even) {
+  background-image: linear-gradient(
+    to bottom,
+    var(--background),
+    #ffffff 3rem,
+    #ffffff calc(100% - 3rem),
+    var(--background)
+  );
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
