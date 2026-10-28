@@ -3,6 +3,7 @@ import { STATUS_LABEL, INTENSITY_LABEL } from '@/lib/project-display';
 import { forbidden, notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/require-user';
 import { canEditProject } from '@/lib/projects/permissions';
+import { getProjectHistory } from '@/lib/projects/history';
 import { parseId } from '@/lib/validation/ids';
 import { updateProject } from '@/app/actions/projects';
 import { ProjectForm } from '@/components/projects/form/project-form';
@@ -64,26 +65,10 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
       select: { id: true, firstName: true, lastName: true },
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
-    prisma.auditLog.findMany({
-      where: {
-        OR: [
-          { entity: 'project', entityId: project.id },
-          {
-            entity: 'beneficiary',
-            entityId: { in: project.projectBeneficiaries.map((b) => b.id) },
-          },
-        ],
-      },
-      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-      select: {
-        id: true,
-        action: true,
-        entity: true,
-        details: true,
-        occurredAt: true,
-        author: { select: { firstName: true, lastName: true } },
-      },
-    }),
+    getProjectHistory(
+      project.id,
+      project.projectBeneficiaries.map(({ id }) => id)
+    ),
     prisma.topic.findMany({
       where: {
         OR: [{ isActive: true }, { id: { in: project.topics.map(({ id }) => id) } }],
