@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProjectFormState } from '@/lib/validation/project';
 
@@ -241,6 +244,40 @@ describe('createProject', () => {
         },
       },
     });
+  });
+
+  test('stores an uploaded cover instead of a placeholder', async () => {
+    const { projectCreate } = setupTransaction();
+    const data = buildFormData();
+    data.set('coverPhotoPath', '/uploads/covers/11111111-1111-4111-8111-111111111111.webp');
+    await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
+      'NEXT_REDIRECT:/dashboard/projects/42'
+    );
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        coverPhoto: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+      }),
+    });
+  });
+
+  test('deletes the uploaded cover when creation is rejected', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(coverPhotoPath)), 'new');
+      setupTransaction({ existingDepartments: 0 });
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { departmentIds: ['Elegí departamentos válidos'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   test.each([undefined, '', '1', 'invalid'])(

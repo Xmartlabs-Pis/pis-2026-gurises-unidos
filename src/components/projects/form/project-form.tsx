@@ -13,6 +13,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ReactNode,
   type SubmitEvent,
 } from 'react';
@@ -33,9 +34,12 @@ import { FormActions } from '@/components/ui/forms/form-actions';
 import { getDefaultValues } from './get-default-values';
 import { getPreviewLabels } from './get-preview-labels';
 import { notify } from '@/lib/notify';
+import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
+import { useProjectCover } from './use-project-cover';
 
 type ProjectFormProps = {
   mode?: 'create' | 'edit';
+  projectId?: number;
   initialValues?: Partial<ProjectFormValues>;
   submitAction: (previousState: ProjectFormState, formData: FormData) => Promise<ProjectFormState>;
   cancelHref?: string;
@@ -52,8 +56,25 @@ type ProjectFormProps = {
 
 const INITIAL_STATE: ProjectFormState = {};
 
+async function uploadProjectCover(file: File, projectId?: number) {
+  const body = new FormData();
+  body.set('coverPhoto', file);
+  if (projectId) body.set('projectId', String(projectId));
+  const response = await fetch('/api/projects/covers', { method: 'POST', body });
+  const payload = (await response.json().catch(() => null)) as {
+    path?: string;
+    error?: string;
+  } | null;
+  const path = payload?.path;
+  if (!response.ok || !isUploadedCoverPath(path)) {
+    return { ok: false as const, error: payload?.error ?? 'No se pudo subir la imagen.' };
+  }
+  return { ok: true as const, path };
+}
+
 export function ProjectForm({
   mode = 'create',
+  projectId,
   coordinators,
   departments,
   topics,
@@ -101,7 +122,10 @@ export function ProjectForm({
     ...getDefaultValues(currentYear, beneficiaryCategories),
     ...initialValues,
   };
+  const cover = useProjectCover(defaultValues.coverPhotoUrl ?? null);
+  const [uploading, setUploading] = useState(false);
   const [state, formAction, pending] = useActionState(submitAction, INITIAL_STATE);
+  const busy = pending || uploading;
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(schema) as unknown as Resolver<ProjectFormValues>,
     defaultValues,
@@ -113,7 +137,7 @@ export function ProjectForm({
   const values = {
     ...defaultValues,
     ...watchedValues,
-    coverPhotoUrl: defaultValues.coverPhotoUrl ?? null,
+    coverPhotoUrl: cover.previewUrl,
   } as ProjectFormValues;
 
   const { locationLabel, coverageLabel, beneficiaryTotal } = getPreviewLabels(
@@ -149,9 +173,28 @@ export function ProjectForm({
     submissionRef.current = true;
     const formElement = event.currentTarget;
     return handleSubmit(
-      () => {
+      async () => {
+        const data = new FormData(formElement);
+        if (cover.file) {
+          setUploading(true);
+          try {
+            const uploaded = await uploadProjectCover(cover.file, projectId);
+            if (!uploaded.ok) {
+              notify.error({ title: uploaded.error });
+              submissionRef.current = false;
+              return;
+            }
+            data.set('coverPhotoPath', uploaded.path);
+          } catch {
+            notify.error({ title: 'No se pudo subir la imagen.' });
+            submissionRef.current = false;
+            return;
+          } finally {
+            setUploading(false);
+          }
+        }
         startTransition(() => {
-          formAction(new FormData(formElement));
+          formAction(data);
         });
       },
       () => {
@@ -183,11 +226,21 @@ export function ProjectForm({
           'text-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col',
           isEditing ? 'bg-surface-page' : 'bg-muted/30'
         )}
-        aria-busy={pending}
-        onSubmit={onSubmit}
+        aria-busy={busy}
+        onSubmit={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onSubmit(event);
+        }}
       >
-        {!isEditing && values.coverPhotoUrl && (
-          <input type="hidden" name="projectPlaceholder" value={values.coverPhotoUrl} />
+        {!isEditing && defaultValues.coverPhotoUrl && (
+          <input type="hidden" name="projectPlaceholder" value={defaultValues.coverPhotoUrl} />
+        )}
+        {cover.removedPlaceholder && (
+          <>
+            <input type="hidden" name="removeCoverPhoto" value="true" />
+            <input type="hidden" name="projectPlaceholder" value={cover.removedPlaceholder} />
+          </>
         )}
         <div
           className={cn(
@@ -224,7 +277,12 @@ export function ProjectForm({
               beneficiaryCategories={beneficiaryCategories}
             />
 
-            <PublicInfoSection />
+            <PublicInfoSection
+              coverFile={cover.file}
+              imageUrl={cover.fieldImageUrl}
+              onCoverFileChange={cover.changeFile}
+              onRemoveSavedCover={cover.canRemove ? cover.remove : undefined}
+            />
 
             <VisibilitySection />
 
@@ -242,7 +300,7 @@ export function ProjectForm({
         <FormActions
           onCancel={() => router.push(cancelHref)}
           submitLabel="Guardar cambios"
-          pending={pending}
+          pending={busy}
         />
       </form>
     </FormProvider>

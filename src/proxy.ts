@@ -73,6 +73,6 @@ export const proxy = auth((request) => {
 
 export const config = {
   matcher: [
-    '/((?!api/auth(?:/|$)|_next/static/|_next/image$|images/project-placeholders/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|(?:.+/)?(?:icon|apple-icon|opengraph-image|twitter-image)\\d*(?:\\.\\w+)?$).*)',
+    '/((?!api/auth(?:/|$)|_next/static/|_next/image$|images/project-placeholders/|uploads/covers/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|(?:.+/)?(?:icon|apple-icon|opengraph-image|twitter-image)\\d*(?:\\.\\w+)?$).*)',
   ],
 };

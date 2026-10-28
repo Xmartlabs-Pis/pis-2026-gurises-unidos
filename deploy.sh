@@ -9,6 +9,8 @@ TAG="$3"
 cd "/srv/pis-$BRANCH"
 
 export COMPOSE_PROJECT_NAME="pis-$BRANCH" PORT TAG
+export UPLOADS_DIR="/srv/pis-uploads/$BRANCH"
+mkdir -p "$UPLOADS_DIR"
 docker compose pull
 docker compose up -d
 docker image prune -f              # ponytail: sin esto el disco de la VM se llena en semanas

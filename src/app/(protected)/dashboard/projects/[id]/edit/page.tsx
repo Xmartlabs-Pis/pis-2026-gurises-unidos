@@ -123,6 +123,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
       <ProjectForm
         key={project.id}
         mode="edit"
+        projectId={project.id}
         initialValues={projectToFormValues(
           { ...project, projectBeneficiaries: beneficiaryRecords },
           currentYear,

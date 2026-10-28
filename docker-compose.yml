@@ -5,6 +5,8 @@ services:
     ports:
       - '${PORT:-3000}:3000'
     env_file: .env
+    volumes:
+      - ${UPLOADS_DIR:-./uploads}:/app/public/uploads
     depends_on:
       db:
         condition: service_healthy

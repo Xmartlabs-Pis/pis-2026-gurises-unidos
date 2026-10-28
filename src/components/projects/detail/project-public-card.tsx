@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { cn } from 'cn';
 import { buttonVariants } from '@/components/ui/button';
 
 type ProjectPublicCardProps = {
@@ -10,7 +11,12 @@ type ProjectPublicCardProps = {
 export function ProjectPublicCard({ name, coverPhoto }: ProjectPublicCardProps) {
   return (
     <section className="border-border bg-card grid min-h-32 grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 rounded-[14px] border p-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4 sm:p-5">
-      <div className="bg-project-cover relative aspect-video overflow-hidden rounded-lg">
+      <div
+        className={cn(
+          'relative aspect-video overflow-hidden rounded-lg',
+          !coverPhoto && 'bg-project-cover'
+        )}
+      >
         {coverPhoto && (
           <Image src={coverPhoto} alt={`Portada de ${name}`} fill className="object-cover" />
         )}

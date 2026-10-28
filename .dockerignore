@@ -3,3 +3,5 @@ node_modules
 .git
 .env
 .env.*
+uploads
+public/uploads

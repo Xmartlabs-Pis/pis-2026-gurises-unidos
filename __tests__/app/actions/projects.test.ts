@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProject, deleteProject, updateProject } from '@/app/actions/projects';
 import { Prisma } from '@/generated/prisma/client';
@@ -16,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   findUser: vi.fn(),
   findCoordinator: vi.fn(),
   findProject: vi.fn(),
+  findLiveCover: vi.fn(),
   findDuplicateProject: vi.fn(),
   countTopics: vi.fn(),
   countDepartments: vi.fn(),
@@ -37,7 +41,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/auth', () => ({ auth: mocks.auth }));
 vi.mock('@/lib/prisma', () => ({
-  default: { $transaction: mocks.transaction, user: { findUnique: mocks.findUser } },
+  default: {
+    $transaction: mocks.transaction,
+    user: { findUnique: mocks.findUser },
+    project: { findFirst: mocks.findLiveCover },
+  },
 }));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
@@ -152,6 +160,7 @@ beforeEach(() => {
     ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
   );
   mocks.findDuplicateProject.mockResolvedValue(null);
+  mocks.findLiveCover.mockResolvedValue(null);
   mocks.queryRaw.mockImplementation(lockedCategoryRows);
   mocks.countDepartments.mockImplementation(
     async ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
@@ -1163,6 +1172,134 @@ describe('project review regressions', () => {
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
   });
+
+  it('ignores a forged cover photo path', async () => {
+    await expect(
+      updateProject(10, {}, formData({ coverPhotoPath: 'https://invalid.test/photo.png' }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
+  });
+
+  it('replaces an uploaded cover and deletes the previous file', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const previousPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(previousPath)), 'old');
+      await writeFile(path.join(directory, 'covers', path.basename(nextPath)), 'new');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: previousPath,
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+      });
+      await expect(updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).rejects.toThrow(
+        'Redirect:'
+      );
+      expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(nextPath);
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(nextPath)]);
+      expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toContain('coverPhoto');
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a previous cover in place when another live project still uses it', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const previousPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(previousPath)), 'old');
+      await writeFile(path.join(directory, 'covers', path.basename(nextPath)), 'new');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: previousPath,
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+      });
+      mocks.findLiveCover.mockResolvedValue({ id: 99 });
+      await expect(updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).rejects.toThrow(
+        'Redirect:'
+      );
+      expect(await readdir(path.join(directory, 'covers'))).toEqual(
+        expect.arrayContaining([path.basename(previousPath), path.basename(nextPath)])
+      );
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('restores a placeholder when the cover is removed', async () => {
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: '/images/project-placeholders/3.webp',
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(
+      '/images/project-placeholders/3.webp'
+    );
+  });
+
+  it('ignores a forged placeholder when the cover is removed', async () => {
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: 'https://invalid.test/photo.png',
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toMatch(
+      /^\/images\/project-placeholders\/[1-6]\.webp$/
+    );
+  });
+
+  it('deletes a new cover when the update is rejected', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const previousPath = '/uploads/covers/22222222-2222-4222-8222-222222222222.webp';
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(previousPath)), 'old');
+      await writeFile(path.join(directory, 'covers', path.basename(nextPath)), 'new');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: previousPath,
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+      });
+      mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
+        strings.join('').includes('"StrategicLine"') ? [] : lockedCategoryRows(strings, ...values)
+      );
+      expect(await updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).toEqual({
+        errors: { strategicLineIds: ['Elegí líneas estratégicas activas'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(previousPath)]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('deleteProject', () => {
@@ -1252,6 +1389,87 @@ describe('deleteProject', () => {
       expect(mocks.revalidatePath).not.toHaveBeenCalled();
     } finally {
       spy.mockRestore();
+    }
+  });
+
+  it('deletes an uploaded cover after a successful soft-delete', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhoto = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(coverPhoto)), 'old');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto,
+      });
+      expect(await deleteProject(10)).toEqual({});
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('still deletes the project when the cover file cannot be removed', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhoto = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await mkdir(path.join(directory, 'covers', path.basename(coverPhoto)), { recursive: true });
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto,
+      });
+      expect(await deleteProject(10)).toEqual({});
+      expect(mocks.revalidatePath).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves an uploaded cover when another live project still uses it', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhoto = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(coverPhoto)), 'old');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto,
+      });
+      mocks.findLiveCover.mockResolvedValue({ id: 99 });
+      expect(await deleteProject(10)).toEqual({});
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(coverPhoto)]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a placeholder file alone when the project is deleted', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', 'keep.webp'), 'keep');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: '/images/project-placeholders/1.webp',
+      });
+      expect(await deleteProject(10)).toEqual({});
+      expect(await readdir(path.join(directory, 'covers'))).toEqual(['keep.webp']);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
     }
   });
 });

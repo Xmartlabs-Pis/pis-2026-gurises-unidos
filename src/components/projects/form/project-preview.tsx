@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { cn } from 'cn';
 import { Card } from '@/components/ui/card';
 import type { ProjectFormValues } from './project-form-values';
 
@@ -27,8 +28,20 @@ export function ProjectPreview({
 
       <div className="bg-muted flex flex-col items-center gap-3 px-6 py-8">
         <Card className="theme-public bg-card text-card-foreground w-full max-w-[377px] gap-0 overflow-hidden rounded-xl border-0 py-0 shadow-none ring-0">
-          <div className="bg-project-cover relative aspect-video w-full overflow-hidden">
-            {values.coverPhotoUrl && (
+          <div
+            className={cn(
+              'relative aspect-video w-full overflow-hidden',
+              values.coverPhotoUrl
+                ? values.coverPhotoUrl.startsWith('blob:') && 'bg-cover bg-center'
+                : 'bg-project-cover'
+            )}
+            style={
+              values.coverPhotoUrl?.startsWith('blob:')
+                ? { backgroundImage: `url("${values.coverPhotoUrl}")` }
+                : undefined
+            }
+          >
+            {values.coverPhotoUrl && !values.coverPhotoUrl.startsWith('blob:') && (
               <Image src={values.coverPhotoUrl} alt="" fill className="object-cover" />
             )}
           </div>
