@@ -32,11 +32,16 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
   const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
+  const topics = project.topics.map(({ name }) => name).join(', ');
   const rows = [
     { label: 'Territorio:', value: territory },
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
     { label: 'Contraparte:', value: counterparty },
+  ];
+  const classifications = [
+    { label: 'Líneas Estratégicas:', value: strategicLines },
+    { label: 'Temáticas:', value: topics || 'Sin temáticas' },
   ];
 
   return (
@@ -50,13 +55,20 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
           <dd className="text-foreground/80 sm:text-foreground/65">{value}</dd>
         </div>
       ))}
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline">
-        <span aria-hidden="true" className="hidden sm:inline">
-          •
-        </span>
-        <dt className="whitespace-nowrap">Líneas Estratégicas:</dt>
-        <dd className="text-foreground/80 sm:text-foreground/65">{strategicLines}</dd>
-      </div>
+      {classifications.map(({ label, value }) => (
+        <div
+          key={label}
+          className="flex max-w-full min-w-0 flex-col gap-1.5 sm:flex-row sm:items-baseline"
+        >
+          <span aria-hidden="true" className="hidden sm:inline">
+            •
+          </span>
+          <dt className="shrink-0 whitespace-nowrap">{label}</dt>
+          <dd className="text-foreground/80 sm:text-foreground/65 min-w-0 [overflow-wrap:anywhere]">
+            {value}
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }

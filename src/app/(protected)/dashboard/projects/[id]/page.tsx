@@ -3,6 +3,7 @@ import { ProjectTopbarRegistration } from '@/components/layout/topbar-context';
 import { BeneficiaryDistribution } from '@/components/projects/detail/beneficiary-distribution';
 import { InstitutionalContribution } from '@/components/projects/detail/institutional-contribution';
 import { ProjectDetailHeader } from '@/components/projects/detail/project-detail-header';
+import { ProjectInformation } from '@/components/projects/detail/project-information';
 import { ProjectMetrics } from '@/components/projects/detail/project-metrics';
 import { ProjectPublicCard } from '@/components/projects/detail/project-public-card';
 import { ProjectRecentActivity } from '@/components/projects/detail/project-recent-activity';
@@ -47,6 +48,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
           selectedYear={selectedYear}
           years={availableYears}
           canEdit={canEdit}
+        />
+
+        <ProjectInformation
+          publicDescription={project.publicDescription}
+          internalNotes={project.internalNotes}
         />
 
         {hasData ? (
