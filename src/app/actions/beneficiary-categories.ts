@@ -100,6 +100,87 @@ export async function createBeneficiaryCategory(
   return { success: true };
 }
 
+export async function editBeneficiaryCategory(
+  categoryId: number,
+  _previousState: BeneficiaryCategoryActionState,
+  formData: FormData
+): Promise<BeneficiaryCategoryActionState> {
+  const user = await requireUser();
+
+  if (user.role !== 'admin') {
+    return { formError: FORBIDDEN_MESSAGE };
+  }
+
+  if (!parseId(categoryId)) {
+    return { formError: 'La categoría no es válida.' };
+  }
+
+  const name = String(formData.get('name') ?? '');
+  const parsed = beneficiaryCategorySchema.safeParse({ name });
+
+  if (!parsed.success) {
+    return {
+      errors: z.flattenError(parsed.error).fieldErrors,
+      values: { name },
+    };
+  }
+
+  try {
+    const error = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "BeneficiaryCategory" WHERE "id" = ${categoryId} FOR UPDATE`;
+
+      const category = await tx.beneficiaryCategory.findFirst({
+        where: { id: categoryId, isActive: true },
+        select: { name: true },
+      });
+      if (!category) return 'La categoría no existe o ya fue eliminada.';
+
+      const duplicate = await tx.beneficiaryCategory.findFirst({
+        where: {
+          id: { not: categoryId },
+          name: { equals: parsed.data.name, mode: 'insensitive' },
+        },
+        select: { id: true, isActive: true },
+      });
+      if (duplicate) {
+        return duplicate.isActive
+          ? DUPLICATE_NAME_MESSAGE
+          : 'Ese nombre pertenece a una categoría dada de baja. Elegí otro nombre.';
+      }
+
+      await tx.beneficiaryCategory.update({
+        where: { id: categoryId },
+        data: { name: parsed.data.name },
+      });
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'update',
+        entity: 'beneficiaryCategory',
+        entityId: categoryId,
+        details: { previousName: category.name, name: parsed.data.name },
+      });
+      return null;
+    });
+
+    if (error) {
+      return { formError: error, values: { name } };
+    }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return { formError: DUPLICATE_NAME_MESSAGE, values: { name } };
+    }
+
+    return {
+      formError: 'No se pudo editar la categoría. Intentá de nuevo.',
+      values: { name },
+    };
+  }
+
+  revalidateBeneficiaryCategories();
+
+  return { success: true };
+}
+
 export async function deleteBeneficiaryCategory(
   categoryId: number
 ): Promise<BeneficiaryCategoryActionState> {

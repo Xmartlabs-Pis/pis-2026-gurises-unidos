@@ -4,12 +4,20 @@ import { useActionState, useState } from 'react';
 import {
   createBeneficiaryCategory,
   deleteBeneficiaryCategory,
+  editBeneficiaryCategory,
   type BeneficiaryCategoryActionState,
 } from '@/app/actions/beneficiary-categories';
 import { beneficiaryCategorySchema } from '@/lib/validation/beneficiary-category';
+import { MoreHorizontal } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Separator } from '../ui/separator';
 import {
   AlertDialog,
@@ -117,29 +125,137 @@ export function BeneficiaryCategoriesManagement({
 }
 
 function CategoryRow({ category }: { category: Category }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [editedName, setEditedName] = useState(category.name);
+  const [editClientError, setEditClientError] = useState<string>();
+  const [showEditErrors, setShowEditErrors] = useState(false);
+  const [editState, editFormAction, editPending] = useActionState(
+    async (previousState: BeneficiaryCategoryActionState, formData: FormData) => {
+      const result = await editBeneficiaryCategory(category.id, previousState, formData);
+      if (result.success) setIsEditOpen(false);
+      return result;
+    },
+    INITIAL_STATE
+  );
   const [state, formAction, pending] = useActionState(
     deleteBeneficiaryCategory.bind(null, category.id),
     INITIAL_STATE
   );
 
+  function handleEditOpenChange(open: boolean) {
+    setIsEditOpen(open);
+    if (open) {
+      setEditedName(category.name);
+      setEditClientError(undefined);
+      setShowEditErrors(false);
+    }
+  }
+
+  function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    setShowEditErrors(true);
+    const formData = new FormData(event.currentTarget);
+    const result = beneficiaryCategorySchema.safeParse({ name: formData.get('name') });
+
+    if (!result.success) {
+      event.preventDefault();
+      setEditClientError(result.error.issues[0].message);
+      return;
+    }
+
+    setEditClientError(undefined);
+  }
+
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between">
-        <span className="text-foreground text-sm leading-5 font-medium">{category.name}</span>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+        <span
+          lang="es"
+          className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
+        >
+          {category.name}
+        </span>
 
-        <div className="flex items-center gap-3">
+        <div className="contents">
           <ProjectCountLink
             projectCount={category.projectCount}
             href={`/dashboard/projects?beneficiaryCategoryId=${category.id}&status=all&beneficiaryYear=all`}
           />
 
+          <div className="contents lg:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon" aria-label={`Acciones para ${category.name}`}>
+                    <MoreHorizontal />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>
+                  Editar
+                </DropdownMenuItem>
+                {!category.isSystem && (
+                  <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+                    Eliminar
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
+            <AlertDialogTrigger
+              render={<Button variant="ghost" className="hidden lg:inline-flex" />}
+            >
+              Editar
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Editar categoría</AlertDialogTitle>
+                <AlertDialogDescription>Cambiá el nombre de la categoría.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <form
+                action={editFormAction}
+                onSubmit={handleEditSubmit}
+                noValidate
+                className="flex flex-col gap-4"
+              >
+                <Input
+                  name="name"
+                  value={editedName}
+                  onChange={(event) => setEditedName(event.target.value)}
+                  maxLength={50}
+                  required
+                  disabled={editPending}
+                />
+                {showEditErrors &&
+                  (editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
+                    <p className="text-destructive text-sm">
+                      {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
+                    </p>
+                  )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
+                  <Button type="submit" disabled={editPending}>
+                    Guardar
+                  </Button>
+                </AlertDialogFooter>
+              </form>
+            </AlertDialogContent>
+          </AlertDialog>
+
           {category.isSystem ? (
-            <span className="text-muted-foreground inline-flex h-8 items-center px-2.5 text-xs leading-4 font-medium">
+            <span className="text-muted-foreground hidden h-8 items-center px-2.5 text-sm leading-5 font-medium lg:inline-flex">
               Sistema
             </span>
           ) : category.projectCount > 0 ? (
-            <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost">Eliminar</Button>} />
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+              <AlertDialogTrigger
+                render={<Button variant="ghost" className="hidden lg:inline-flex" />}
+              >
+                Eliminar
+              </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>No se puede eliminar la categoría</AlertDialogTitle>
@@ -153,9 +269,13 @@ function CategoryRow({ category }: { category: Category }) {
               </AlertDialogContent>
             </AlertDialog>
           ) : (
-            <form id={`delete-category-${category.id}`} action={formAction}>
-              <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="ghost" disabled={pending} />}>
+            <form id={`delete-category-${category.id}`} action={formAction} className="contents">
+              <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <AlertDialogTrigger
+                  render={
+                    <Button variant="ghost" className="hidden lg:inline-flex" disabled={pending} />
+                  }
+                >
                   Eliminar
                 </AlertDialogTrigger>
                 <AlertDialogContent>

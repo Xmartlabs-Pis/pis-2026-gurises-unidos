@@ -1,12 +1,19 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { createTopic, deleteTopic, type TopicActionState } from '@/app/actions/topics';
+import { createTopic, deleteTopic, editTopic, type TopicActionState } from '@/app/actions/topics';
 import { ProjectCountLink } from '@/components/project-count-link';
 import { topicSchema } from '@/lib/validation/topic';
+import { MoreHorizontal } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
 import { Separator } from '../ui/separator';
 import {
   AlertDialog,
@@ -112,27 +119,128 @@ export function TopicsManagement({ topics }: TopicsManagementProps) {
 }
 
 function TopicRow({ topic }: { topic: Topic }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [editedName, setEditedName] = useState(topic.name);
+  const [editClientError, setEditClientError] = useState<string>();
+  const [showEditErrors, setShowEditErrors] = useState(false);
+  const [editState, editFormAction, editPending] = useActionState(
+    async (previousState: TopicActionState, formData: FormData) => {
+      const result = await editTopic(topic.id, previousState, formData);
+      if (result.success) setIsEditOpen(false);
+      return result;
+    },
+    initialState
+  );
   const [state, formAction, pending] = useActionState(
     deleteTopic.bind(null, topic.id),
     initialState
   );
 
+  function handleEditOpenChange(open: boolean) {
+    setIsEditOpen(open);
+    if (open) {
+      setEditedName(topic.name);
+      setEditClientError(undefined);
+      setShowEditErrors(false);
+    }
+  }
+
+  function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
+    setShowEditErrors(true);
+    const formData = new FormData(event.currentTarget);
+    const result = topicSchema.safeParse({ name: formData.get('name') });
+
+    if (!result.success) {
+      event.preventDefault();
+      setEditClientError(result.error.issues[0].message);
+      return;
+    }
+
+    setEditClientError(undefined);
+  }
+
   return (
     <li className="border-b border-[#eff2f4] py-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-foreground min-w-0 text-sm leading-5 font-medium break-words">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_auto] items-center gap-x-2 gap-y-1.5 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:gap-x-4">
+        <span
+          lang="es"
+          className="text-foreground min-w-0 text-sm leading-5 font-medium break-words hyphens-auto"
+        >
           {topic.name}
         </span>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="contents">
           <ProjectCountLink
             projectCount={topic._count.projects}
             href={`/dashboard/projects?topicId=${topic.id}&status=all&beneficiaryYear=all`}
           />
-
+          <div className="contents lg:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon" aria-label={`Acciones para ${topic.name}`}>
+                    <MoreHorizontal />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleEditOpenChange(true)}>
+                  Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <AlertDialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
+            <AlertDialogTrigger
+              render={<Button variant="ghost" className="hidden lg:inline-flex" />}
+            >
+              Editar
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Editar temática</AlertDialogTitle>
+                <AlertDialogDescription>Cambiá el nombre de la temática.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <form
+                action={editFormAction}
+                onSubmit={handleEditSubmit}
+                noValidate
+                className="flex flex-col gap-4"
+              >
+                <Input
+                  name="name"
+                  value={editedName}
+                  onChange={(event) => setEditedName(event.target.value)}
+                  maxLength={30}
+                  required
+                  disabled={editPending}
+                />
+                {showEditErrors &&
+                  (editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
+                    <p className="text-destructive text-sm">
+                      {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
+                    </p>
+                  )}
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={editPending}>Cancelar</AlertDialogCancel>
+                  <Button type="submit" disabled={editPending}>
+                    Guardar
+                  </Button>
+                </AlertDialogFooter>
+              </form>
+            </AlertDialogContent>
+          </AlertDialog>
           {topic._count.projects > 0 ? (
-            <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost">Eliminar</Button>} />
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+              <AlertDialogTrigger
+                render={<Button variant="ghost" className="hidden lg:inline-flex" />}
+              >
+                Eliminar
+              </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>No se puede eliminar la temática</AlertDialogTitle>
@@ -146,9 +254,13 @@ function TopicRow({ topic }: { topic: Topic }) {
               </AlertDialogContent>
             </AlertDialog>
           ) : (
-            <form id={`delete-topic-${topic.id}`} action={formAction}>
-              <AlertDialog>
-                <AlertDialogTrigger render={<Button variant="ghost" disabled={pending} />}>
+            <form id={`delete-topic-${topic.id}`} action={formAction} className="contents">
+              <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <AlertDialogTrigger
+                  render={
+                    <Button variant="ghost" className="hidden lg:inline-flex" disabled={pending} />
+                  }
+                >
                   Eliminar
                 </AlertDialogTrigger>
                 <AlertDialogContent>

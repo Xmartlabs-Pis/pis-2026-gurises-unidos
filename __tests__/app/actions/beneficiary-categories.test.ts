@@ -21,6 +21,7 @@ vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 import {
   createBeneficiaryCategory,
   deleteBeneficiaryCategory,
+  editBeneficiaryCategory,
 } from '@/app/actions/beneficiary-categories';
 
 const EMPTY_STATE = {};
@@ -191,6 +192,50 @@ describe('createBeneficiaryCategory', () => {
     });
 
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+describe('editBeneficiaryCategory', () => {
+  test('rejects editing a category that does not exist or is inactive', async () => {
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({
+      formError: 'La categoría no existe o ya fue eliminada.',
+      values: { name: 'Families' },
+    });
+
+    expect(mocks.updateCategory).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  test('rejects a name already used by another active category', async () => {
+    mocks.findCategory.mockResolvedValueOnce({ name: 'Volunteers' });
+    mocks.findCategory.mockResolvedValueOnce({ id: 8, isActive: true });
+
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({
+      formError: 'Ya existe una categoría con ese nombre.',
+      values: { name: 'Families' },
+    });
+
+    expect(mocks.updateCategory).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  test('explains when the requested name belongs to an inactive category', async () => {
+    mocks.findCategory.mockResolvedValueOnce({ name: 'Families' });
+    mocks.findCategory.mockResolvedValueOnce({ id: 8, isActive: false });
+
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({
+      formError: 'Ese nombre pertenece a una categoría dada de baja. Elegí otro nombre.',
+      values: { name: 'Families' },
+    });
+
+    expect(mocks.updateCategory).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 });
 
