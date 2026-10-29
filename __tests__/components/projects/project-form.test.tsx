@@ -104,9 +104,7 @@ it('keeps the original creation appearance separate from edit styling', () => {
   expect(screen.queryByText('Cobertura')).toBeNull();
   expect(screen.queryByText('Ver vista pública →')).toBeNull();
   expect(screen.getByLabelText('Nombre del proyecto').classList.contains('md:text-sm')).toBe(true);
-  expect(
-    screen.getByLabelText('Foto de portada').closest('[data-slot="field"]')?.hasAttribute('hidden')
-  ).toBe(true);
+  expect((screen.getByLabelText('Foto de portada') as HTMLInputElement).disabled).toBe(false);
   expect(
     screen
       .getByText('Información básica')
@@ -139,6 +137,169 @@ it('shows and submits the selected project placeholder during creation', () => {
   expect(new FormData(container.querySelector('form')!).get('projectPlaceholder')).toBe(
     '/images/project-placeholders/2.webp'
   );
+});
+
+it('previews a selected cover without putting the file on the form', () => {
+  const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+  const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  const { container } = render(
+    <ProjectForm
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        coverPhotoUrl: '/images/project-placeholders/2.webp',
+      }}
+      submitAction={vi.fn()}
+    />
+  );
+  const file = new File(['image'], 'portada.png', { type: 'image/png' });
+  fireEvent.change(screen.getByLabelText('Foto de portada'), { target: { files: [file] } });
+
+  const input = screen.getByLabelText('Foto de portada') as HTMLInputElement;
+  expect(input.closest('.overflow-hidden')).not.toBeNull();
+  expect(input.getAttribute('form')).toBe('cover-photo-detached');
+  expect(container.querySelector('.aspect-video')?.getAttribute('style')).toContain('blob:preview');
+  expect(input.name).toBe('');
+  expect(new FormData(container.querySelector('form')!).get('coverPhoto')).toBeNull();
+  expect(screen.getByRole('button', { name: /portada\.png/ })).toBeTruthy();
+  createObjectURL.mockRestore();
+  revokeObjectURL.mockRestore();
+});
+
+it('uploads the selected cover and submits the returned path', async () => {
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ path: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp' }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  const submitAction = vi.fn().mockResolvedValue({ formError: 'No se pudo guardar' });
+  const { container } = render(
+    <ProjectForm
+      mode="edit"
+      projectId={10}
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[{ id: 1, name: 'Education' }]}
+      currentYear={2026}
+      coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
+      departments={[{ id: 3, name: 'Montevideo' }]}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        name: 'Existing project',
+        strategicLineIds: ['1'],
+        topicIds: ['1'],
+        status: 'active',
+        leadCoordinatorId: '2',
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
+        startYear: '2020',
+        year: '2024',
+        families: '30',
+        coverPhotoUrl: '/images/project-placeholders/2.webp',
+      }}
+      submitAction={submitAction}
+    />
+  );
+  const file = new File(['image'], 'portada.png', { type: 'image/png' });
+  fireEvent.change(screen.getByLabelText('Foto de portada'), { target: { files: [file] } });
+  await act(async () => {
+    fireEvent.submit(container.querySelector('form')!);
+  });
+  await waitFor(() => {
+    expect(submitAction).toHaveBeenCalledTimes(1);
+  });
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/projects/covers',
+    expect.objectContaining({ method: 'POST' })
+  );
+  const uploaded = fetchMock.mock.calls[0][1].body as FormData;
+  expect(uploaded.get('projectId')).toBe('10');
+  expect((uploaded.get('coverPhoto') as File).name).toBe('portada.png');
+  const submitted = submitAction.mock.calls[0][1] as FormData;
+  expect(submitted.get('coverPhotoPath')).toBe(
+    '/uploads/covers/11111111-1111-4111-8111-111111111111.webp'
+  );
+  expect(submitted.get('coverPhoto')).toBeNull();
+  vi.unstubAllGlobals();
+});
+
+it('does not submit when the cover upload fails', async () => {
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  vi.mocked(notify.error).mockClear();
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    json: async () => ({ error: 'La imagen debe ser JPG o PNG.' }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  const submitAction = vi.fn();
+  const { container } = render(
+    <ProjectForm
+      mode="edit"
+      projectId={10}
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[{ id: 1, name: 'Education' }]}
+      currentYear={2026}
+      coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
+      departments={[{ id: 3, name: 'Montevideo' }]}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        name: 'Existing project',
+        strategicLineIds: ['1'],
+        topicIds: ['1'],
+        status: 'active',
+        leadCoordinatorId: '2',
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
+        startYear: '2020',
+        year: '2024',
+        families: '30',
+      }}
+      submitAction={submitAction}
+    />
+  );
+  fireEvent.change(screen.getByLabelText('Foto de portada'), {
+    target: { files: [new File(['image'], 'portada.png', { type: 'image/png' })] },
+  });
+  await act(async () => {
+    fireEvent.submit(container.querySelector('form')!);
+  });
+  await waitFor(() => {
+    expect(notify.error).toHaveBeenCalledWith({ title: 'La imagen debe ser JPG o PNG.' });
+  });
+  expect(submitAction).not.toHaveBeenCalled();
+  vi.unstubAllGlobals();
+});
+
+it('submits a placeholder when an uploaded cover is removed', () => {
+  const { container } = render(
+    <ProjectForm
+      mode="edit"
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        coverPhotoUrl: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+      }}
+      submitAction={vi.fn()}
+    />
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
+  const data = new FormData(container.querySelector('form')!);
+  expect(data.get('removeCoverPhoto')).toBe('true');
+  expect(data.get('projectPlaceholder')).toMatch(/^\/images\/project-placeholders\/[1-6]\.webp$/);
+  expect(container.querySelector('img')?.getAttribute('src')).toContain('project-placeholders');
 });
 
 it('sends multiple selected topics and preserves them after a failed save', async () => {

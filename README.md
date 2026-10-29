@@ -488,6 +488,18 @@ hay que revertir el commit en la rama.
 `pis-main_pgdata`) y su puerto: `DB_PORT` 5432 en main, 5433 en staging, siempre atado a
 `127.0.0.1`.
 
+Las portadas subidas no van a la base. Staging las guarda en `/srv/pis-uploads/staging` y
+producción en `/srv/pis-uploads/main`. `deploy.sh` crea esa carpeta y exporta `UPLOADS_DIR` para
+montarla en el contenedor en `/app/uploads`. Un deploy reemplaza el contenedor y deja los
+archivos. En local, `next dev` escribe en `uploads` (está en `.gitignore`).
+
+Se sirven en `/uploads/covers/<uuid>.webp`, sin autenticación. Quien tenga la URL
+puede bajar la imagen aunque el proyecto esté oculto, inactivo o borrado. `showOnLanding` y
+`deletedAt` filtran listados y la landing, no el archivo. El UUID es lo único que impide adivinarla.
+
+Esa carpeta no entra en un `pg_dump`. Hay que respaldarla aparte. Restaurar solo la base deja
+portadas rotas; restaurar solo los archivos deja huérfanos.
+
 Entorno nuevo: clonar en `/srv/pis-<rama>` y, como `deploy` y sin `sudo`:
 
 ```bash
@@ -495,11 +507,13 @@ Entorno nuevo: clonar en `/srv/pis-<rama>` y, como `deploy` y sin `sudo`:
 ```
 
 Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `AUTH_URL`, `DB_PORT`, el
-`DATABASE_URL` apuntando a `db:5432`, `EMAIL_FROM` y `RESEND_API_KEY` vacía, que hay que completar a
-mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
+`DATABASE_URL` apuntando a `db:5432`, `UPLOADS_DIR`, `EMAIL_FROM` y `RESEND_API_KEY` vacía, que hay
+que completar a mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
 
-Si el `.env` ya existía, agregarle `DB_PORT` a mano: es la única fuente del puerto y el deploy corta
-si falta. Lo mismo con `RESEND_API_KEY`: sin ella la app levanta, pero no manda mails.
+Si el `.env` ya existía, agregarle a mano `DB_PORT` (es la única fuente del puerto y el deploy corta
+si falta). `deploy.sh` escribe `UPLOADS_DIR=/srv/pis-uploads/<rama>` si falta. Lo mismo con
+`RESEND_API_KEY`: sin ella la app levanta, pero no manda mails. Sin `UPLOADS_DIR`, un
+`docker compose up` a mano monta `./uploads` dentro del clon en vez de la carpeta de la VM.
 
 ### Migraciones en el deploy
 
@@ -526,7 +540,7 @@ concurrencia `deploy-staging`, así que nunca corren en paralelo con un deploy.
 | Workflow          | Qué hace                                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Seed staging**  | Carga el dataset de prueba: 19 departamentos, 6 usuarios, 25 proyectos con 1 a 4 años de beneficiarios (4 quedan sin ninguno). Es idempotente: correrlo de nuevo no duplica nada. |
-| **Clean staging** | Vacía la base. Input `mode`: `reset` borra todo y recrea el admin, `wipe` borra todo sin dejar admin.                                                                             |
+| **Clean staging** | Vacía la base y borra las portadas de `/srv/pis-uploads/staging`. Input `mode`: `reset` borra todo y recrea el admin, `wipe` borra todo sin dejar admin.                          |
 
 El admin es `admin@gurisesunidos.test` (documento `11111111`) y su contraseña es el secret
 `SEED_USER_PASSWORD` del environment `staging`.
@@ -535,14 +549,24 @@ Después de un `wipe` no se puede entrar a la app hasta correr **Seed staging** 
 **Clean staging** en modo `reset`.
 
 `Clean staging` pide escribir `staging` en el input `confirm` para arrancar. Es a propósito: como
-no hay backups, un `wipe` no se deshace.
+no hay backups, un `wipe` no se deshace. Después de vaciar la base borra los archivos de
+`/srv/pis-uploads/staging`.
+
+Para borrar solo las portadas y dejar el resto de los datos, en la VM:
+
+```bash
+cd /srv/pis-staging && ./scripts/clear-uploads.sh staging
+```
+
+En main hace falta `CONFIRM=main ./scripts/clear-uploads.sh main`.
 
 El dataset vive en `prisma/seed-staging.ts`, separado del seed local (`prisma/seed.ts`). El único
 fixture compartido es el admin, en `prisma/fixtures.ts`.
 
 ### Pendiente
 
-**Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen.
+**Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen. Las portadas en
+`/srv/pis-uploads` tampoco tienen backup.
 
 ## Estilo de código
 

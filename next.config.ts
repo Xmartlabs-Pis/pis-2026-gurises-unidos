@@ -2,6 +2,9 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  outputFileTracingIncludes: {
+    '/*': ['node_modules/sharp/**/*', 'node_modules/@img/**/*', 'node_modules/detect-libc/**/*'],
+  },
   experimental: {
     authInterrupts: true,
   },

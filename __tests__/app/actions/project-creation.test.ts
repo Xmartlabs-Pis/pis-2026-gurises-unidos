@@ -1,15 +1,20 @@
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProjectFormState } from '@/lib/validation/project';
 
-const { authMock, redirectMock, logAuditMock, transactionMock, findUserMock } = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  redirectMock: vi.fn((url: string) => {
-    throw new Error(`NEXT_REDIRECT:${url}`);
-  }),
-  logAuditMock: vi.fn(),
-  transactionMock: vi.fn(),
-  findUserMock: vi.fn(),
-}));
+const { authMock, redirectMock, logAuditMock, transactionMock, findUserMock, findLiveCoverMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    redirectMock: vi.fn((url: string) => {
+      throw new Error(`NEXT_REDIRECT:${url}`);
+    }),
+    logAuditMock: vi.fn(),
+    transactionMock: vi.fn(),
+    findUserMock: vi.fn(),
+    findLiveCoverMock: vi.fn(),
+  }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
@@ -18,6 +23,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     $transaction: transactionMock,
     user: { findUnique: findUserMock },
+    project: { findFirst: findLiveCoverMock },
   },
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -101,6 +107,21 @@ function setupTransaction({ projectId = 42, beneficiaryId = 9, existingDepartmen
   return { projectCreate, beneficiaryCreate };
 }
 
+async function writeOwnedCover(
+  directory: string,
+  coverPath: string,
+  userId: number,
+  contents = 'new'
+) {
+  const id = path.basename(coverPath, '.webp');
+  await mkdir(path.join(directory, 'covers'), { recursive: true });
+  await writeFile(path.join(directory, 'covers', `${id}.webp`), contents);
+  await writeFile(
+    path.join(directory, 'covers', `${id}.json`),
+    JSON.stringify({ userId, createdAt: new Date().toISOString() })
+  );
+}
+
 function knownRequestError(code: string, meta: Record<string, unknown>) {
   return new Prisma.PrismaClientKnownRequestError('Prisma request failed', {
     code,
@@ -112,6 +133,7 @@ function knownRequestError(code: string, meta: Record<string, unknown>) {
 beforeEach(() => {
   authMock.mockResolvedValue({ user: { id: '7' } });
   findUserMock.mockResolvedValue({ id: 7, role: 'admin', status: 'active', deletedAt: null });
+  findLiveCoverMock.mockResolvedValue(null);
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   });
@@ -241,6 +263,111 @@ describe('createProject', () => {
         },
       },
     });
+  });
+
+  test('stores an uploaded cover instead of a placeholder', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 7);
+      const { projectCreate } = setupTransaction();
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ coverPhoto: coverPhotoPath }),
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([
+        path.basename(coverPhotoPath),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('ignores a cover path that the user does not own', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 3);
+      const { projectCreate } = setupTransaction();
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
+        }),
+      });
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('deletes the owned pending cover when creation is rejected', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 7);
+      setupTransaction({ existingDepartments: 0 });
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { locations: ['Elegí departamentos válidos'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('deletes the owned pending cover when form parsing fails', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 7);
+      const data = buildFormData({ name: '' });
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { name: ['El nombre es obligatorio'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("leaves another user's pending cover when form parsing fails", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 3);
+      const data = buildFormData({ name: '' });
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { name: ['El nombre es obligatorio'] },
+      });
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(coverPhotoPath, '.webp')}.json`,
+        path.basename(coverPhotoPath),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   test.each([undefined, '', '1', 'invalid'])(

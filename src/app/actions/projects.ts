@@ -7,6 +7,13 @@ import { requireUser } from '@/lib/auth/require-user';
 import { canEditProject } from '@/lib/projects/permissions';
 import { mapProjectDbError } from '@/lib/projects/map-project-db-error';
 import { revalidateProject } from '@/lib/projects/revalidate-project';
+import { coverPathFromForm, wantsCoverRemoved } from '@/lib/projects/cover-photo';
+import {
+  claimUploadedCover,
+  discardOwnedUnusedCover,
+  discardUnusedUploadedCover,
+  ownedUploadedCoverPath,
+} from '@/lib/projects/pending-cover';
 import {
   getRandomProjectPlaceholder,
   isProjectPlaceholder,
@@ -147,6 +154,11 @@ function resolveIntensity(
 const STALE_CATEGORIES_MESSAGE =
   'Las categorías de beneficiarios cambiaron. Recargá la página e intentá de nuevo.';
 
+function submittedPlaceholder(formData: FormData) {
+  const submitted = formData.get('projectPlaceholder');
+  return isProjectPlaceholder(submitted) ? submitted : getRandomProjectPlaceholder();
+}
+
 async function lockBeneficiaryCategories(tx: Prisma.TransactionClient, keys: string[]) {
   const active = await tx.$queryRaw<{ key: string }[]>`
     SELECT "key" FROM "BeneficiaryCategory"
@@ -205,22 +217,27 @@ export async function createProject(
   if (user.role === 'coordinator') {
     formData.set('leadCoordinatorId', String(user.id));
   }
+  const uploadedPath = coverPathFromForm(formData);
   const parsed = await parseProjectForm(formData);
-  if ('errors' in parsed) return { errors: parsed.errors };
+  if ('errors' in parsed) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return { errors: parsed.errors };
+  }
   const { keys, beneficiaryData } = parsed;
   const resolved = resolveIntensity(
     parsed.projectData.intensity,
     beneficiaryData.counts[DIRECT_CHILDREN_KEY] > 0
   );
-  if ('error' in resolved) return resolved.error;
+  if ('error' in resolved) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return resolved.error;
+  }
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
   const { topicIds, strategicLineIds, departmentIds, localities } = parsed;
-  const submittedPlaceholder = formData.get('projectPlaceholder');
-  const coverPhoto = isProjectPlaceholder(submittedPlaceholder)
-    ? submittedPlaceholder
-    : getRandomProjectPlaceholder();
   let projectId: number;
   try {
+    const coverPhoto =
+      (await ownedUploadedCoverPath(uploadedPath, user.id)) ?? submittedPlaceholder(formData);
     const result = await prisma.$transaction(
       async (tx): Promise<{ error: ProjectFormState } | { projectId: number }> => {
         await lockTopics(tx, topicIds);
@@ -274,9 +291,14 @@ export async function createProject(
       },
       { maxWait: 10_000, timeout: 30_000 }
     );
-    if ('error' in result) return result.error;
+    if ('error' in result) {
+      await discardOwnedUnusedCover(uploadedPath, user.id);
+      return result.error;
+    }
     projectId = result.projectId;
+    await claimUploadedCover(coverPhoto);
   } catch (error) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
     const mapped = mapProjectDbError(error);
     if (mapped) return mapped;
     console.error('Failed to create project', error);
@@ -292,9 +314,16 @@ export async function updateProject(
   formData: FormData
 ): Promise<ProjectFormState> {
   const user = await requireUser();
-  if (!parseId(projectId)) return { formError: 'El proyecto no es válido.' };
+  const uploadedPath = coverPathFromForm(formData);
+  if (!parseId(projectId)) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return { formError: 'El proyecto no es válido.' };
+  }
   const parsed = await parseProjectForm(formData);
-  if ('errors' in parsed) return { errors: parsed.errors };
+  if ('errors' in parsed) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
+    return { errors: parsed.errors };
+  }
   const {
     keys,
     projectData,
@@ -304,7 +333,11 @@ export async function updateProject(
     departmentIds,
     localities,
   } = parsed;
+  let previousCover: string | null = null;
   try {
+    const requestedCover =
+      (await ownedUploadedCoverPath(uploadedPath, user.id)) ??
+      (wantsCoverRemoved(formData) ? submittedPlaceholder(formData) : null);
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
         await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -313,6 +346,7 @@ export async function updateProject(
           include: PROJECT_AUDIT_INCLUDE,
         });
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
+        previousCover = previous.coverPhoto;
         if (!canEditProject(user, previous))
           return { formError: 'No tenés permiso para editar este proyecto.' };
         if (user.role !== 'admin' && projectData.leadCoordinatorId !== previous.leadCoordinatorId) {
@@ -372,6 +406,7 @@ export async function updateProject(
         );
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
+        const coverChanged = requestedCover !== null && requestedCover !== previous.coverPhoto;
         const topicsChanged = !hasSameIds(topicIds, currentTopicIds);
         const strategicLinesChanged = !hasSameIds(strategicLineIds, currentStrategicLineIds);
         const departmentsChanged = !hasSameIds(
@@ -381,6 +416,7 @@ export async function updateProject(
         const localitiesChanged = !hasSameLocalities(localities, previous.localities);
         const fields = [
           ...changedFields(nextProjectData, previous),
+          ...(coverChanged ? ['coverPhoto'] : []),
           ...(topicsChanged ? ['topics'] : []),
           ...(strategicLinesChanged ? ['strategicLines'] : []),
           ...(departmentsChanged ? ['departments'] : []),
@@ -391,6 +427,7 @@ export async function updateProject(
             where: { id: projectId },
             data: {
               ...nextProjectData,
+              ...(coverChanged ? { coverPhoto: requestedCover } : {}),
               ...(topicsChanged ? { topics: { set: topicIds.map((id) => ({ id })) } } : {}),
               ...(strategicLinesChanged
                 ? { strategicLines: { set: strategicLineIds.map((id) => ({ id })) } }
@@ -457,8 +494,16 @@ export async function updateProject(
       },
       { maxWait: 10_000, timeout: 30_000 }
     );
-    if (error) return error;
+    if (error) {
+      await discardOwnedUnusedCover(uploadedPath, user.id);
+      return error;
+    }
+    if (requestedCover && previousCover !== requestedCover) {
+      await discardUnusedUploadedCover(previousCover);
+    }
+    await claimUploadedCover(requestedCover);
   } catch (error) {
+    await discardOwnedUnusedCover(uploadedPath, user.id);
     const mapped = mapProjectDbError(error);
     if (mapped) return mapped;
     console.error('Failed to update project', error);
@@ -472,10 +517,11 @@ export async function deleteProject(projectId: number): Promise<{ error?: string
   const user = await requireUser();
   if (!parseId(projectId)) return { error: 'El proyecto no es válido.' };
   try {
+    let coverPhoto: string | null = null;
     const error = await prisma.$transaction(async (tx) => {
       const project = await tx.project.findFirst({
         where: { id: projectId, deletedAt: null },
-        select: { id: true, leadCoordinatorId: true },
+        select: { id: true, leadCoordinatorId: true, coverPhoto: true },
       });
       if (!project) return 'El proyecto no existe o ya fue eliminado.';
       if (!canEditProject(user, project)) return 'No tenés permiso para eliminar este proyecto.';
@@ -490,14 +536,16 @@ export async function deleteProject(projectId: number): Promise<{ error?: string
         entity: 'project',
         entityId: projectId,
       });
+      coverPhoto = project.coverPhoto;
       return null;
     });
     if (error) return { error };
+    revalidateProject();
+    await discardUnusedUploadedCover(coverPhoto);
   } catch (error) {
     console.error('Failed to delete project', error);
     return { error: 'No se pudo eliminar el proyecto. Intentá de nuevo.' };
   }
-  revalidateProject();
   return {};
 }
 
