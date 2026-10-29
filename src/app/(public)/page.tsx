@@ -1,5 +1,6 @@
 import { getContributors } from '@/lib/contributors';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from 'cn';
 import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getPublicStats } from '@/lib/metrics/public-stats';
@@ -14,6 +15,8 @@ import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+
+const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
 
 const LEVELS = [
   {
@@ -250,10 +253,18 @@ export default async function Home({
             Conocé en qué proyectos podés colaborar y cómo tu apoyo se convierte en impacto real
             para miles de gurises.
           </p>
-          <div className="mx-auto flex h-11 w-39.25 flex-col pt-2" hidden>
-            <Button className="bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2">
+          <div className="mx-auto flex h-11 w-39.25 flex-col pt-2">
+            <a
+              href={COLLABORATE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                'bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2'
+              )}
+            >
               Quiero colaborar
-            </Button>
+            </a>
           </div>
         </div>
       </section>
