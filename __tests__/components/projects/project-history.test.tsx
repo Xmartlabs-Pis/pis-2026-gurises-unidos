@@ -196,3 +196,82 @@ it.each([
 
   expect(details?.open).toBe(true);
 });
+
+it.each([
+  [
+    'added',
+    [],
+    [{ name: 'Montevideo, Montevideo, Centro' }],
+    'Sin datos',
+    'Montevideo, Montevideo, Centro',
+  ],
+  [
+    'removed',
+    [{ name: 'Montevideo, Montevideo, Centro' }],
+    [],
+    'Montevideo, Montevideo, Centro',
+    'Sin datos',
+  ],
+  [
+    'replaced',
+    [{ name: 'Montevideo, Montevideo, Centro' }],
+    [{ name: 'Canelones, Las Piedras, Centro' }],
+    'Montevideo, Montevideo, Centro',
+    'Canelones, Las Piedras, Centro',
+  ],
+  [
+    'mixed named formats',
+    [{ id: 1, name: 'Montevideo, Montevideo, Centro' }],
+    [{ name: 'Canelones, Las Piedras, Centro' }],
+    'Montevideo, Montevideo, Centro',
+    'Canelones, Las Piedras, Centro',
+  ],
+] satisfies [string, Prisma.JsonValue, Prisma.JsonValue, string, string][])(
+  'shows %s localities alongside the other project changes',
+  (_scenario, from, to, fromText, toText) => {
+    render(
+      <ProjectHistory
+        fieldLabels={FIELD_LABELS}
+        entries={[
+          entry(1, 'update', 'project', {
+            changes: [
+              { field: 'name', from: 'Original project', to: 'Updated project' },
+              { field: 'localities', from, to },
+            ],
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Test User actualizó el proyecto')).toBeDefined();
+    expect(screen.getByText('Nombre: Original project → Updated project')).toBeDefined();
+    expect(screen.getByText(`Ubicaciones: ${fromText} → ${toText}`)).toBeDefined();
+  }
+);
+
+it.each([
+  null,
+  { field: 'localities', from: [], to: [{ city: 'Montevideo' }] },
+  { field: 'localities', from: [], to: [{ name: 123 }] },
+  { field: 'localities', from: [], to: [{ id: 'invalid', name: 'Montevideo' }] },
+] satisfies Prisma.JsonValue[])(
+  'keeps valid project changes when another change is malformed: %j',
+  (invalidChange) => {
+    render(
+      <ProjectHistory
+        fieldLabels={FIELD_LABELS}
+        entries={[
+          entry(1, 'update', 'project', {
+            changes: [
+              { field: 'name', from: 'Original project', to: 'Updated project' },
+              invalidChange,
+            ],
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Nombre: Original project → Updated project')).toBeDefined();
+    expect(screen.queryByText(/^Ubicaciones:/)).toBeNull();
+  }
+);

@@ -26,7 +26,7 @@ const PROJECT_ACTION_LABELS: Partial<Record<AuditAction, string>> = {
 const BENEFICIARY_ACTION_LABEL = 'actualizó el número de beneficiarios';
 
 const namedValueSchema = z.object({
-  id: z.number(),
+  id: z.number().optional(),
   name: z.string(),
 });
 
@@ -40,16 +40,14 @@ const auditValueSchema = z.union([
   z.array(namedValueSchema),
 ]);
 
+const projectChangeSchema = z.object({
+  field: z.string(),
+  from: auditValueSchema,
+  to: auditValueSchema,
+});
+
 const projectDetailsSchema = z.object({
-  changes: z
-    .array(
-      z.object({
-        field: z.string(),
-        from: auditValueSchema,
-        to: auditValueSchema,
-      })
-    )
-    .optional(),
+  changes: z.array(z.unknown()).optional(),
 });
 
 const beneficiaryDetailsSchema = z.object({
@@ -83,10 +81,15 @@ function describeEntry(
 
     const details = projectDetailsSchema.safeParse(entry.details);
 
-    return {
-      label,
-      changes: details.success ? (details.data.changes ?? []) : [],
-    };
+    if (!details.success) return { label, changes: [] };
+
+    const changes = (details.data.changes ?? []).flatMap((change) => {
+      const parsedChange = projectChangeSchema.safeParse(change);
+
+      return parsedChange.success ? [parsedChange.data] : [];
+    });
+
+    return { label, changes };
   }
 
   if (entry.entity !== 'beneficiary') return null;
