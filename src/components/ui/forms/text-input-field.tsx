@@ -49,32 +49,34 @@ export function TextInputField({
       >
         {label}
       </FieldLabel>
-      <div className="relative">
-        <Input
-          {...inputProps}
-          {...registration}
-          id={id}
-          onChange={(event) => {
-            onChange?.(event);
-            void registration.onChange(event);
-          }}
-          aria-invalid={Boolean(errorMessage)}
-          className={cn(
-            'border-input bg-background h-9 min-w-0 rounded-lg px-3 text-base md:text-sm',
-            trailingAction && 'pr-8'
+      <div className="flex flex-col gap-1.5">
+        <div className="relative">
+          <Input
+            {...inputProps}
+            {...registration}
+            id={id}
+            onChange={(event) => {
+              onChange?.(event);
+              void registration.onChange(event);
+            }}
+            aria-invalid={Boolean(errorMessage)}
+            className={cn(
+              'border-input bg-background h-9 min-w-0 rounded-lg px-3 text-base md:text-sm',
+              trailingAction && 'pr-8'
+            )}
+          />
+          {trailingAction && (
+            <div className="absolute top-1/2 right-1 -translate-y-1/2">{trailingAction}</div>
           )}
-        />
-        {trailingAction && (
-          <div className="absolute top-1/2 right-1 -translate-y-1/2">{trailingAction}</div>
-        )}
+        </div>
+        {errorMessage ? (
+          <FieldError className="text-xs leading-4">{errorMessage}</FieldError>
+        ) : description ? (
+          <FieldDescription className="text-muted-foreground text-xs leading-4">
+            {description}
+          </FieldDescription>
+        ) : null}
       </div>
-      {errorMessage ? (
-        <FieldError className="text-xs leading-4">{errorMessage}</FieldError>
-      ) : description ? (
-        <FieldDescription className="text-muted-foreground text-xs leading-4">
-          {description}
-        </FieldDescription>
-      ) : null}
     </Field>
   );
 }
