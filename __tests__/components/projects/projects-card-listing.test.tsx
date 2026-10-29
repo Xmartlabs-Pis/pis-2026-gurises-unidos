@@ -72,8 +72,6 @@ function buildProject(
     zone: 'city',
     geographicScope: 'national',
     countries: [],
-    cities: [],
-    neighborhoods: [],
     publicDescription: null,
     coverPhoto: null,
     leadCoordinator: { id: 1, firstName: 'Carlos', lastName: 'Coordinator' },

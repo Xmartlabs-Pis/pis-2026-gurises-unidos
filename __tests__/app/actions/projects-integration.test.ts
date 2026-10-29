@@ -121,8 +121,11 @@ it.skipIf(!TEST_DATABASE_URL)(
       startYear: '2024',
       leadCoordinatorId: String(coordinatorId),
       geographicScope: 'national',
-      departmentIds: String(departmentId),
-      cities: 'Montevideo',
+      locations: JSON.stringify({
+        departmentId: String(departmentId),
+        city: 'Montevideo',
+        neighborhood: '',
+      }),
       zone: 'city',
       year: '2026',
       families: '35',

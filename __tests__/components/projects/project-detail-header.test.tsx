@@ -24,8 +24,7 @@ const PROJECT: ProjectDetail['project'] = {
   zone: 'city',
   geographicScope: 'national',
   countries: [],
-  cities: ['Montevideo'],
-  neighborhoods: ['Casavalle'],
+  localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
   generalObjective: 'Support adolescents and families.',
   publicDescription: 'Community support project.',
   internalNotes: null,
@@ -54,7 +53,7 @@ test('shows an ongoing project period until the present', () => {
   expect(screen.getByText('Formación, Participación')).toBeDefined();
 });
 
-test('shows the departments, cities and neighborhoods as the territory', () => {
+test('shows each city and neighborhood next to its department as the territory', () => {
   render(
     <ProjectDetailHeader
       project={{
@@ -62,9 +61,12 @@ test('shows the departments, cities and neighborhoods as the territory', () => {
         departments: [
           { id: 2, name: 'Canelones' },
           { id: 1, name: 'Montevideo' },
+          { id: 3, name: 'Salto' },
         ],
-        cities: ['Las Piedras', 'Montevideo'],
-        neighborhoods: ['Centro'],
+        localities: [
+          { departmentId: 1, city: 'Montevideo', neighborhood: 'Centro' },
+          { departmentId: 2, city: 'Las Piedras', neighborhood: null },
+        ],
       }}
       selectedYear={2026}
       years={[2026]}
@@ -73,7 +75,7 @@ test('shows the departments, cities and neighborhoods as the territory', () => {
   );
 
   expect(
-    screen.getAllByText('Canelones, Montevideo — Las Piedras, Montevideo — Centro')
+    screen.getAllByText('Canelones, Las Piedras; Montevideo, Montevideo, Centro; Salto')
   ).not.toHaveLength(0);
 });
 
@@ -85,8 +87,7 @@ test('shows the countries as the territory of an international project', () => {
         geographicScope: 'international',
         departments: [],
         countries: ['Argentina', 'Brasil'],
-        cities: [],
-        neighborhoods: [],
+        localities: [],
       }}
       selectedYear={2026}
       years={[2026]}

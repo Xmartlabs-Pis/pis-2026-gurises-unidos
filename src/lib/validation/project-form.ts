@@ -6,8 +6,28 @@ import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-benefici
 
 export const MAX_STRATEGIC_LINES = 3;
 export const TOPICS_ERROR_MESSAGE = 'Elegí temáticas válidas';
-export const MAX_PLACE_NAME_LENGTH = 100;
+export const MAX_PLACE_NAME_LENGTH = 50;
+export const LOCATIONS_ERROR_MESSAGE = 'Elegí departamentos válidos';
 export const CITIES_REQUIRED_MESSAGE = 'Ingresá al menos una ciudad';
+
+const placeName = z
+  .string()
+  .trim()
+  .max(MAX_PLACE_NAME_LENGTH, `Máx. ${MAX_PLACE_NAME_LENGTH} caracteres por valor`);
+
+export function getLocationKey({
+  departmentId,
+  city,
+  neighborhood,
+}: {
+  departmentId: number | string;
+  city: string;
+  neighborhood: string;
+}) {
+  return [departmentId, city, neighborhood]
+    .map((part) => String(part).trim().toLocaleLowerCase('es'))
+    .join('|');
+}
 
 function placeNames(duplicateMessage: string) {
   return z
@@ -48,18 +68,27 @@ const baseProjectFormSchema = projectSchema.safeExtend({
   geographicScope: z.enum(['national', 'international'], {
     error: 'Seleccioná un alcance geográfico',
   }),
-  departmentIds: z
-    .array(
-      z.coerce
-        .number({ error: 'Elegí departamentos válidos' })
-        .int('Elegí departamentos válidos')
-        .positive('Elegí departamentos válidos')
-        .max(MAX_INT32, 'Elegí departamentos válidos')
-    )
-    .refine((ids) => new Set(ids).size === ids.length, 'No repitas departamentos'),
   countries: placeNames('No repitas países'),
-  cities: placeNames('No repitas ciudades'),
-  neighborhoods: placeNames('No repitas barrios'),
+  locations: z
+    .array(
+      z.object(
+        {
+          departmentId: z.coerce
+            .number({ error: LOCATIONS_ERROR_MESSAGE })
+            .int(LOCATIONS_ERROR_MESSAGE)
+            .positive(LOCATIONS_ERROR_MESSAGE)
+            .max(MAX_INT32, LOCATIONS_ERROR_MESSAGE),
+          city: placeName,
+          neighborhood: placeName,
+        },
+        { error: LOCATIONS_ERROR_MESSAGE }
+      )
+    )
+    .refine((locations) => locations.every(({ city }) => city), CITIES_REQUIRED_MESSAGE)
+    .refine(
+      (locations) => new Set(locations.map(getLocationKey)).size === locations.length,
+      'No repitas ubicaciones'
+    ),
 });
 
 export function buildProjectFormSchema(keys: readonly string[]) {
@@ -84,17 +113,10 @@ export function buildProjectFormSchema(keys: readonly string[]) {
         !(Number((data as Record<string, unknown>)[DIRECT_CHILDREN_KEY]) > 0),
       { message: INTENSITY_REQUIRED_MESSAGE, path: ['intensity'] }
     )
-    .refine((data) => data.geographicScope !== 'national' || data.departmentIds.length > 0, {
-      message: 'Seleccioná al menos un departamento',
-      path: ['departmentIds'],
+    .refine((data) => data.geographicScope !== 'national' || data.locations.length > 0, {
+      message: 'Agregá al menos una ubicación',
+      path: ['locations'],
     })
-    .refine(
-      (data) =>
-        data.geographicScope !== 'national' ||
-        data.departmentIds.length === 0 ||
-        data.cities.length > 0,
-      { message: CITIES_REQUIRED_MESSAGE, path: ['cities'] }
-    )
     .refine((data) => data.geographicScope !== 'international' || data.countries.length > 0, {
       message: 'Ingresá al menos un país',
       path: ['countries'],
@@ -104,32 +126,24 @@ export function buildProjectFormSchema(keys: readonly string[]) {
 export type ProjectFormData = z.infer<typeof baseProjectFormSchema>;
 
 export function splitProjectFormData(data: ProjectFormData, keys: readonly string[]) {
-  const {
-    year,
-    topicIds,
-    strategicLineIds,
-    departmentIds,
-    countries,
-    cities,
-    neighborhoods,
-    ...rest
-  } = data;
+  const { year, topicIds, strategicLineIds, countries, locations, ...rest } = data;
   const fields: Record<string, unknown> = rest;
   const counts = Object.fromEntries(keys.map((key) => [key, fields[key] as number]));
   for (const key of keys) delete fields[key];
   const isNational = rest.geographicScope === 'national';
+  const nationalLocations = isNational ? locations : [];
 
   return {
-    projectData: {
-      ...rest,
-      countries: isNational ? [] : countries,
-      cities: isNational ? cities : [],
-      neighborhoods: isNational ? neighborhoods : [],
-    },
+    projectData: { ...rest, countries: isNational ? [] : countries },
     beneficiaryData: { year, counts },
     topicIds,
     strategicLineIds,
-    departmentIds: isNational ? departmentIds : [],
+    departmentIds: [...new Set(nationalLocations.map(({ departmentId }) => departmentId))],
+    localities: nationalLocations.map(({ departmentId, city, neighborhood }) => ({
+      departmentId,
+      city,
+      neighborhood: neighborhood || null,
+    })),
   };
 }
 
@@ -138,9 +152,15 @@ export function readProjectFormData(formData: FormData) {
     ...Object.fromEntries(formData),
     topicIds: formData.getAll('topicIds'),
     strategicLineIds: formData.getAll('strategicLineIds'),
-    departmentIds: formData.getAll('departmentIds'),
     countries: formData.getAll('countries'),
-    cities: formData.getAll('cities'),
-    neighborhoods: formData.getAll('neighborhoods'),
+    locations: formData.getAll('locations').map(parseLocation),
   };
+}
+
+function parseLocation(value: FormDataEntryValue) {
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    return null;
+  }
 }

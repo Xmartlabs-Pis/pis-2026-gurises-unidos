@@ -52,7 +52,9 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
             •
           </span>
           <dt>{label}</dt>
-          <dd className="text-foreground/80 sm:text-foreground/65">{value}</dd>
+          <dd className="text-foreground/80 sm:text-foreground/65 min-w-0 wrap-anywhere">
+            {value}
+          </dd>
         </div>
       ))}
       {classifications.map(({ label, value }) => (

@@ -43,8 +43,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
         topicIds: ['1'],
         status: 'active',
         leadCoordinatorId: '2',
-        departmentIds: ['3'],
-        cities: ['Montevideo'],
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
         startYear: '2020',
         year: '2024',
         families: '30',
@@ -160,8 +159,7 @@ it('sends multiple selected topics and preserves them after a failed save', asyn
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentIds: ['3'],
-        cities: ['Montevideo'],
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
         topicIds: ['1'],
       }}
       submitAction={submitAction}
@@ -215,8 +213,7 @@ function renderFormWith(initialValues: Record<string, string>) {
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentIds: ['3'],
-        cities: ['Montevideo'],
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
         ...initialValues,
       }}
       submitAction={vi.fn()}
@@ -249,8 +246,7 @@ it('submits the end year of an inactive project', async () => {
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentIds: ['3'],
-        cities: ['Montevideo'],
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
         status: 'inactive',
         startYear: '2020',
         endYear: '2022',
@@ -282,8 +278,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
-        departmentIds: ['3'],
-        cities: ['Montevideo'],
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
         topicIds: ['1'],
       }}
       submitAction={submitAction}
@@ -394,8 +389,7 @@ function renderWithManyCategories(
         strategicLineIds: ['1'],
         topicIds: ['1'],
         leadCoordinatorId: '2',
-        departmentIds: ['3'],
-        cities: ['Montevideo'],
+        locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
         startYear: '2020',
         ...initialValues,
       }}
@@ -466,8 +460,7 @@ it.each(['create', 'edit'] as const)(
           name: 'Project',
           topicIds: ['1'],
           leadCoordinatorId: '2',
-          departmentIds: ['3'],
-          cities: ['Montevideo'],
+          locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
           counterpartyType: mode === 'edit' ? 'publicSector' : '',
           strategicLineIds: ['1'],
         }}

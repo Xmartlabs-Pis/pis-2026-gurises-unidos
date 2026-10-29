@@ -36,7 +36,7 @@ export function ProjectPreview({
           <div className="flex flex-col gap-3 p-5">
             <div className="text-muted-foreground flex items-center gap-2 text-xs leading-4">
               <span aria-hidden="true" className="bg-primary size-1.5 shrink-0 rounded-full" />
-              <span>{locationLabel}</span>
+              <span className="min-w-0 wrap-anywhere">{locationLabel}</span>
             </div>
 
             <h3 className="text-lg leading-7 font-semibold break-words">
