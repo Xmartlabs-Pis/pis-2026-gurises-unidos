@@ -280,6 +280,9 @@ describe('createProject', () => {
       expect(projectCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({ coverPhoto: coverPhotoPath }),
       });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([
+        path.basename(coverPhotoPath),
+      ]);
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
       await rm(directory, { recursive: true, force: true });
@@ -319,7 +322,7 @@ describe('createProject', () => {
       const data = buildFormData();
       data.set('coverPhotoPath', coverPhotoPath);
       expect(await createProject(EMPTY_STATE, data)).toEqual({
-        errors: { departmentIds: ['Elegí departamentos válidos'] },
+        errors: { locations: ['Elegí departamentos válidos'] },
       });
       expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
     } finally {

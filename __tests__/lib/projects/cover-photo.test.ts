@@ -5,6 +5,7 @@ import { access } from 'node:fs/promises';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  clearCoverOwner,
   coverPathFromForm,
   deleteUploadedCover,
   readCoverOwner,
@@ -89,6 +90,20 @@ describe('saveCoverPhoto', () => {
       error: 'La imagen no puede superar los 5 MB.',
     });
     await expect(access(path.join(directory, 'covers'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+});
+
+describe('clearCoverOwner', () => {
+  it('deletes the owner record and leaves the image', async () => {
+    const saved = await saveCoverPhoto(await imageFile('jpeg', 20, 20, 'cover.jpg'), OWNER_ID);
+    if (!('path' in saved)) throw new Error('expected a stored cover');
+    const stored = path.join(directory, 'covers', path.basename(saved.path));
+    const owner = path.join(directory, 'covers', `${path.basename(saved.path, '.webp')}.json`);
+
+    await clearCoverOwner(saved.path);
+    await expect(access(stored)).resolves.toBeUndefined();
+    await expect(access(owner)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(readCoverOwner(saved.path)).resolves.toBeNull();
   });
 });
 

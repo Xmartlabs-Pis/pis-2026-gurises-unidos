@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import {
   COVER_PENDING_TTL_MS,
+  clearCoverOwner,
   deleteUploadedCover,
   listCoverOwnerRecords,
   readCoverOwner,
@@ -23,7 +24,10 @@ export async function discardUnusedUploadedCover(coverPath: string | null) {
       where: { coverPhoto: coverPath, deletedAt: null },
       select: { id: true },
     });
-    if (inUse) return;
+    if (inUse) {
+      await clearCoverOwner(coverPath);
+      return;
+    }
     await discardUploadedCover(coverPath);
   } catch (error) {
     console.error('Failed to delete cover photo', error);
@@ -39,6 +43,15 @@ export async function discardOwnedUnusedCover(coverPath: string | null, userId: 
 export async function ownedUploadedCoverPath(coverPath: string | null, userId: number) {
   const owner = coverPath ? await readCoverOwner(coverPath) : null;
   return owner?.userId === userId ? coverPath : null;
+}
+
+export async function claimUploadedCover(coverPath: string | null) {
+  if (!coverPath || !isUploadedCoverPath(coverPath)) return;
+  try {
+    await clearCoverOwner(coverPath);
+  } catch (error) {
+    console.error('Failed to claim cover photo', error);
+  }
 }
 
 export async function discardExpiredUnusedCovers(now = new Date()) {

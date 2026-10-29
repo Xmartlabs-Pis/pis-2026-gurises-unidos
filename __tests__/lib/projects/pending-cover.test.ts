@@ -15,6 +15,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 
 import {
+  claimUploadedCover,
   discardExpiredUnusedCovers,
   discardOwnedUnusedCover,
   ownedUploadedCoverPath,
@@ -86,13 +87,29 @@ describe('discardOwnedUnusedCover', () => {
     ]);
   });
 
-  it('leaves a cover that a live project still uses', async () => {
+  it('leaves a cover that a live project still uses and drops its owner record', async () => {
     await writeCover(OWNED, 7);
     findLiveCoverMock.mockResolvedValue({ id: 99 });
     await discardOwnedUnusedCover(OWNED, 7);
-    expect(await readdir(path.join(directory, 'covers'))).toEqual(
-      expect.arrayContaining([`${path.basename(OWNED, '.webp')}.json`, path.basename(OWNED)])
-    );
+    expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(OWNED)]);
+  });
+});
+
+describe('claimUploadedCover', () => {
+  it('drops the owner record and leaves the image', async () => {
+    await writeCover(OWNED, 7);
+    await claimUploadedCover(OWNED);
+    expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(OWNED)]);
+  });
+
+  it('ignores placeholders and missing paths', async () => {
+    await writeCover(OWNED, 7);
+    await claimUploadedCover(null);
+    await claimUploadedCover('/images/project-placeholders/1.webp');
+    expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+      `${path.basename(OWNED, '.webp')}.json`,
+      path.basename(OWNED),
+    ]);
   });
 });
 
@@ -108,13 +125,11 @@ describe('discardExpiredUnusedCovers', () => {
     expect(await readdir(path.join(directory, 'covers'))).not.toContain(path.basename(OWNED));
   });
 
-  it('leaves an expired cover that a live project still uses', async () => {
+  it('leaves an expired cover that a live project still uses and drops its owner record', async () => {
     const stale = new Date(Date.now() - COVER_PENDING_TTL_MS - 1000);
     await writeCover(OWNED, 7, stale);
     findLiveCoverMock.mockResolvedValue({ id: 99 });
     await discardExpiredUnusedCovers();
-    expect(await readdir(path.join(directory, 'covers'))).toEqual(
-      expect.arrayContaining([`${path.basename(OWNED, '.webp')}.json`, path.basename(OWNED)])
-    );
+    expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(OWNED)]);
   });
 });

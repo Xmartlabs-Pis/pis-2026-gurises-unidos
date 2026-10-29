@@ -9,6 +9,7 @@ import { mapProjectDbError } from '@/lib/projects/map-project-db-error';
 import { revalidateProject } from '@/lib/projects/revalidate-project';
 import { coverPathFromForm, wantsCoverRemoved } from '@/lib/projects/cover-photo';
 import {
+  claimUploadedCover,
   discardOwnedUnusedCover,
   discardUnusedUploadedCover,
   ownedUploadedCoverPath,
@@ -295,6 +296,7 @@ export async function createProject(
       return result.error;
     }
     projectId = result.projectId;
+    await claimUploadedCover(coverPhoto);
   } catch (error) {
     await discardOwnedUnusedCover(uploadedPath, user.id);
     const mapped = mapProjectDbError(error);
@@ -499,6 +501,7 @@ export async function updateProject(
     if (requestedCover && previousCover !== requestedCover) {
       await discardUnusedUploadedCover(previousCover);
     }
+    await claimUploadedCover(requestedCover);
   } catch (error) {
     await discardOwnedUnusedCover(uploadedPath, user.id);
     const mapped = mapProjectDbError(error);

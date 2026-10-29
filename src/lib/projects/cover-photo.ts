@@ -167,6 +167,12 @@ export async function saveCoverPhoto(
   return { path: `/uploads/covers/${id}.webp` };
 }
 
+export async function clearCoverOwner(coverPath: string | null | undefined) {
+  const id = coverPath && isUploadedCoverPath(coverPath) ? uploadedCoverId(coverPath) : null;
+  if (!id) return;
+  await unlinkMissing(coverAssetPaths(id).owner);
+}
+
 export async function deleteUploadedCover(coverPath: string | null | undefined) {
   const id = coverPath && isUploadedCoverPath(coverPath) ? uploadedCoverId(coverPath) : null;
   if (!id) return;

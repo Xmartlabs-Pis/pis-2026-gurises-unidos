@@ -1210,15 +1210,13 @@ describe('project review regressions', () => {
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
         departments: [{ id: 3 }],
+        localities: LOCALITIES,
       });
       await expect(updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).rejects.toThrow(
         'Redirect:'
       );
       expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(nextPath);
-      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
-        `${path.basename(nextPath, '.webp')}.json`,
-        path.basename(nextPath),
-      ]);
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(nextPath)]);
       expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toContain('coverPhoto');
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
@@ -1241,13 +1239,14 @@ describe('project review regressions', () => {
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
         departments: [{ id: 3 }],
+        localities: LOCALITIES,
       });
       mocks.findLiveCover.mockResolvedValue({ id: 99 });
       await expect(updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).rejects.toThrow(
         'Redirect:'
       );
-      expect(await readdir(path.join(directory, 'covers'))).toEqual(
-        expect.arrayContaining([path.basename(previousPath), path.basename(nextPath)])
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual(
+        [path.basename(previousPath), path.basename(nextPath)].sort()
       );
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
