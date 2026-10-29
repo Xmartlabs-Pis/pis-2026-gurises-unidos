@@ -43,7 +43,7 @@ export function TextInputField({
 
   return (
     <Field className={cn('min-w-0 gap-1.5', className)} data-invalid={Boolean(errorMessage)}>
-      <FieldLabel htmlFor={id} className="text-foreground text-xs leading-4 font-medium">
+      <FieldLabel htmlFor={id} className="text-foreground text-xs leading-4 font-medium wrap-anywhere">
         {label}
       </FieldLabel>
       <div className="relative">
