@@ -30,8 +30,11 @@ function projectFormData(fields: Record<string, string>) {
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
     geographicScope: 'national',
-    departmentIds: String(seed.departmentIds[0]),
-    cities: 'Colonia del Sacramento',
+    locations: JSON.stringify({
+      departmentId: String(seed.departmentIds[0]),
+      city: 'Colonia del Sacramento',
+      neighborhood: '',
+    }),
     zone: 'rural',
     topicIds: String(seed.topicIds[0]),
     strategicLineIds: String(seed.strategicLineIds[0]),

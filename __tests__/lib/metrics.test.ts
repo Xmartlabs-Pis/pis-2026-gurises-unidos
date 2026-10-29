@@ -11,7 +11,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     metric: { findMany: vi.fn() },
     publicSettings: { findUnique: vi.fn() },
-    projectBeneficiary: { findMany: vi.fn() },
+    projectBeneficiary: { findMany: vi.fn(), count: vi.fn() },
     projectBeneficiaryValue: { groupBy: vi.fn() },
     beneficiaryCategory: { findMany: vi.fn() },
   },
@@ -99,11 +99,7 @@ describe('getMetricValues', () => {
       basicServiceStaff: 12,
       coordinatedInstitutions: 5,
     });
-    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([
-      { projectId: 1, project: { departments: [{ id: 1 }] } },
-      { projectId: 2, project: { departments: [{ id: 1 }, { id: 2 }] } },
-      { projectId: 3, project: { departments: [] } },
-    ] as unknown as Awaited<ReturnType<typeof prisma.projectBeneficiary.findMany>>);
+    vi.mocked(prisma.projectBeneficiary.count).mockResolvedValue(3);
 
     expect(await getMetricValues(year)).toEqual({
       children_reached: 140,
@@ -112,7 +108,6 @@ describe('getMetricValues', () => {
       families: 20,
       teachers: 12,
       institutions: 5,
-      departments: 2,
       active_projects: 3,
     });
     expect(prisma.projectBeneficiaryValue.groupBy).toHaveBeenCalledWith(
@@ -120,16 +115,16 @@ describe('getMetricValues', () => {
         where: { beneficiary: { year, project: { deletedAt: null } } },
       })
     );
-    expect(prisma.projectBeneficiary.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { year, project: { deletedAt: null } } })
-    );
+    expect(prisma.projectBeneficiary.count).toHaveBeenCalledWith({
+      where: { year, project: { deletedAt: null } },
+    });
   });
 
   it('returns zeros when the year has no data', async () => {
     mockBeneficiarySums({});
-    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.projectBeneficiary.count).mockResolvedValue(0);
 
-    expect(Object.values(await getMetricValues(2027))).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(Object.values(await getMetricValues(2027))).toEqual([0, 0, 0, 0, 0, 0, 0]);
   });
 });
 
@@ -144,10 +139,9 @@ describe('getMetricSettings', () => {
       'children_reached',
       'direct_children_reached',
       'families',
-      'departments',
       'active_projects',
     ]);
-    expect(settings).toHaveLength(8);
+    expect(settings).toHaveLength(7);
   });
 });
 

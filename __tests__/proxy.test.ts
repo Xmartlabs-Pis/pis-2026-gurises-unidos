@@ -14,7 +14,12 @@ const runProxy = proxy as unknown as (request: AuthRequest) => NextResponse;
 
 function makeRequest(
   path: string,
-  options?: { authenticated?: boolean; mustChangePassword?: boolean; expiration?: string }
+  options?: {
+    authenticated?: boolean;
+    mustChangePassword?: boolean;
+    expiration?: string;
+    role?: 'admin' | 'coordinator';
+  }
 ) {
   const headers = new Headers();
 
@@ -24,7 +29,13 @@ function makeRequest(
 
   const request = new NextRequest(`https://example.com${path}`, { headers }) as AuthRequest;
   request.auth = options?.authenticated
-    ? { user: { id: '1', mustChangePassword: options.mustChangePassword === true } }
+    ? {
+        user: {
+          id: '1',
+          role: options.role ?? 'admin',
+          mustChangePassword: options.mustChangePassword === true,
+        },
+      }
     : null;
   return request;
 }
@@ -121,5 +132,37 @@ describe('proxy', () => {
     const response = runProxy(makeRequest('/password-reset', { authenticated: true }));
 
     expect(response.headers.get('location')).toBe('https://example.com/dashboard');
+  });
+
+  test.each(['/management/users', '/management/users/42/edit', '/management/metrics'])(
+    'shows the access denied page to coordinators on %s',
+    (path) => {
+      const response = runProxy(makeRequest(path, { authenticated: true, role: 'coordinator' }));
+
+      expect(response.headers.get('x-middleware-rewrite')).toBe(
+        'https://example.com/access-denied'
+      );
+      expect(response.headers.get('x-middleware-next')).toBeNull();
+      expect(response.cookies.get(SESSION_EXPIRATION_COOKIE)).toBeDefined();
+    }
+  );
+
+  test.each(['/management/profile', '/dashboard/projects/new'])(
+    'allows coordinators on %s',
+    (path) => {
+      const response = runProxy(makeRequest(path, { authenticated: true, role: 'coordinator' }));
+
+      expect(response.headers.get('x-middleware-next')).toBe('1');
+      expect(response.headers.get('x-middleware-rewrite')).toBeNull();
+    }
+  );
+
+  test('allows admins on management routes', () => {
+    const response = runProxy(
+      makeRequest('/management/users', { authenticated: true, role: 'admin' })
+    );
+
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(response.headers.get('x-middleware-rewrite')).toBeNull();
   });
 });

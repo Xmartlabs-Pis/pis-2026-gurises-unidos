@@ -17,6 +17,10 @@ vi.mock('@/lib/audit-log', async (importOriginal) => {
 let seed: SeedData;
 let createdProjectIds: number[] = [];
 
+function location(departmentId: number, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId: String(departmentId), city, neighborhood });
+}
+
 function buildFormData(overrides: Record<string, string | string[]> = {}): FormData {
   const fields: Record<string, string | string[]> = {
     name: 'Project under creation',
@@ -27,10 +31,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     endYear: '',
     leadCoordinatorId: String(seed.coordinatorId),
     geographicScope: 'national',
-    departmentIds: [String(seed.departmentIds[0])],
-    cities: ['Colonia del Sacramento'],
-    neighborhoods: ['Barrio Sur'],
-    zone: 'rural',
+    locations: [location(seed.departmentIds[0], 'Colonia del Sacramento', 'Barrio Sur')],
     generalObjective: 'Objective',
     publicDescription: 'Public description',
     internalNotes: '',
@@ -125,9 +126,14 @@ describe('createProject (integration)', () => {
       topics: [{ id: seed.topicIds[0] }],
       geographicScope: 'national',
       countries: [],
-      cities: ['Colonia del Sacramento'],
-      neighborhoods: ['Barrio Sur'],
-      zone: 'rural',
+      localities: [
+        {
+          departmentId: seed.departmentIds[0],
+          city: 'Colonia del Sacramento',
+          neighborhood: 'Barrio Sur',
+        },
+      ],
+      zone: null,
       generalObjective: 'Objective',
       publicDescription: 'Public description',
       internalNotes: null,
@@ -174,6 +180,16 @@ describe('createProject (integration)', () => {
         },
       }),
     ]);
+  });
+
+  test('ignores a submitted zone and stores the project without one', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ zone: 'city' }))
+    );
+
+    expect((await loadProject(projectId)).zone).toBeNull();
   });
 
   test('stores an inactive project with its end year', async () => {
@@ -352,9 +368,12 @@ describe('createProject (integration)', () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
-    const result = await createProject({}, buildFormData({ departmentIds: ['999999'] }));
+    const result = await createProject(
+      {},
+      buildFormData({ locations: [location(999999, 'Colonia del Sacramento')] })
+    );
 
-    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
+    expect(result.errors?.locations).toEqual(['Elegí departamentos válidos']);
     expect(await countRows()).toEqual(before);
   });
 
@@ -371,22 +390,37 @@ describe('createProject (integration)', () => {
     expect(await loadProject(projectId)).toMatchObject({
       geographicScope: 'international',
       countries: ['Argentina', 'Brasil'],
-      cities: [],
-      neighborhoods: [],
       departments: [],
+      localities: [],
     });
   });
 
-  test('persists several departments for a national project', async () => {
+  test('persists several departments with their own cities and neighborhoods', async () => {
     signInAs(seed.adminId);
+    const [first, second] = seed.departmentIds;
 
     const projectId = await expectRedirectToNewProject(
-      createProject({}, buildFormData({ departmentIds: seed.departmentIds.map(String) }))
+      createProject(
+        {},
+        buildFormData({
+          locations: [
+            location(first, 'Colonia del Sacramento', 'Barrio Sur'),
+            location(first, 'Colonia del Sacramento', 'Centro'),
+            location(second, 'Paysandú'),
+          ],
+        })
+      )
     );
 
-    expect((await loadProject(projectId)).departments).toEqual(
-      [...seed.departmentIds].sort((a, b) => a - b).map((id) => ({ id }))
+    const project = await loadProject(projectId);
+    expect(project.departments).toEqual(
+      [first, second].sort((a, b) => a - b).map((id) => ({ id }))
     );
+    expect(project.localities).toEqual([
+      { departmentId: first, city: 'Colonia del Sacramento', neighborhood: 'Barrio Sur' },
+      { departmentId: first, city: 'Colonia del Sacramento', neighborhood: 'Centro' },
+      { departmentId: second, city: 'Paysandú', neighborhood: null },
+    ]);
   });
 
   test('rolls back the project when a later step of the creation fails', async () => {

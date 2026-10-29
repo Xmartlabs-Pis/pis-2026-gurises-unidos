@@ -38,6 +38,7 @@ export default defineConfig({
           AUTH_URL: baseURL,
           AUTH_TRUST_HOST: 'true',
           RESEND_API_KEY: '',
+          EMBED_FRAME_ANCESTORS: 'http://localhost:4100',
         },
         timeout: 120_000,
       },

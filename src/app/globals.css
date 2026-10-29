@@ -212,9 +212,17 @@
   body {
     @apply bg-background text-foreground;
   }
+  body:has(.embed-root) {
+    @apply bg-transparent;
+  }
   html {
     @apply font-sans;
   }
+}
+
+.leaflet-container path.leaflet-interactive:focus,
+.leaflet-container:focus {
+  outline: none;
 }
 
 @utility bg-project-cover {

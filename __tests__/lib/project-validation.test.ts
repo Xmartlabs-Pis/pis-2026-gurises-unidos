@@ -85,10 +85,8 @@ const BASE_PROJECT = {
   endYear: '2022',
   leadCoordinatorId: '1',
   geographicScope: 'national',
-  departmentIds: ['1'],
   countries: [],
-  cities: ['Pando'],
-  neighborhoods: [],
+  locations: [{ departmentId: '1', city: 'Pando', neighborhood: '' }],
   zone: 'city',
 };
 
@@ -225,18 +223,18 @@ describe('geographic scope', () => {
 
   it('requires at least one department for a national project', () => {
     expect(
-      schema.safeParse({ ...input, departmentIds: [] }).error?.flatten().fieldErrors.departmentIds
-    ).toEqual(['Seleccioná al menos un departamento']);
+      schema.safeParse({ ...input, locations: [] }).error?.flatten().fieldErrors.locations
+    ).toEqual(['Agregá al menos una ubicación']);
   });
 
-  it('requires at least one city for a national project with departments', () => {
-    expect(
-      schema.safeParse({ ...input, cities: [' ', ''] }).error?.flatten().fieldErrors.cities
-    ).toEqual(['Ingresá al menos una ciudad']);
-    expect(
-      schema.safeParse({ ...input, departmentIds: [], cities: [] }).error?.flatten().fieldErrors
-        .cities
-    ).toBeUndefined();
+  it('requires a city for each department of a national project', () => {
+    for (const neighborhood of ['', 'Centro']) {
+      expect(
+        schema
+          .safeParse({ ...input, locations: [{ departmentId: '1', city: ' ', neighborhood }] })
+          .error?.flatten().fieldErrors.locations
+      ).toEqual(['Ingresá al menos una ciudad']);
+    }
   });
 
   it('does not require cities for an international project', () => {
@@ -244,9 +242,8 @@ describe('geographic scope', () => {
       schema.safeParse({
         ...input,
         geographicScope: 'international',
-        departmentIds: [],
         countries: ['Brasil'],
-        cities: [],
+        locations: [],
       }).success
     ).toBe(true);
   });
@@ -254,7 +251,7 @@ describe('geographic scope', () => {
   it('requires at least one country for an international project', () => {
     expect(
       schema
-        .safeParse({ ...input, geographicScope: 'international', departmentIds: [] })
+        .safeParse({ ...input, geographicScope: 'international', locations: [] })
         .error?.flatten().fieldErrors.countries
     ).toEqual(['Ingresá al menos un país']);
   });
@@ -267,34 +264,34 @@ describe('geographic scope', () => {
     }
   });
 
-  it('accepts several departments, cities and neighborhoods trimming blank values', () => {
+  it('accepts locations that associate departments, cities and neighborhoods', () => {
     const parsed = schema.parse({
       ...input,
-      departmentIds: ['1', '2'],
-      cities: [' Las Piedras ', '', 'Pando'],
-      neighborhoods: ['Centro'],
+      locations: [
+        { departmentId: '1', city: ' Las Piedras ', neighborhood: ' Centro ' },
+        { departmentId: '1', city: 'Las Piedras', neighborhood: '' },
+        { departmentId: '2', city: 'Salto', neighborhood: '' },
+      ],
     });
-    expect(parsed).toMatchObject({
-      departmentIds: [1, 2],
-      cities: ['Las Piedras', 'Pando'],
-      neighborhoods: ['Centro'],
-    });
+    expect(parsed.locations).toEqual([
+      { departmentId: 1, city: 'Las Piedras', neighborhood: 'Centro' },
+      { departmentId: 1, city: 'Las Piedras', neighborhood: '' },
+      { departmentId: 2, city: 'Salto', neighborhood: '' },
+    ]);
   });
 
-  it('rejects repeated departments and place names ignoring case', () => {
-    const errors = schema
-      .safeParse({
-        ...input,
-        departmentIds: ['1', '1'],
-        cities: ['Pando', 'pando'],
-        neighborhoods: ['Centro', 'CENTRO'],
-      })
-      .error?.flatten().fieldErrors;
-    expect(errors).toMatchObject({
-      departmentIds: ['No repitas departamentos'],
-      cities: ['No repitas ciudades'],
-      neighborhoods: ['No repitas barrios'],
-    });
+  it('rejects repeated locations ignoring case', () => {
+    expect(
+      schema
+        .safeParse({
+          ...input,
+          locations: [
+            { departmentId: '1', city: 'Pando', neighborhood: 'Centro' },
+            { departmentId: '1', city: 'pando', neighborhood: 'CENTRO' },
+          ],
+        })
+        .error?.flatten().fieldErrors.locations
+    ).toEqual(['No repitas ubicaciones']);
     expect(
       schema
         .safeParse({
@@ -306,50 +303,61 @@ describe('geographic scope', () => {
     ).toEqual(['No repitas países']);
   });
 
-  it('bounds each place name to 100 characters', () => {
-    expect(schema.safeParse({ ...input, cities: ['a'.repeat(100)] }).success).toBe(true);
-    expect(
-      schema.safeParse({ ...input, cities: ['a'.repeat(101)] }).error?.flatten().fieldErrors.cities
-    ).toEqual(['Máx. 100 caracteres por valor']);
+  it('rejects invalid departments', () => {
+    for (const location of [{ departmentId: '0', city: 'Pando', neighborhood: '' }, null]) {
+      expect(
+        schema.safeParse({ ...input, locations: [location] }).error?.flatten().fieldErrors.locations
+      ).toEqual(['Elegí departamentos válidos']);
+    }
   });
 
-  it('keeps only national values for a national project', () => {
-    const { projectData, departmentIds } = splitProjectFormData(
+  it('bounds each place name to 50 characters', () => {
+    const location = (city: string) => [{ departmentId: '1', city, neighborhood: '' }];
+    expect(schema.safeParse({ ...input, locations: location('a'.repeat(50)) }).success).toBe(true);
+    expect(
+      schema.safeParse({ ...input, locations: location('a'.repeat(51)) }).error?.flatten()
+        .fieldErrors.locations
+    ).toEqual(['Máx. 50 caracteres por valor']);
+  });
+
+  it('splits the locations into departments and localities for a national project', () => {
+    const { projectData, departmentIds, localities } = splitProjectFormData(
       schema.parse({
         ...input,
         countries: ['Brasil'],
-        cities: ['Pando'],
-        neighborhoods: ['Centro'],
+        locations: [
+          { departmentId: '2', city: 'Pando', neighborhood: 'Centro' },
+          { departmentId: '2', city: 'Las Piedras', neighborhood: '' },
+          { departmentId: '1', city: 'Salto', neighborhood: '' },
+        ],
       }),
       BENEFICIARY_CATEGORY_KEYS
     );
-    expect(departmentIds).toEqual([1]);
-    expect(projectData).toMatchObject({
-      geographicScope: 'national',
-      countries: [],
-      cities: ['Pando'],
-      neighborhoods: ['Centro'],
-    });
-    expect(projectData).not.toHaveProperty('departmentIds');
+    expect(departmentIds).toEqual([2, 1]);
+    expect(localities).toEqual([
+      { departmentId: 2, city: 'Pando', neighborhood: 'Centro' },
+      { departmentId: 2, city: 'Las Piedras', neighborhood: null },
+      { departmentId: 1, city: 'Salto', neighborhood: null },
+    ]);
+    expect(projectData).toMatchObject({ geographicScope: 'national', countries: [] });
+    expect(projectData).not.toHaveProperty('locations');
   });
 
   it('keeps only the countries for an international project', () => {
-    const { projectData, departmentIds } = splitProjectFormData(
+    const { projectData, departmentIds, localities } = splitProjectFormData(
       schema.parse({
         ...input,
         geographicScope: 'international',
         countries: ['Argentina', 'Brasil'],
-        cities: ['Pando'],
-        neighborhoods: ['Centro'],
+        locations: [{ departmentId: '1', city: 'Pando', neighborhood: 'Centro' }],
       }),
       BENEFICIARY_CATEGORY_KEYS
     );
     expect(departmentIds).toEqual([]);
+    expect(localities).toEqual([]);
     expect(projectData).toMatchObject({
       geographicScope: 'international',
       countries: ['Argentina', 'Brasil'],
-      cities: [],
-      neighborhoods: [],
     });
   });
 });

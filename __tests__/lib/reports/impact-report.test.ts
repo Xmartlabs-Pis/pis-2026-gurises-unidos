@@ -32,7 +32,6 @@ function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
     families: 0,
     teachers: 0,
     institutions: 0,
-    departments: 0,
     active_projects: 0,
     ...overrides,
   };

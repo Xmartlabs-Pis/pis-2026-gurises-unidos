@@ -6,6 +6,7 @@ import {
   E2E_INACTIVE_PROJECT,
   E2E_DEPARTMENT,
   E2E_PROJECTS,
+  E2E_TOPICS,
 } from '../prisma/e2e-fixtures';
 import { COORDINATOR_NAME, DESKTOP, deleteProjects, fillRequiredProjectFields } from './helpers';
 
@@ -119,5 +120,52 @@ test.describe('creating a project', () => {
     await expect(page).toHaveURL(/\/dashboard\/projects\/\d+$/);
     await expect(page.getByRole('heading', { level: 1, name: NEW_PROJECT_NAME })).toBeVisible();
     await expect(page.getByText(COORDINATOR_NAME)).toBeVisible();
+  });
+
+  test('shows full project information without overflow on mobile and desktop', async ({
+    page,
+  }) => {
+    const publicDescription = `Public description\n${'description'.repeat(80)}`;
+    const internalNotes = `Internal notes\n${'note'.repeat(200)}`;
+    await page.goto('/dashboard/projects/new');
+    await fillRequiredProjectFields(page, NEW_PROJECT_NAME);
+    await page.getByLabel('Temáticas', { exact: true }).click();
+    await page.getByRole('option', { name: E2E_TOPICS[1], exact: true }).click();
+    await page.keyboard.press('Escape');
+    await page.getByLabel('Descripción pública', { exact: true }).fill(publicDescription);
+    await page.getByLabel('Notas internas', { exact: true }).fill(internalNotes);
+    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await expect(page).toHaveURL(/\/dashboard\/projects\/\d+$/);
+
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      const description = page.getByRole('region', { name: 'Descripción pública' });
+      const notes = page.getByRole('region', { name: 'Notas internas' });
+      await expect(description).toBeVisible();
+      await expect(notes).toBeVisible();
+      await expect(description.locator('p')).toHaveText(publicDescription);
+      await expect(notes.locator('p')).toHaveText(internalNotes);
+      await expect(page.getByText(publicDescription, { exact: true })).toHaveCount(1);
+      await expect(page.getByRole('link', { name: 'Ver vista pública →' })).toBeVisible();
+      await expect(
+        page.getByText(`${E2E_TOPICS[0]}, ${E2E_TOPICS[1]}`, { exact: true })
+      ).toBeVisible();
+
+      for (const section of [description, notes]) {
+        expect(
+          await section.evaluate((element) => element.scrollWidth <= element.clientWidth)
+        ).toBe(true);
+        const text = section.locator('p');
+        expect(await text.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe(
+          'pre-wrap'
+        );
+        expect(await text.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+          true
+        );
+      }
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+      ).toBe(true);
+    }
   });
 });

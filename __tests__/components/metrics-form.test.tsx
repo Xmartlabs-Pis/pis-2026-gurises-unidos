@@ -5,6 +5,10 @@ import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 
 const { saveMock } = vi.hoisted(() => ({ saveMock: vi.fn() }));
 vi.mock('@/app/actions/metrics', () => ({ saveMetricSettings: saveMock }));
+vi.mock('@/app/actions/contributors', () => ({
+  createContributor: vi.fn(),
+  deleteContributor: vi.fn(),
+}));
 vi.mock('@/lib/notify', () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -35,7 +39,6 @@ beforeEach(() => {
         families: 20,
         teachers: 12,
         institutions: 5,
-        departments: 2,
         active_projects: 3,
       }}
       initialMetrics={METRIC_DEFINITIONS}
@@ -255,7 +258,6 @@ it('toggles direct and indirect children independently in the preview', () => {
   expect(within(indirectCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
   expect(preview.getByText('NNA directos')).toBeDefined();
   expect(preview.getByText('NNA indirectos')).toBeDefined();
-  expect(preview.getByText('Departamentos')).toBeDefined();
   expect(preview.getByText('Proyectos con actividad')).toBeDefined();
   expect(preview.queryByText('Familias acompañadas')).toBeNull();
   expect(preview.queryByText('Funcionarios de servicios básicos')).toBeNull();

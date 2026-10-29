@@ -163,6 +163,30 @@ npx auth secret               # genera AUTH_SECRET y lo escribe en .env
 `SEED_USER_PASSWORD` es la contraseña de los usuarios de prueba del seed. Poné cualquier valor en
 `.env` antes de correr `npx prisma db seed`. Si la cambiás, volvé a ejecutar el seed para actualizar los hashes.
 
+### Cooldown de inicio de sesión
+
+Cada cédula tiene cinco intentos sin espera. Si el quinto falla, se bloquean nuevos intentos durante
+cinco minutos. Después de ese plazo se habilitan otros cinco intentos. Un ingreso exitoso también
+reinicia el contador. Restablecer la contraseña por mail o mediante un administrador elimina el
+bloqueo y devuelve los cinco intentos.
+
+Cada autenticación fallida se guarda en `AuditLog` con la cédula normalizada y la fecha y hora del
+servidor. Los envíos durante el bloqueo también se registran con el motivo `blocked`, sin extender
+la espera. Los errores de validación del formulario no cuentan como intentos de autenticación.
+El registro y el contador se actualizan en la misma transacción; un ingreso exitoso conserva el historial.
+
+Los administradores pueden consultarlos en **Historial de cambios**, junto con los demás eventos,
+o elegir **Accesos fallidos**. Se pueden filtrar por cédula exacta (con o sin puntos y guiones),
+entidad **Autenticación** y fechas. El autor figura como **Sin autenticar**: la cédula ingresada
+no identifica a quien realizó el intento.
+
+El estado se guarda en `LoginThrottle`, en PostgreSQL, usando la cédula normalizada. Se comparte
+entre navegadores e instancias y también se aplica a cédulas sin cuenta. Los envíos durante la espera
+no comprueban la contraseña ni extienden el bloqueo. El formulario muestra una cuenta regresiva,
+calculada con los segundos restantes que devuelve el servidor y un reloj monotónico del navegador,
+para que la hora configurada en el equipo no la altere. El servidor controla cada intento.
+Las sesiones existentes no se cierran por este bloqueo.
+
 ## Email (Resend)
 
 Los mails de invitación y de recuperación de contraseña salen por [Resend](https://resend.com).
@@ -326,6 +350,65 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Verificá la base, no solo lo que devuelve la action.** Para los casos de error, leé la fila antes
   y después y compará con `toEqual`, así se ve que la transacción no dejó nada a medias.
 
+## Embed de impacto
+
+`/embed` muestra la tarjeta "Nuestro impacto en {año}" para insertarla en la web de Gurises Unidos.
+Es pública y es la única ruta que se puede cargar en un iframe: el resto responde con
+`Content-Security-Policy: frame-ancestors 'none'` (`next.config.ts`).
+
+Los sitios que pueden embeberla se configuran con `EMBED_FRAME_ANCESTORS` en el `.env` de cada
+entorno (separados por espacio, o `*` para cualquiera). Se lee en cada request desde `src/proxy.ts`,
+así que alcanza con reiniciar el contenedor. Si no está definida, el embed no carga en ningún sitio.
+
+```
+EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy"
+```
+
+### Snippet para la web de Gurises Unidos
+
+El embed le avisa su altura al sitio con `postMessage`, y el script ajusta el iframe. Así, si se
+publican o despublican métricas, no hay que tocar nada del lado de su web.
+
+```html
+<iframe
+  id="gurises-unidos-impacto"
+  src="https://<dominio>/embed"
+  title="Impacto de Gurises Unidos"
+  loading="lazy"
+  style="display: block; width: 100%; max-width: 1200px; height: 400px; margin: 0 auto; border: 0"
+></iframe>
+<script>
+  window.addEventListener('message', function (event) {
+    var iframe = document.getElementById('gurises-unidos-impacto');
+    if (!iframe || event.source !== iframe.contentWindow) return;
+    if (!event.data || event.data.type !== 'gurises-unidos:embed-height') return;
+    iframe.style.height = event.data.height + 'px';
+  });
+</script>
+```
+
+`<dominio>` es el dominio de producción de la plataforma. Tiene que ser HTTPS: su web lo es, y el
+navegador bloquea un iframe `http://` dentro de una página `https://`. Los `400px` son solo la altura
+inicial, hasta que el embed manda la suya.
+
+### Cómo instalarlo
+
+Su web es WordPress:
+
+1. En la página donde va la tarjeta, agregar un bloque **HTML personalizado** y pegar el snippet
+   entero, iframe y script juntos.
+2. Guardarlo con un usuario **administrador**. WordPress solo conserva los `<script>` de usuarios
+   con el permiso `unfiltered_html`; si lo guarda otro rol, el script se borra sin aviso y el iframe
+   queda fijo en 400 px, lo que en mobile puede cortar la tarjeta.
+3. Si `EMBED_FRAME_ANCESTORS` no incluye el dominio de su web, el iframe aparece vacío.
+
+Para verificar que quedó bien, en desktop y en el celular:
+
+- Se ven el título y todas las cifras publicadas, sin scroll dentro del iframe ni espacio vacío
+  abajo.
+- Después de recargar la página, el código del bloque sigue teniendo el `<script>`.
+- "Ver informe completo" abre la vista pública en una pestaña nueva.
+
 ## Deploy
 
 Hay dos workflows, los dos **buildean la imagen en GitHub Actions**, la publican en GHCR y después
@@ -405,6 +488,18 @@ hay que revertir el commit en la rama.
 `pis-main_pgdata`) y su puerto: `DB_PORT` 5432 en main, 5433 en staging, siempre atado a
 `127.0.0.1`.
 
+Las portadas subidas no van a la base. Staging las guarda en `/srv/pis-uploads/staging` y
+producción en `/srv/pis-uploads/main`. `deploy.sh` crea esa carpeta y exporta `UPLOADS_DIR` para
+montarla en el contenedor en `/app/uploads`. Un deploy reemplaza el contenedor y deja los
+archivos. En local, `next dev` escribe en `uploads` (está en `.gitignore`).
+
+Se sirven en `/uploads/covers/<uuid>.webp`, sin autenticación. Quien tenga la URL
+puede bajar la imagen aunque el proyecto esté oculto, inactivo o borrado. `showOnLanding` y
+`deletedAt` filtran listados y la landing, no el archivo. El UUID es lo único que impide adivinarla.
+
+Esa carpeta no entra en un `pg_dump`. Hay que respaldarla aparte. Restaurar solo la base deja
+portadas rotas; restaurar solo los archivos deja huérfanos.
+
 Entorno nuevo: clonar en `/srv/pis-<rama>` y, como `deploy` y sin `sudo`:
 
 ```bash
@@ -412,11 +507,13 @@ Entorno nuevo: clonar en `/srv/pis-<rama>` y, como `deploy` y sin `sudo`:
 ```
 
 Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `AUTH_URL`, `DB_PORT`, el
-`DATABASE_URL` apuntando a `db:5432`, `EMAIL_FROM` y `RESEND_API_KEY` vacía, que hay que completar a
-mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
+`DATABASE_URL` apuntando a `db:5432`, `UPLOADS_DIR`, `EMAIL_FROM` y `RESEND_API_KEY` vacía, que hay
+que completar a mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
 
-Si el `.env` ya existía, agregarle `DB_PORT` a mano: es la única fuente del puerto y el deploy corta
-si falta. Lo mismo con `RESEND_API_KEY`: sin ella la app levanta, pero no manda mails.
+Si el `.env` ya existía, agregarle a mano `DB_PORT` (es la única fuente del puerto y el deploy corta
+si falta). `deploy.sh` escribe `UPLOADS_DIR=/srv/pis-uploads/<rama>` si falta. Lo mismo con
+`RESEND_API_KEY`: sin ella la app levanta, pero no manda mails. Sin `UPLOADS_DIR`, un
+`docker compose up` a mano monta `./uploads` dentro del clon en vez de la carpeta de la VM.
 
 ### Migraciones en el deploy
 
@@ -443,7 +540,7 @@ concurrencia `deploy-staging`, así que nunca corren en paralelo con un deploy.
 | Workflow          | Qué hace                                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Seed staging**  | Carga el dataset de prueba: 19 departamentos, 6 usuarios, 25 proyectos con 1 a 4 años de beneficiarios (4 quedan sin ninguno). Es idempotente: correrlo de nuevo no duplica nada. |
-| **Clean staging** | Vacía la base. Input `mode`: `reset` borra todo y recrea el admin, `wipe` borra todo sin dejar admin.                                                                             |
+| **Clean staging** | Vacía la base y borra las portadas de `/srv/pis-uploads/staging`. Input `mode`: `reset` borra todo y recrea el admin, `wipe` borra todo sin dejar admin.                          |
 
 El admin es `admin@gurisesunidos.test` (documento `11111111`) y su contraseña es el secret
 `SEED_USER_PASSWORD` del environment `staging`.
@@ -452,14 +549,24 @@ Después de un `wipe` no se puede entrar a la app hasta correr **Seed staging** 
 **Clean staging** en modo `reset`.
 
 `Clean staging` pide escribir `staging` en el input `confirm` para arrancar. Es a propósito: como
-no hay backups, un `wipe` no se deshace.
+no hay backups, un `wipe` no se deshace. Después de vaciar la base borra los archivos de
+`/srv/pis-uploads/staging`.
+
+Para borrar solo las portadas y dejar el resto de los datos, en la VM:
+
+```bash
+cd /srv/pis-staging && ./scripts/clear-uploads.sh staging
+```
+
+En main hace falta `CONFIRM=main ./scripts/clear-uploads.sh main`.
 
 El dataset vive en `prisma/seed-staging.ts`, separado del seed local (`prisma/seed.ts`). El único
 fixture compartido es el admin, en `prisma/fixtures.ts`.
 
 ### Pendiente
 
-**Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen.
+**Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen. Las portadas en
+`/srv/pis-uploads` tampoco tienen backup.
 
 ## Estilo de código
 

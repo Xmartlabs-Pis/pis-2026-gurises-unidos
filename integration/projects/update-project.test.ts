@@ -11,6 +11,10 @@ const BENEFICIARY_YEAR = 2024;
 let seed: SeedData;
 let createdProjectIds: number[] = [];
 
+function location(departmentId: number, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId: String(departmentId), city, neighborhood });
+}
+
 function buildFormData(overrides: Record<string, string | string[]> = {}): FormData {
   const fields: Record<string, string | string[]> = {
     name: 'Project under edit',
@@ -20,10 +24,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
     geographicScope: 'national',
-    departmentIds: [String(seed.departmentIds[0])],
-    cities: ['Colonia del Sacramento'],
-    neighborhoods: ['Barrio Sur'],
-    zone: 'rural',
+    locations: [location(seed.departmentIds[0], 'Colonia del Sacramento', 'Barrio Sur')],
     generalObjective: 'Objective',
     publicDescription: '',
     internalNotes: '',
@@ -57,8 +58,13 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       leadCoordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
-      cities: ['Colonia del Sacramento'],
-      neighborhoods: ['Barrio Sur'],
+      localities: {
+        create: {
+          departmentId: seed.departmentIds[0],
+          city: 'Colonia del Sacramento',
+          neighborhood: 'Barrio Sur',
+        },
+      },
       generalObjective: 'Objective',
       createdBy: seed.adminId,
       topics: { connect: { id: seed.topicIds[0] } },
@@ -118,11 +124,20 @@ describe('updateProject (integration)', () => {
         expect((await loadProject(projectId)).counterpartyType).toBe(counterpartyType);
       }
       expect(await auditLogsFor(projectId)).toEqual(
-        Array.from({ length: 3 }, () =>
+        ['publicSector', 'privateSector', 'internationalCooperation'].map((from, index) =>
           expect.objectContaining({
             entity: 'project',
             action: 'update',
-            details: { changedFields: ['counterpartyType'] },
+            details: {
+              changedFields: ['counterpartyType'],
+              changes: [
+                {
+                  field: 'counterpartyType',
+                  from,
+                  to: ['privateSector', 'internationalCooperation', 'publicSector'][index],
+                },
+              ],
+            },
           })
         )
       );
@@ -193,8 +208,7 @@ describe('updateProject (integration)', () => {
         {},
         buildFormData({
           name: 'Renamed project',
-          zone: 'city',
-          departmentIds: [String(seed.departmentIds[1])],
+          locations: [location(seed.departmentIds[1], 'Colonia del Sacramento', 'Barrio Sur')],
           topicIds: newTopicIds.map(String),
         })
       ),
@@ -204,8 +218,15 @@ describe('updateProject (integration)', () => {
     const project = await loadProject(projectId);
     expect(project).toMatchObject({
       name: 'Renamed project',
-      zone: 'city',
+      zone: 'rural',
       departments: [{ id: seed.departmentIds[1] }],
+      localities: [
+        {
+          departmentId: seed.departmentIds[1],
+          city: 'Colonia del Sacramento',
+          neighborhood: 'Barrio Sur',
+        },
+      ],
       status: 'active',
       startYear: 2020,
     });
@@ -215,7 +236,29 @@ describe('updateProject (integration)', () => {
         entity: 'project',
         action: 'update',
         authorId: seed.adminId,
-        details: { changedFields: ['name', 'zone', 'topics', 'departments'] },
+        details: {
+          changedFields: ['name', 'topics', 'departments', 'localities'],
+          changes: [
+            { field: 'name', from: 'Project under edit', to: 'Renamed project' },
+            {
+              field: 'topics',
+              from: [{ id: seed.topicIds[0], name: expect.any(String) }],
+              to: [...newTopicIds]
+                .sort((a, b) => a - b)
+                .map((id) => ({ id, name: expect.any(String) })),
+            },
+            {
+              field: 'departments',
+              from: [{ id: seed.departmentIds[0], name: expect.any(String) }],
+              to: [{ id: seed.departmentIds[1], name: expect.any(String) }],
+            },
+            {
+              field: 'localities',
+              from: [{ name: expect.stringMatching(/, Colonia del Sacramento, Barrio Sur$/) }],
+              to: [{ name: expect.stringMatching(/, Colonia del Sacramento, Barrio Sur$/) }],
+            },
+          ],
+        },
       }),
     ]);
   });
@@ -226,6 +269,64 @@ describe('updateProject (integration)', () => {
     const before = await loadProject(projectId);
 
     await expectRedirectToProject(updateProject(projectId, {}, buildFormData()), projectId);
+
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
+  test('ignores a submitted zone and keeps the stored one', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ zone: 'city' })),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(before.zone).toBe('rural');
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
+  test('writes nothing when the edit form lists the same localities in another order', async () => {
+    const projectId = await createProjectFixture();
+    const [first, second] = (
+      await prisma.department.findMany({
+        where: { id: { in: seed.departmentIds } },
+        orderBy: { name: 'asc' },
+        select: { id: true },
+      })
+    ).map(({ id }) => id);
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        departments: { set: [{ id: second }, { id: first }] },
+        localities: {
+          deleteMany: {},
+          create: [
+            { departmentId: second, city: 'Paysandú', neighborhood: null },
+            { departmentId: first, city: 'Colonia del Sacramento', neighborhood: 'Barrio Sur' },
+          ],
+        },
+      },
+    });
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          locations: [
+            location(first, 'Colonia del Sacramento', 'Barrio Sur'),
+            location(second, 'Paysandú'),
+          ],
+        })
+      ),
+      projectId
+    );
 
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
@@ -416,10 +517,14 @@ describe('updateProject (integration)', () => {
     const result = await updateProject(
       projectId,
       {},
-      buildFormData({ name: 'Should not persist', departmentIds: ['999999'], families: '99' })
+      buildFormData({
+        name: 'Should not persist',
+        locations: [location(999999, 'Colonia del Sacramento')],
+        families: '99',
+      })
     );
 
-    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
+    expect(result.errors?.locations).toEqual(['Elegí departamentos válidos']);
     expect(await loadProject(projectId)).toEqual(before);
     expect(await auditLogsFor(projectId)).toEqual([]);
   });

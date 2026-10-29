@@ -1,21 +1,23 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import Home from '@/app/(public)/page';
+import { getContributors } from '@/lib/contributors';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
-import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+
+vi.mock('@/lib/contributors', () => ({ getContributors: vi.fn(async () => []) }));
 
 vi.mock('@/lib/metrics/queries', () => ({
   getPublishedYears: vi.fn(),
   getMetricSettings: vi.fn(),
   getMetricValues: vi.fn(),
 }));
-vi.mock('@/lib/projects/department-beneficiaries', () => ({
-  getDepartmentBeneficiaries: vi.fn(async () => []),
+vi.mock('@/lib/projects/department-project-counts', () => ({
+  getDepartmentProjectCounts: vi.fn(async () => []),
 }));
 vi.mock('@/lib/metrics/topic-statistics', () => ({
   getTopicStatistics: vi.fn(async () => []),
@@ -29,6 +31,7 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getContributors).mockResolvedValue([]);
   vi.mocked(getPublishedYears).mockResolvedValue([2025]);
   vi.mocked(getMetricSettings).mockResolvedValue(METRIC_DEFINITIONS);
   vi.mocked(getMetricValues).mockImplementation(async (year) => ({
@@ -38,9 +41,28 @@ beforeEach(() => {
     families: 0,
     teachers: 0,
     institutions: 0,
-    departments: 0,
     active_projects: 0,
   }));
+});
+
+test('renders published contributors from the database', async () => {
+  vi.mocked(getContributors).mockResolvedValue([{ id: 42, name: 'Published contributor' }]);
+  render(await Home({ searchParams: Promise.resolve({}) }));
+  expect(screen.getByText('Published contributor')).toBeDefined();
+  expect(screen.queryByText('INAU')).toBeNull();
+});
+
+test('hides the contributors section when none are published', async () => {
+  render(await Home({ searchParams: Promise.resolve({}) }));
+  expect(screen.queryByRole('heading', { name: 'Quienes nos acompañan' })).toBeNull();
+});
+
+test('links the collaborate button to the Gurises Unidos collaboration page in a new tab', async () => {
+  render(await Home({ searchParams: Promise.resolve({}) }));
+  const link = screen.getByRole('link', { name: 'Quiero colaborar' });
+  expect(link.getAttribute('href')).toBe('https://gurisesunidos.org.uy/como-colaborar/');
+  expect(link.getAttribute('target')).toBe('_blank');
+  expect(link.getAttribute('rel')).toBe('noopener noreferrer');
 });
 
 test('shows separate child totals and year-over-year changes on the public page', async () => {
@@ -121,7 +143,6 @@ test('uses the requested published year for all annual data', async () => {
   expect(screen.getByRole('group', { name: 'Impacto 2024' })).toBeDefined();
   expect(getMetricValues).toHaveBeenNthCalledWith(1, 2024);
   expect(getMetricValues).toHaveBeenNthCalledWith(2, 2023);
-  expect(getDepartmentBeneficiaries).toHaveBeenCalledWith(2024);
   expect(getTopicStatistics).toHaveBeenCalledWith(2024);
   expect(ProjectsByTopic).toHaveBeenCalledWith(expect.objectContaining({ year: 2024 }), undefined);
 });

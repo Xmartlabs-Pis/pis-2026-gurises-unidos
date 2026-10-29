@@ -5,7 +5,7 @@ import { DESKTOP, lastAuditLogId, resetMetricSettings } from './helpers';
 test.use({ viewport: DESKTOP });
 
 const HIDDEN_METRIC = 'Familias acompañadas';
-const VISIBLE_METRIC = 'Departamentos';
+const VISIBLE_METRIC = 'Proyectos con actividad';
 
 let auditLogIdBeforeTest: number;
 

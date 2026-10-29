@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createProject, deleteProject, updateProject } from '@/app/actions/projects';
 import { Prisma } from '@/generated/prisma/client';
@@ -9,12 +12,14 @@ import {
 import { BENEFICIARY_CATEGORY_KEYS, beneficiaryValueRows } from '../../mocks/beneficiary-values';
 import { formCategoryValuesWhere, toBeneficiaryValuesCreate } from '@/lib/project-display';
 import { BENEFICIARY_VALUES_SELECT } from '@/lib/projects/beneficiary-values';
+import { PROJECT_AUDIT_INCLUDE } from '@/lib/projects/audit-changes';
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   findUser: vi.fn(),
   findCoordinator: vi.fn(),
   findProject: vi.fn(),
+  findLiveCover: vi.fn(),
   findDuplicateProject: vi.fn(),
   countTopics: vi.fn(),
   countDepartments: vi.fn(),
@@ -36,7 +41,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/auth', () => ({ auth: mocks.auth }));
 vi.mock('@/lib/prisma', () => ({
-  default: { $transaction: mocks.transaction, user: { findUnique: mocks.findUser } },
+  default: {
+    $transaction: mocks.transaction,
+    user: { findUnique: mocks.findUser },
+    project: { findFirst: mocks.findLiveCover },
+  },
 }));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
@@ -79,6 +88,18 @@ const TX = {
   },
   auditLog: { create: mocks.audit },
 };
+const LOCALITIES = [{ departmentId: 3, city: 'City', neighborhood: 'Neighborhood' }];
+
+function withDepartmentName<T extends { departmentId: number }>(locality: T) {
+  return { ...locality, department: { name: `Department ${locality.departmentId}` } };
+}
+
+const AUDIT_LOCALITIES = LOCALITIES.map(withDepartmentName);
+
+function location(departmentId: string, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId, city, neighborhood });
+}
+
 const VALID_DATA = {
   name: '  Updated project  ',
   topicIds: '1',
@@ -88,10 +109,7 @@ const VALID_DATA = {
   startYear: '2019',
   leadCoordinatorId: '2',
   geographicScope: 'national',
-  departmentIds: '3',
-  cities: 'City',
-  neighborhoods: 'Neighborhood',
-  zone: 'city',
+  locations: location('3', 'City', 'Neighborhood'),
   generalObjective: 'Objective',
   publicDescription: 'Description',
   internalNotes: 'Team notes',
@@ -105,6 +123,21 @@ const VALID_DATA = {
   basicServiceStaff: '8',
   strategicLineIds: '1',
 };
+
+async function writeOwnedCover(
+  directory: string,
+  coverPath: string,
+  userId: number,
+  contents = 'new'
+) {
+  const id = path.basename(coverPath, '.webp');
+  await mkdir(path.join(directory, 'covers'), { recursive: true });
+  await writeFile(path.join(directory, 'covers', `${id}.webp`), contents);
+  await writeFile(
+    path.join(directory, 'covers', `${id}.json`),
+    JSON.stringify({ userId, createdAt: new Date().toISOString() })
+  );
+}
 
 function formData(overrides: Record<string, string | string[] | undefined> = {}) {
   const data = new FormData();
@@ -132,14 +165,17 @@ beforeEach(() => {
   mocks.findProject.mockResolvedValue({
     id: 10,
     leadCoordinatorId: 2,
-    topics: [{ id: 1 }],
-    strategicLines: [{ id: 1 }],
-    departments: [{ id: 3 }],
+    leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
+    topics: [{ id: 1, name: 'Topic 1' }],
+    strategicLines: [{ id: 1, name: 'Line 1' }],
+    departments: [{ id: 3, name: 'Department 3' }],
+    localities: AUDIT_LOCALITIES,
   });
   mocks.countTopics.mockImplementation(
     ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
   );
   mocks.findDuplicateProject.mockResolvedValue(null);
+  mocks.findLiveCover.mockResolvedValue(null);
   mocks.queryRaw.mockImplementation(lockedCategoryRows);
   mocks.countDepartments.mockImplementation(
     async ({ where }: { where: { id: { in: number[] } } }) => where.id.in.length
@@ -149,7 +185,27 @@ beforeEach(() => {
   });
   mocks.transaction.mockImplementation(async (callback) => callback(TX));
   mocks.createProject.mockResolvedValue({ id: 10 });
-  mocks.updateProject.mockResolvedValue({ id: 10 });
+  mocks.updateProject.mockImplementation(async ({ data }) => {
+    const { topics, strategicLines, departments, localities, ...fields } = data;
+    return {
+      id: 10,
+      ...fields,
+      leadCoordinator: { firstName: `Coordinator ${fields.leadCoordinatorId}`, lastName: 'User' },
+      topics: (topics?.set ?? [{ id: 1 }]).map(({ id }: { id: number }) => ({
+        id,
+        name: `Topic ${id}`,
+      })),
+      strategicLines: (strategicLines?.set ?? [{ id: 1 }]).map(({ id }: { id: number }) => ({
+        id,
+        name: `Line ${id}`,
+      })),
+      departments: (departments?.set ?? [{ id: 3 }]).map(({ id }: { id: number }) => ({
+        id,
+        name: `Department ${id}`,
+      })),
+      localities: (localities?.create ?? LOCALITIES).map(withDepartmentName),
+    };
+  });
   mocks.createBeneficiary.mockResolvedValue({ id: 20 });
   mocks.findBeneficiary.mockResolvedValue({ values: [] });
   mocks.findLaterBeneficiary.mockResolvedValue(null);
@@ -199,8 +255,10 @@ describe.each([
 
   it('rejects departments that do not exist before writing', async () => {
     mocks.countDepartments.mockResolvedValue(1);
-    expect(await submit(formData({ departmentIds: ['3', '999'] }))).toEqual({
-      errors: { departmentIds: ['Elegí departamentos válidos'] },
+    expect(
+      await submit(formData({ locations: [location('3', 'City'), location('999', 'City')] }))
+    ).toEqual({
+      errors: { locations: ['Elegí departamentos válidos'] },
     });
     expect(mocks.countDepartments).toHaveBeenCalledWith({ where: { id: { in: [3, 999] } } });
     expect(mocks.createProject).not.toHaveBeenCalled();
@@ -231,7 +289,7 @@ describe.each([
   it.each([
     ['name', ''],
     ['status', 'invalid'],
-    ['departmentIds', '0'],
+    ['locations', location('0', 'City')],
     ['leadCoordinatorId', '0'],
     ['startYear', '1800'],
     ['year', '1800'],
@@ -368,6 +426,8 @@ it('creates the project, topics, strategic lines and beneficiaries with audit en
       createdBy: 7,
       topics: { connect: [{ id: 1 }] },
       strategicLines: { connect: [{ id: 1 }] },
+      departments: { connect: [{ id: 3 }] },
+      localities: { create: LOCALITIES },
     }),
   });
   expect(mocks.createBeneficiary).toHaveBeenCalledWith({
@@ -467,6 +527,7 @@ describe('updateProject persistence', () => {
         updateProject(10, {}, formData({ createdBy: '999', id: '999' }))
       ).rejects.toThrow('Redirect: /dashboard/projects/10');
       expect(mocks.updateProject).toHaveBeenCalledWith({
+        include: PROJECT_AUDIT_INCLUDE,
         where: { id: 10 },
         data: {
           name: 'Updated project',
@@ -478,9 +539,6 @@ describe('updateProject persistence', () => {
           leadCoordinatorId: 2,
           geographicScope: 'national',
           countries: [],
-          cities: ['City'],
-          neighborhoods: ['Neighborhood'],
-          zone: 'city',
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
@@ -527,7 +585,7 @@ describe('updateProject persistence', () => {
           action: 'update',
           entity: 'project',
           entityId: 10,
-          details: { changedFields: expect.any(Array) },
+          details: { changedFields: expect.any(Array), changes: expect.any(Array) },
         },
       });
       expect(mocks.audit).toHaveBeenNthCalledWith(2, {
@@ -557,6 +615,7 @@ describe('updateProject persistence', () => {
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject).toHaveBeenCalledWith({
+      include: PROJECT_AUDIT_INCLUDE,
       where: { id: 10 },
       data: expect.objectContaining({
         generalObjective: null,
@@ -578,9 +637,9 @@ describe('updateProject persistence', () => {
   });
 
   it('requires a city for a national project without accessing the database', async () => {
-    const result = await updateProject(10, {}, formData({ cities: undefined }));
+    const result = await updateProject(10, {}, formData({ locations: location('3') }));
 
-    expect(result.errors?.cities).toEqual(['Ingresá al menos una ciudad']);
+    expect(result.errors?.locations).toEqual(['Ingresá al menos una ciudad']);
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
@@ -715,9 +774,11 @@ function unchangedRecords() {
   mocks.findProject.mockResolvedValue({
     id: 10,
     ...projectData,
-    topics: [{ id: 1 }],
-    strategicLines: [{ id: 1 }],
-    departments: [{ id: 3 }],
+    leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
+    topics: [{ id: 1, name: 'Topic 1' }],
+    strategicLines: [{ id: 1, name: 'Line 1' }],
+    departments: [{ id: 3, name: 'Department 3' }],
+    localities: AUDIT_LOCALITIES,
   });
   mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows(beneficiaryData.counts) });
 }
@@ -780,6 +841,7 @@ describe('project review regressions', () => {
       select: { id: true },
     });
     expect(mocks.updateProject).toHaveBeenCalledWith({
+      include: PROJECT_AUDIT_INCLUDE,
       where: { id: 10 },
       data: expect.objectContaining({ leadCoordinatorId: 9 }),
     });
@@ -868,11 +930,15 @@ describe('project review regressions', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
-  it('replaces the departments and audits a departments-only change', async () => {
+  it('replaces the departments and audits the new department with its locality', async () => {
     unchangedRecords();
-    await expect(updateProject(10, {}, formData({ departmentIds: ['3', '4'] }))).rejects.toThrow(
-      'Redirect:'
-    );
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({ locations: [location('3', 'City', 'Neighborhood'), location('4', 'City')] })
+      )
+    ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ departments: { set: [{ id: 3 }, { id: 4 }] } }),
@@ -884,24 +950,110 @@ describe('project review regressions', () => {
         action: 'update',
         entity: 'project',
         entityId: 10,
-        details: { changedFields: ['departments'] },
+        details: {
+          changedFields: ['departments', 'localities'],
+          changes: [
+            {
+              field: 'departments',
+              from: [{ id: 3, name: 'Department 3' }],
+              to: [
+                { id: 3, name: 'Department 3' },
+                { id: 4, name: 'Department 4' },
+              ],
+            },
+            {
+              field: 'localities',
+              from: [{ name: 'Department 3, City, Neighborhood' }],
+              to: [{ name: 'Department 3, City, Neighborhood' }, { name: 'Department 4, City' }],
+            },
+          ],
+        },
       },
     });
   });
 
-  it('audits changed cities without rewriting the departments', async () => {
+  it('replaces and audits changed localities without rewriting the departments', async () => {
     unchangedRecords();
     await expect(
-      updateProject(10, {}, formData({ cities: ['City', 'Other city'] }))
+      updateProject(
+        10,
+        {},
+        formData({
+          locations: [location('3', 'City', 'Neighborhood'), location('3', 'Other city')],
+        })
+      )
     ).rejects.toThrow('Redirect:');
     const { data } = mocks.updateProject.mock.calls[0][0];
-    expect(data).toMatchObject({ cities: ['City', 'Other city'] });
+    expect(data).toMatchObject({
+      localities: {
+        deleteMany: {},
+        create: [...LOCALITIES, { departmentId: 3, city: 'Other city', neighborhood: null }],
+      },
+    });
     expect(data).not.toHaveProperty('departments');
     expect(mocks.audit).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
-        data: expect.objectContaining({ details: { changedFields: ['cities'] } }),
+        data: expect.objectContaining({
+          details: {
+            changedFields: ['localities'],
+            changes: [
+              {
+                field: 'localities',
+                from: [{ name: 'Department 3, City, Neighborhood' }],
+                to: [
+                  { name: 'Department 3, City, Neighborhood' },
+                  { name: 'Department 3, Other city' },
+                ],
+              },
+            ],
+          },
+        }),
       })
     );
+  });
+
+  it('keeps the localities when only their order changes', async () => {
+    unchangedRecords();
+    mocks.findProject.mockResolvedValue({
+      ...(await mocks.findProject()),
+      departments: [{ id: 4 }, { id: 3 }],
+      localities: [{ departmentId: 4, city: 'Other city', neighborhood: null }, ...LOCALITIES],
+    });
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          locations: [location('3', 'City', 'Neighborhood'), location('4', 'Other city')],
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+  });
+
+  it('saves a locality whose only change is its case', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ locations: location('3', 'City', 'neighborhood') }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.localities).toEqual({
+      deleteMany: {},
+      create: [{ departmentId: 3, city: 'City', neighborhood: 'neighborhood' }],
+    });
+    expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(['localities']);
+  });
+
+  it('audits a neighborhood moved to another city of the same department', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ locations: location('3', 'Other city', 'Neighborhood') }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.localities).toEqual({
+      deleteMany: {},
+      create: [{ departmentId: 3, city: 'Other city', neighborhood: 'Neighborhood' }],
+    });
+    expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(['localities']);
   });
 
   it('clears the national location when the project becomes international', async () => {
@@ -918,20 +1070,13 @@ describe('project review regressions', () => {
         data: expect.objectContaining({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
-          cities: [],
-          neighborhoods: [],
           departments: { set: [] },
+          localities: { deleteMany: {}, create: [] },
         }),
       })
     );
     expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(
-      expect.arrayContaining([
-        'geographicScope',
-        'countries',
-        'cities',
-        'neighborhoods',
-        'departments',
-      ])
+      expect.arrayContaining(['geographicScope', 'countries', 'departments', 'localities'])
     );
   });
 
@@ -951,7 +1096,19 @@ describe('project review regressions', () => {
         action: 'update',
         entity: 'project',
         entityId: 10,
-        details: { changedFields: ['topics'] },
+        details: {
+          changedFields: ['topics'],
+          changes: [
+            {
+              field: 'topics',
+              from: [{ id: 1, name: 'Topic 1' }],
+              to: [
+                { id: 2, name: 'Topic 2' },
+                { id: 3, name: 'Topic 3' },
+              ],
+            },
+          ],
+        },
       },
     });
     expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
@@ -1012,6 +1169,7 @@ describe('project review regressions', () => {
       topics: [{ id: 3 }, { id: 2 }],
       strategicLines: [{ id: 1 }],
       departments: [{ id: 3 }],
+      localities: LOCALITIES,
     });
     await expect(updateProject(10, {}, formData({ topicIds: ['2', '3'] }))).rejects.toThrow(
       'Redirect:'
@@ -1028,6 +1186,188 @@ describe('project review regressions', () => {
       updateProject(10, {}, formData({ coverPhoto: 'https://invalid.test/photo.png' }))
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
+  });
+
+  it('ignores a forged cover photo path', async () => {
+    await expect(
+      updateProject(10, {}, formData({ coverPhotoPath: 'https://invalid.test/photo.png' }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
+  });
+
+  it('replaces an uploaded cover and deletes the previous file', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const previousPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await writeOwnedCover(directory, previousPath, 7, 'old');
+      await writeOwnedCover(directory, nextPath, 7, 'new');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: previousPath,
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+        localities: LOCALITIES,
+      });
+      await expect(updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).rejects.toThrow(
+        'Redirect:'
+      );
+      expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(nextPath);
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(nextPath)]);
+      expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toContain('coverPhoto');
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a previous cover in place when another live project still uses it', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const previousPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await writeOwnedCover(directory, previousPath, 7, 'old');
+      await writeOwnedCover(directory, nextPath, 7, 'new');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: previousPath,
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+        localities: LOCALITIES,
+      });
+      mocks.findLiveCover.mockResolvedValue({ id: 99 });
+      await expect(updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).rejects.toThrow(
+        'Redirect:'
+      );
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual(
+        [path.basename(previousPath), path.basename(nextPath)].sort()
+      );
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('restores a placeholder when the cover is removed', async () => {
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: '/images/project-placeholders/3.webp',
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(
+      '/images/project-placeholders/3.webp'
+    );
+  });
+
+  it('ignores a forged placeholder when the cover is removed', async () => {
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: 'https://invalid.test/photo.png',
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toMatch(
+      /^\/images\/project-placeholders\/[1-6]\.webp$/
+    );
+  });
+
+  it('deletes the owned pending cover when the update is rejected', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const previousPath = '/uploads/covers/22222222-2222-4222-8222-222222222222.webp';
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await writeOwnedCover(directory, previousPath, 7, 'old');
+      await writeOwnedCover(directory, nextPath, 7, 'new');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: previousPath,
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+      });
+      mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
+        strings.join('').includes('"StrategicLine"') ? [] : lockedCategoryRows(strings, ...values)
+      );
+      expect(await updateProject(10, {}, formData({ coverPhotoPath: nextPath }))).toEqual({
+        errors: { strategicLineIds: ['Elegí líneas estratégicas activas'] },
+      });
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(previousPath, '.webp')}.json`,
+        path.basename(previousPath),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('deletes the owned pending cover when form parsing fails', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const nextPath = '/uploads/covers/33333333-3333-4333-8333-333333333333.webp';
+    try {
+      await writeOwnedCover(directory, nextPath, 7, 'new');
+      expect(await updateProject(10, {}, formData({ name: '', coverPhotoPath: nextPath }))).toEqual(
+        {
+          errors: { name: ['El nombre es obligatorio'] },
+        }
+      );
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not delete a submitted cover when the coordinator cannot edit the project', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const existingCover = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, existingCover, 7, 'keep');
+      mocks.findUser.mockResolvedValue({
+        id: 3,
+        role: 'coordinator',
+        status: 'active',
+        deletedAt: null,
+      });
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+      });
+      expect(await updateProject(10, {}, formData({ coverPhotoPath: existingCover }))).toEqual({
+        formError: 'No tenés permiso para editar este proyecto.',
+      });
+      expect(mocks.updateProject).not.toHaveBeenCalled();
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(existingCover, '.webp')}.json`,
+        path.basename(existingCover),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });
 
@@ -1119,5 +1459,209 @@ describe('deleteProject', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+
+  it('deletes an uploaded cover after a successful soft-delete', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhoto = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(coverPhoto)), 'old');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto,
+      });
+      expect(await deleteProject(10)).toEqual({});
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('still deletes the project when the cover file cannot be removed', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhoto = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await mkdir(path.join(directory, 'covers', path.basename(coverPhoto)), { recursive: true });
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto,
+      });
+      expect(await deleteProject(10)).toEqual({});
+      expect(mocks.revalidatePath).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves an uploaded cover when another live project still uses it', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhoto = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', path.basename(coverPhoto)), 'old');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto,
+      });
+      mocks.findLiveCover.mockResolvedValue({ id: 99 });
+      expect(await deleteProject(10)).toEqual({});
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([path.basename(coverPhoto)]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a placeholder file alone when the project is deleted', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    try {
+      await mkdir(path.join(directory, 'covers'), { recursive: true });
+      await writeFile(path.join(directory, 'covers', 'keep.webp'), 'keep');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: '/images/project-placeholders/1.webp',
+      });
+      expect(await deleteProject(10)).toEqual({});
+      expect(await readdir(path.join(directory, 'covers'))).toEqual(['keep.webp']);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('project audit details', () => {
+  it.each([
+    ['name', 'Renamed project', 'Updated project', 'Renamed project'],
+    ['startYear', '2020', 2019, 2020],
+    ['counterpartyType', 'privateSector', 'publicSector', 'privateSector'],
+    ['intensity', 'high', 'medium', 'high'],
+    ['generalObjective', '', 'Objective', null],
+    ['publicDescription', 'New description', 'Description', 'New description'],
+    ['internalNotes', '', 'Team notes', null],
+    ['showOnLanding', 'false', true, false],
+  ] satisfies [
+    string,
+    string | string[],
+    Prisma.InputJsonValue | null,
+    Prisma.InputJsonValue | null,
+  ][])('records the old and persisted values of %s', async (field, submitted, from, to) => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ [field]: submitted }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.audit).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        authorId: 7,
+        action: 'update',
+        entity: 'project',
+        entityId: 10,
+        details: { changedFields: [field], changes: [{ field, from, to }] },
+      },
+    });
+  });
+
+  it('records the old and persisted localities by name', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          locations: [location('3', 'City', 'Other neighborhood'), location('3', 'Town')],
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      {
+        field: 'localities',
+        from: [{ name: 'Department 3, City, Neighborhood' }],
+        to: [{ name: 'Department 3, City, Other neighborhood' }, { name: 'Department 3, Town' }],
+      },
+    ]);
+  });
+
+  it('records the identities and names of both responsible coordinators', async () => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ leadCoordinatorId: '9' }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      {
+        field: 'leadCoordinatorId',
+        from: { id: 2, name: 'Coordinator 2 User' },
+        to: { id: 9, name: 'Coordinator 9 User' },
+      },
+    ]);
+  });
+
+  it('records strategic line names and identities', async () => {
+    unchangedRecords();
+    await expect(updateProject(10, {}, formData({ strategicLineIds: ['2'] }))).rejects.toThrow(
+      'Redirect:'
+    );
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      {
+        field: 'strategicLines',
+        from: [{ id: 1, name: 'Line 1' }],
+        to: [{ id: 2, name: 'Line 2' }],
+      },
+    ]);
+  });
+
+  it('records status and end year together when a project becomes inactive', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ status: 'inactive', endYear: '2024' }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      { field: 'status', from: 'active', to: 'inactive' },
+      { field: 'endYear', from: null, to: 2024 },
+    ]);
+  });
+
+  it('records all cleared national fields when the scope becomes international', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({ geographicScope: 'international', countries: ['Argentina'] })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual(
+      expect.arrayContaining([
+        { field: 'geographicScope', from: 'national', to: 'international' },
+        { field: 'countries', from: [], to: ['Argentina'] },
+        { field: 'departments', from: [{ id: 3, name: 'Department 3' }], to: [] },
+        { field: 'localities', from: [{ name: 'Department 3, City, Neighborhood' }], to: [] },
+      ])
+    );
+  });
+
+  it('records normalized intensity instead of the submitted intensity', async () => {
+    unchangedRecords();
+    await expect(
+      updateProject(10, {}, formData({ directChildrenAdolescents: '0', intensity: 'high' }))
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual([
+      { field: 'intensity', from: 'medium', to: null },
+    ]);
+    expect(mocks.audit.mock.calls[1][0].data.details.changes).toEqual([
+      { field: 'directChildrenAdolescents', from: 42, to: 0 },
+    ]);
   });
 });

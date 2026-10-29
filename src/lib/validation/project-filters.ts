@@ -1,12 +1,16 @@
 import { z } from 'zod';
-import { firstValue, type CanonicalQuery } from '@/lib/url-filters';
+import {
+  ALL_FILTER_VALUE,
+  firstValue,
+  toSingleValues,
+  type CanonicalQuery,
+} from '@/lib/url-filters';
 
 export const PROJECT_LIST_PAGE_SIZE = 20;
 export const PROJECT_LIST_MAX_PAGE_SIZE = 100;
 export const PROJECT_MIN_START_YEAR = 1989;
 export const PROJECT_SEARCH_MAX_LENGTH = 100;
 export const DEFAULT_PROJECT_STATUS = 'active';
-export const ALL_FILTER_VALUE = 'all';
 
 const optionalYear = z.coerce
   .number()
@@ -61,11 +65,7 @@ export type ProjectFilters = z.infer<typeof projectFiltersSchema>;
 export type RawProjectFilters = Record<string, string | string[] | undefined>;
 
 export function parseProjectFilters(raw: RawProjectFilters): ProjectFilters {
-  const singleValued = Object.fromEntries(
-    Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])
-  );
-
-  return projectFiltersSchema.parse(singleValued);
+  return projectFiltersSchema.parse(toSingleValues(raw));
 }
 
 type ProjectFilterOptions = {

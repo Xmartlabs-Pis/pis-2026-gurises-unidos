@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
-import { ADMIN, BENEFICIARY_CATEGORIES, STRATEGIC_LINES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, CONTRIBUTORS, STRATEGIC_LINES } from './fixtures';
 import {
   formCategoryValuesWhere,
   SYSTEM_BENEFICIARY_KEYS,
@@ -182,8 +182,6 @@ async function main() {
               : null,
           leadCoordinatorId: coordinatorIds[index % coordinatorIds.length],
           zone: ZONES[index % ZONES.length],
-          cities: [`Ciudad ${index + 1}`],
-          neighborhoods: index % 3 === 1 ? [`Barrio ${index + 1}`] : [],
           generalObjective: null,
           publicDescription: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
@@ -196,6 +194,13 @@ async function main() {
           select: { id: true },
         });
         const projectDepartments = [{ id: departments.get(departmentName)! }];
+        const localities = [
+          {
+            departmentId: departments.get(departmentName)!,
+            city: `Ciudad ${index + 1}`,
+            neighborhood: index % 3 === 1 ? `Barrio ${index + 1}` : null,
+          },
+        ];
         const topics = [topicIds[index % topicIds.length]];
         if (index % 4 === 0) topics.push(topicIds[(index + 1) % topicIds.length]);
         const topicRefs = topics.map((id) => ({ id }));
@@ -205,6 +210,7 @@ async function main() {
               data: {
                 ...data,
                 departments: { set: projectDepartments },
+                localities: { deleteMany: {}, create: localities },
                 topics: { set: topicRefs },
               },
             })
@@ -212,6 +218,7 @@ async function main() {
               data: {
                 ...data,
                 departments: { connect: projectDepartments },
+                localities: { create: localities },
                 topics: { connect: topicRefs },
               },
             });
@@ -237,6 +244,18 @@ async function main() {
           });
         }
       }
+
+      const { _max: contributorOrder } = await tx.contributor.aggregate({
+        where: { deletedAt: null },
+        _max: { sortOrder: true },
+      });
+      await tx.contributor.createMany({
+        data: CONTRIBUTORS.map((name, index) => ({
+          name,
+          sortOrder: (contributorOrder.sortOrder ?? 0) + index + 1,
+        })),
+        skipDuplicates: true,
+      });
 
       for (const [index, metric] of METRIC_DEFINITIONS.entries()) {
         await tx.metric.upsert({

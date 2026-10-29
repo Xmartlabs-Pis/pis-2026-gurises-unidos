@@ -47,12 +47,12 @@ const PROJECT = {
   leadCoordinatorId: 2,
   generalObjective: 'Support children and families',
   publicDescription: 'Community project',
+  internalNotes: 'Coordinate with the education team.',
   coverPhoto: '/images/project-placeholders/2.webp',
   zone: 'city',
   geographicScope: 'national',
   countries: [],
-  cities: ['Montevideo'],
-  neighborhoods: ['Casavalle'],
+  localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
   leadCoordinator: {
     id: 2,
     firstName: 'Ana',
@@ -128,7 +128,12 @@ describe('getProjectDetail', () => {
     }
 
     expect(result.data).toMatchObject({
-      project: { coverPhoto: '/images/project-placeholders/2.webp', endYear: null },
+      project: {
+        coverPhoto: '/images/project-placeholders/2.webp',
+        endYear: null,
+        publicDescription: PROJECT.publicDescription,
+        internalNotes: PROJECT.internalNotes,
+      },
       selectedYear: 2026,
       comparisonYear: 2025,
       availableYears: [2026, 2025],
@@ -171,6 +176,7 @@ describe('getProjectDetail', () => {
       expect.objectContaining({
         select: expect.objectContaining({
           coverPhoto: true,
+          internalNotes: true,
           endYear: true,
           projectBeneficiaries: {
             where: {

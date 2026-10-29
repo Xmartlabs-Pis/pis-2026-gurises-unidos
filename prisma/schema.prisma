@@ -50,6 +50,7 @@ enum AuditAction {
   deletion
   passwordChange
   passwordReset
+  loginFailure
 }
 
 enum AuditEntity {
@@ -59,6 +60,9 @@ enum AuditEntity {
   beneficiaryCategory
   metric
   topic
+  strategicLine
+  contributor
+  authentication
 }
 
 enum CounterpartyType {
@@ -73,6 +77,12 @@ enum UserTokenType {
 }
 
 // ---------- TABLES ----------
+
+model LoginThrottle {
+  documentId     String    @id
+  failedAttempts Int       @default(0)
+  blockedUntil   DateTime?
+}
 
 model User {
   id                 Int        @id @default(autoincrement())
@@ -128,7 +138,8 @@ model Department {
   id   Int    @id @default(autoincrement())
   name String @unique
 
-  projects Project[]
+  projects   Project[]
+  localities ProjectLocality[]
 }
 
 model Project {
@@ -143,9 +154,7 @@ model Project {
   leadCoordinatorId Int
   geographicScope   GeographicScope  @default(national)
   countries         String[]         @default([])
-  cities            String[]         @default([])
-  neighborhoods     String[]         @default([])
-  zone              Zone
+  zone              Zone?
   generalObjective  String?          @db.VarChar(500)
   publicDescription String?          @db.VarChar(1000)
   coverPhoto        String?
@@ -157,15 +166,30 @@ model Project {
   deletedAt         DateTime?
   deletedBy         Int?
 
-  leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
+  leadCoordinator User              @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
   departments     Department[]
-  creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
-  deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
+  localities      ProjectLocality[]
+  creator         User?             @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
+  deleter         User?             @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
   topics          Topic[]
   strategicLines  StrategicLine[]
 
   projectCoordinators  ProjectCoordinator[]
   projectBeneficiaries ProjectBeneficiary[]
+}
+
+model ProjectLocality {
+  id           Int     @id @default(autoincrement())
+  projectId    Int
+  departmentId Int
+  city         String  @db.VarChar(100)
+  neighborhood String? @db.VarChar(100)
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([projectId])
+  @@index([departmentId])
 }
 
 model ProjectCoordinator {
@@ -241,6 +265,13 @@ model PublicSettings {
   updater User? @relation(fields: [updatedBy], references: [id])
 }
 
+model Contributor {
+  id        Int       @id @default(autoincrement())
+  name      String    @db.VarChar(100)
+  sortOrder Int       @default(0)
+  deletedAt DateTime?
+}
+
 model Report {
   id          Int      @id @default(autoincrement())
   generatedBy Int
@@ -254,14 +285,17 @@ model Report {
 
 model AuditLog {
   id         Int         @id @default(autoincrement())
-  authorId   Int
+  authorId   Int?
   action     AuditAction
   entity     AuditEntity
-  entityId   Int
+  entityId   Int?
   details    Json?
   occurredAt DateTime    @default(now())
 
-  author User @relation(fields: [authorId], references: [id])
+  author User? @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([occurredAt])
+  @@index([action, occurredAt])
 }
 
 model UserToken {

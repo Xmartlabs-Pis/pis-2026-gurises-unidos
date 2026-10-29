@@ -1,15 +1,22 @@
-import { Button } from '@/components/ui/button';
+import { getContributors } from '@/lib/contributors';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from 'cn';
 import { formatIncrement, formatNumber } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
+import { getPublicStats } from '@/lib/metrics/public-stats';
 import { resolveYearParam } from '@/lib/metrics/year';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
+import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
-import { getDepartmentBeneficiaries } from '@/lib/projects/department-beneficiaries';
 import { Suspense } from 'react';
+import { DepartmentPresence } from '@/components/map/department-presence';
+import { DepartmentPresenceSkeleton } from '@/components/map/department-presence-skeleton';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+
+const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
 
 const LEVELS = [
   {
@@ -34,23 +41,6 @@ const LEVELS = [
   },
 ];
 
-const MAX_DEPARTMENT_BUBBLES = 4;
-const FIRST_PROJECT_YEAR = 1989;
-
-const PARTNERS = [
-  'INAU',
-  'INEFOP',
-  'ANEP',
-  'Ministerio del Interior',
-  'Fundación Telefónica',
-  'Fundación UPM',
-  'Reaching U',
-  'PepsiCo',
-  'BASF',
-  'OSF',
-  'UNFPA',
-];
-
 export default async function Home({
   searchParams,
 }: {
@@ -58,26 +48,17 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, departmentBeneficiaries, topics] = await Promise.all([
+  const [values, previousValues, settings, topics, contributors] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getDepartmentBeneficiaries(year),
     getTopicStatistics(year),
+    getContributors(),
   ]);
-  const departmentBubbles = departmentBeneficiaries
-    .slice(0, MAX_DEPARTMENT_BUBBLES)
-    .map(({ department }) => department);
-  const hiddenDepartments = departmentBeneficiaries.length - MAX_DEPARTMENT_BUBBLES;
-  if (hiddenDepartments > 0) departmentBubbles.push(`+ ${hiddenDepartments} más`);
-  const stats = settings
-    .filter((metric) => metric.showPublicly)
-    .map((metric) => ({
-      key: metric.key,
-      value: formatNumber(values[metric.key]),
-      description: metric.name,
-      increment: formatIncrement(values[metric.key], previousValues[metric.key], year - 1),
-    }));
+  const stats = getPublicStats(settings, values).map((stat) => ({
+    ...stat,
+    increment: formatIncrement(values[stat.key], previousValues[stat.key], year - 1),
+  }));
 
   const visibleTopics = getVisibleTopics(topics);
   const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));
@@ -199,36 +180,9 @@ export default async function Home({
       </section>
       <section className="w-full">
         <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
-          <div className="flex w-full flex-col items-center gap-8 lg:flex-row lg:gap-16">
-            <div className="flex flex-col gap-4 text-left">
-              <div className="flex max-w-105 flex-col gap-1">
-                <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-                  Presencia en todo Uruguay
-                </h2>
-                <p className="text-foreground text-sm leading-5 font-normal tracking-normal">
-                  Nuestros proyectos llegan a {values.departments} departamentos, priorizando
-                  comunidades con mayor vulnerabilidad social.
-                </p>
-              </div>
-              <div className="flex max-w-105 flex-wrap gap-2">
-                {departmentBubbles.map((department) => (
-                  <span
-                    key={department}
-                    className="bg-card text-foreground flex h-6.5 items-center rounded-[14px] px-2.5 py-1.25 text-xs leading-4 font-normal tracking-normal"
-                  >
-                    {department}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="bg-card flex h-50 w-full max-w-125 items-center justify-center rounded-xl px-5 py-15">
-              <p className="text-muted-foreground text-center text-sm leading-5 font-normal tracking-normal">
-                Mapa de Uruguay
-                <br />
-                {values.departments} departamentos cubiertos
-              </p>
-            </div>
-          </div>
+          <Suspense fallback={<DepartmentPresenceSkeleton />}>
+            <DepartmentPresence />
+          </Suspense>
         </div>
       </section>
       <section className="w-full">
@@ -266,28 +220,30 @@ export default async function Home({
           </p>
         </div>
       </section>
-      <section className="w-full">
-        <div className="mx-auto flex min-h-53.5 w-full max-w-360 flex-col gap-5 px-4 pt-12 pb-14 sm:px-6 lg:px-14">
-          <div className="flex w-full max-w-126.5 flex-col gap-1">
-            <h2 className="text-foreground text-xl leading-7 font-bold tracking-normal">
-              Quienes nos acompañan
-            </h2>
-            <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-              Organismos públicos, fundaciones y aliados que hacen posible nuestro trabajo
-            </p>
+      {contributors.length > 0 && (
+        <section className="w-full">
+          <div className="mx-auto flex min-h-53.5 w-full max-w-360 flex-col gap-5 px-4 pt-12 pb-14 sm:px-6 lg:px-14">
+            <div className="flex w-full max-w-126.5 flex-col gap-1">
+              <h2 className="text-foreground text-xl leading-7 font-bold tracking-normal">
+                Quienes nos acompañan
+              </h2>
+              <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
+                Organismos públicos, fundaciones y aliados que hacen posible nuestro trabajo
+              </p>
+            </div>
+            <div className="flex w-full max-w-332 flex-wrap gap-3">
+              {contributors.map((contributor) => (
+                <span
+                  key={contributor.id}
+                  className="bg-card text-foreground flex min-h-9.5 max-w-full items-center rounded-full px-4 py-2.25 text-sm leading-5 font-normal tracking-normal break-words"
+                >
+                  {contributor.name}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex w-full max-w-332 flex-wrap gap-3">
-            {PARTNERS.map((partner) => (
-              <span
-                key={partner}
-                className="bg-card text-foreground flex h-9.5 items-center rounded-full px-4 py-2.25 text-sm leading-5 font-normal tracking-normal"
-              >
-                {partner}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
       <section className="w-full">
         <div className="mx-auto flex min-h-78 w-full max-w-360 flex-col gap-4 px-4 pt-18 pb-20 sm:px-6 lg:px-14">
           <h2 className="text-foreground text-center text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
@@ -297,10 +253,18 @@ export default async function Home({
             Conocé en qué proyectos podés colaborar y cómo tu apoyo se convierte en impacto real
             para miles de gurises.
           </p>
-          <div className="mx-auto flex h-11 w-39.25 flex-col pt-2" hidden>
-            <Button className="bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2">
+          <div className="mx-auto flex h-11 w-39.25 flex-col pt-2">
+            <a
+              href={COLLABORATE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants(),
+                'bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2'
+              )}
+            >
               Quiero colaborar
-            </Button>
+            </a>
           </div>
         </div>
       </section>

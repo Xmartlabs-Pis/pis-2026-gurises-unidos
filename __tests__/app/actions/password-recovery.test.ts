@@ -66,7 +66,10 @@ async function runAfterCallbacks() {
 }
 
 function setupTransaction(updatedUsers = 1) {
-  const tx = { user: { updateMany: vi.fn().mockResolvedValue({ count: updatedUsers }) } };
+  const tx = {
+    user: { updateMany: vi.fn().mockResolvedValue({ count: updatedUsers }) },
+    loginThrottle: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+  };
   transactionMock.mockImplementation(async (callback) => callback(tx));
   return tx;
 }
@@ -290,6 +293,9 @@ describe('resetPasswordWithToken', () => {
     );
 
     expect(consumeUserTokenMock).toHaveBeenCalledWith(tx, 5);
+    expect(tx.loginThrottle.deleteMany).toHaveBeenCalledWith({
+      where: { documentId: makeUser({ id: 7 }).documentId },
+    });
     expect(tx.user.updateMany).toHaveBeenCalledWith({
       where: { id: 7, status: 'active', deletedAt: null },
       data: {
@@ -321,6 +327,7 @@ describe('resetPasswordWithToken', () => {
 
     expect(result).toEqual({ formError: RESET_TOKEN_ERROR_MESSAGES.expired });
     expect(tx.user.updateMany).not.toHaveBeenCalled();
+    expect(tx.loginThrottle.deleteMany).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
   });
 
