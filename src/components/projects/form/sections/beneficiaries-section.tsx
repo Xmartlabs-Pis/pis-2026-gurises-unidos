@@ -29,7 +29,10 @@ function BeneficiaryFields({ categories }: { categories: BeneficiaryCategoryOpti
       label={field.name}
       type="text"
       inputMode="numeric"
-      className={index === categories.length - 1 && index % 2 === 0 ? 'sm:col-span-2' : undefined}
+      className={cn(
+        'sm:row-span-2 sm:grid sm:grid-rows-subgrid sm:*:data-[slot=field-label]:self-end',
+        index === categories.length - 1 && index % 2 === 0 && 'sm:col-span-2'
+      )}
     />
   ));
 }
