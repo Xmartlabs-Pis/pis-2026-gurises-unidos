@@ -21,7 +21,7 @@ type InternalProjectCardProps = {
 };
 
 type PublicProjectCardProps = {
-  variant: 'public-dark';
+  variant: 'public-dark' | 'public-light';
   territory: string;
   name: string;
   description: string;
@@ -32,9 +32,19 @@ type PublicProjectCardProps = {
 export type ProjectCardProps = InternalProjectCardProps | PublicProjectCardProps;
 
 const PUBLIC_VARIANT_STYLES = {
+  'public-light': {
+    card: 'bg-white border border-border min-h-100',
+    image: 'bg-muted h-48',
+    dot: 'hidden',
+    territory: 'text-muted-foreground',
+    name: 'text-foreground',
+    description: 'text-muted-foreground',
+    reach: 'text-foreground',
+    reachLabel: 'text-muted-foreground',
+  },
   'public-dark': {
     card: 'bg-card border-border',
-    image: 'bg-background',
+    image: 'bg-background h-54.5',
     dot: 'bg-primary',
     territory: 'text-foreground',
     name: 'text-foreground',
@@ -45,7 +55,7 @@ const PUBLIC_VARIANT_STYLES = {
 };
 
 function isPublicProps(props: ProjectCardProps): props is PublicProjectCardProps {
-  return props.variant === 'public-dark';
+  return props.variant === 'public-dark' || props.variant === 'public-light';
 }
 
 export function ProjectCard(props: ProjectCardProps) {
@@ -67,7 +77,7 @@ function PublicProjectCard({
 
   return (
     <article className={`${styles.card} flex h-full flex-col overflow-hidden rounded-xl`}>
-      <div className={`${styles.image} relative h-54.5 w-full`}>
+      <div className={`${styles.image} relative w-full`}>
         {coverPhoto && (
           <Image
             src={coverPhoto}
@@ -87,7 +97,9 @@ function PublicProjectCard({
         </div>
         <h3 className={`${styles.name} text-base leading-6 font-medium tracking-normal`}>{name}</h3>
         {description && (
-          <p className={`${styles.description} text-sm leading-5 font-normal tracking-normal`}>
+          <p
+            className={`${styles.description} text-sm leading-5 font-normal tracking-normal ${variant === 'public-light' ? 'line-clamp-4' : ''}`}
+          >
             {description}
           </p>
         )}

@@ -15,31 +15,9 @@ import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+import { HowWeWork } from '@/components/how-we-work';
 
 const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
-
-const LEVELS = [
-  {
-    number: '01',
-    title: 'Individual',
-    description: 'Niños, niñas, adolescentes y jóvenes: acompañamiento directo y personalizado.',
-  },
-  {
-    number: '02',
-    title: 'Familiar',
-    description: 'La familia como unidad: fortalecimiento de vínculos y entornos protectores.',
-  },
-  {
-    number: '03',
-    title: 'Institucional',
-    description: 'Escuelas, centros de salud e instituciones que rodean a cada gurí.',
-  },
-  {
-    number: '04',
-    title: 'Comunitario',
-    description: 'Territorios y comunidades donde se teje la red de protección.',
-  },
-];
 
 export default async function Home({
   searchParams,
@@ -65,11 +43,11 @@ export default async function Home({
 
   return (
     <>
-      <section className="w-full">
-        <div className="mx-auto flex w-full max-w-360 flex-col gap-9 px-4 pt-13 pb-12 sm:px-6 lg:px-16">
-          <div className="flex w-full flex-col gap-3 lg:h-48.5">
+      <section className="public-hero w-full">
+        <div className="mx-auto w-full max-w-360 px-4 pt-12 pb-24 sm:px-6 lg:px-16 lg:pt-14 lg:pb-28">
+          <div className="flex w-full flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="bg-card text-primary flex h-6.5 w-42.5 items-center justify-center rounded-[20px] px-3 py-1.25 text-xs leading-4 font-medium tracking-normal">
+              <span className="public-hero-badge text-primary inline-flex min-h-6.5 items-center rounded-full px-3 py-1 text-xs font-medium">
                 Informe de impacto · {year}
               </span>
               {publishedYears.length > 1 && (
@@ -77,45 +55,63 @@ export default async function Home({
                   year={year}
                   years={publishedYears}
                   label="Año del informe"
-                  className="bg-white! text-slate-900 [&_svg]:text-slate-600"
+                  className="border-white/25 bg-white/10! text-white [&_svg]:text-white/70"
                 />
               )}
             </div>
-            <h1 className="text-foreground w-full max-w-122 text-3xl leading-9 font-bold tracking-normal lg:h-24 lg:text-5xl lg:leading-12">
+            <h1 className="max-w-122 text-4xl leading-tight font-bold tracking-tight text-white lg:text-5xl">
               Transformando vidas en Uruguay
             </h1>
-            <p className="text-foreground w-full text-base leading-6 font-normal tracking-normal lg:h-12">
+            <p className="max-w-140 text-base leading-6 text-white/90">
               Trabajamos con niños, niñas, adolescentes, familias y comunidades en todo el
               territorio uruguayo.
             </p>
           </div>
-          {stats.length > 0 && (
-            <div
-              role="group"
-              aria-label={`Impacto ${year}`}
-              className={`lg:bg-card grid w-full grid-cols-2 gap-3 lg:gap-0 lg:rounded-xl ${getStatsColumnsClass(stats.length)}`}
-            >
-              {stats.map((stat) => (
-                <div
-                  key={stat.key}
-                  className="bg-card flex min-h-33 flex-col gap-1 rounded-xl px-4 py-6 max-lg:last:odd:col-span-2 lg:bg-transparent lg:px-8"
-                >
-                  <span className="text-foreground w-full text-3xl leading-9 font-bold tracking-normal lg:text-4xl lg:leading-10 lg:font-black">
-                    {stat.value}
-                  </span>
-                  <span className="text-foreground w-full text-sm leading-5 font-normal tracking-normal">
-                    {stat.description}
-                  </span>
-                  {stat.increment && (
-                    <span className="text-primary w-full text-xs leading-4 font-bold tracking-normal">
-                      {stat.increment}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+        {stats.length > 0 && (
+          <div className="public-hero-stats relative pb-20">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 1440 80"
+              preserveAspectRatio="none"
+              className="public-hero-wave pointer-events-none absolute inset-x-0 -top-16 h-16 w-full"
+            >
+              <path d="M0 78 Q720 90 1440 0 V80 H0 Z" fill="currentColor" />
+            </svg>
+            <div className="mx-auto w-full max-w-360 px-4 sm:px-6 lg:px-16">
+              <div
+                role="group"
+                aria-label={`Impacto ${year}`}
+                className={`grid w-full grid-cols-2 gap-x-6 gap-y-8 pt-8 lg:gap-x-0 ${getStatsColumnsClass(stats.length)}`}
+              >
+                {stats.map((stat) => (
+                  <div
+                    key={stat.key}
+                    className="flex flex-col gap-1 max-lg:last:odd:col-span-2 lg:px-8"
+                  >
+                    <span className="text-primary text-3xl leading-9 font-black lg:text-4xl lg:leading-10">
+                      {stat.value}
+                    </span>
+                    <span className="text-sm leading-5 text-white/90">{stat.description}</span>
+                    {stat.increment && (
+                      <span className="text-primary text-xs leading-4 font-bold">
+                        {stat.increment}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 100"
+          preserveAspectRatio="none"
+          className="text-background pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full"
+        >
+          <path d="M0 0 Q760 100 1440 62 V100 H0 Z" fill="currentColor" />
+        </svg>
       </section>
       {visibleTopics.length > 0 && (
         <section aria-labelledby="public-topic-statistics-heading" className="w-full">
@@ -180,101 +176,87 @@ export default async function Home({
           </Suspense>
         </div>
       </section>
-      <section className="w-full">
+      <section id="department-presence" className="w-full scroll-mt-16">
         <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
           <Suspense fallback={<DepartmentPresenceSkeleton />}>
-            <DepartmentPresence />
+            <DepartmentPresence year={year} />
           </Suspense>
         </div>
       </section>
-      <section className="w-full">
-        <div className="mx-auto flex min-h-77 w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-14 lg:pt-12 lg:pb-14">
-          <div className="flex min-h-14 w-full max-w-93.75 flex-col gap-1">
-            <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal">
-              Cómo trabajamos
-            </h2>
-            <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-              Acompañamos en cuatro niveles que se potencian entre sí
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {LEVELS.map((level) => (
-              <div
-                key={level.number}
-                className="border-primary flex flex-col gap-2 pt-4 lg:border-t-2"
-              >
-                <span className="text-foreground text-sm font-bold">{level.number}</span>
-                <h3 className="text-foreground text-lg leading-7 font-semibold">{level.title}</h3>
-                <p className="text-muted-foreground text-sm leading-5">{level.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      <section id="how-we-work" className="w-full scroll-mt-16">
+        <HowWeWork />
       </section>
-      <section className="w-full py-8 lg:py-12">
-        <div className="mx-auto w-full max-w-360 px-4 sm:px-6 lg:px-16">
-          <div className="bg-card flex min-h-70 w-full flex-col gap-3 rounded-xl px-6 py-11 lg:px-14 lg:py-18">
-            <h2 className="text-primary text-center text-xs leading-4 font-bold tracking-normal">
-              NUESTRA MISIÓN
-            </h2>
-            <p className="text-foreground text-center text-xl leading-7 font-bold tracking-normal sm:text-3xl sm:leading-9 sm:font-medium">
-              Hace {new Date().getFullYear() - FIRST_PROJECT_YEAR} años defendemos los derechos de
-              la niñez y la adolescencia en Uruguay, transformando realidades junto a las
-              comunidades.
-            </p>
-          </div>
+      <section id="mission" className="w-full scroll-mt-16">
+        <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-16 pb-12 text-center sm:px-6 lg:px-16 lg:pt-24 lg:pb-16">
+          <h2 className="text-xs leading-4 font-bold tracking-[0.14em] text-[#52766b]">
+            NUESTRA MISIÓN
+          </h2>
+          <p className="max-w-260 text-2xl leading-9 font-medium text-[#3d7115] sm:text-3xl sm:leading-10">
+            Hace {new Date().getFullYear() - FIRST_PROJECT_YEAR} años defendemos los derechos de la
+            niñez y la adolescencia en Uruguay, transformando realidades junto a las comunidades.
+          </p>
         </div>
       </section>
       {contributors.length > 0 && (
-        <section className="w-full">
-          <div className="mx-auto flex min-h-53.5 w-full max-w-360 flex-col gap-5 px-4 pt-12 pb-14 sm:px-6 lg:px-14">
-            <div className="flex w-full max-w-126.5 flex-col gap-1">
-              <h2 className="text-foreground text-xl leading-7 font-bold tracking-normal">
-                Quienes nos acompañan
-              </h2>
-              <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-                Organismos públicos, fundaciones y aliados que hacen posible nuestro trabajo
-              </p>
-            </div>
-            <div className="flex w-full max-w-332 flex-wrap gap-3">
+        <section aria-labelledby="contributors-heading" className="w-full">
+          <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-4 pb-16 text-center sm:px-6 lg:px-16 lg:pb-24">
+            <h2
+              id="contributors-heading"
+              className="text-xs leading-4 font-bold tracking-[0.14em] text-[#52766b]"
+            >
+              CON EL APOYO DE
+            </h2>
+            <ul className="flex w-full flex-wrap justify-center gap-3">
               {contributors.map((contributor) => (
-                <span
+                <li
                   key={contributor.id}
-                  className="bg-card text-foreground flex min-h-9.5 max-w-full items-center rounded-full px-4 py-2.25 text-sm leading-5 font-normal tracking-normal break-words"
+                  className="bg-card text-foreground flex min-h-10 max-w-full items-center justify-center rounded-full px-5 py-2 text-sm leading-5 font-medium break-words"
                 >
                   {contributor.name}
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
       )}
-      <section className="w-full pt-8 pb-12 lg:pt-12 lg:pb-18">
-        <div className="mx-auto w-full max-w-360 px-4 sm:px-6 lg:px-16">
-          <div className="bg-card flex w-full flex-col gap-4 rounded-xl px-4 pt-12 pb-8 sm:px-6 lg:px-14">
-            <h2 className="text-foreground text-center text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-              Sé parte de esta transformación
-            </h2>
-            <p className="text-muted-foreground text-center leading-6 font-normal tracking-normal">
-              Conocé en qué proyectos podés colaborar y cómo tu apoyo se convierte en impacto real
-              para miles de gurises.
-            </p>
-            <div className="mx-auto flex h-11 w-39.25 flex-col pt-2">
-              <a
-                href={COLLABORATE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants(),
-                  'text-foreground hover:bg-primary/70 hover:text-foreground h-9 w-full gap-2.5 bg-white px-4 py-2'
-                )}
-              >
-                Quiero colaborar
-              </a>
-            </div>
-          </div>
+      <section className="public-collaborate relative w-full text-white">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 80"
+          preserveAspectRatio="none"
+          className="text-background pointer-events-none absolute inset-x-0 top-0 h-12 w-full"
+        >
+          <path d="M0 0 H1440 V60 Q720 -60 0 60 Z" fill="currentColor" />
+        </svg>
+        <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-24 pb-20 text-center sm:px-6 lg:px-16">
+          <h2 className="text-2xl leading-8 font-bold sm:text-3xl sm:leading-9">
+            Sé parte de esta transformación
+          </h2>
+          <p className="max-w-180 text-base leading-6 text-[#b3cbc1]">
+            Conocé en qué proyectos podés colaborar y cómo tu apoyo se convierte en impacto real
+            para miles de gurises.
+          </p>
+          <a
+            href={COLLABORATE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              buttonVariants(),
+              'text-foreground hover:bg-primary/70 hover:text-foreground min-h-10 bg-white px-5 py-2 font-bold'
+            )}
+          >
+            Quiero colaborar
+          </a>
         </div>
       </section>
+      <footer className="bg-surface-brand-deep px-5 pb-6 text-center">
+        <a
+          href="/login"
+          className="text-xs text-white/60 underline-offset-4 hover:text-white hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+        >
+          Acceso al equipo
+        </a>
+      </footer>
     </>
   );
 }

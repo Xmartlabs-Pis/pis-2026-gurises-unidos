@@ -23,6 +23,7 @@ vi.mock('@/lib/metrics/topic-statistics', () => ({
   getTopicStatistics: vi.fn(async () => []),
 }));
 vi.mock('@/components/projects/projects-by-topic', () => ({ ProjectsByTopic: vi.fn(() => null) }));
+vi.mock('@/components/how-we-work', () => ({ HowWeWork: () => null }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
   usePathname: () => '/',
@@ -54,7 +55,23 @@ test('renders published contributors from the database', async () => {
 
 test('hides the contributors section when none are published', async () => {
   render(await Home({ searchParams: Promise.resolve({}) }));
-  expect(screen.queryByRole('heading', { name: 'Quienes nos acompañan' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'CON EL APOYO DE' })).toBeNull();
+});
+
+test('renders every contributor in the order returned by the database', async () => {
+  vi.mocked(getContributors).mockResolvedValue([
+    { id: 42, name: 'Second alphabetically' },
+    { id: 7, name: 'First alphabetically' },
+    { id: 9, name: 'Third alphabetically' },
+  ]);
+  render(await Home({ searchParams: Promise.resolve({}) }));
+
+  const contributors = within(screen.getByRole('region', { name: 'CON EL APOYO DE' }));
+  expect(contributors.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+    'Second alphabetically',
+    'First alphabetically',
+    'Third alphabetically',
+  ]);
 });
 
 test('links the collaborate button to the Gurises Unidos collaboration page in a new tab', async () => {

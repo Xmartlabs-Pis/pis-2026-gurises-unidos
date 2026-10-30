@@ -31,6 +31,36 @@ export type PublicTopic = {
   initialPage: PublicProjectsPage;
 };
 
+export type PublicDepartment = {
+  id: number;
+  name: string;
+  projects: PublicProject[];
+};
+
+export async function getPublicDepartments(year: number): Promise<PublicDepartment[]> {
+  const departments = await prisma.department.findMany({
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      projects: {
+        where: {
+          ...publicProjectWhere(year),
+          topics: { some: { isActive: true, showPublicly: true } },
+        },
+        orderBy: PUBLIC_PROJECT_ORDER,
+        select: publicProjectSelect(year),
+      },
+    },
+  });
+
+  return departments.map(({ id, name, projects }) => ({
+    id,
+    name,
+    projects: projects.map(toPublicProject),
+  }));
+}
+
 function publicProjectWhere(year: number) {
   return {
     deletedAt: null,
