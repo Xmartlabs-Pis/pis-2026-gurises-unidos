@@ -28,6 +28,7 @@ export function ImageUploadField({
 }: ImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>();
+  const descriptionId = `${id}-description`;
   const errorId = `${id}-error`;
 
   useEffect(() => {
@@ -46,13 +47,11 @@ export function ImageUploadField({
       <div className="h-0 w-0 overflow-hidden">
         <input
           ref={inputRef}
-          id={id}
           name={name}
           form="cover-photo-detached"
           type="file"
           accept={IMAGE_TYPES.join(',')}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? errorId : undefined}
+          aria-hidden="true"
           className="sr-only"
           tabIndex={-1}
           onChange={(event) => {
@@ -77,21 +76,24 @@ export function ImageUploadField({
         />
       </div>
       <Button
+        id={id}
         type="button"
         variant="ghost"
         title={value?.name}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${descriptionId} ${errorId}` : descriptionId}
         className="border-input bg-muted text-muted-foreground hover:bg-accent h-auto min-h-18 w-full min-w-0 shrink rounded-lg border px-4 py-3 text-center text-xs leading-4 font-normal"
         onClick={openPicker}
       >
         {value ? (
-          <span className="flex max-w-full min-w-0 items-center justify-center">
+          <span id={descriptionId} className="flex max-w-full min-w-0 items-center justify-center">
             <span className="truncate">{value.name}</span>
             <span className="shrink-0"> · Cambiar imagen</span>
           </span>
-        ) : imageUrl ? (
-          'Cambiar imagen'
         ) : (
-          'Clic para subir imagen (JPG, PNG, máx. 5MB)'
+          <span id={descriptionId}>
+            {imageUrl ? 'Cambiar imagen' : 'Clic para subir imagen (JPG, PNG, máx. 5MB)'}
+          </span>
         )}
       </Button>
       {(value || onRemoveSaved) && (
