@@ -175,7 +175,9 @@ it('previews a selected cover without putting the file on the form', () => {
   expect(container.querySelector('.aspect-video')?.getAttribute('style')).toContain('blob:preview');
   expect(input.name).toBe('');
   expect(new FormData(container.querySelector('form')!).get('coverPhoto')).toBeNull();
-  expect(screen.getByText('portada.png')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: 'Foto de portada', description: /portada\.png/ })
+  ).toBeTruthy();
   createObjectURL.mockRestore();
   revokeObjectURL.mockRestore();
 });
