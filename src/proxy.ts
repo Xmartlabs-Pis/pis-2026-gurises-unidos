@@ -17,10 +17,6 @@ function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
 }
 
-function isPublicAsset(pathname: string) {
-  return pathname.startsWith('/images/');
-}
-
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
 
@@ -55,7 +51,7 @@ export const proxy = auth((request) => {
     return response;
   }
 
-  if (isPublicRoute(pathname) || isPublicAsset(pathname)) {
+  if (isPublicRoute(pathname)) {
     return NextResponse.next();
   }
 

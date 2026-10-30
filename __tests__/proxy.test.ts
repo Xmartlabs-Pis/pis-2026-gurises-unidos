@@ -6,11 +6,15 @@ vi.mock('@/auth', () => ({
   auth: (handler: unknown) => handler,
 }));
 
-import { proxy } from '@/proxy';
+import { config, proxy } from '@/proxy';
 
 type AuthRequest = NextRequest & { auth: unknown };
 
 const runProxy = proxy as unknown as (request: AuthRequest) => NextResponse;
+
+function matchesProxyMatcher(pathname: string) {
+  return config.matcher.some((matcher) => new RegExp(`^${matcher}$`).test(pathname));
+}
 
 function makeRequest(
   path: string,
@@ -105,12 +109,9 @@ describe('proxy', () => {
   );
 
   test.each(['/images/logo.png', '/images/project-placeholders/1.webp'])(
-    'allows unauthenticated access to the public image %s',
+    'excludes %s from the proxy matcher',
     (path) => {
-      const response = runProxy(makeRequest(path));
-
-      expect(response.headers.get('x-middleware-next')).toBe('1');
-      expect(response.headers.get('location')).toBeNull();
+      expect(matchesProxyMatcher(path)).toBe(false);
     }
   );
 
