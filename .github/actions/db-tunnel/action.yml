@@ -1,0 +1,67 @@
+name: DB tunnel
+description: Abre un tunel SSH a la base de la VM y deja DATABASE_URL listo para los pasos siguientes
+
+inputs:
+  branch:
+    description: Rama del entorno (main | staging)
+    required: true
+  ssh-host:
+    description: Host de la VM
+    required: true
+  ssh-user:
+    description: Usuario SSH
+    required: true
+  ssh-key:
+    description: Clave privada SSH
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+        SSH_HOST: ${{ inputs.ssh-host }}
+        SSH_USER: ${{ inputs.ssh-user }}
+        SSH_KEY: ${{ inputs.ssh-key }}
+      run: |
+        set -euo pipefail
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+        ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" \
+          "cd /srv/pis-$BRANCH && COMPOSE_PROJECT_NAME=pis-$BRANCH docker compose up -d --wait db"
+
+        REMOTE_ENV="$(ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" "cat /srv/pis-$BRANCH/.env")"
+        REMOTE_URL="$(printf '%s' "$REMOTE_ENV" | grep '^DATABASE_URL=' | cut -d= -f2-)"
+        DB_PORT="$(printf '%s' "$REMOTE_ENV" | grep '^DB_PORT=' | cut -d= -f2-)"
+        REMOTE_URL="${REMOTE_URL%[\"\']}"
+        REMOTE_URL="${REMOTE_URL#[\"\']}"
+        DB_PORT="${DB_PORT%[\"\']}"
+        DB_PORT="${DB_PORT#[\"\']}"
+        echo "::add-mask::$REMOTE_URL"
+
+        case "$REMOTE_URL" in
+          *"@db:5432/"*) ;;
+          *)
+            echo "DATABASE_URL de /srv/pis-$BRANCH/.env no apunta a db:5432" >&2
+            exit 1
+            ;;
+        esac
+
+        case "$DB_PORT" in
+          '' | *[!0-9]*)
+            echo "falta DB_PORT en /srv/pis-$BRANCH/.env (5432 en main, 5433 en staging)" >&2
+            exit 1
+            ;;
+        esac
+
+        LOCAL_URL="${REMOTE_URL/@db:5432\//@127.0.0.1:55432/}"
+        echo "::add-mask::$LOCAL_URL"
+
+        ssh -i ~/.ssh/deploy_key -f -N -o ExitOnForwardFailure=yes \
+          -L "55432:127.0.0.1:$DB_PORT" "$SSH_USER@$SSH_HOST"
+
+        echo "DATABASE_URL=$LOCAL_URL" >> "$GITHUB_ENV"

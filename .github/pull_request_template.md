@@ -1,17 +1,29 @@
-## Qué cambia
+# Ticket
 
-<!-- Descripción breve. El título de la PR debe ser conventional commit: feat/fix/chore/docs/refactor/test -->
+<!-- Ticket URL -->
 
-## Ticket
+# Change Type
 
-<!-- Link al issue -->
+- [ ] **Feature**: Introducing new functionality or a new capabilities.
+- [ ] **Refactor**: Restructuring existing code without changing its behavior.
+- [ ] **Bug Fix**: Addressing an identified issue or defect.
+- [ ] **Chore**: Maintenance, build updates, dependency upgrades, etc.
+- [ ] **Documentation**: Changes to documentation or README files.
 
-## Cómo se testea
+# Description of Changes
 
-<!-- Pasos para verificarlo, o "cubierto por los tests automáticos" -->
+<!-- Describe the changes introduced in this PR. -->
 
-## Checklist
+# Screenshots
 
-- [ ] Título en conventional commits
-- [ ] Apunta a `development`
-- [ ] Tests pasan localmente
+<!-- Provide screenshots or video recordings demonstrating the functionality. -->
+
+# How to test
+
+<!-- Provide a step-by-step guide on how to test these changes. -->
+
+# Checklist
+
+- [ ] PR title follows the Conventional Commits specification
+- [ ] Based on `development`
+- [ ] All tests pass locally

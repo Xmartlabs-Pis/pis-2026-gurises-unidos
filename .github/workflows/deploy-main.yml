@@ -1,0 +1,129 @@
+name: Deploy main
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to the VM
+    runs-on: ubuntu-latest
+    environment: main
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # sin esto el runner usa el driver "docker", que no soporta cache-to: type=gha
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # el build corre acá (runner con 4 cores y 16 GB), no en la VM, que se ahogaba con next build
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }},${{ env.IMAGE }}:main
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - uses: appleboy/ssh-action@v1
+        env:
+          BRANCH: main
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ vars.SSH_USER || 'deploy' }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: BRANCH
+          script: |
+            set -euo pipefail
+            cd "/srv/pis-$BRANCH"
+            git fetch --prune origin "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            [ -f .env ] || {
+              echo "falta /srv/pis-$BRANCH/.env: correr vm-setup.sh $BRANCH" >&2
+              exit 1
+            }
+            grep -q '^DB_PORT=.' .env || {
+              echo "falta DB_PORT en /srv/pis-$BRANCH/.env (5432 en main, 5433 en staging)" >&2
+              exit 1
+            }
+            COMPOSE_PROJECT_NAME="pis-$BRANCH" docker compose up -d --wait db
+
+      - name: Run migrations through an SSH tunnel
+        env:
+          BRANCH: main
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ vars.SSH_USER || 'deploy' }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          REMOTE_ENV="$(ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" "cat /srv/pis-$BRANCH/.env")"
+          REMOTE_URL="$(printf '%s' "$REMOTE_ENV" | grep '^DATABASE_URL=' | cut -d= -f2-)"
+          DB_PORT="$(printf '%s' "$REMOTE_ENV" | grep '^DB_PORT=' | cut -d= -f2-)"
+          REMOTE_URL="${REMOTE_URL%[\"\']}"
+          REMOTE_URL="${REMOTE_URL#[\"\']}"
+          DB_PORT="${DB_PORT%[\"\']}"
+          DB_PORT="${DB_PORT#[\"\']}"
+          echo "::add-mask::$REMOTE_URL"
+
+          case "$REMOTE_URL" in
+            *"@db:5432/"*) ;;
+            *)
+              echo "DATABASE_URL de /srv/pis-$BRANCH/.env no apunta a db:5432" >&2
+              exit 1
+              ;;
+          esac
+
+          LOCAL_URL="${REMOTE_URL/@db:5432\//@127.0.0.1:55432/}"
+          echo "::add-mask::$LOCAL_URL"
+
+          ssh -i ~/.ssh/deploy_key -f -N -o ExitOnForwardFailure=yes \
+            -L "55432:127.0.0.1:$DB_PORT" "$SSH_USER@$SSH_HOST"
+
+          DATABASE_URL="$LOCAL_URL" npx prisma migrate deploy
+
+      - uses: appleboy/ssh-action@v1
+        env:
+          BRANCH: main
+          PORT: '3000'
+          TAG: ${{ github.sha }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ vars.SSH_USER || 'deploy' }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: BRANCH,PORT,TAG,GHCR_USER,GHCR_TOKEN
+          # el package de GHCR es privado y no se puede hacer publico, asi que la VM se autentica.
+          # Se usa el GITHUB_TOKEN del run (efimero, expira al terminar) para no dejar un PAT
+          # guardado en el disco de la VM; el logout borra la credencial igual.
+          script: |
+            set -euo pipefail
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            trap 'docker logout ghcr.io' EXIT
+            cd "/srv/pis-$BRANCH"
+            ./deploy.sh "$BRANCH" "$PORT" "$TAG"

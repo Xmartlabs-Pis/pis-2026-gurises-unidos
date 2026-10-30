@@ -1,0 +1,45 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [development, staging, main]
+
+jobs:
+  static:
+    name: static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - id: setup
+        run: npm ci && npx prisma generate
+
+      - run: npm run format:check
+
+      - run: npm run lint
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+
+      - run: npm run typecheck
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+
+  test:
+    name: vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - run: npm run test

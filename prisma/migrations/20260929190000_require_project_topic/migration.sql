@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE "Project" ALTER COLUMN "topicId" SET NOT NULL;
+
+COMMIT;

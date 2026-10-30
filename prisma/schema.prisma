@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- ENUMS ----------
+
+enum UserRole {
+  admin
+  coordinator
+}
+
+enum UserStatus {
+  active
+  pendingInvitation
+  disabled
+}
+
+enum ProjectStatus {
+  active
+  inactive
+}
+
+enum Intensity {
+  high
+  medium
+  low
+}
+
+enum GeographicScope {
+  national
+  international
+}
+
+enum Zone {
+  city
+  inland
+  border
+  rural
+}
+
+enum AuditAction {
+  creation
+  update
+  deletion
+  passwordChange
+  passwordReset
+}
+
+enum AuditEntity {
+  user
+  project
+  beneficiary
+  beneficiaryCategory
+  metric
+  topic
+}
+
+enum CounterpartyType {
+  publicSector
+  privateSector
+  internationalCooperation
+}
+
+// ---------- TABLES ----------
+
+model User {
+  id                 Int        @id @default(autoincrement())
+  firstName          String
+  lastName           String
+  documentId         String     @unique
+  email              String     @unique
+  role               UserRole
+  status             UserStatus
+  passwordHash       String
+  passwordChangedAt  DateTime?
+  mustChangePassword Boolean    @default(false)
+  lastAccess         DateTime?
+  createdAt          DateTime   @default(now())
+  createdBy          Int?
+  updatedAt          DateTime?  @updatedAt
+  deletedAt          DateTime?
+
+  creator               User?                 @relation("UserCreatedBy", fields: [createdBy], references: [id])
+  createdUsers          User[]                @relation("UserCreatedBy")
+  ledProjects           Project[]             @relation("ProjectLeadCoordinator")
+  createdProjects       Project[]             @relation("ProjectCreatedBy")
+  deletedProjects       Project[]             @relation("ProjectDeletedBy")
+  projectCoordinators   ProjectCoordinator[]
+  projectBeneficiaries  ProjectBeneficiary[]
+  metricsUpdated        Metric[]
+  publicSettingsUpdated PublicSettings[]
+  beneficiaryCategories BeneficiaryCategory[]
+  reportsGenerated      Report[]
+  auditLogs             AuditLog[]
+}
+
+model Topic {
+  id           Int     @id @default(autoincrement())
+  name         String  @unique
+  isActive     Boolean @default(true)
+  showPublicly Boolean @default(true)
+
+  projects Project[]
+}
+
+model StrategicLine {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  isActive Boolean @default(true)
+
+  projects Project[]
+}
+
+model Department {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  projects Project[]
+}
+
+model Project {
+  id                Int              @id @default(autoincrement())
+  name              String           @db.VarChar(100)
+  searchName        String?          @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
+  status            ProjectStatus
+  intensity         Intensity?
+  counterpartyType  CounterpartyType
+  startYear         Int
+  endYear           Int?
+  leadCoordinatorId Int
+  geographicScope   GeographicScope  @default(national)
+  countries         String[]         @default([])
+  cities            String[]         @default([])
+  neighborhoods     String[]         @default([])
+  zone              Zone
+  generalObjective  String?          @db.VarChar(500)
+  publicDescription String?          @db.VarChar(1000)
+  coverPhoto        String?
+  internalNotes     String?          @db.VarChar(1000)
+  showOnLanding     Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  createdBy         Int?
+  updatedAt         DateTime?        @updatedAt
+  deletedAt         DateTime?
+  deletedBy         Int?
+
+  leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
+  departments     Department[]
+  creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
+  deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
+  topics          Topic[]
+  strategicLines  StrategicLine[]
+
+  projectCoordinators  ProjectCoordinator[]
+  projectBeneficiaries ProjectBeneficiary[]
+}
+
+model ProjectCoordinator {
+  projectId Int
+  userId    Int
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@id([projectId, userId])
+}
+
+model ProjectBeneficiary {
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  year       Int
+  recordedAt DateTime @default(now())
+  authorId   Int
+
+  project Project                   @relation(fields: [projectId], references: [id])
+  author  User                      @relation(fields: [authorId], references: [id])
+  values  ProjectBeneficiaryValue[]
+
+  @@unique([projectId, year])
+}
+
+model BeneficiaryCategory {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique
+  name         String   @unique
+  defaultValue Int      @default(0)
+  sortOrder    Int      @default(0)
+  isSystem     Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  createdBy    Int?
+
+  creator User?                     @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  values  ProjectBeneficiaryValue[]
+}
+
+model ProjectBeneficiaryValue {
+  beneficiaryId Int
+  categoryId    Int
+  value         Int @default(0)
+
+  beneficiary ProjectBeneficiary  @relation(fields: [beneficiaryId], references: [id], onDelete: Cascade)
+  category    BeneficiaryCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([beneficiaryId, categoryId])
+  @@index([categoryId])
+}
+
+model Metric {
+  id                Int       @id @default(autoincrement())
+  key               String    @unique
+  name              String
+  showPublicly      Boolean   @default(false)
+  showPubliclyDraft Boolean   @default(false)
+  sortOrder         Int
+  updatedBy         Int?
+  updatedAt         DateTime? @updatedAt
+
+  updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+model PublicSettings {
+  id            Int       @id @default(1)
+  referenceYear Int
+  updatedBy     Int?
+  updatedAt     DateTime? @updatedAt
+
+  updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+model Report {
+  id          Int      @id @default(autoincrement())
+  generatedBy Int
+  periodYear  Int
+  format      String
+  filePath    String
+  generatedAt DateTime @default(now())
+
+  generator User @relation(fields: [generatedBy], references: [id])
+}
+
+model AuditLog {
+  id         Int         @id @default(autoincrement())
+  authorId   Int
+  action     AuditAction
+  entity     AuditEntity
+  entityId   Int
+  details    Json?
+  occurredAt DateTime    @default(now())
+
+  author User @relation(fields: [authorId], references: [id])
+}

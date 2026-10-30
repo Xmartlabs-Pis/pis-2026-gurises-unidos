@@ -1,0 +1,21 @@
+# Don't format these folders
+node_modules
+.next
+build
+dist
+coverage
+
+# Don't format these files
+package-lock.json
+yarn.lock
+.env
+.env.local
+
+# Don't format images and icons
+public/**/*.svg
+public/**/*.png
+public/**/*.jpg
+
+CHANGELOG.md
+.release-please-manifest.json
+AGENTS.md

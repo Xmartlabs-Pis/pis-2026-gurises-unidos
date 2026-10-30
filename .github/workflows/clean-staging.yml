@@ -1,0 +1,66 @@
+name: Clean staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [reset, wipe]
+        default: reset
+        description: 'reset = borra todo y recrea el admin | wipe = borra todo, sin admin'
+      confirm:
+        type: string
+        required: true
+        description: "Escribi 'staging' para confirmar"
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  clean:
+    name: Clean the staging database
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+    steps:
+      - env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = staging ] || {
+            echo "confirmacion invalida: escribi exactamente 'staging'" >&2
+            exit 1
+          }
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - uses: ./.github/actions/db-tunnel
+        with:
+          branch: staging
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-user: ${{ vars.SSH_USER || 'deploy' }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - run: npx tsx prisma/clean.ts
+        env:
+          CLEAN_MODE: ${{ inputs.mode }}
+          SEED_USER_PASSWORD: ${{ secrets.SEED_USER_PASSWORD }}
+
+      - run: |
+          if [ "$MODE" = reset ]; then
+            echo "Staging vaciada. El admin quedo recreado y podes entrar." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Staging vaciada por completo, **sin admin**. Corre \`Seed staging\` para volver a entrar." >> "$GITHUB_STEP_SUMMARY"
+          fi
+        env:
+          MODE: ${{ inputs.mode }}

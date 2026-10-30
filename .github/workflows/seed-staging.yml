@@ -1,0 +1,39 @@
+name: Seed staging
+
+on: workflow_dispatch
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    name: Seed the staging database
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - uses: ./.github/actions/db-tunnel
+        with:
+          branch: staging
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-user: ${{ vars.SSH_USER || 'deploy' }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - run: npx tsx prisma/seed-staging.ts
+        env:
+          SEED_USER_PASSWORD: ${{ secrets.SEED_USER_PASSWORD }}
+
+      - run: echo "Staging seeded from \`prisma/seed-staging.ts\`." >> "$GITHUB_STEP_SUMMARY"
