@@ -17,6 +17,10 @@ function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
 }
 
+function isPublicAsset(pathname: string) {
+  return pathname.startsWith('/images/');
+}
+
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
 
@@ -51,7 +55,7 @@ export const proxy = auth((request) => {
     return response;
   }
 
-  if (isPublicRoute(pathname)) {
+  if (isPublicRoute(pathname) || isPublicAsset(pathname)) {
     return NextResponse.next();
   }
 
@@ -73,6 +77,6 @@ export const proxy = auth((request) => {
 
 export const config = {
   matcher: [
-    '/((?!api/auth(?:/|$)|_next/static/|_next/image$|images/project-placeholders/|uploads/covers/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|(?:.+/)?(?:icon|apple-icon|opengraph-image|twitter-image)\\d*(?:\\.\\w+)?$).*)',
+    '/((?!api/auth(?:/|$)|_next/static/|_next/image$|images/|uploads/covers/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|(?:.+/)?(?:icon|apple-icon|opengraph-image|twitter-image)\\d*(?:\\.\\w+)?$).*)',
   ],
 };

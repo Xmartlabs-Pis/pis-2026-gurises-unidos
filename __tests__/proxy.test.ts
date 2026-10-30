@@ -104,6 +104,16 @@ describe('proxy', () => {
     }
   );
 
+  test.each(['/images/logo.png', '/images/project-placeholders/1.webp'])(
+    'allows unauthenticated access to the public image %s',
+    (path) => {
+      const response = runProxy(makeRequest(path));
+
+      expect(response.headers.get('x-middleware-next')).toBe('1');
+      expect(response.headers.get('location')).toBeNull();
+    }
+  );
+
   test('redirects users who must change password away from protected routes', () => {
     const response = runProxy(
       makeRequest('/dashboard/projects', { authenticated: true, mustChangePassword: true })
