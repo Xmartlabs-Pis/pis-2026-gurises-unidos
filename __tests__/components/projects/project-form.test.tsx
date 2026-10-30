@@ -23,6 +23,10 @@ vi.mock('@/lib/notify', () => ({
   },
 }));
 
+function getCoverPhotoInput(container: HTMLElement) {
+  return container.querySelector('input[type="file"]') as HTMLInputElement;
+}
+
 it('submits prefilled values and the recorded year, preserves edits on failure, and allows retry', async () => {
   routerPushMock.mockClear();
   vi.mocked(notify.error).mockClear();
@@ -104,7 +108,8 @@ it('keeps the original creation appearance separate from edit styling', () => {
   expect(screen.queryByText('Cobertura')).toBeNull();
   expect(screen.queryByText('Ver vista pública →')).toBeNull();
   expect(screen.getByLabelText('Nombre del proyecto').classList.contains('md:text-sm')).toBe(true);
-  expect((screen.getByLabelText('Foto de portada') as HTMLInputElement).disabled).toBe(false);
+  expect(screen.getByLabelText('Foto de portada').tagName).toBe('BUTTON');
+  expect((screen.getByLabelText('Foto de portada') as HTMLButtonElement).disabled).toBe(false);
   expect(
     screen
       .getByText('Información básica')
@@ -158,15 +163,19 @@ it('previews a selected cover without putting the file on the form', () => {
     />
   );
   const file = new File(['image'], 'portada.png', { type: 'image/png' });
-  fireEvent.change(screen.getByLabelText('Foto de portada'), { target: { files: [file] } });
+  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
 
-  const input = screen.getByLabelText('Foto de portada') as HTMLInputElement;
+  const input = getCoverPhotoInput(container);
+  const picker = screen.getByLabelText('Foto de portada');
+  expect(picker.tagName).toBe('BUTTON');
+  expect(picker).toBe(container.querySelector('#coverPhoto'));
+  expect(input).not.toBe(picker);
   expect(input.closest('.overflow-hidden')).not.toBeNull();
   expect(input.getAttribute('form')).toBe('cover-photo-detached');
   expect(container.querySelector('.aspect-video')?.getAttribute('style')).toContain('blob:preview');
   expect(input.name).toBe('');
   expect(new FormData(container.querySelector('form')!).get('coverPhoto')).toBeNull();
-  expect(screen.getByRole('button', { name: /portada\.png/ })).toBeTruthy();
+  expect(screen.getByText('portada.png')).toBeTruthy();
   createObjectURL.mockRestore();
   revokeObjectURL.mockRestore();
 });
@@ -207,7 +216,7 @@ it('uploads the selected cover and submits the returned path', async () => {
     />
   );
   const file = new File(['image'], 'portada.png', { type: 'image/png' });
-  fireEvent.change(screen.getByLabelText('Foto de portada'), { target: { files: [file] } });
+  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
@@ -264,7 +273,7 @@ it('does not submit when the cover upload fails', async () => {
       submitAction={submitAction}
     />
   );
-  fireEvent.change(screen.getByLabelText('Foto de portada'), {
+  fireEvent.change(getCoverPhotoInput(container), {
     target: { files: [new File(['image'], 'portada.png', { type: 'image/png' })] },
   });
   await act(async () => {
