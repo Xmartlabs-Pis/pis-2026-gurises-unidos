@@ -183,3 +183,28 @@ test.each([
     )
   ).toBe(expected);
 });
+
+test('describes locality snapshots without ids alongside other project changes', () => {
+  expect(
+    describeAuditDetails(
+      {
+        action: 'update',
+        entity: 'project',
+        details: {
+          changes: [
+            { field: 'name', from: 'Original project', to: 'Updated project' },
+            {
+              field: 'localities',
+              from: [{ name: 'Montevideo, Montevideo, Centro' }],
+              to: [{ name: 'Canelones, Las Piedras, Centro' }],
+            },
+          ],
+        },
+      },
+      {}
+    )
+  ).toBe(
+    'Nombre: Original project → Updated project, ' +
+      'Ubicaciones: Montevideo, Montevideo, Centro → Canelones, Las Piedras, Centro'
+  );
+});
