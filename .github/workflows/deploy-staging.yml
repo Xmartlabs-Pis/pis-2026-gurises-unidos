@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE: ghcr.io/${{ github.repository }}
+  IMAGE: ghcr.io/xmartlabs-pis/pis-2026-gurises-unidos
 
 jobs:
   deploy:
