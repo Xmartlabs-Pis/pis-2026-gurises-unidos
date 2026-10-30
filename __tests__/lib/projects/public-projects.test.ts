@@ -4,9 +4,60 @@ import {
   PUBLIC_PROJECTS_PAGE_SIZE,
   getPublicProjectsPage,
   getPublicTopics,
+  getPublicDepartments,
 } from '@/lib/projects/public-projects';
 
 const TOPIC_ID = 2;
+
+describe('getPublicDepartments', () => {
+  test('only includes visible projects from the requested year and public topics', async () => {
+    prismaMock.department.findMany.mockResolvedValue([]);
+
+    expect(await getPublicDepartments(2025)).toEqual([]);
+    expect(prismaMock.department.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          projects: expect.objectContaining({
+            where: {
+              deletedAt: null,
+              showOnLanding: true,
+              projectBeneficiaries: { some: { year: 2025 } },
+              topics: { some: { isActive: true, showPublicly: true } },
+            },
+            select: expect.objectContaining({
+              projectBeneficiaries: expect.objectContaining({ where: { year: 2025 } }),
+            }),
+          }),
+        }),
+      })
+    );
+  });
+
+  test('keeps departments without projects and returns only public project fields', async () => {
+    prismaMock.department.findMany.mockResolvedValue([
+      { id: 1, name: 'Montevideo', projects: [row(1)] },
+      { id: 2, name: 'Canelones', projects: [] },
+    ]);
+
+    expect(await getPublicDepartments(2025)).toEqual([
+      {
+        id: 1,
+        name: 'Montevideo',
+        projects: [
+          {
+            id: 1,
+            name: 'Proyecto 1',
+            territory: 'Montevideo',
+            description: '',
+            coverPhoto: '/images/project-placeholders/1.webp',
+            reach: 15,
+          },
+        ],
+      },
+      { id: 2, name: 'Canelones', projects: [] },
+    ]);
+  });
+});
 
 function row(id: number, location: object = {}) {
   return {

@@ -30,9 +30,9 @@ function TopicCarouselControls() {
   if (!canScrollPrev && !canScrollNext) return null;
 
   return (
-    <div className="flex flex-row gap-2">
-      <CarouselPrevious className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
-      <CarouselNext className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
+    <div className="flex shrink-0 gap-2">
+      <CarouselPrevious className="static size-9 rounded-lg bg-white" />
+      <CarouselNext className="static size-9 rounded-lg bg-white" />
     </div>
   );
 }
@@ -75,8 +75,8 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
   }, [api, failed, loadMore]);
 
   return (
-    <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-4">
-      <div className="flex flex-row justify-between">
+    <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-5">
+      <div className="flex min-h-9 items-center justify-between gap-4">
         <div className="flex flex-row items-center gap-3">
           <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
         </div>
@@ -84,9 +84,9 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
       </div>
       <CarouselContent>
         {projects.map((project) => (
-          <CarouselItem key={project.id} className="basis-75 lg:basis-100">
+          <CarouselItem key={project.id} className="basis-72 sm:basis-76">
             <ProjectCard
-              variant="public-dark"
+              variant="public-light"
               territory={project.territory}
               name={project.name}
               description={project.description}
@@ -96,17 +96,13 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
           </CarouselItem>
         ))}
         {hasMore && (
-          <CarouselItem className="basis-75 lg:basis-100">
+          <CarouselItem className="basis-72 sm:basis-76">
             {failed ? (
-              <div className="bg-card flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border-2 px-6 text-center">
+              <div className="border-border flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border bg-white px-6 text-center">
                 <p role="alert" className="text-muted-foreground text-sm">
                   No se pudieron cargar más proyectos.
                 </p>
-                <Button
-                  variant="outline"
-                  className="h-9 border bg-white px-4 shadow-xs/10"
-                  onClick={loadMore}
-                >
+                <Button variant="outline" className="h-9 border bg-white px-4" onClick={loadMore}>
                   Reintentar
                 </Button>
               </div>

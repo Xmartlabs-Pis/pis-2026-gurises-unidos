@@ -125,6 +125,10 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+html:has(.theme-public) {
+  scroll-behavior: smooth;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -178,7 +182,7 @@
 }
 
 .theme-public {
-  --background: #f8faf9;
+  --background: #f8f9fa;
   --foreground: #0e3a2e;
   --card: #e7f0eb;
   --card-foreground: #0e3a2e;
@@ -205,14 +209,33 @@
   --sidebar-ring: #f5970c;
 }
 
-.theme-public main > section:nth-child(even) {
-  background-image: linear-gradient(
-    to bottom,
-    var(--background),
-    #ffffff 3rem,
-    #ffffff calc(100% - 3rem),
-    var(--background)
-  );
+.theme-public main > section {
+  background-color: var(--background);
+}
+
+.theme-public main > #how-we-work {
+  --work-surface: var(--background);
+  background-color: var(--work-surface);
+}
+
+.theme-public main > .public-hero {
+  --muted-foreground: #ffffffb3;
+  position: relative;
+  overflow: hidden;
+  background: #0e3a2e;
+}
+
+.public-hero-badge,
+.public-hero-stats {
+  background-color: #0a2c22;
+}
+
+.public-hero-wave {
+  color: #0a2c22;
+}
+
+.theme-public main > .public-collaborate {
+  background-color: var(--surface-brand-deep);
 }
 
 @layer base {
@@ -233,6 +256,15 @@
 .leaflet-container path.leaflet-interactive:focus,
 .leaflet-container:focus {
   outline: none;
+}
+
+.leaflet-container.department-map {
+  background: transparent;
+}
+
+.department-map path.leaflet-interactive:focus-visible {
+  stroke: var(--foreground);
+  stroke-width: 3;
 }
 
 @utility bg-project-cover {
