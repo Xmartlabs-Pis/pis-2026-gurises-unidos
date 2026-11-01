@@ -2,6 +2,7 @@
 
 import type { ComponentProps } from 'react';
 import { useFormContext, useFormState } from 'react-hook-form';
+import { cn } from 'cn';
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 
@@ -19,6 +20,7 @@ export function TextareaField({
   label,
   messages,
   description,
+  className,
   ...props
 }: TextareaFieldProps) {
   const { register, control } = useFormContext();
@@ -41,7 +43,10 @@ export function TextareaField({
         aria-describedby={
           errorMessage ? `${id}-error` : description ? `${id}-description` : undefined
         }
-        className="border-input bg-background min-h-20 resize-y rounded-lg px-3 py-2 text-base md:text-sm"
+        className={cn(
+          'border-input bg-background min-h-20 resize-y rounded-lg px-3 py-2 text-base md:text-sm',
+          className
+        )}
       />
       {errorMessage ? (
         <FieldError id={`${id}-error`}>{errorMessage}</FieldError>

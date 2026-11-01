@@ -4,7 +4,7 @@ import { signOut } from './session';
 
 vi.mock('@/auth', async () => {
   const { currentSession } = await import('./session');
-  return { auth: vi.fn(async () => currentSession()) };
+  return { auth: vi.fn(async () => currentSession()), signIn: vi.fn() };
 });
 vi.mock('next/navigation', () => ({
   redirect: (url: string) => {

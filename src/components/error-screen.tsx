@@ -56,7 +56,9 @@ export function ErrorScreen({
       <p className="text-muted-foreground text-7xl font-semibold tracking-tight tabular-nums sm:text-8xl">
         {code}
       </p>
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">{title ?? copy.title}</h1>
+      <h1 className="text-foreground mt-6 text-3xl font-semibold tracking-tight">
+        {title ?? copy.title}
+      </h1>
       <p className="text-muted-foreground mt-3 max-w-xl text-base leading-relaxed">
         {description ?? copy.description}
       </p>

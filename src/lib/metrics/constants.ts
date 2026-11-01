@@ -7,6 +7,13 @@ export const METRIC_DEFINITIONS: {
   showPublicly: boolean;
 }[] = [
   {
+    key: 'children_reached',
+    name: 'Total de NNA',
+    description:
+      'Suma de niños, niñas y adolescentes alcanzados con acciones directas e indirectas.',
+    showPublicly: true,
+  },
+  {
     key: 'direct_children_reached',
     name: 'NNA directos',
     description: 'Niños, niñas y adolescentes alcanzados con acciones directas.',
@@ -35,12 +42,6 @@ export const METRIC_DEFINITIONS: {
     name: 'Instituciones vinculadas',
     description: 'Organizaciones coordinadas en el territorio.',
     showPublicly: false,
-  },
-  {
-    key: 'departments',
-    name: 'Departamentos',
-    description: 'Departamentos con presencia de la organización.',
-    showPublicly: true,
   },
   {
     key: 'active_projects',

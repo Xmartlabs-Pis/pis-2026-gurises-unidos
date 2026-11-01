@@ -6,7 +6,7 @@ export async function ProjectsByTopic({ year }: { year: number }) {
 
   return topics.map((topic) => (
     <TopicCarousel
-      key={topic.id}
+      key={`${year}-${topic.id}`}
       year={year}
       topicId={topic.id}
       topic={topic.name}

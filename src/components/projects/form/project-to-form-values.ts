@@ -1,7 +1,24 @@
 import type { Project } from '@/generated/prisma/client';
 import type { BeneficiaryCategoryOption, BeneficiaryCounts } from '@/lib/project-display';
+import type { ProjectLocality } from '@/lib/projects/location';
 import { getDefaultValues } from './get-default-values';
-import type { ProjectFormValues } from './project-form-values';
+import type { ProjectLocationFormValue, ProjectFormValues } from './project-form-values';
+
+function toLocationFormValues(
+  departments: { id: number }[],
+  localities: ProjectLocality[]
+): ProjectLocationFormValue[] {
+  return departments.flatMap(({ id }) => {
+    const departmentId = String(id);
+    const departmentLocalities = localities.filter((locality) => locality.departmentId === id);
+    if (departmentLocalities.length === 0) return [{ departmentId, city: '', neighborhood: '' }];
+    return departmentLocalities.map(({ city, neighborhood }) => ({
+      departmentId,
+      city,
+      neighborhood: neighborhood ?? '',
+    }));
+  });
+}
 
 export function projectToFormValues(
   project: Project & {
@@ -9,6 +26,7 @@ export function projectToFormValues(
     topics: { id: number }[];
     strategicLines?: { id: number }[];
     departments?: { id: number }[];
+    localities?: ProjectLocality[];
   },
   currentYear: number,
   categories: BeneficiaryCategoryOption[]
@@ -25,11 +43,8 @@ export function projectToFormValues(
     endYear: project.endYear === null ? '' : String(project.endYear),
     leadCoordinatorId: String(project.leadCoordinatorId),
     geographicScope: project.geographicScope,
-    departmentIds: project.departments?.map(({ id }) => String(id)) ?? [],
     countries: project.countries,
-    cities: project.cities,
-    neighborhoods: project.neighborhoods,
-    zone: project.zone,
+    locations: toLocationFormValues(project.departments ?? [], project.localities ?? []),
     generalObjective: project.generalObjective ?? '',
     publicDescription: project.publicDescription ?? '',
     internalNotes: project.internalNotes ?? '',

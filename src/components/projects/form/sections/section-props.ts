@@ -10,4 +10,5 @@ export type SectionProps = {
   coverageLabel: string;
   beneficiaryRecords: (BeneficiaryCounts & { year: number })[];
   beneficiaryCategories: BeneficiaryCategoryOption[];
+  canSelectCoordinator: boolean;
 };

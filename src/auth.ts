@@ -6,6 +6,7 @@ import prisma from './lib/prisma';
 import { fullName } from './lib/users/format';
 import { getAvatarColorIndex } from './lib/users/avatar';
 import { getSessionMaxAge, REMEMBER_ME_MAX_AGE } from './lib/auth/session-expiration';
+import { loginSchema } from './lib/validation/auth';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -30,13 +31,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         remember: {},
       },
       authorize: async (credentials) => {
-        const documentId = credentials?.documentId;
-        const password = credentials?.password;
+        const parsed = loginSchema.safeParse(credentials);
 
-        if (typeof documentId !== 'string' || typeof password !== 'string') {
+        if (!parsed.success) {
           return null;
         }
 
+        const { documentId, password } = parsed.data;
         const user = await verifyUserCredentials(documentId, password);
 
         return user ? { ...toAuthUser(user), remember: credentials?.remember === 'true' } : null;

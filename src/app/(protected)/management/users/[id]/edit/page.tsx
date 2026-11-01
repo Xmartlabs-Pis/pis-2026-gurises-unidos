@@ -1,21 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
-import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { formatDate, formatUserDate } from '@/lib/users/format';
 import { UserForm } from '@/components/user-form';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect('/login');
-  }
-
-  if (session.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  const admin = await requireAdmin();
 
   const { id } = await params;
   const userId = Number(id);
@@ -24,7 +15,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     notFound();
   }
 
-  if (userId === Number(session.user.id)) {
+  if (userId === Number(admin.id)) {
     redirect('/management/profile');
   }
 

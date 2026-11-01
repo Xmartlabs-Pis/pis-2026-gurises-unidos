@@ -53,7 +53,7 @@ export function UsersListToolbar({
       value={roleFilter}
       onValueChange={(value) => updateFilters({ role: toFilterParam(value) })}
     >
-      <SelectTrigger>
+      <SelectTrigger aria-label="Filtrar por rol">
         <SelectValue>{(value: string) => ROLE_FILTER_LABELS[value]}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -69,7 +69,7 @@ export function UsersListToolbar({
       value={statusFilter}
       onValueChange={(value) => updateFilters({ status: toFilterParam(value) })}
     >
-      <SelectTrigger>
+      <SelectTrigger aria-label="Filtrar por estado">
         <SelectValue>{(value: string) => STATUS_FILTER_LABELS[value]}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -83,7 +83,7 @@ export function UsersListToolbar({
 
   const sortSelect = (
     <Select value={sortBy} onValueChange={(value) => updateFilters({ sort: toSortParam(value) })}>
-      <SelectTrigger>
+      <SelectTrigger aria-label="Ordenar por">
         <SelectValue>{(value: SortBy) => SORT_LABELS[value]}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -97,7 +97,7 @@ export function UsersListToolbar({
 
   const mobileSortSelect = (
     <Select value={sortBy} onValueChange={(value) => updateFilters({ sort: toSortParam(value) })}>
-      <SelectTrigger>
+      <SelectTrigger aria-label="Ordenar por">
         <SelectValue>{(value: SortBy) => SORT_VALUE_LABELS[value]}</SelectValue>
       </SelectTrigger>
       <SelectContent>
@@ -117,6 +117,7 @@ export function UsersListToolbar({
             <Search />
           </InputGroupAddon>
           <InputGroupInput
+            aria-label="Buscar usuarios"
             placeholder="Buscar por nombre o correo..."
             value={searchText}
             onChange={(e) => changeSearch(e.target.value)}

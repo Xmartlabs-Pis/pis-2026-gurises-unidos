@@ -118,9 +118,12 @@ test.each(['admin', 'coordinator'])(
 
     render(await renderPage());
 
-    for (const name of ['Exportar reporte', 'Publicar dashboard']) {
-      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true);
-    }
+    expect(
+      screen.getByRole('button', { name: 'Publicar dashboard' }).hasAttribute('disabled')
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: 'Exportar reporte' }).hasAttribute('disabled')).toBe(
+      false
+    );
     expect(screen.queryByText('Cargar métricas')).toBeNull();
     expect(screen.getByText('Nuevo proyecto').closest('a')?.getAttribute('href')).toBe(
       '/dashboard/projects/new'

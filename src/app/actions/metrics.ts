@@ -7,9 +7,13 @@ import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricYears } from '@/lib/metrics/queries';
+import { getCurrentYear } from '@/lib/metrics/year';
 
 const METRIC_SETTINGS_SCHEMA = z.object({
-  year: z.number().int(),
+  publishedYears: z
+    .array(z.number().int())
+    .min(1)
+    .refine((years) => new Set(years).size === years.length),
   topics: z
     .array(z.object({ id: z.number().int().positive(), showPublicly: z.boolean() }))
     .refine((topics) => new Set(topics.map(({ id }) => id)).size === topics.length)
@@ -38,11 +42,16 @@ export async function saveMetricSettings(input: unknown) {
     return { success: false, message: 'La selección de métricas no es válida.' };
   }
 
-  const { year, metrics, topics } = result.data;
-  const availableYears = await getMetricYears(new Date().getFullYear());
-  if (!availableYears.includes(year)) {
-    return { success: false, message: 'El año de referencia no es válido.' };
+  const { publishedYears, metrics, topics } = result.data;
+  const availableYears = await getMetricYears(getCurrentYear());
+  const unavailableYears = publishedYears.filter((year) => !availableYears.includes(year));
+  if (unavailableYears.length) {
+    return {
+      success: false,
+      message: `Estos años ya no están disponibles: ${unavailableYears.join(', ')}. Recargá la página para actualizar la selección.`,
+    };
   }
+  const sortedYears = [...publishedYears].sort((a, b) => b - a);
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -55,8 +64,12 @@ export async function saveMetricSettings(input: unknown) {
       if (selectedTopics.length !== topics.length) throw new Error('Invalid topic selection');
       await tx.publicSettings.upsert({
         where: { id: 1 },
-        create: { id: 1, referenceYear: year, updatedBy: Number(session.user.id) },
-        update: { referenceYear: year, updatedBy: Number(session.user.id) },
+        create: {
+          id: 1,
+          publishedYears: sortedYears,
+          updatedBy: Number(session.user.id),
+        },
+        update: { publishedYears: sortedYears, updatedBy: Number(session.user.id) },
       });
       for (const [index, definition] of METRIC_DEFINITIONS.entries()) {
         const showPublicly = metrics.find((metric) => metric.key === definition.key)!.showPublicly;

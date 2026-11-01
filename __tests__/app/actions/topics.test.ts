@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   createTopic: vi.fn(),
+  findTopic: vi.fn(),
   reactivateTopic: vi.fn(),
   updateTopic: vi.fn(),
+  createAuditLog: vi.fn(),
   countProjects: vi.fn(),
   transaction: vi.fn(),
   queryRaw: vi.fn(),
@@ -17,6 +19,7 @@ vi.mock('@/lib/prisma', () => ({
     $transaction: mocks.transaction,
     topic: {
       create: mocks.createTopic,
+      findFirst: mocks.findTopic,
       update: mocks.updateTopic,
       updateMany: mocks.reactivateTopic,
     },
@@ -25,7 +28,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
-import { createTopic, deleteTopic } from '@/app/actions/topics';
+import { createTopic, deleteTopic, editTopic } from '@/app/actions/topics';
 
 const EMPTY_STATE = {};
 
@@ -35,13 +38,15 @@ beforeEach(() => {
   mocks.countProjects.mockResolvedValue(0);
   mocks.createTopic.mockResolvedValue({ id: 1 });
   mocks.reactivateTopic.mockResolvedValue({ count: 0 });
+  mocks.findTopic.mockResolvedValue(null);
   mocks.updateTopic.mockResolvedValue({ id: 1 });
   mocks.queryRaw.mockResolvedValue([]);
   mocks.transaction.mockImplementation(async (callback) =>
     callback({
       $queryRaw: mocks.queryRaw,
       project: { count: mocks.countProjects },
-      topic: { update: mocks.updateTopic },
+      topic: { findFirst: mocks.findTopic, update: mocks.updateTopic },
+      auditLog: { create: mocks.createAuditLog },
     })
   );
 });
@@ -68,10 +73,96 @@ describe('createTopic', () => {
     await expect(createTopic(EMPTY_STATE, data)).resolves.toEqual({ success: true });
 
     expect(mocks.reactivateTopic).toHaveBeenCalledWith({
-      where: { name: 'Education', isActive: false },
+      where: { name: { equals: 'Education', mode: 'insensitive' }, isActive: false },
       data: { isActive: true },
     });
     expect(mocks.createTopic).not.toHaveBeenCalled();
+  });
+
+  test('rejects a name that already exists with different casing', async () => {
+    mocks.findTopic.mockResolvedValue({ id: 2 });
+    const data = new FormData();
+    data.set('name', 'education');
+
+    await expect(createTopic(EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una temática con ese nombre.',
+      values: { name: 'education' },
+    });
+
+    expect(mocks.findTopic).toHaveBeenCalledWith({
+      where: { name: { equals: 'education', mode: 'insensitive' } },
+    });
+    expect(mocks.createTopic).not.toHaveBeenCalled();
+  });
+});
+
+describe('editTopic', () => {
+  test('renames a topic and refreshes affected routes', async () => {
+    mocks.findTopic.mockResolvedValueOnce({ name: 'Health Studies' });
+    const data = new FormData();
+    data.set('name', 'Health');
+
+    await expect(editTopic(4, EMPTY_STATE, data)).resolves.toEqual({ success: true });
+
+    expect(mocks.updateTopic).toHaveBeenCalledWith({
+      where: { id: 4 },
+      data: { name: 'Health' },
+    });
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        authorId: 1,
+        action: 'update',
+        entity: 'topic',
+        entityId: 4,
+        details: { previousName: 'Health Studies', name: 'Health' },
+      },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/management/topics');
+  });
+
+  test('rejects renaming a topic that does not exist or is inactive', async () => {
+    const data = new FormData();
+    data.set('name', 'Health');
+
+    await expect(editTopic(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'La temática no existe o ya fue eliminada.',
+      values: { name: 'Health' },
+    });
+
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test('rejects a name used by another topic with different casing', async () => {
+    mocks.findTopic.mockResolvedValueOnce({ name: 'Health' });
+    mocks.findTopic.mockResolvedValueOnce({ id: 2, isActive: true });
+    const data = new FormData();
+    data.set('name', 'HEALTH');
+
+    await expect(editTopic(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una temática con ese nombre.',
+      values: { name: 'HEALTH' },
+    });
+
+    expect(mocks.findTopic).toHaveBeenCalledWith({
+      where: { id: { not: 4 }, name: { equals: 'HEALTH', mode: 'insensitive' } },
+      select: { id: true, isActive: true },
+    });
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+  });
+
+  test('explains when the requested name belongs to an inactive topic', async () => {
+    mocks.findTopic.mockResolvedValueOnce({ name: 'Health Studies' });
+    mocks.findTopic.mockResolvedValueOnce({ id: 2, isActive: false });
+    const data = new FormData();
+    data.set('name', 'Health');
+
+    await expect(editTopic(4, EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ese nombre pertenece a una temática dada de baja. Elegí otro nombre.',
+      values: { name: 'Health' },
+    });
+
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
   });
 });
 

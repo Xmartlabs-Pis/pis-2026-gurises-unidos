@@ -4,12 +4,14 @@ import { makeUser } from './fixtures/user';
 import { toAuthUser, verifyUserCredentials } from '@/lib/credentials';
 import prisma from '@/lib/prisma';
 import { encode } from 'next-auth/jwt';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 
 const authConfig = vi.hoisted(() => ({
   current: undefined as NextAuthConfig | undefined,
 }));
 
-vi.mock('next-auth', () => ({
+vi.mock('next-auth', async () => ({
+  ...(await import('@auth/core/errors')),
   default: (config: NextAuthConfig) => {
     authConfig.current = config;
     return { handlers: {}, signIn: vi.fn(), signOut: vi.fn(), auth: vi.fn() };
@@ -103,7 +105,7 @@ describe('authorize', () => {
   });
 
   test('returns the auth user when credentials match', async () => {
-    const user = makeUser();
+    const user = makeUser({ documentId: '11111111' });
     vi.mocked(verifyUserCredentials).mockResolvedValue(user);
 
     await expect(
@@ -113,7 +115,7 @@ describe('authorize', () => {
   });
 
   test('sets remember: true only when credentials.remember is the string "true"', async () => {
-    const user = makeUser();
+    const user = makeUser({ documentId: '11111111' });
     vi.mocked(verifyUserCredentials).mockResolvedValue(user);
 
     await expect(
@@ -127,8 +129,28 @@ describe('authorize', () => {
   test('returns null when verifyUserCredentials returns null', async () => {
     vi.mocked(verifyUserCredentials).mockResolvedValue(null);
 
-    await expect(authorize()({ documentId: '41234567', password: 'password' })).resolves.toBeNull();
-    expect(verifyUserCredentials).toHaveBeenCalledWith('41234567', 'password');
+    await expect(authorize()({ documentId: '11111111', password: 'password' })).resolves.toBeNull();
+    expect(verifyUserCredentials).toHaveBeenCalledWith('11111111', 'password');
+  });
+
+  test.each([
+    { documentId: '', password: 'password' },
+    { documentId: '11111111', password: '' },
+    { documentId: '41234567', password: 'password' },
+  ])('rejects invalid credentials before counting attempts: %o', async (credentials) => {
+    await expect(authorize()(credentials)).resolves.toBeNull();
+    expect(verifyUserCredentials).not.toHaveBeenCalled();
+  });
+
+  test('normalizes document ids and propagates the cooldown error', async () => {
+    const error = new LoginCooldownError(new Date('2026-10-26T15:05:00Z'));
+    vi.mocked(verifyUserCredentials).mockRejectedValue(error);
+
+    await expect(authorize()({ documentId: '1.111.111-1', password: 'password' })).rejects.toBe(
+      error
+    );
+    expect(verifyUserCredentials).toHaveBeenCalledWith('11111111', 'password');
+    expect(error).toMatchObject({ type: 'CredentialsSignin', code: 'login_cooldown' });
   });
 });
 

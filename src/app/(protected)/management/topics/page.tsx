@@ -1,15 +1,10 @@
-import { auth } from '@/auth';
 import { TopicsManagement } from '@/components/topics/topics-management';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { getTopics } from '@/lib/topics';
 
 export default async function TopicsPage() {
-  const session = await auth();
-
-  if (session?.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  await requireAdmin();
 
   const topics = await getTopics();
 

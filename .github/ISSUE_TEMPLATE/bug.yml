@@ -1,0 +1,58 @@
+name: Reportar un bug
+description: Algo no funciona como debería.
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo de reportarlo. Antes de seguir, fijate si ya hay un issue abierto sobre lo mismo.
+  - type: textarea
+    id: description
+    attributes:
+      label: Qué pasó
+      description: Contalo en pocas palabras.
+      placeholder: Al guardar un proyecto con dos departamentos, se guarda solo el primero.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Entrar como coordinador
+        2. Ir a Proyectos → Nuevo proyecto
+        3. Elegir dos departamentos y guardar
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas que pasara
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Dónde pasó
+      options:
+        - Local (desarrollo)
+        - Staging
+        - Producción
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Con qué rol
+      options:
+        - Administrador
+        - Coordinador
+        - Sin sesión (vista pública)
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Capturas, logs o algo más
+      description: Navegador, dispositivo, errores de la consola, lo que sirva. No pegues datos personales de beneficiarios.

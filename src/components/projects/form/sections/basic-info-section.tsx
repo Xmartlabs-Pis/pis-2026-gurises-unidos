@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
-import { TextInputField } from '@/components/ui/forms/text-input-field';
+import { TextareaField } from '@/components/ui/forms/textarea-field';
 import { MultiSelectField } from '@/components/ui/forms/multi-select-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
@@ -14,9 +14,13 @@ import type { SectionProps } from './section-props';
 export function BasicInfoSection({
   yearOptions,
   coordinatorOptions,
+  canSelectCoordinator,
   topics,
   strategicLines,
-}: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'topics' | 'strategicLines'>) {
+}: Pick<
+  SectionProps,
+  'yearOptions' | 'coordinatorOptions' | 'canSelectCoordinator' | 'topics' | 'strategicLines'
+>) {
   const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
@@ -25,6 +29,9 @@ export function BasicInfoSection({
   const status = useWatch<ProjectFormValues, 'status'>({ name: 'status' });
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
+  const leadCoordinatorId = useWatch<ProjectFormValues, 'leadCoordinatorId'>({
+    name: 'leadCoordinatorId',
+  });
   const startYearOptions = yearOptions.filter(
     ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
   );
@@ -40,13 +47,14 @@ export function BasicInfoSection({
 
   return (
     <FormSection title="Información básica">
-      <TextInputField
+      <TextareaField
         maxLength={100}
         id="name"
         name="name"
         label="Nombre del proyecto"
         placeholder="Ej: Espacio joven Malvín Norte"
         description="Nombre de fantasía — puede cambiarse después"
+        className="min-h-9"
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField
@@ -106,11 +114,15 @@ export function BasicInfoSection({
         label="Coordinador responsable"
         placeholder="Seleccionar coordinador..."
         options={coordinatorOptions}
+        disabled={!canSelectCoordinator}
       />
+      {!canSelectCoordinator && (
+        <input type="hidden" name="leadCoordinatorId" value={leadCoordinatorId ?? ''} />
+      )}
       <MultiSelectField
         id="strategicLineIds"
         name="strategicLineIds"
-        label="Líneas estratégicas"
+        label="Líneas Estratégicas"
         placeholder="Seleccionar líneas estratégicas..."
         options={strategicLineOptions}
         emptyMessage="No hay líneas estratégicas disponibles."

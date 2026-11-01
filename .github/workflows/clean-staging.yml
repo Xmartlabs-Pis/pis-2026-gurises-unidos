@@ -56,11 +56,19 @@ jobs:
           CLEAN_MODE: ${{ inputs.mode }}
           SEED_USER_PASSWORD: ${{ secrets.SEED_USER_PASSWORD }}
 
+      - name: Clear uploaded covers
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ vars.SSH_USER || 'deploy' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
+            "$SSH_USER@$SSH_HOST" "bash -s -- staging" < scripts/clear-uploads.sh
+
       - run: |
           if [ "$MODE" = reset ]; then
-            echo "Staging vaciada. El admin quedo recreado y podes entrar." >> "$GITHUB_STEP_SUMMARY"
+            echo "Staging vaciada, portadas incluidas. El admin quedo recreado y podes entrar." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Staging vaciada por completo, **sin admin**. Corre \`Seed staging\` para volver a entrar." >> "$GITHUB_STEP_SUMMARY"
+            echo "Staging vaciada por completo, portadas incluidas, **sin admin**. Corre \`Seed staging\` para volver a entrar." >> "$GITHUB_STEP_SUMMARY"
           fi
         env:
           MODE: ${{ inputs.mode }}

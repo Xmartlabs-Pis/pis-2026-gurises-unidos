@@ -4,8 +4,14 @@ export type RawSearchParams = Record<string, string | string[] | undefined>;
 
 export type CanonicalQuery = Record<string, string | number | undefined>;
 
+export const ALL_FILTER_VALUE = 'all';
+
 export function firstValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+export function toSingleValues(raw: RawSearchParams) {
+  return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, firstValue(value)]));
 }
 
 function toSortedParams(entries: [string, string][]) {

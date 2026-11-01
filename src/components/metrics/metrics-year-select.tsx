@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import { cn } from 'cn';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -14,10 +15,12 @@ export function MetricsYearSelect({
   year,
   years,
   label = 'Año a mostrar en sitio público',
+  className,
 }: {
   year: number;
   years: number[];
   label?: string;
+  className?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -48,7 +51,7 @@ export function MetricsYearSelect({
         <SelectTrigger
           id="metrics-year"
           aria-describedby="metrics-year-status"
-          className="bg-background w-22 rounded-lg px-2.5 text-sm shadow-none"
+          className={cn('bg-background w-22 rounded-lg px-2.5 text-sm shadow-none', className)}
         >
           <SelectValue />
         </SelectTrigger>

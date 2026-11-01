@@ -1,15 +1,10 @@
-import { auth } from '@/auth';
 import { BeneficiaryCategoriesManagement } from '@/components/beneficiary-categories/beneficiary-categories-management';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { getBeneficiaryCategoriesWithUsage } from '@/lib/beneficiary-categories';
 
 export default async function BeneficiaryCategoriesPage() {
-  const session = await auth();
-
-  if (session?.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  await requireAdmin();
 
   const categories = await getBeneficiaryCategoriesWithUsage();
 
@@ -19,8 +14,8 @@ export default async function BeneficiaryCategoriesPage() {
         <PageHeader
           className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
           eyebrow="Administración"
-          title="Categorías de beneficiarios"
-          description="Categorías de beneficiarios que se cargan en cada proyecto. Las del sistema alimentan las métricas públicas y no se pueden eliminar."
+          title="Categorías de Beneficiarios"
+          description="Categorías de Beneficiarios que se cargan en cada proyecto. Las del sistema alimentan las métricas públicas y no se pueden eliminar."
         />
 
         <div className="bg-surface-page mx-auto flex w-full max-w-[1185px] flex-col gap-5 px-6 pt-6 pb-8">

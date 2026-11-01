@@ -1,8 +1,4 @@
-import {
-  ZONE_OPTIONS,
-  PREVIEW_LOCATION_FALLBACK,
-  type BeneficiaryCategoryOption,
-} from '@/lib/project-display';
+import { PREVIEW_LOCATION_FALLBACK, type BeneficiaryCategoryOption } from '@/lib/project-display';
 import { getLocationLabel, getTerritoryLabel, type ProjectLocation } from '@/lib/projects/location';
 import type { ProjectFormValues } from './project-form-values';
 
@@ -13,20 +9,25 @@ export function getPreviewLabels(
   categories: BeneficiaryCategoryOption[]
 ) {
   const isNational = values.geographicScope !== 'international';
+  const locations = isNational ? values.locations : [];
   const location: ProjectLocation = {
     geographicScope: isNational ? 'national' : 'international',
-    departments: isNational
-      ? departments.filter(({ id }) => values.departmentIds.includes(String(id)))
-      : [],
+    departments: departments.filter(({ id }) =>
+      locations.some(({ departmentId }) => departmentId === String(id))
+    ),
     countries: isNational ? [] : values.countries,
-    cities: isNational ? values.cities : [],
-    neighborhoods: isNational ? values.neighborhoods : [],
+    localities: locations
+      .filter(({ city }) => city)
+      .map(({ departmentId, city, neighborhood }) => ({
+        departmentId: Number(departmentId),
+        city,
+        neighborhood: neighborhood || null,
+      })),
   };
-  const zoneLabel = ZONE_OPTIONS.find((option) => option.value === values.zone)?.label;
+  const firstLocality = location.localities[0];
   const locationLabel =
-    (isEditing && (location.neighborhoods[0] ?? location.cities[0])) ||
+    (isEditing && (firstLocality?.neighborhood || firstLocality?.city)) ||
     getTerritoryLabel(location) ||
-    zoneLabel ||
     PREVIEW_LOCATION_FALLBACK;
   const coverageLabel = getLocationLabel(location);
   const beneficiaryTotal = categories.reduce(

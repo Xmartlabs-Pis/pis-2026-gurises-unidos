@@ -1,4 +1,98 @@
-# pis-2026-gurises-unidos
+<div align="center">
+
+# Gurises Unidos · Plataforma de proyectos e impacto
+
+Una plataforma web para que [Gurises Unidos](https://gurisesunidos.org.uy) registre sus proyectos y
+beneficiarios, y pueda mostrar con datos el trabajo que hace todos los años con niñas, niños y
+adolescentes de Uruguay.
+
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org)
+[![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
+
+</div>
+
+## Sobre Gurises Unidos
+
+[Gurises Unidos](https://gurisesunidos.org.uy/quienes-somos/) es una organización de la sociedad
+civil uruguaya que trabaja desde 1989 por los derechos de niñas, niños y adolescentes (NNA). Empezó
+como un proyecto piloto para gurises en situación de calle y hoy acompaña a NNA, a sus familias y a
+sus comunidades, sobre todo en los barrios más vulnerables. Su trabajo se basa en la Convención
+sobre los Derechos del Niño.
+
+Si querés conocer más o darles una mano, mirá [cómo colaborar](https://gurisesunidos.org.uy/como-colaborar/).
+
+## Por qué existe este proyecto
+
+Cada año, los proyectos de Gurises Unidos llegan a miles de personas. En el último período fueron
+6.315 NNA, 800 familias y 4.498 docentes y educadores. Hasta ahora, esos números vivían en planillas
+de Excel y se convertían a mano en presentaciones de PowerPoint. Eso lleva mucho tiempo, depende de
+quién lo arme y hace difícil tener una foto completa del impacto.
+
+Esta plataforma busca que cargar los datos sea simple y que las métricas salgan solas.
+
+## Qué hace
+
+- **Gestión de proyectos y beneficiarios.** Coordinadores y administradores registran cada proyecto
+  (territorio, temáticas, líneas estratégicas, intensidad, equipo) y cuántas personas alcanza cada año.
+- **Dashboard público de impacto.** Muestra métricas agregadas y anónimas para que financiadores,
+  socios y cualquier persona interesada puedan ver el alcance de la organización.
+- **Métricas internas.** Un panel privado para el equipo, con indicadores más detallados y
+  exportación de reportes.
+- **Usuarios y permisos.** Roles de administrador y coordinador, con alta de usuarios por
+  invitación.
+
+## Contexto académico
+
+Este proyecto se hizo en el curso **Proyecto de Ingeniería de Software (PIS) 2026** del
+[Instituto de Computación](https://www.fing.edu.uy/inco) de la
+[Facultad de Ingeniería](https://www.fing.edu.uy) de la [Universidad de la República](https://udelar.edu.uy).
+Lo propuso [Xmartlabs](https://xmartlabs.com), que nos acompañó durante todo el proyecto, y lo
+trabajamos siguiendo el proceso ágil PISAgile.
+
+## Equipo
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/agus5513"><img src="https://github.com/agus5513.png?size=100" width="100" alt=""/><br/><sub><b>Agustín Cabrera Bertucci</b></sub></a></td>
+    <td align="center"><a href="https://github.com/alvaroroyes1"><img src="https://github.com/alvaroroyes1.png?size=100" width="100" alt=""/><br/><sub><b>Álvaro Royes</b></sub></a></td>
+    <td align="center"><a href="https://github.com/bmontenegrom"><img src="https://github.com/bmontenegrom.png?size=100" width="100" alt=""/><br/><sub><b>Benjamín Montenegro</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Bruno-Romero"><img src="https://github.com/Bruno-Romero.png?size=100" width="100" alt=""/><br/><sub><b>Bruno Romero García</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/CataSegui"><img src="https://github.com/CataSegui.png?size=100" width="100" alt=""/><br/><sub><b>Catalina Segui Fígoli</b></sub></a></td>
+    <td align="center"><a href="https://github.com/CristianCriales"><img src="https://github.com/CristianCriales.png?size=100" width="100" alt=""/><br/><sub><b>Cristian Criales</b></sub></a></td>
+    <td align="center"><a href="https://github.com/nachodla"><img src="https://github.com/nachodla.png?size=100" width="100" alt=""/><br/><sub><b>Ignacio de León</b></sub></a></td>
+    <td align="center"><a href="https://github.com/j04kh"><img src="https://github.com/j04kh.png?size=100" width="100" alt=""/><br/><sub><b>Joaquín Hernández</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/franciscocros"><img src="https://github.com/franciscocros.png?size=100" width="100" alt=""/><br/><sub><b>Juan Francisco Cros</b></sub></a></td>
+    <td align="center"><a href="https://github.com/takealuk"><img src="https://github.com/takealuk.png?size=100" width="100" alt=""/><br/><sub><b>Luca Scaboni Morales</b></sub></a></td>
+    <td align="center"><a href="https://github.com/marcerg"><img src="https://github.com/marcerg.png?size=100" width="100" alt=""/><br/><sub><b>Marcelo Rodríguez Gaete</b></sub></a></td>
+    <td align="center"><a href="https://github.com/Marcos-Craviotto"><img src="https://github.com/Marcos-Craviotto.png?size=100" width="100" alt=""/><br/><sub><b>Marcos Craviotto</b></sub></a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://github.com/marto0108"><img src="https://github.com/marto0108.png?size=100" width="100" alt=""/><br/><sub><b>Martín Antúnez Quintero</b></sub></a></td>
+    <td align="center"><a href="https://github.com/MartinMayora"><img src="https://github.com/MartinMayora.png?size=100" width="100" alt=""/><br/><sub><b>Martín Mayora Roth</b></sub></a></td>
+    <td align="center"><a href="https://github.com/nicolas-rojo"><img src="https://github.com/nicolas-rojo.png?size=100" width="100" alt=""/><br/><sub><b>Nicolás Rojo Ferraro</b></sub></a></td>
+    <td align="center"><a href="https://github.com/olizorrilla"><img src="https://github.com/olizorrilla.png?size=100" width="100" alt=""/><br/><sub><b>Olivia Zorrilla</b></sub></a></td>
+  </tr>
+</table>
+
+## Agradecimientos
+
+A **Gurises Unidos**, por el trabajo que hacen todos los días y por dejarnos aportar un poco a él.
+
+A **[Xmartlabs](https://xmartlabs.com)**, por proponer el proyecto, darnos el repositorio y el
+servidor, enseñarnos Next.js y Docker en sus talleres, y por todas las revisiones. Gracias en
+especial a Maité Martínez, Matías Lorenzo, Andrés Pérez y Jonathan Lifschitz.
+
+## Cómo empezar
+
+Todo lo necesario para levantar la app en tu máquina (Node, base de datos, tests y Docker) está en
+[Correr la app](#correr-la-app).
 
 ## Correr la app
 
@@ -16,7 +110,7 @@ La app queda corriendo en **http://localhost:3000** (`dev`, `start` y Docker usa
 
 Otros scripts: `npm run build`, `npm start` (sirve el build en el mismo puerto), `npm run lint`,
 `npm test` (Vitest), `npm run test:watch`, `npm run test:e2e` (Playwright), `npm run typecheck`,
-`npm run format`.
+`npm run format`, `npm run email` (preview de templates en http://localhost:3333).
 
 ### Con Docker
 
@@ -69,10 +163,62 @@ npx auth secret               # genera AUTH_SECRET y lo escribe en .env
 `SEED_USER_PASSWORD` es la contraseña de los usuarios de prueba del seed. Poné cualquier valor en
 `.env` antes de correr `npx prisma db seed`. Si la cambiás, volvé a ejecutar el seed para actualizar los hashes.
 
+### Cooldown de inicio de sesión
+
+Cada cédula tiene cinco intentos sin espera. Si el quinto falla, se bloquean nuevos intentos durante
+cinco minutos. Después de ese plazo se habilitan otros cinco intentos. Un ingreso exitoso también
+reinicia el contador. Restablecer la contraseña por mail o mediante un administrador elimina el
+bloqueo y devuelve los cinco intentos.
+
+Cada autenticación fallida se guarda en `AuditLog` con la cédula normalizada y la fecha y hora del
+servidor. Los envíos durante el bloqueo también se registran con el motivo `blocked`, sin extender
+la espera. Los errores de validación del formulario no cuentan como intentos de autenticación.
+El registro y el contador se actualizan en la misma transacción; un ingreso exitoso conserva el historial.
+
+Los administradores pueden consultarlos en **Historial de cambios**, junto con los demás eventos,
+o elegir **Accesos fallidos**. Se pueden filtrar por cédula exacta (con o sin puntos y guiones),
+entidad **Autenticación** y fechas. El autor figura como **Sin autenticar**: la cédula ingresada
+no identifica a quien realizó el intento.
+
+El estado se guarda en `LoginThrottle`, en PostgreSQL, usando la cédula normalizada. Se comparte
+entre navegadores e instancias y también se aplica a cédulas sin cuenta. Los envíos durante la espera
+no comprueban la contraseña ni extienden el bloqueo. El formulario muestra una cuenta regresiva,
+calculada con los segundos restantes que devuelve el servidor y un reloj monotónico del navegador,
+para que la hora configurada en el equipo no la altere. El servidor controla cada intento.
+Las sesiones existentes no se cierran por este bloqueo.
+
+## Email (Resend)
+
+Los mails de invitación y de recuperación de contraseña salen por [Resend](https://resend.com).
+
+| Variable         | Uso                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| `RESEND_API_KEY` | Key con permiso _Sending access_ (Dashboard → API Keys). Sin ella no se manda nada. |
+| `EMAIL_FROM`     | Remitente. Por defecto `Gurises Unidos <onboarding@resend.dev>`.                    |
+| `AUTH_URL`       | URL pública de la app, la misma que usa NextAuth. Es la base de los links del mail. |
+
+En local alcanza con no definir `RESEND_API_KEY`: el mail no se envía y se imprime en la terminal de
+`npm run dev`, con el link incluido. `AUTH_URL` tampoco hace falta, los links apuntan a
+`http://localhost:3000`. En producción (staging incluido, la imagen corre con `NODE_ENV=production`)
+`AUTH_URL` es obligatoria: si falta, no se envía el mail y queda el error en los logs.
+
+Sin un dominio verificado en Resend, el remitente `onboarding@resend.dev` solo entrega al mail del
+dueño de la cuenta. Hasta que haya dominio, los usuarios reales no reciben los mails.
+
+Los templates están en `src/emails`. Para verlos en el browser, sin mandar nada:
+
+```bash
+npm run email   # http://localhost:3333
+```
+
+Usa el puerto 3333 para no pisar `npm run dev` en `:3000`. En el previewer el logo sale de
+`src/emails/static`; en los mails reales usa `AUTH_URL` + `/images/logo.png`.
+
 ## Tests end to end
 
-Playwright contra la app real y una base propia. Cubre login, la tabla de usuarios y el listado y
-detalle de proyectos. Los tests unitarios de Vitest (`npm test`) siguen siendo independientes: `e2e/`
+Playwright contra la app real y una base propia. Cubre login, registro por invitación, recuperación
+de contraseña, la tabla de usuarios, el listado, detalle y alta de proyectos, la visibilidad de
+métricas y las categorías de beneficiarios. Los tests unitarios de Vitest (`npm test`) siguen siendo independientes: `e2e/`
 no lo toca.
 
 Requiere Postgres levantado y el `.env` con `AUTH_SECRET` y `SEED_USER_PASSWORD`. Además, una sola
@@ -106,11 +252,19 @@ E2E_BASE_URL=http://localhost:3200 npm run test:e2e
 ```
 
 Ojo con eso: `E2E_DATABASE_URL` tiene que ser la base de _esa_ instancia, y el seed la trunca. No
-apuntes esto a staging ni a producción.
+apuntes esto a staging ni a producción. Tampoco hay `RESEND_API_KEY: ''` como con el server local:
+si esa instancia tiene la key, los specs de alta y recuperación de contraseña le piden a Resend
+mandar mails reales (a direcciones `@gurisesunidos.test`).
 
 El dataset vive en `prisma/e2e-fixtures.ts` y lo crea `prisma/seed-e2e.ts`: tres usuarios, dos
 proyectos, dos departamentos y tres temáticas, siempre los mismos. Por eso las aserciones pueden ser conteos exactos, y `prisma/seed.ts`
 puede cambiar sin romper los E2E.
+
+Los tests que crean datos los borran al terminar, porque el seed corre una sola vez por corrida y
+otros specs cuentan filas. Lo hacen con `prisma/e2e-db.ts`, que los helpers corren con `tsx`: el
+cliente de Prisma generado es ESM y Playwright no lo puede importar. Los links de los mails
+(invitación y recuperación) no se leen del mail: el test inserta un token propio en la base y abre
+el link directo.
 
 Cuando uno falla queda un reporte navegable en `playwright-report/`, con screenshot del momento del
 fallo. En CI el workflow `E2E` lo sube como artifact.
@@ -132,7 +286,9 @@ archivos corren de a uno (`fileParallelism: false`) porque comparten la base. En
 workflow `Integration`, con un Postgres propio.
 
 `integration/setup.ts` mockea lo que depende de Next: `auth()` devuelve la sesión que armes con
-`signInAs`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no hace nada.
+`signInAs` (`signInAs(id, role, { remember: true })` simula "recordarme"),
+`signIn` es un `vi.fn()`, `redirect()` lanza un error `NEXT_REDIRECT:<url>` y `revalidatePath` no
+hace nada.
 
 ### Escribir un test nuevo
 
@@ -168,7 +324,7 @@ afterEach(async () => {
 describe('someAction (integration)', () => {
   test('does the thing', async () => {
     const id = await createFixture();
-    signInAs(seed.adminId);
+    signInAs(seed.adminId, 'admin');
 
     await expect(someAction(id, {}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/somewhere$/);
 
@@ -187,12 +343,71 @@ Las reglas que hacen que los archivos no se pisen entre sí:
 - **Cada test crea sus propios datos** y guarda los ids, y el `afterEach` los borra. Incluí los
   `AuditLog` y las filas hijas que genere la action. Crear los datos dentro de cada test, y no en un
   `beforeEach`, deja que cada uno arme exactamente lo que necesita.
-- **Logueate antes de llamar a la action** con `signInAs(userId)`. La sesión se cierra sola al
+- **Logueate antes de llamar a la action** con `signInAs(userId, role)`. La sesión se cierra sola al
   terminar cada test. Sin `signInAs`, la action ve un usuario no logueado.
 - **Anclá los regex de redirect** (`^...$`): comparar un substring deja pasar
   `/dashboard/projects/11` cuando esperabas `/dashboard/projects/1`.
 - **Verificá la base, no solo lo que devuelve la action.** Para los casos de error, leé la fila antes
   y después y compará con `toEqual`, así se ve que la transacción no dejó nada a medias.
+
+## Embed de impacto
+
+`/embed` muestra la tarjeta "Nuestro impacto en {año}" para insertarla en la web de Gurises Unidos.
+Es pública y es la única ruta que se puede cargar en un iframe: el resto responde con
+`Content-Security-Policy: frame-ancestors 'none'` (`next.config.ts`).
+
+Los sitios que pueden embeberla se configuran con `EMBED_FRAME_ANCESTORS` en el `.env` de cada
+entorno (separados por espacio, o `*` para cualquiera). Se lee en cada request desde `src/proxy.ts`,
+así que alcanza con reiniciar el contenedor. Si no está definida, el embed no carga en ningún sitio.
+
+```
+EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy"
+```
+
+### Snippet para la web de Gurises Unidos
+
+El embed le avisa su altura al sitio con `postMessage`, y el script ajusta el iframe. Así, si se
+publican o despublican métricas, no hay que tocar nada del lado de su web.
+
+```html
+<iframe
+  id="gurises-unidos-impacto"
+  src="https://<dominio>/embed"
+  title="Impacto de Gurises Unidos"
+  loading="lazy"
+  style="display: block; width: 100%; max-width: 1200px; height: 400px; margin: 0 auto; border: 0"
+></iframe>
+<script>
+  window.addEventListener('message', function (event) {
+    var iframe = document.getElementById('gurises-unidos-impacto');
+    if (!iframe || event.source !== iframe.contentWindow) return;
+    if (!event.data || event.data.type !== 'gurises-unidos:embed-height') return;
+    iframe.style.height = event.data.height + 'px';
+  });
+</script>
+```
+
+`<dominio>` es el dominio de producción de la plataforma. Tiene que ser HTTPS: su web lo es, y el
+navegador bloquea un iframe `http://` dentro de una página `https://`. Los `400px` son solo la altura
+inicial, hasta que el embed manda la suya.
+
+### Cómo instalarlo
+
+Su web es WordPress:
+
+1. En la página donde va la tarjeta, agregar un bloque **HTML personalizado** y pegar el snippet
+   entero, iframe y script juntos.
+2. Guardarlo con un usuario **administrador**. WordPress solo conserva los `<script>` de usuarios
+   con el permiso `unfiltered_html`; si lo guarda otro rol, el script se borra sin aviso y el iframe
+   queda fijo en 400 px, lo que en mobile puede cortar la tarjeta.
+3. Si `EMBED_FRAME_ANCESTORS` no incluye el dominio de su web, el iframe aparece vacío.
+
+Para verificar que quedó bien, en desktop y en el celular:
+
+- Se ven el título y todas las cifras publicadas, sin scroll dentro del iframe ni espacio vacío
+  abajo.
+- Después de recargar la página, el código del bloque sigue teniendo el `<script>`.
+- "Ver informe completo" abre la vista pública en una pestaña nueva.
 
 ## Deploy
 
@@ -273,17 +488,32 @@ hay que revertir el commit en la rama.
 `pis-main_pgdata`) y su puerto: `DB_PORT` 5432 en main, 5433 en staging, siempre atado a
 `127.0.0.1`.
 
+Las portadas subidas no van a la base. Staging las guarda en `/srv/pis-uploads/staging` y
+producción en `/srv/pis-uploads/main`. `deploy.sh` crea esa carpeta y exporta `UPLOADS_DIR` para
+montarla en el contenedor en `/app/uploads`. Un deploy reemplaza el contenedor y deja los
+archivos. En local, `next dev` escribe en `uploads` (está en `.gitignore`).
+
+Se sirven en `/uploads/covers/<uuid>.webp`, sin autenticación. Quien tenga la URL
+puede bajar la imagen aunque el proyecto esté oculto, inactivo o borrado. `showOnLanding` y
+`deletedAt` filtran listados y la landing, no el archivo. El UUID es lo único que impide adivinarla.
+
+Esa carpeta no entra en un `pg_dump`. Hay que respaldarla aparte. Restaurar solo la base deja
+portadas rotas; restaurar solo los archivos deja huérfanos.
+
 Entorno nuevo: clonar en `/srv/pis-<rama>` y, como `deploy` y sin `sudo`:
 
 ```bash
 ./vm-setup.sh staging     # o main
 ```
 
-Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `DB_PORT` y el `DATABASE_URL`
-apuntando a `db:5432`. No sobrescribe uno existente.
+Genera el `.env` en `600` con `POSTGRES_PASSWORD`, `AUTH_SECRET`, `AUTH_URL`, `DB_PORT`, el
+`DATABASE_URL` apuntando a `db:5432`, `UPLOADS_DIR`, `EMAIL_FROM` y `RESEND_API_KEY` vacía, que hay
+que completar a mano (ver [Email (Resend)](#email-resend)). No sobrescribe uno existente.
 
-Si el `.env` ya existía, agregarle `DB_PORT` a mano: es la única fuente del puerto y el deploy corta
-si falta.
+Si el `.env` ya existía, agregarle a mano `DB_PORT` (es la única fuente del puerto y el deploy corta
+si falta). `deploy.sh` escribe `UPLOADS_DIR=/srv/pis-uploads/<rama>` si falta. Lo mismo con
+`RESEND_API_KEY`: sin ella la app levanta, pero no manda mails. Sin `UPLOADS_DIR`, un
+`docker compose up` a mano monta `./uploads` dentro del clon en vez de la carpeta de la VM.
 
 ### Migraciones en el deploy
 
@@ -310,7 +540,7 @@ concurrencia `deploy-staging`, así que nunca corren en paralelo con un deploy.
 | Workflow          | Qué hace                                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Seed staging**  | Carga el dataset de prueba: 19 departamentos, 6 usuarios, 25 proyectos con 1 a 4 años de beneficiarios (4 quedan sin ninguno). Es idempotente: correrlo de nuevo no duplica nada. |
-| **Clean staging** | Vacía la base. Input `mode`: `reset` borra todo y recrea el admin, `wipe` borra todo sin dejar admin.                                                                             |
+| **Clean staging** | Vacía la base y borra las portadas de `/srv/pis-uploads/staging`. Input `mode`: `reset` borra todo y recrea el admin, `wipe` borra todo sin dejar admin.                          |
 
 El admin es `admin@gurisesunidos.test` (documento `11111111`) y su contraseña es el secret
 `SEED_USER_PASSWORD` del environment `staging`.
@@ -319,14 +549,24 @@ Después de un `wipe` no se puede entrar a la app hasta correr **Seed staging** 
 **Clean staging** en modo `reset`.
 
 `Clean staging` pide escribir `staging` en el input `confirm` para arrancar. Es a propósito: como
-no hay backups, un `wipe` no se deshace.
+no hay backups, un `wipe` no se deshace. Después de vaciar la base borra los archivos de
+`/srv/pis-uploads/staging`.
+
+Para borrar solo las portadas y dejar el resto de los datos, en la VM:
+
+```bash
+cd /srv/pis-staging && ./scripts/clear-uploads.sh staging
+```
+
+En main hace falta `CONFIRM=main ./scripts/clear-uploads.sh main`.
 
 El dataset vive en `prisma/seed-staging.ts`, separado del seed local (`prisma/seed.ts`). El único
 fixture compartido es el admin, en `prisma/fixtures.ts`.
 
 ### Pendiente
 
-**Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen.
+**Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen. Las portadas en
+`/srv/pis-uploads` tampoco tienen backup.
 
 ## Estilo de código
 

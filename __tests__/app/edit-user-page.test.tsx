@@ -1,9 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const { authMock, findUniqueMock, notFoundMock, redirectMock } = vi.hoisted(() => ({
+const { authMock, findUniqueMock, forbiddenMock, notFoundMock, redirectMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   findUniqueMock: vi.fn(),
+  forbiddenMock: vi.fn(() => {
+    throw new Error('NEXT_FORBIDDEN');
+  }),
   notFoundMock: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -17,6 +20,7 @@ vi.mock('@/lib/prisma', () => ({
   default: { user: { findUnique: findUniqueMock } },
 }));
 vi.mock('next/navigation', () => ({
+  forbidden: forbiddenMock,
   notFound: notFoundMock,
   redirect: redirectMock,
   useRouter: () => ({ push: vi.fn() }),
@@ -75,6 +79,16 @@ test('loads the selected user and prefills the edit form', async () => {
 test('returns not found for an invalid user id without querying the database', async () => {
   await expect(EditUserPage({ params: Promise.resolve({ id: 'invalid' }) })).rejects.toThrow(
     'NEXT_NOT_FOUND'
+  );
+
+  expect(findUniqueMock).not.toHaveBeenCalled();
+});
+
+test('shows the forbidden page to coordinators without querying the database', async () => {
+  authMock.mockResolvedValue({ user: { id: '2', role: 'coordinator' } });
+
+  await expect(EditUserPage({ params: Promise.resolve({ id: '42' }) })).rejects.toThrow(
+    'NEXT_FORBIDDEN'
   );
 
   expect(findUniqueMock).not.toHaveBeenCalled();

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { COUNTERPARTY_LABEL, INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
@@ -31,11 +32,16 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
   const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
+  const topics = project.topics.map(({ name }) => name).join(', ');
   const rows = [
     { label: 'Territorio:', value: territory },
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
     { label: 'Contraparte:', value: counterparty },
+  ];
+  const classifications = [
+    { label: 'Líneas Estratégicas:', value: strategicLines },
+    { label: 'Temáticas:', value: topics },
   ];
 
   return (
@@ -46,16 +52,25 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
             •
           </span>
           <dt>{label}</dt>
-          <dd className="text-foreground/80 sm:text-foreground/65">{value}</dd>
+          <dd className="text-foreground/80 sm:text-foreground/65 min-w-0 wrap-anywhere">
+            {value}
+          </dd>
         </div>
       ))}
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline">
-        <span aria-hidden="true" className="hidden sm:inline">
-          •
-        </span>
-        <dt className="whitespace-nowrap">Líneas estratégicas:</dt>
-        <dd className="text-foreground/80 sm:text-foreground/65">{strategicLines}</dd>
-      </div>
+      {classifications.map(({ label, value }) => (
+        <div
+          key={label}
+          className="flex max-w-full min-w-0 flex-col gap-1.5 sm:flex-row sm:items-baseline"
+        >
+          <span aria-hidden="true" className="hidden sm:inline">
+            •
+          </span>
+          <dt className="shrink-0 whitespace-nowrap">{label}</dt>
+          <dd className="text-foreground/80 sm:text-foreground/65 min-w-0 [overflow-wrap:anywhere]">
+            {value}
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }
@@ -81,23 +96,30 @@ export function ProjectDetailHeader({
 
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
           {canEdit && (
-            <Link
-              href={`/dashboard/projects/${project.id}/edit`}
-              className={buttonVariants({
-                variant: 'outline',
-                size: 'lg',
-                className: 'h-9 px-4 shadow-sm',
-              })}
-            >
-              Editar proyecto
-            </Link>
+            <>
+              <ExportPdfButton
+                href={`/api/reports/projects/${project.id}?year=${selectedYear}`}
+                label="Exportar"
+                className="h-9 px-4 shadow-sm"
+              />
+              <Link
+                href={`/dashboard/projects/${project.id}/edit`}
+                className={buttonVariants({
+                  variant: 'outline',
+                  size: 'lg',
+                  className: 'h-9 px-4 shadow-sm',
+                })}
+              >
+                Editar proyecto
+              </Link>
+            </>
           )}
         </div>
       </div>
 
       <div className="flex flex-col">
         {project.generalObjective && (
-          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
+          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 break-words sm:order-2">
             {project.generalObjective}
           </p>
         )}

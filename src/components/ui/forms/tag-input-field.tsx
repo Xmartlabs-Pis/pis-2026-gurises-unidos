@@ -20,6 +20,7 @@ export function TagInputField({
   description,
   disabled,
   maxLength,
+  required,
 }: {
   id: string;
   name: string;
@@ -28,6 +29,7 @@ export function TagInputField({
   description?: string;
   disabled?: boolean;
   maxLength?: number;
+  required?: boolean;
 }) {
   const { control } = useFormContext();
   const { field, fieldState } = useController({ name, control });
@@ -74,6 +76,7 @@ export function TagInputField({
           disabled={disabled}
           maxLength={maxLength}
           aria-invalid={Boolean(errorMessage)}
+          aria-required={required}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => {

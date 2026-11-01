@@ -1,15 +1,10 @@
-import { auth } from '@/auth';
 import { StrategicLinesManagement } from '@/components/strategic-lines/strategic-lines-management';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import { getStrategicLines } from '@/lib/strategic-lines';
 
 export default async function StrategicLinesPage() {
-  const session = await auth();
-
-  if (session?.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  await requireAdmin();
 
   const strategicLines = await getStrategicLines();
 
@@ -19,7 +14,7 @@ export default async function StrategicLinesPage() {
         <PageHeader
           className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
           eyebrow="Administración"
-          title="Líneas estratégicas"
+          title="Líneas Estratégicas"
           description="Etiquetas para clasificar los proyectos."
         />
 

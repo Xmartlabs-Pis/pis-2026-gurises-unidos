@@ -69,3 +69,18 @@ test('locks the status of a user with a pending invitation', () => {
   expect(screen.queryByRole('button', { name: 'Habilitar usuario' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Deshabilitar usuario' })).toBeNull();
 });
+
+test('hides the password reset for a user with a pending invitation', () => {
+  render(<UserForm mode="edit" initialValues={{ ...EDITED_USER, status: 'pendingInvitation' }} />);
+
+  expect(screen.queryByRole('button', { name: 'Restablecer contraseña' })).toBeNull();
+  expect(screen.getByText(/elegirá su contraseña al aceptar la invitación/)).toBeDefined();
+});
+
+test('replaces the temporary password with an invitation notice when creating a user', () => {
+  render(<UserForm />);
+
+  expect(screen.queryByLabelText('Contraseña temporal')).toBeNull();
+  expect(screen.getByText(/se enviará una invitación al correo ingresado/)).toBeDefined();
+  expect(screen.getByRole('button', { name: 'Guardar y enviar invitación' })).toBeDefined();
+});

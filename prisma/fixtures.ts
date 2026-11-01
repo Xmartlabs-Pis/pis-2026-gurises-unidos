@@ -7,7 +7,22 @@ export const ADMIN = {
   status: 'active',
 } as const;
 
+export const CONTRIBUTORS = [
+  'INAU',
+  'INEFOP',
+  'ANEP',
+  'Ministerio del Interior',
+  'Fundación Telefónica',
+  'Fundación UPM',
+  'Reaching U',
+  'PepsiCo',
+  'BASF',
+  'OSF',
+  'UNFPA',
+] as const;
+
 export const TABLES = [
+  'LoginThrottle',
   'ProjectCoordinator',
   'ProjectBeneficiaryValue',
   'ProjectBeneficiary',
@@ -15,6 +30,7 @@ export const TABLES = [
   'AuditLog',
   'Report',
   'Metric',
+  'Contributor',
   'PublicSettings',
   'Project',
   'StrategicLine',

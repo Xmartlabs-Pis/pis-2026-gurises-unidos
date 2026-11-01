@@ -28,7 +28,6 @@ export const projectSchema = z
       .int()
       .positive('Elegí un coordinador')
       .max(MAX_INT32),
-    zone: z.enum(['city', 'inland', 'border', 'rural']),
     generalObjective: z
       .string()
       .trim()

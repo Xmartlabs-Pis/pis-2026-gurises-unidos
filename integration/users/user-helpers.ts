@@ -33,6 +33,7 @@ export async function deleteTestUsers(documentIds: readonly string[]) {
   });
   const ids = users.map((user) => user.id);
   await prisma.$transaction([
+    prisma.loginThrottle.deleteMany({ where: { documentId: { in: [...documentIds] } } }),
     prisma.auditLog.deleteMany({
       where: { OR: [{ entity: 'user', entityId: { in: ids } }, { authorId: { in: ids } }] },
     }),

@@ -27,3 +27,12 @@ test('renders one carousel per public topic with its first page', async () => {
     [3, 'Health'],
   ]);
 });
+
+test('remounts carousels when the year changes to reset their loaded projects', async () => {
+  mocks.getPublicTopics.mockResolvedValue([
+    { id: 1, name: 'Education', total: 1, initialPage: { items: [], page: 1, hasMore: false } },
+  ]);
+  const previous = await ProjectsByTopic({ year: 2025 });
+  const current = await ProjectsByTopic({ year: 2026 });
+  expect(current[0].key).not.toBe(previous[0].key);
+});
