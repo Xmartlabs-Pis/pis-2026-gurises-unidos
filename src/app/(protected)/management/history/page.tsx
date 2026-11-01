@@ -26,7 +26,7 @@ export default async function AuditHistoryPage({
           <PageHeader
             eyebrow="Administración"
             title="Historial de cambios"
-            description="Cambios en los datos del sistema e intentos fallidos de acceso, con su fecha y hora."
+            description="Altas, ediciones y bajas de proyectos, beneficiarios y usuarios, e intentos fallidos de inicio de sesión."
           />
         </div>
 
