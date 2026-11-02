@@ -30,7 +30,7 @@ export type UruguayMapProps = {
 function getDepartmentStyle(name: string, total: number, selectedDepartment: string): PathOptions {
   const selected = name === selectedDepartment;
   return {
-    color: '#ffffff',
+    color: 'var(--background)',
     weight: selected ? 2.5 : 2,
     fillColor: selected || total > 0 ? 'var(--primary)' : '#e8e9e5',
     fillOpacity: selected || total === 0 ? 1 : 0.3,

@@ -4,7 +4,6 @@ import Home from '@/app/(public)/page';
 import { getContributors } from '@/lib/contributors';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
-import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
@@ -18,9 +17,6 @@ vi.mock('@/lib/metrics/queries', () => ({
 }));
 vi.mock('@/lib/projects/department-project-counts', () => ({
   getDepartmentProjectCounts: vi.fn(async () => []),
-}));
-vi.mock('@/lib/metrics/topic-statistics', () => ({
-  getTopicStatistics: vi.fn(async () => []),
 }));
 vi.mock('@/components/projects/projects-by-topic', () => ({ ProjectsByTopic: vi.fn(() => null) }));
 vi.mock('@/components/how-we-work', () => ({ HowWeWork: () => null }));
@@ -160,7 +156,6 @@ test('uses the requested published year for all annual data', async () => {
   expect(screen.getByRole('group', { name: 'Impacto 2024' })).toBeDefined();
   expect(getMetricValues).toHaveBeenNthCalledWith(1, 2024);
   expect(getMetricValues).toHaveBeenNthCalledWith(2, 2023);
-  expect(getTopicStatistics).toHaveBeenCalledWith(2024);
   expect(ProjectsByTopic).toHaveBeenCalledWith(expect.objectContaining({ year: 2024 }), undefined);
 });
 

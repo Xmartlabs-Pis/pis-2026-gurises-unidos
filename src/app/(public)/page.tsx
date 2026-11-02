@@ -1,7 +1,7 @@
 import { getContributors } from '@/lib/contributors';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from 'cn';
-import { formatIncrement, formatNumber } from '@/lib/format';
+import { formatIncrement } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getPublicStats } from '@/lib/metrics/public-stats';
 import { resolveYearParam } from '@/lib/metrics/year';
@@ -13,8 +13,6 @@ import { DepartmentPresence } from '@/components/map/department-presence';
 import { DepartmentPresenceSkeleton } from '@/components/map/department-presence-skeleton';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
-import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
-import { getVisibleTopics } from '@/lib/metrics/visible-topics';
 import { HowWeWork } from '@/components/how-we-work';
 
 const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
@@ -26,11 +24,10 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, topics, contributors] = await Promise.all([
+  const [values, previousValues, settings, contributors] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getTopicStatistics(year),
     getContributors(),
   ]);
   const stats = getPublicStats(settings, values).map((stat) => ({
@@ -38,29 +35,27 @@ export default async function Home({
     increment: formatIncrement(values[stat.key], previousValues[stat.key], year - 1),
   }));
 
-  const visibleTopics = getVisibleTopics(topics);
-  const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));
-
   return (
     <>
       <section className="public-hero w-full">
-        <div className="mx-auto w-full max-w-360 px-4 pt-12 pb-24 sm:px-6 lg:px-16 lg:pt-14 lg:pb-28">
+        <div className="mx-auto w-full max-w-360 px-4 pt-12 pb-20 sm:px-6 lg:px-16 lg:pt-14 lg:pb-24">
           <div className="flex w-full flex-col gap-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="public-hero-badge text-primary inline-flex min-h-6.5 items-center rounded-full px-3 py-1 text-xs font-medium">
-                Informe de impacto · {year}
-              </span>
-              {publishedYears.length > 1 && (
+            <div className="flex items-center">
+              {publishedYears.length > 1 ? (
                 <MetricsYearSelect
                   year={year}
                   years={publishedYears}
                   label="Año del informe"
-                  className="border-white/25 bg-white/10! text-white [&_svg]:text-white/70"
+                  compact
                 />
+              ) : (
+                <span className="public-hero-badge text-primary inline-flex min-h-9 items-center rounded-full px-3 py-1 text-sm font-semibold">
+                  {year}
+                </span>
               )}
             </div>
             <h1 className="max-w-122 text-4xl leading-tight font-bold tracking-tight text-white lg:text-5xl">
-              Transformando vidas en Uruguay
+              Nuestro informe <span className="block">de impacto</span>
             </h1>
             <p className="max-w-140 text-base leading-6 text-white/90">
               Trabajamos con niños, niñas, adolescentes, familias y comunidades en todo el
@@ -113,56 +108,8 @@ export default async function Home({
           <path d="M0 0 Q760 100 1440 62 V100 H0 Z" fill="currentColor" />
         </svg>
       </section>
-      {visibleTopics.length > 0 && (
-        <section aria-labelledby="public-topic-statistics-heading" className="w-full">
-          <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 pt-14 pb-14 sm:px-6 lg:px-16">
-            <div className="flex flex-col gap-1">
-              <h2
-                id="public-topic-statistics-heading"
-                className="text-foreground text-2xl leading-8 font-bold sm:text-3xl sm:leading-9"
-              >
-                Proyectos por temática
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Proyectos con actividad registrada en {year}
-              </p>
-            </div>
-            <dl className="grid w-full max-w-246 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-5 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-x-6">
-              {visibleTopics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="col-span-full grid grid-cols-subgrid items-center gap-y-2"
-                >
-                  <dt className="text-foreground text-sm leading-5 font-medium">{topic.name}</dt>
-                  <dd className="contents">
-                    <div
-                      aria-hidden="true"
-                      className="bg-card col-span-2 row-start-2 h-3 overflow-hidden rounded-full sm:col-span-1 sm:col-start-2 sm:row-start-1"
-                    >
-                      <div
-                        className="bg-primary h-full rounded-full"
-                        style={{ width: `${(topic.projectCount / maxTopicProjectCount) * 100}%` }}
-                      />
-                    </div>
-                    <span className="col-start-2 row-start-1 flex items-baseline gap-2 whitespace-nowrap sm:col-start-3">
-                      <span className="text-foreground text-2xl leading-8 font-bold tabular-nums">
-                        {formatNumber(topic.projectCount)}
-                      </span>
-                      <span className="text-foreground text-sm leading-5">
-                        {topic.projectCount === 1 ? 'proyecto' : 'proyectos'}
-                      </span>
-                    </span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </section>
-      )}
       <section id="projects" className="w-full scroll-mt-4">
-        <div
-          className={`mx-auto flex min-h-71 w-full max-w-360 flex-col gap-4 px-4 pb-18 sm:px-6 lg:px-14 ${visibleTopics.length > 0 ? 'pt-6' : 'pt-18'}`}
-        >
+        <div className="mx-auto flex min-h-71 w-full max-w-360 flex-col gap-6 px-4 py-18 sm:px-6 lg:px-14">
           <div className="flex w-full max-w-75.75 flex-col gap-1 lg:h-15">
             <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
               Nuestros proyectos

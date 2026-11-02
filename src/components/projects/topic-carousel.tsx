@@ -5,6 +5,7 @@ import type { PublicProjectsPage } from '@/lib/projects/public-projects';
 import { ProjectCard } from '@/components/projects/project-card';
 import { CarouselCardSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { Button } from '@/components/ui/button';
+import { formatNumber } from '@/lib/format';
 import {
   Carousel,
   CarouselContent,
@@ -21,6 +22,7 @@ type TopicCarouselProps = {
   year: number;
   topicId: number;
   topic: string;
+  total: number;
   initialPage: PublicProjectsPage;
 };
 
@@ -37,7 +39,7 @@ function TopicCarouselControls() {
   );
 }
 
-export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarouselProps) {
+export function TopicCarousel({ year, topicId, topic, total, initialPage }: TopicCarouselProps) {
   const [projects, setProjects] = useState(initialPage.items);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
   const [failed, setFailed] = useState(false);
@@ -77,8 +79,11 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
   return (
     <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-5">
       <div className="flex min-h-9 items-center justify-between gap-4">
-        <div className="flex flex-row items-center gap-3">
-          <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="text-foreground text-xl leading-7 font-semibold">{topic}</h3>
+          <span className="text-primary text-sm font-medium">
+            {formatNumber(total)} {total === 1 ? 'proyecto' : 'proyectos'}
+          </span>
         </div>
         <TopicCarouselControls />
       </div>

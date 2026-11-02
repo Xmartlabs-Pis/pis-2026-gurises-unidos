@@ -19,12 +19,13 @@ test('renders one carousel per public topic with its first page', async () => {
   const carousels = (await ProjectsByTopic({ year: 2025 })) as ReactElement<{
     topic: string;
     topicId: number;
+    total: number;
   }>[];
 
   expect(mocks.getPublicTopics).toHaveBeenCalledWith(2025);
-  expect(carousels.map(({ props }) => [props.topicId, props.topic])).toEqual([
-    [1, 'Education'],
-    [3, 'Health'],
+  expect(carousels.map(({ props }) => [props.topicId, props.topic, props.total])).toEqual([
+    [1, 'Education', 20],
+    [3, 'Health', 2],
   ]);
 });
 
