@@ -15,7 +15,10 @@ import { DepartmentPresenceSkeleton } from '@/components/map/department-presence
 import { HowWeWork } from '@/components/how-we-work';
 import { RegionPresence } from '@/components/map/region-presence';
 import { RegionPresenceSkeleton } from '@/components/map/region-presence-skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PublicGeographyTabs } from '@/components/public-geography';
+import { PublicFooter } from '@/components/public-footer';
+import { getPublishedTopics } from '@/lib/projects/public-projects';
 
 const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
 
@@ -26,11 +29,12 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, contributors] = await Promise.all([
+  const [values, previousValues, settings, contributors, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
     getContributors(),
+    getPublishedTopics(),
   ]);
   const stats = getPublicStats(settings, values).map((stat) => ({
     ...stat,
@@ -115,7 +119,7 @@ export default async function Home({
           <h2 className="text-foreground text-center text-2xl leading-8 font-bold">
             Nuestro impacto por geografía
           </h2>
-          <Tabs defaultValue="uruguay" className="gap-12 lg:gap-16">
+          <PublicGeographyTabs>
             <TabsList
               aria-label="Seleccionar geografía"
               className="bg-card mx-auto h-11! w-64 rounded-full p-1"
@@ -137,7 +141,7 @@ export default async function Home({
                 <RegionPresence year={year} />
               </Suspense>
             </TabsContent>
-          </Tabs>
+          </PublicGeographyTabs>
         </div>
       </section>
       <section id="how-we-work" className="w-full scroll-mt-16">
@@ -190,21 +194,14 @@ export default async function Home({
             rel="noopener noreferrer"
             className={cn(
               buttonVariants(),
-              'text-foreground hover:bg-primary/70 hover:text-foreground min-h-10 bg-white px-5 py-2 font-bold'
+              'text-foreground hover:bg-primary hover:text-foreground min-h-10 bg-white px-5 py-2 font-bold'
             )}
           >
             Quiero colaborar
           </a>
         </div>
       </section>
-      <footer className="bg-surface-brand-deep px-5 pb-6 text-center">
-        <a
-          href="/login"
-          className="text-xs text-white/60 underline-offset-4 hover:text-white hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-        >
-          Acceso al equipo
-        </a>
-      </footer>
+      <PublicFooter topics={topics} years={publishedYears} year={year} />
     </>
   );
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 
-export function useTimedSelection(count: number, duration = 9000) {
-  const [activeIndex, setActiveIndex] = useState(0);
+export function useTimedSelection(count: number, duration = 9000, initialIndex = 0) {
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [cycle, setCycle] = useState(0);
   const [isInView, setIsInView] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);

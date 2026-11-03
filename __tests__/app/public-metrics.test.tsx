@@ -9,6 +9,10 @@ import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
 vi.mock('@/lib/contributors', () => ({ getContributors: vi.fn(async () => []) }));
+vi.mock('@/lib/projects/public-projects', () => ({
+  getPublishedTopics: vi.fn(async () => []),
+  getPublicDepartments: vi.fn(async () => []),
+}));
 
 vi.mock('@/lib/metrics/queries', () => ({
   getPublishedYears: vi.fn(),

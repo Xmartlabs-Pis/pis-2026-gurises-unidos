@@ -40,6 +40,14 @@ export type PublicDepartment = {
 
 export type PublicRegion = (typeof GEOGRAPHIC_REGIONS)[number] & { projects: PublicProject[] };
 
+export async function getPublishedTopics() {
+  return prisma.topic.findMany({
+    where: { isActive: true, showPublicly: true },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+}
+
 export async function getPublicDepartments(year: number): Promise<PublicDepartment[]> {
   const departments = await prisma.department.findMany({
     orderBy: { name: 'asc' },

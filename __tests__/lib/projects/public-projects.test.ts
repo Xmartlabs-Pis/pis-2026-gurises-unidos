@@ -5,9 +5,21 @@ import {
   getPublicProjectsPage,
   getPublicTopics,
   getPublicDepartments,
+  getPublishedTopics,
 } from '@/lib/projects/public-projects';
 
 const TOPIC_ID = 2;
+
+test('lists only active published topics for the footer without requiring project activity', async () => {
+  const topics = [{ id: 12, name: 'Education' }];
+  prismaMock.topic.findMany.mockResolvedValue(topics);
+  expect(await getPublishedTopics()).toEqual(topics);
+  expect(prismaMock.topic.findMany).toHaveBeenCalledWith({
+    where: { isActive: true, showPublicly: true },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+});
 
 describe('getPublicDepartments', () => {
   test('only includes visible projects from the requested year and public topics', async () => {

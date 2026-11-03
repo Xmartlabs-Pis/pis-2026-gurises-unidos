@@ -5,11 +5,38 @@ import { useId } from 'react';
 import { useTimedSelection } from '@/hooks/use-timed-selection';
 import { GeographyProjectCarousel } from '@/components/map/geography-project-carousel';
 import type { PublicRegion } from '@/lib/projects/public-projects';
+import { usePublicGeography } from '@/components/public-geography';
 
 export function RegionExplorer({ regions, year }: { regions: PublicRegion[]; year: number }) {
+  const navigation = usePublicGeography();
+  const initialIndex = Math.max(
+    0,
+    regions.findIndex((region) => region.id === navigation?.region.id)
+  );
+  return (
+    <RegionExplorerContent
+      key={navigation?.region.revision ?? 0}
+      regions={regions}
+      year={year}
+      initialIndex={initialIndex}
+    />
+  );
+}
+
+function RegionExplorerContent({
+  regions,
+  year,
+  initialIndex,
+}: {
+  regions: PublicRegion[];
+  year: number;
+  initialIndex: number;
+}) {
   const id = useId();
   const { activeIndex, sectionRef, progressRef, selectIndex, handleKeyDown } = useTimedSelection(
-    regions.length
+    regions.length,
+    9000,
+    initialIndex
   );
   const selected = regions[activeIndex];
   if (!selected) return null;
