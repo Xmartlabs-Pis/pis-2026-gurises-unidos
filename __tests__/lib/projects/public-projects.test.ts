@@ -10,12 +10,22 @@ import {
 
 const TOPIC_ID = 2;
 
-test('lists only active published topics for the footer without requiring project activity', async () => {
+test('lists only active published topics with public projects for the selected year in the footer', async () => {
   const topics = [{ id: 12, name: 'Education' }];
   prismaMock.topic.findMany.mockResolvedValue(topics);
-  expect(await getPublishedTopics()).toEqual(topics);
+  expect(await getPublishedTopics(2026)).toEqual(topics);
   expect(prismaMock.topic.findMany).toHaveBeenCalledWith({
-    where: { isActive: true, showPublicly: true },
+    where: {
+      isActive: true,
+      showPublicly: true,
+      projects: {
+        some: {
+          deletedAt: null,
+          showOnLanding: true,
+          projectBeneficiaries: { some: { year: 2026 } },
+        },
+      },
+    },
     orderBy: { name: 'asc' },
     select: { id: true, name: true },
   });

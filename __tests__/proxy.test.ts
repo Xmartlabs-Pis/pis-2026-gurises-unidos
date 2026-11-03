@@ -45,6 +45,11 @@ function makeRequest(
 }
 
 describe('proxy', () => {
+  test('allows unauthenticated access to the public project listing', () => {
+    const response = runProxy(makeRequest('/projects?year=2026'));
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+  });
+
   test('allows authenticated requests', () => {
     const response = runProxy(makeRequest('/dashboard/projects', { authenticated: true }));
 

@@ -1,12 +1,9 @@
 import { getContributors } from '@/lib/contributors';
 import { ContributorStrip } from '@/components/contributor-strip';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from 'cn';
 import { formatIncrement } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getPublicStats } from '@/lib/metrics/public-stats';
 import { resolveYearParam } from '@/lib/metrics/year';
-import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { Suspense } from 'react';
@@ -20,7 +17,8 @@ import { PublicGeographyTabs } from '@/components/public-geography';
 import { PublicFooter } from '@/components/public-footer';
 import { getPublishedTopics } from '@/lib/projects/public-projects';
 
-const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
+import { PublicHero } from '@/components/public-hero';
+import { PublicCollaborate } from '@/components/public-collaborate';
 
 export default async function Home({
   searchParams,
@@ -34,7 +32,7 @@ export default async function Home({
     getMetricValues(year - 1),
     getMetricSettings(),
     getContributors(),
-    getPublishedTopics(),
+    getPublishedTopics(year),
   ]);
   const stats = getPublicStats(settings, values).map((stat) => ({
     ...stat,
@@ -43,32 +41,15 @@ export default async function Home({
 
   return (
     <>
-      <section className="public-hero w-full">
-        <div className="mx-auto w-full max-w-360 px-4 pt-12 pb-20 sm:px-6 lg:px-16 lg:pt-14 lg:pb-24">
-          <div className="flex w-full flex-col gap-3">
-            <div className="flex items-center">
-              {publishedYears.length > 1 ? (
-                <MetricsYearSelect
-                  year={year}
-                  years={publishedYears}
-                  label="Año del informe"
-                  compact
-                />
-              ) : (
-                <span className="public-hero-badge text-primary inline-flex min-h-9 items-center rounded-full px-3 py-1 text-sm font-semibold">
-                  {year}
-                </span>
-              )}
-            </div>
-            <h1 className="max-w-122 text-4xl leading-tight font-bold tracking-tight text-white lg:text-5xl">
-              Nuestro informe <span className="block">de impacto</span>
-            </h1>
-            <p className="max-w-140 text-base leading-6 text-white/90">
-              Trabajamos con niños, niñas, adolescentes, familias y comunidades en todo el
-              territorio uruguayo.
-            </p>
-          </div>
-        </div>
+      <PublicHero
+        year={year}
+        years={publishedYears}
+        title={
+          <>
+            Nuestro informe <span className="block">de impacto</span>
+          </>
+        }
+      >
         {stats.length > 0 && (
           <div className="public-hero-stats relative pb-20">
             <svg
@@ -105,15 +86,7 @@ export default async function Home({
             </div>
           </div>
         )}
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 1440 100"
-          preserveAspectRatio="none"
-          className="text-background pointer-events-none absolute inset-x-0 bottom-0 h-16 w-full"
-        >
-          <path d="M0 0 Q760 100 1440 62 V100 H0 Z" fill="currentColor" />
-        </svg>
-      </section>
+      </PublicHero>
       <section id="department-presence" className="w-full scroll-mt-16">
         <div className="mx-auto flex w-full max-w-360 flex-col gap-6 px-5 py-12 sm:px-6 lg:px-16 lg:py-16">
           <h2 className="text-foreground text-center text-2xl leading-8 font-bold">
@@ -171,36 +144,7 @@ export default async function Home({
           </div>
         </section>
       )}
-      <section className="public-collaborate relative w-full text-white">
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 1440 80"
-          preserveAspectRatio="none"
-          className="text-background pointer-events-none absolute inset-x-0 top-0 h-12 w-full"
-        >
-          <path d="M0 0 H1440 V60 Q720 -60 0 60 Z" fill="currentColor" />
-        </svg>
-        <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-24 pb-20 text-center sm:px-6 lg:px-16">
-          <h2 className="text-2xl leading-8 font-bold sm:text-3xl sm:leading-9">
-            Sé parte de esta transformación
-          </h2>
-          <p className="max-w-180 text-base leading-6 text-[#b3cbc1]">
-            Conocé en qué proyectos podés colaborar y cómo tu apoyo se convierte en impacto real
-            para miles de gurises.
-          </p>
-          <a
-            href={COLLABORATE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              buttonVariants(),
-              'text-foreground hover:bg-primary hover:text-foreground min-h-10 bg-white px-5 py-2 font-bold'
-            )}
-          >
-            Quiero colaborar
-          </a>
-        </div>
-      </section>
+      <PublicCollaborate />
       <PublicFooter topics={topics} years={publishedYears} year={year} />
     </>
   );

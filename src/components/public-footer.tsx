@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
 import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
@@ -13,10 +14,12 @@ export function PublicFooter({
   topics,
   years,
   year,
+  curved = false,
 }: {
   topics: { id: number; name: string }[];
   years: number[];
   year: number;
+  curved?: boolean;
 }) {
   const navigation = usePublicGeography();
   const router = useRouter();
@@ -28,12 +31,22 @@ export function PublicFooter({
   function yearHref(value: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('year', String(value));
-    return `${pathname}?${params.toString()}`;
+    return `/?${params.toString()}`;
   }
 
   return (
-    <footer className="bg-surface-brand-deep text-white">
-      <div className="mx-auto grid w-full max-w-360 gap-10 px-5 pt-4 pb-16 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.1fr_1.3fr_0.85fr_1fr] lg:gap-16 lg:px-16 lg:pb-24">
+    <footer className={`bg-surface-brand-deep relative text-white ${curved ? 'pt-16' : ''}`}>
+      {curved && (
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 80"
+          preserveAspectRatio="none"
+          className="text-background pointer-events-none absolute inset-x-0 top-0 h-12 w-full"
+        >
+          <path d="M0 0 H1440 V60 Q720 -60 0 60 Z" fill="currentColor" />
+        </svg>
+      )}
+      <div className="mx-auto grid w-full max-w-360 gap-10 px-5 pt-4 pb-16 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:gap-16 lg:px-16 lg:pb-24">
         <div className="flex flex-col items-start gap-4">
           <Image
             src="/images/gurises-unidos-footer.svg"
@@ -47,7 +60,14 @@ export function PublicFooter({
           <h2 className="text-base font-semibold">Proyectos</h2>
           <ul className="flex flex-col gap-2 text-[#b3cbc1]">
             {topics.map((topic) => (
-              <li key={topic.id}>{topic.name}</li>
+              <li key={topic.id}>
+                <Link
+                  href={`/projects?year=${year}#topic-${topic.id}`}
+                  className={FOOTER_LINK_CLASS}
+                >
+                  {topic.name}
+                </Link>
+              </li>
             ))}
           </ul>
         </div>
@@ -83,13 +103,15 @@ export function PublicFooter({
           <ul className="flex flex-col gap-2">
             {geographies.map((geography) => (
               <li key={geography.id}>
-                <a
-                  href="#department-presence"
+                <Link
+                  href={
+                    pathname === '/' ? '#department-presence' : `/?year=${year}#department-presence`
+                  }
                   className={FOOTER_LINK_CLASS}
                   onClick={() => navigation?.selectGeography(geography.id)}
                 >
                   {geography.name}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

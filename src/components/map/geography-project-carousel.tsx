@@ -1,7 +1,10 @@
 'use client';
 
 import { ProjectCard } from '@/components/projects/project-card';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { cn } from 'cn';
 import {
   Carousel,
   CarouselContent,
@@ -35,6 +38,8 @@ export function GeographyProjectCarousel({
   emptyMessage: string;
   territory?: string;
 }) {
+  const searchParams = useSearchParams();
+  const year = searchParams.get('year');
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <Carousel key={name} aria-label={`Proyectos en ${name}`} className="flex flex-col gap-5">
@@ -68,12 +73,15 @@ export function GeographyProjectCarousel({
           </div>
         )}
       </Carousel>
-      <Button
-        type="button"
-        className="bg-surface-brand-deep hover:bg-surface-brand-deep/90 h-10 w-fit rounded-lg px-4 text-white"
+      <Link
+        href={year ? `/projects?year=${encodeURIComponent(year)}` : '/projects'}
+        className={cn(
+          buttonVariants(),
+          'bg-surface-brand-deep hover:bg-surface-brand-deep/90 h-10 w-fit rounded-lg px-4 text-white'
+        )}
       >
         Ver todos los proyectos
-      </Button>
+      </Link>
     </div>
   );
 }
