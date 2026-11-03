@@ -115,8 +115,14 @@ async function main() {
         topicIds.push(topic.id);
       }
 
+      const strategicLineIds: number[] = [];
       for (const name of STRATEGIC_LINES) {
-        await tx.strategicLine.upsert({ where: { name }, update: {}, create: { name } });
+        const strategicLine = await tx.strategicLine.upsert({
+          where: { name },
+          update: {},
+          create: { name },
+        });
+        strategicLineIds.push(strategicLine.id);
       }
 
       const admin = await tx.user.upsert({
@@ -204,6 +210,11 @@ async function main() {
         const topics = [topicIds[index % topicIds.length]];
         if (index % 4 === 0) topics.push(topicIds[(index + 1) % topicIds.length]);
         const topicRefs = topics.map((id) => ({ id }));
+        const strategicLines = [strategicLineIds[index % strategicLineIds.length]];
+        if (index % 3 === 0) {
+          strategicLines.push(strategicLineIds[(index + 2) % strategicLineIds.length]);
+        }
+        const strategicLineRefs = strategicLines.map((id) => ({ id }));
         const project = existing
           ? await tx.project.update({
               where: { id: existing.id },
@@ -212,6 +223,7 @@ async function main() {
                 departments: { set: projectDepartments },
                 localities: { deleteMany: {}, create: localities },
                 topics: { set: topicRefs },
+                strategicLines: { set: strategicLineRefs },
               },
             })
           : await tx.project.create({
@@ -220,6 +232,7 @@ async function main() {
                 departments: { connect: projectDepartments },
                 localities: { create: localities },
                 topics: { connect: topicRefs },
+                strategicLines: { connect: strategicLineRefs },
               },
             });
 
