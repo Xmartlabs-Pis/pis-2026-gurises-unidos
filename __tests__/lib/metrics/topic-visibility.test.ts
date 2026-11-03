@@ -8,9 +8,9 @@ vi.mock('@/lib/prisma', () => ({
   default: { topic: { findMany: topicsMock } },
 }));
 
-import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
+import { getTopicVisibilitySettings } from '@/lib/metrics/topic-visibility';
 
-describe('getTopicStatistics', () => {
+describe('getTopicVisibilitySettings', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     topicsMock.mockResolvedValue([
@@ -21,15 +21,15 @@ describe('getTopicStatistics', () => {
   });
 
   it('loads saved visibility, retains zero counts and shows unconfigured topics', async () => {
-    expect(await getTopicStatistics(2025)).toEqual([
+    expect(await getTopicVisibilitySettings(2025)).toEqual([
       { id: 1, name: 'Education', projectCount: 3, showPublicly: true },
       { id: 2, name: 'Health', projectCount: 0, showPublicly: false },
       { id: 3, name: 'Participation', projectCount: 2, showPublicly: true },
     ]);
   });
 
-  it('counts nondeleted projects including hidden projects once per topic in the reference year', async () => {
-    await getTopicStatistics(2024);
+  it('counts only public nondeleted projects in the reference year', async () => {
+    await getTopicVisibilitySettings(2024);
     expect(topicsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { isActive: true },
@@ -39,6 +39,7 @@ describe('getTopicStatistics', () => {
               projects: {
                 where: {
                   deletedAt: null,
+                  showOnLanding: true,
                   projectBeneficiaries: { some: { year: 2024 } },
                 },
               },

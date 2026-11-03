@@ -11,8 +11,6 @@ import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { Suspense } from 'react';
 import { DepartmentPresence } from '@/components/map/department-presence';
 import { DepartmentPresenceSkeleton } from '@/components/map/department-presence-skeleton';
-import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
-import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { HowWeWork } from '@/components/how-we-work';
 
 const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
@@ -107,21 +105,6 @@ export default async function Home({
         >
           <path d="M0 0 Q760 100 1440 62 V100 H0 Z" fill="currentColor" />
         </svg>
-      </section>
-      <section id="projects" className="w-full scroll-mt-4">
-        <div className="mx-auto flex min-h-71 w-full max-w-360 flex-col gap-6 px-4 py-18 sm:px-6 lg:px-14">
-          <div className="flex w-full max-w-75.75 flex-col gap-1 lg:h-15">
-            <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-              Nuestros proyectos
-            </h2>
-            <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-              Organizados por temática
-            </p>
-          </div>
-          <Suspense key={year} fallback={<TopicCarouselSkeleton />}>
-            <ProjectsByTopic year={year} />
-          </Suspense>
-        </div>
       </section>
       <section id="department-presence" className="w-full scroll-mt-16">
         <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
