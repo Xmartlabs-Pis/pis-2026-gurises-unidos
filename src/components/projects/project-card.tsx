@@ -33,7 +33,7 @@ export type ProjectCardProps = InternalProjectCardProps | PublicProjectCardProps
 
 const PUBLIC_VARIANT_STYLES = {
   'public-light': {
-    card: 'bg-white border border-border min-h-100',
+    card: 'bg-white border border-border-default rounded-[10px]',
     image: 'bg-muted h-48',
     dot: 'hidden',
     territory: 'text-muted-foreground',
@@ -43,7 +43,7 @@ const PUBLIC_VARIANT_STYLES = {
     reachLabel: 'text-muted-foreground',
   },
   'public-dark': {
-    card: 'bg-card border-border',
+    card: 'bg-card border-border rounded-xl',
     image: 'bg-background h-54.5',
     dot: 'bg-primary',
     territory: 'text-foreground',
@@ -76,7 +76,7 @@ function PublicProjectCard({
   const styles = PUBLIC_VARIANT_STYLES[variant];
 
   return (
-    <article className={`${styles.card} flex h-full flex-col overflow-hidden rounded-xl`}>
+    <article className={`${styles.card} flex h-full flex-col overflow-hidden`}>
       <div className={`${styles.image} relative w-full`}>
         {coverPhoto && (
           <Image

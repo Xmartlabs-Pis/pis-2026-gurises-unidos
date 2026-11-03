@@ -2,30 +2,8 @@
 
 import { useState } from 'react';
 import { UruguayMapLoader } from '@/components/map/uruguay-map-loader';
-import { ProjectCard } from '@/components/projects/project-card';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  useCarousel,
-} from '@/components/ui/carousel';
+import { GeographyProjectCarousel } from '@/components/map/geography-project-carousel';
 import type { PublicDepartment } from '@/lib/projects/public-projects';
-import { formatNumber } from '@/lib/format';
-
-function DepartmentCarouselControls() {
-  const { canScrollPrev, canScrollNext } = useCarousel();
-
-  if (!canScrollPrev && !canScrollNext) return null;
-
-  return (
-    <div className="flex shrink-0 gap-2">
-      <CarouselPrevious className="static size-9 rounded-lg bg-white" />
-      <CarouselNext className="static size-9 rounded-lg bg-white" />
-    </div>
-  );
-}
 
 export function DepartmentExplorer({
   year,
@@ -49,10 +27,9 @@ export function DepartmentExplorer({
   }));
 
   return (
-    <div className="grid w-full items-center gap-14 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:gap-20">
+    <div className="grid w-full items-start gap-14 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:gap-28">
       <div className="flex min-w-0 flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <h2 className="text-foreground text-2xl leading-8 font-bold">Presencia en el Uruguay</h2>
           <p className="text-muted-foreground text-sm leading-5">
             Nuestros proyectos llegan a {departmentCount} departamentos, priorizando comunidades con
             mayor vulnerabilidad social.
@@ -83,46 +60,17 @@ export function DepartmentExplorer({
           Tocá un departamento para filtrar
         </p>
       </div>
-      <div id="department-projects" className="min-w-0" aria-label="Proyectos por departamento">
-        <Carousel
-          key={selectedName}
-          aria-label={`Proyectos en ${selectedName}`}
-          className="flex flex-col gap-5"
-        >
-          <div className="flex min-h-9 items-center justify-between gap-4">
-            <div
-              className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
-              aria-live="polite"
-              aria-atomic="true"
-            >
-              <h3 className="text-foreground text-xl font-semibold">{selectedName}</h3>
-              <span className="text-primary text-sm font-medium">
-                {formatNumber(projects.length)} {projects.length === 1 ? 'proyecto' : 'proyectos'}
-              </span>
-            </div>
-            <DepartmentCarouselControls />
-          </div>
-          {projects.length > 0 ? (
-            <CarouselContent>
-              {projects.map((project) => (
-                <CarouselItem key={project.id} className="basis-72 sm:basis-76">
-                  <ProjectCard
-                    variant="public-light"
-                    territory={selectedName}
-                    name={project.name}
-                    description={project.description}
-                    coverPhoto={project.coverPhoto}
-                    reach={project.reach}
-                  />
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          ) : (
-            <div className="border-border text-muted-foreground flex min-h-72 items-center justify-center rounded-xl border bg-white p-8 text-center text-sm">
-              No hay proyectos publicados en {selectedName} para {year}.
-            </div>
-          )}
-        </Carousel>
+      <div
+        id="department-projects"
+        className="flex min-w-0 flex-col gap-6"
+        aria-label="Proyectos por departamento"
+      >
+        <GeographyProjectCarousel
+          name={selectedName}
+          projects={projects}
+          territory={selectedName}
+          emptyMessage={`No hay proyectos publicados en ${selectedName} para ${year}.`}
+        />
       </div>
     </div>
   );

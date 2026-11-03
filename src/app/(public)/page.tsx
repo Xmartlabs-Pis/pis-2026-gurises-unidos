@@ -1,4 +1,5 @@
 import { getContributors } from '@/lib/contributors';
+import { ContributorStrip } from '@/components/contributor-strip';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from 'cn';
 import { formatIncrement } from '@/lib/format';
@@ -12,6 +13,9 @@ import { Suspense } from 'react';
 import { DepartmentPresence } from '@/components/map/department-presence';
 import { DepartmentPresenceSkeleton } from '@/components/map/department-presence-skeleton';
 import { HowWeWork } from '@/components/how-we-work';
+import { RegionPresence } from '@/components/map/region-presence';
+import { RegionPresenceSkeleton } from '@/components/map/region-presence-skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
 
@@ -107,10 +111,33 @@ export default async function Home({
         </svg>
       </section>
       <section id="department-presence" className="w-full scroll-mt-16">
-        <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
-          <Suspense fallback={<DepartmentPresenceSkeleton />}>
-            <DepartmentPresence year={year} />
-          </Suspense>
+        <div className="mx-auto flex w-full max-w-360 flex-col gap-6 px-5 py-12 sm:px-6 lg:px-16 lg:py-16">
+          <h2 className="text-foreground text-center text-2xl leading-8 font-bold">
+            Nuestro impacto por geografía
+          </h2>
+          <Tabs defaultValue="uruguay" className="gap-12 lg:gap-16">
+            <TabsList
+              aria-label="Seleccionar geografía"
+              className="bg-card mx-auto h-11! w-64 rounded-full p-1"
+            >
+              <TabsTrigger value="uruguay" className="rounded-full px-5 data-active:bg-white">
+                Uruguay
+              </TabsTrigger>
+              <TabsTrigger value="region" className="rounded-full px-5 data-active:bg-white">
+                Región
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="uruguay">
+              <Suspense fallback={<DepartmentPresenceSkeleton />}>
+                <DepartmentPresence year={year} />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="region">
+              <Suspense fallback={<RegionPresenceSkeleton />}>
+                <RegionPresence year={year} />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
         </div>
       </section>
       <section id="how-we-work" className="w-full scroll-mt-16">
@@ -118,10 +145,10 @@ export default async function Home({
       </section>
       <section id="mission" className="w-full scroll-mt-16">
         <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-16 pb-12 text-center sm:px-6 lg:px-16 lg:pt-24 lg:pb-16">
-          <h2 className="text-xs leading-4 font-bold tracking-[0.14em] text-[#52766b]">
+          <h2 className="text-foreground text-xs leading-4 font-bold tracking-[0.14em]">
             NUESTRA MISIÓN
           </h2>
-          <p className="max-w-260 text-2xl leading-9 font-medium text-[#3d7115] sm:text-3xl sm:leading-10">
+          <p className="text-foreground max-w-260 text-2xl leading-9 font-medium sm:text-3xl sm:leading-10">
             Hace {new Date().getFullYear() - FIRST_PROJECT_YEAR} años defendemos los derechos de la
             niñez y la adolescencia en Uruguay, transformando realidades junto a las comunidades.
           </p>
@@ -132,20 +159,11 @@ export default async function Home({
           <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-4 pb-16 text-center sm:px-6 lg:px-16 lg:pb-24">
             <h2
               id="contributors-heading"
-              className="text-xs leading-4 font-bold tracking-[0.14em] text-[#52766b]"
+              className="text-foreground text-xs leading-4 font-bold tracking-[0.14em]"
             >
               CON EL APOYO DE
             </h2>
-            <ul className="flex w-full flex-wrap justify-center gap-3">
-              {contributors.map((contributor) => (
-                <li
-                  key={contributor.id}
-                  className="bg-card text-foreground flex min-h-10 max-w-full items-center justify-center rounded-full px-5 py-2 text-sm leading-5 font-medium break-words"
-                >
-                  {contributor.name}
-                </li>
-              ))}
-            </ul>
+            <ContributorStrip contributors={contributors} />
           </div>
         </section>
       )}

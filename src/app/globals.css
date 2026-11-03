@@ -238,6 +238,16 @@ html:has(.theme-public) {
   background-color: var(--surface-brand-deep);
 }
 
+.contributor-strip {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 2rem,
+    #000 calc(100% - 2rem),
+    transparent
+  );
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

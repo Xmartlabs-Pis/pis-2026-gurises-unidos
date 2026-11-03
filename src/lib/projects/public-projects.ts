@@ -1,6 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getTerritoryLabel } from '@/lib/projects/location';
+import type { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 
 export const PUBLIC_PROJECTS_PAGE_SIZE = 12;
 
@@ -36,6 +37,8 @@ export type PublicDepartment = {
   name: string;
   projects: PublicProject[];
 };
+
+export type PublicRegion = (typeof GEOGRAPHIC_REGIONS)[number] & { projects: PublicProject[] };
 
 export async function getPublicDepartments(year: number): Promise<PublicDepartment[]> {
   const departments = await prisma.department.findMany({

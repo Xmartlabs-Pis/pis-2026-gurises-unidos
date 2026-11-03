@@ -89,7 +89,7 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
       </div>
       <CarouselContent>
         {projects.map((project) => (
-          <CarouselItem key={project.id} className="basis-72 sm:basis-76">
+          <CarouselItem key={project.id} className="basis-77">
             <ProjectCard
               variant="public-light"
               territory={project.territory}
@@ -101,7 +101,7 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
           </CarouselItem>
         ))}
         {hasMore && (
-          <CarouselItem className="basis-72 sm:basis-76">
+          <CarouselItem className="basis-77">
             {failed ? (
               <div className="border-border flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border bg-white px-6 text-center">
                 <p role="alert" className="text-muted-foreground text-sm">
