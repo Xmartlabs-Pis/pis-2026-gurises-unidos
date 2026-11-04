@@ -808,6 +808,65 @@ ramas actualizadas. `main` solo recibe la PR de promoción desde `staging` y la 
 sigue exigiendo 2 approvals, conversaciones resueltas y merge commit. En `development` y `staging`
 no cambia nada: ahí se validan los títulos que arman el CHANGELOG.
 
+## Dependencias (Dependabot)
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot) mantiene las dependencias al día
+abriendo PRs contra `development`. La config vive en `.github/dependabot.yml` y GitHub solo la lee
+desde la rama por defecto (`development`).
+
+Abre dos tipos de PR:
+
+- **Security updates**: aparecen apenas GitHub publica una vulnerabilidad que afecta al
+  `package-lock.json`, sin esperar al calendario. Se activan en _Settings → Code security_ (alertas
+  y security updates, las dos prendidas). Las alertas abiertas se ven en _Security → Dependabot_.
+- **Version updates**: una vez por semana revisa tres ecosistemas:
+  - `npm`: los minor y patch llegan agrupados en una PR para `dependencies` y otra para
+    `devDependencies`. Los majors llegan de a uno, porque pueden traer breaking changes y hay que
+    leer el changelog antes de aprobar.
+  - `github-actions`: todas las actions de `.github/workflows` en una sola PR.
+  - `docker`: la imagen base del `Dockerfile`.
+
+Los títulos ya cumplen Conventional Commits, así que pasan el check y entran al CHANGELOG:
+`fix(deps): ...` para dependencias de producción (bump de patch en el release) y
+`chore(deps-dev): ...` / `chore(deps): ...` para dev, actions y Docker (no generan release).
+
+Las PRs de Dependabot se tratan como cualquier otra: 2 approvals, CI en verde y rama actualizada.
+Si se queda atrás de `development`, comentá `@dependabot rebase` en la PR; no la rebasees a mano,
+porque Dependabot deja de actualizar las PRs que tocó otra persona. Otros comandos útiles:
+`@dependabot recreate`, `@dependabot ignore this major version` y `@dependabot ignore this
+dependency`.
+
+### Vulnerabilidades sin PR
+
+Dependabot no puede arreglar todo solo. Cuando la versión vulnerable entra como dependencia
+transitiva y el paquete que la trae no publicó un arreglo, la alerta queda abierta sin PR. En ese
+caso:
+
+1. `npm audit` muestra por qué paquete entra (`npm ls <paquete> --all` muestra el árbol completo).
+2. Si existe una versión arreglada compatible, se fuerza con `overrides` en `package.json`,
+   idealmente con alcance limitado al paquete que la trae (`"<padre>": { "<paquete>": "^x.y.z" }`).
+   Después de `npm install`, correr `lint`, `typecheck`, `test` y `build`.
+3. Si no hay arreglo, o forzarlo rompe algo, se deja la alerta abierta con el motivo (o se descarta
+   en GitHub con _Dismiss_ y un comentario).
+
+Los `overrides` actuales y por qué existen:
+
+- `glob` y `minimatch` (bajo `@typescript-eslint/typescript-estree` y `@ts-morph/common`):
+  vulnerabilidades de ReDoS y de `AbortSignal` sin arreglo en las versiones que pedían sus padres.
+- `deepmerge-ts` (bajo `@prisma/config`): arregla una vulnerabilidad sin tener que pasar a
+  Prisma 7.
+
+Revisalos cada tanto: cuando el paquete padre ya pida una versión arreglada, el override sobra y
+se borra.
+
+Riesgos aceptados al momento de escribir esto, todos de herramientas de desarrollo:
+
+- `minimatch@3` bajo `eslint` y sus plugins: no hay 3.x arreglada y la v11 rompe el lint. Se va
+  cuando los plugins actualicen.
+- `deepmerge` bajo el CLI de `shadcn`: no existe versión arreglada.
+
+`npm audit --omit=dev` (lo que corre en producción) tiene que dar 0.
+
 ## Reviews
 
 - Toda PR necesita 2 approvals.
