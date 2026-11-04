@@ -23,7 +23,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.9.1",
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "^7.10.1",
     "@react-pdf/renderer": "^4.9.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
