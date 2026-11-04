@@ -47,6 +47,7 @@ function publicProjectSelect(year: number) {
     coverPhoto: true,
     geographicScope: true,
     countries: true,
+    region: true,
     departments: { select: { name: true }, orderBy: { name: 'asc' } },
     projectBeneficiaries: {
       where: { year },

@@ -33,6 +33,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   leadCoordinatorId: 'Coordinador responsable',
   geographicScope: 'Alcance geográfico',
   countries: 'Países',
+  region: 'Región',
   departments: 'Departamentos',
   cities: 'Ciudades',
   neighborhoods: 'Barrios',

@@ -58,6 +58,11 @@ async function selectDepartment(name: string) {
   fireEvent.keyDown(await screen.findByRole('option', { name }), { key: 'Enter' });
 }
 
+async function selectRegion(name: string) {
+  fireEvent.click(screen.getByLabelText('Región'));
+  fireEvent.keyDown(await screen.findByRole('option', { name }), { key: 'Enter' });
+}
+
 function type(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
@@ -211,26 +216,84 @@ it('requires a city for a stored department without one', async () => {
   expect(submitAction).not.toHaveBeenCalled();
 });
 
-it('loads several countries for an international project', async () => {
+it('requires a region but not a country for an international project', async () => {
   const { submitAction, submit } = renderForm({
     locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
   });
 
   fireEvent.click(screen.getByLabelText('Internacional', { selector: '[role=radio]' }));
-  expect(await screen.findByLabelText('Países')).toBeTruthy();
+  expect(await screen.findByLabelText('Países (opcional)')).toBeTruthy();
   expect(screen.queryByLabelText('Departamento')).toBeNull();
 
   await submit();
-  expect(await screen.findByText('Ingresá al menos un país')).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByLabelText('Región').getAttribute('aria-invalid')).toBe('true')
+  );
   expect(submitAction).not.toHaveBeenCalled();
 
-  addTag('Países', 'Argentina');
-  addTag('Países', 'Brasil');
+  await selectRegion('Otras regiones');
   await submit();
 
   await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
   const submitted = submitAction.mock.calls[0][1] as FormData;
   expect(submitted.get('geographicScope')).toBe('international');
-  expect(submitted.getAll('countries')).toEqual(['Argentina', 'Brasil']);
+  expect(submitted.getAll('region')).toEqual(['otherRegions']);
+  expect(submitted.getAll('countries')).toEqual([]);
   expect(submitted.getAll('locations')).toEqual([]);
+});
+
+it('loads several countries for an international project', async () => {
+  const { submitAction, submit } = renderForm({
+    geographicScope: 'international',
+    region: 'southAmerica',
+  });
+
+  addTag('Países (opcional)', 'Argentina');
+  addTag('Países (opcional)', 'Brasil');
+  await submit();
+
+  await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
+  expect((submitAction.mock.calls[0][1] as FormData).getAll('countries')).toEqual([
+    'Argentina',
+    'Brasil',
+  ]);
+});
+
+it('shows the region dropdown next to the countries only for an international project', async () => {
+  renderForm();
+
+  expect(screen.queryByLabelText('Región')).toBeNull();
+
+  fireEvent.click(screen.getByLabelText('Internacional', { selector: '[role=radio]' }));
+  fireEvent.click(await screen.findByLabelText('Región'));
+  expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+    'Sudamérica',
+    'Norteamérica',
+    'Centroamérica',
+    'Otras regiones',
+  ]);
+  fireEvent.keyDown(screen.getByRole('option', { name: 'Sudamérica' }), { key: 'Escape' });
+  expect(screen.getByLabelText('Países (opcional)')).toBeTruthy();
+
+  fireEvent.click(screen.getByLabelText('Nacional', { selector: '[role=radio]' }));
+  await waitFor(() => expect(screen.queryByLabelText('Región')).toBeNull());
+});
+
+it('loads the stored region and submits the one selected instead', async () => {
+  const { submitAction, submit } = renderForm({
+    geographicScope: 'international',
+    countries: ['Argentina'],
+    region: 'southAmerica',
+  });
+
+  expect(screen.getByLabelText('Región').textContent).toContain('Sudamérica');
+
+  await selectRegion('Norteamérica');
+  addTag('Países (opcional)', 'México');
+  await submit();
+
+  await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
+  const submitted = submitAction.mock.calls[0][1] as FormData;
+  expect(submitted.getAll('region')).toEqual(['northAmerica']);
+  expect(submitted.getAll('countries')).toEqual(['Argentina', 'México']);
 });

@@ -24,6 +24,7 @@ const PROJECT: ProjectDetail['project'] = {
   zone: 'city',
   geographicScope: 'national',
   countries: [],
+  region: null,
   localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
   generalObjective: 'Support adolescents and families.',
   publicDescription: 'Community support project.',
@@ -96,6 +97,54 @@ test('shows the countries as the territory of an international project', () => {
   );
 
   expect(screen.getAllByText('Argentina, Brasil')).not.toHaveLength(0);
+});
+
+test('shows the region of an international project', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: ['México'],
+        region: 'northAmerica',
+        localities: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.getByText('Región:')).toBeDefined();
+  expect(screen.getByText('Norteamérica')).toBeDefined();
+});
+
+test('shows only the region of an international project without countries', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: [],
+        region: 'otherRegions',
+        localities: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.queryByText('Territorio:')).toBeNull();
+  expect(screen.getByText('Otras regiones')).toBeDefined();
+});
+
+test('does not show a region for a national project', () => {
+  renderHeader(null);
+
+  expect(screen.queryByText('Región:')).toBeNull();
 });
 
 test('shows the project counterparty', () => {
