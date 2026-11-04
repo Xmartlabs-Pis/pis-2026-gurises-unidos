@@ -17,6 +17,9 @@ updates:
       development:
         dependency-type: development
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     target-branch: development
@@ -28,6 +31,9 @@ updates:
     groups:
       actions:
         patterns: ['*']
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: docker
     directory: /
     target-branch: development
@@ -36,3 +42,6 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
