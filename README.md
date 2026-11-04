@@ -855,6 +855,8 @@ Los `overrides` actuales y por qué existen:
   vulnerabilidades de ReDoS y de `AbortSignal` sin arreglo en las versiones que pedían sus padres.
 - `deepmerge-ts` (bajo `@prisma/config`): arregla una vulnerabilidad sin tener que pasar a
   Prisma 7.
+- `next` (bajo `@react-email/ui`): el preview de mails fija `next` en una versión exacta; con
+  `$next` usa la misma que el proyecto y no queda instalada una copia vulnerable.
 
 Revisalos cada tanto: cuando el paquete padre ya pida una versión arreglada, el override sobra y
 se borra.
