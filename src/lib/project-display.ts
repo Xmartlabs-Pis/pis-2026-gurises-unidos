@@ -1,4 +1,4 @@
-import { CounterpartyType, ProjectStatus, Intensity } from '@/generated/prisma/enums';
+import { CounterpartyType, ProjectStatus, Intensity, Region } from '@/generated/prisma/enums';
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: 'Activo',
@@ -25,6 +25,13 @@ export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
   publicSector: 'Sector Público',
   privateSector: 'Sector Privado',
   internationalCooperation: 'Cooperación Internacional',
+};
+
+export const REGION_LABEL: Record<Region, string> = {
+  southAmerica: 'Sudamérica',
+  northAmerica: 'Norteamérica',
+  centralAmerica: 'Centroamérica',
+  otherRegions: 'Otras regiones',
 };
 
 export const STATUS_OPTIONS = [
@@ -86,6 +93,13 @@ export const ZONE_OPTIONS = [
 export const GEOGRAPHIC_SCOPE_OPTIONS = [
   { value: 'national', label: 'Nacional' },
   { value: 'international', label: 'Internacional' },
+] as const;
+
+export const REGION_OPTIONS = [
+  { value: 'southAmerica', label: REGION_LABEL.southAmerica },
+  { value: 'northAmerica', label: REGION_LABEL.northAmerica },
+  { value: 'centralAmerica', label: REGION_LABEL.centralAmerica },
+  { value: 'otherRegions', label: REGION_LABEL.otherRegions },
 ] as const;
 
 export const FIRST_PROJECT_YEAR = 1989;

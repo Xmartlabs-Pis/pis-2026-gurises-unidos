@@ -61,6 +61,8 @@ describe('formatAuditValue', () => {
     ['intensity', 'high', 'Alta'],
     ['counterpartyType', 'privateSector', 'Sector Privado'],
     ['geographicScope', 'international', 'Internacional'],
+    ['region', 'centralAmerica', 'Centroamérica'],
+    ['region', null, 'Sin datos'],
     ['endYear', null, 'Sin datos'],
     ['endYear', undefined, 'Sin datos'],
     ['name', '', 'Sin datos'],

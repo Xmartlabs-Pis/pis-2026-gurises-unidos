@@ -539,6 +539,7 @@ describe('updateProject persistence', () => {
           leadCoordinatorId: 2,
           geographicScope: 'national',
           countries: [],
+          region: null,
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
@@ -1062,7 +1063,11 @@ describe('project review regressions', () => {
       updateProject(
         10,
         {},
-        formData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+        formData({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
+        })
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject).toHaveBeenCalledWith(
@@ -1070,13 +1075,20 @@ describe('project review regressions', () => {
         data: expect.objectContaining({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
           departments: { set: [] },
           localities: { deleteMany: {}, create: [] },
         }),
       })
     );
     expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(
-      expect.arrayContaining(['geographicScope', 'countries', 'departments', 'localities'])
+      expect.arrayContaining([
+        'geographicScope',
+        'countries',
+        'region',
+        'departments',
+        'localities',
+      ])
     );
   });
 
@@ -1639,13 +1651,18 @@ describe('project audit details', () => {
       updateProject(
         10,
         {},
-        formData({ geographicScope: 'international', countries: ['Argentina'] })
+        formData({
+          geographicScope: 'international',
+          countries: ['Argentina'],
+          region: 'southAmerica',
+        })
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual(
       expect.arrayContaining([
         { field: 'geographicScope', from: 'national', to: 'international' },
         { field: 'countries', from: [], to: ['Argentina'] },
+        { field: 'region', from: null, to: 'southAmerica' },
         { field: 'departments', from: [{ id: 3, name: 'Department 3' }], to: [] },
         { field: 'localities', from: [{ name: 'Department 3, City, Neighborhood' }], to: [] },
       ])

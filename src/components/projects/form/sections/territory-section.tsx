@@ -5,8 +5,9 @@ import { MapPin } from 'lucide-react';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { GEOGRAPHIC_SCOPE_OPTIONS } from '@/lib/project-display';
+import { GEOGRAPHIC_SCOPE_OPTIONS, REGION_OPTIONS } from '@/lib/project-display';
 import { MAX_PLACE_NAME_LENGTH } from '@/lib/validation/project-form';
+import { SelectField } from '@/components/ui/forms/select-field';
 import { TagInputField } from '@/components/ui/forms/tag-input-field';
 import { FormSection } from '@/components/ui/forms/form-section';
 import { LocationListField } from '../location-list-field';
@@ -84,17 +85,27 @@ export function TerritorySection({
         name="geographicScope"
         label="Alcance geográfico"
         options={GEOGRAPHIC_SCOPE_OPTIONS}
-        onValueChange={() => clearErrors(['locations', 'countries'])}
+        onValueChange={() => clearErrors(['locations', 'countries', 'region'])}
       />
       {isInternational ? (
-        <TagInputField
-          id="countries"
-          name="countries"
-          label="Países"
-          placeholder="Ej: Argentina"
-          description="Escribí un país y presioná Enter para agregarlo"
-          maxLength={MAX_PLACE_NAME_LENGTH}
-        />
+        <>
+          <SelectField
+            id="region"
+            name="region"
+            label="Región"
+            placeholder="Seleccionar región..."
+            options={REGION_OPTIONS}
+            required
+          />
+          <TagInputField
+            id="countries"
+            name="countries"
+            label="Países (opcional)"
+            placeholder="Ej: Argentina"
+            description="Escribí un país y presioná Enter para agregarlo"
+            maxLength={MAX_PLACE_NAME_LENGTH}
+          />
+        </>
       ) : (
         <LocationListField departmentOptions={departmentOptions} />
       )}
@@ -105,7 +116,7 @@ export function TerritorySection({
             <MapPin aria-hidden="true" className="mt-0.75 size-3.5 shrink-0" />
             <span className="min-w-0 wrap-anywhere">
               {coverageLabel ||
-                (isInternational ? 'Ingresá un país' : 'Seleccioná un departamento')}
+                (isInternational ? 'Seleccioná una región' : 'Seleccioná un departamento')}
             </span>
           </p>
         </div>

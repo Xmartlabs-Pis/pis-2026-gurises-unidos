@@ -9,6 +9,8 @@ export const TOPICS_ERROR_MESSAGE = 'Elegí temáticas válidas';
 export const MAX_PLACE_NAME_LENGTH = 50;
 export const LOCATIONS_ERROR_MESSAGE = 'Elegí departamentos válidos';
 export const CITIES_REQUIRED_MESSAGE = 'Ingresá al menos una ciudad';
+export const REGION_ERROR_MESSAGE = 'Seleccioná una región válida';
+export const REGION_REQUIRED_MESSAGE = 'Seleccioná una región';
 
 const placeName = z
   .string()
@@ -69,6 +71,14 @@ const baseProjectFormSchema = projectSchema.safeExtend({
     error: 'Seleccioná un alcance geográfico',
   }),
   countries: placeNames('No repitas países'),
+  region: z.preprocess(
+    (value) => (value === '' || value === undefined ? null : value),
+    z
+      .enum(['southAmerica', 'northAmerica', 'centralAmerica', 'otherRegions'], {
+        error: REGION_ERROR_MESSAGE,
+      })
+      .nullable()
+  ),
   locations: z
     .array(
       z.object(
@@ -117,9 +127,9 @@ export function buildProjectFormSchema(keys: readonly string[]) {
       message: 'Agregá al menos una ubicación',
       path: ['locations'],
     })
-    .refine((data) => data.geographicScope !== 'international' || data.countries.length > 0, {
-      message: 'Ingresá al menos un país',
-      path: ['countries'],
+    .refine((data) => data.geographicScope !== 'international' || data.region !== null, {
+      message: REGION_REQUIRED_MESSAGE,
+      path: ['region'],
     });
 }
 
@@ -134,7 +144,11 @@ export function splitProjectFormData(data: ProjectFormData, keys: readonly strin
   const nationalLocations = isNational ? locations : [];
 
   return {
-    projectData: { ...rest, countries: isNational ? [] : countries },
+    projectData: {
+      ...rest,
+      countries: isNational ? [] : countries,
+      region: isNational ? null : rest.region,
+    },
     beneficiaryData: { year, counts },
     topicIds,
     strategicLineIds,

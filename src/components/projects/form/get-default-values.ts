@@ -18,6 +18,7 @@ export function getDefaultValues(
     strategicLineIds: [],
     geographicScope: 'national',
     countries: [],
+    region: '',
     locations: [],
     generalObjective: '',
     publicDescription: '',

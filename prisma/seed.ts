@@ -478,6 +478,7 @@ async function main() {
           leadCoordinatorId: coordinator.id,
           geographicScope: 'national',
           countries: [],
+          region: null,
           generalObjective: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
           internalNotes: null,
