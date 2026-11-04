@@ -1,7 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getTerritoryLabel } from '@/lib/projects/location';
-import type { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
+import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 
 export const PUBLIC_PROJECTS_PAGE_SIZE = 12;
 
@@ -69,6 +69,24 @@ export async function getPublicDepartments(year: number): Promise<PublicDepartme
     id,
     name,
     projects: projects.map(toPublicProject),
+  }));
+}
+
+export async function getPublicRegions(year: number): Promise<PublicRegion[]> {
+  const projects = await prisma.project.findMany({
+    where: {
+      ...publicProjectWhere(year),
+      geographicScope: 'international',
+      region: { in: GEOGRAPHIC_REGIONS.map(({ region }) => region) },
+      topics: { some: { isActive: true, showPublicly: true } },
+    },
+    orderBy: PUBLIC_PROJECT_ORDER,
+    select: publicProjectSelect(year),
+  });
+
+  return GEOGRAPHIC_REGIONS.map((region) => ({
+    ...region,
+    projects: projects.filter((project) => project.region === region.region).map(toPublicProject),
   }));
 }
 

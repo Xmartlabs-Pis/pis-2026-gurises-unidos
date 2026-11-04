@@ -12,6 +12,7 @@ vi.mock('@/lib/contributors', () => ({ getContributors: vi.fn(async () => []) })
 vi.mock('@/lib/projects/public-projects', () => ({
   getPublishedTopics: vi.fn(async () => []),
   getPublicDepartments: vi.fn(async () => []),
+  getPublicRegions: vi.fn(async () => []),
 }));
 
 vi.mock('@/lib/metrics/queries', () => ({
