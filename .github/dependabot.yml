@@ -31,9 +31,6 @@ updates:
     groups:
       actions:
         patterns: ['*']
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
   - package-ecosystem: docker
     directory: /
     target-branch: development
