@@ -1,6 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { PublicFooter } from '@/components/public-footer';
+import { PublicGeographyProvider, usePublicGeography } from '@/components/public-geography';
+import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), pathname: '/' }));
 
@@ -67,5 +69,49 @@ test('viewing all topics from the listing scrolls to its top', () => {
   render(<PublicFooter topics={TOPICS} years={YEARS} year={2025} />);
   fireEvent.click(screen.getByRole('link', { name: 'Ver todos' }));
   expect(window.scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+  expect(navigation.push).not.toHaveBeenCalled();
+});
+
+function GeographySelection() {
+  const navigation = usePublicGeography();
+  return (
+    <output data-testid="geography-selection">
+      {navigation?.view}:{navigation?.region.id}
+    </output>
+  );
+}
+
+test('repeated geography links scroll and select the requested region before and after a year change', async () => {
+  const scrollIntoView = vi.fn();
+  function footer(year: number) {
+    return (
+      <PublicGeographyProvider>
+        <section
+          id="department-presence"
+          ref={(element) => {
+            if (element) element.scrollIntoView = scrollIntoView;
+          }}
+        >
+          <GeographySelection />
+        </section>
+        <PublicFooter topics={TOPICS} years={YEARS} year={year} />
+      </PublicGeographyProvider>
+    );
+  }
+  const { rerender } = render(footer(2025));
+  let clicks = 0;
+  for (const year of [2025, 2024]) {
+    rerender(footer(year));
+    for (const region of [...GEOGRAPHIC_REGIONS, GEOGRAPHIC_REGIONS[0]]) {
+      fireEvent.click(screen.getByRole('link', { name: region.name }));
+      expect(screen.getByTestId('geography-selection').textContent).toBe(`region:${region.id}`);
+      clicks += 1;
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(clicks));
+    }
+    fireEvent.click(screen.getByRole('link', { name: 'Uruguay' }));
+    expect(screen.getByTestId('geography-selection').textContent).toMatch(/^uruguay:/);
+    clicks += 1;
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(clicks));
+  }
   expect(navigation.push).not.toHaveBeenCalled();
 });

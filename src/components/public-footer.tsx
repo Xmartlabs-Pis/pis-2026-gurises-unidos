@@ -144,7 +144,21 @@ export function PublicFooter({
                     pathname === '/' ? '#department-presence' : `/?year=${year}#department-presence`
                   }
                   className={FOOTER_LINK_CLASS}
-                  onClick={() => navigation?.selectGeography(geography.id)}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                    navigation?.selectGeography(geography.id);
+                    if (pathname === '/') {
+                      event.preventDefault();
+                      requestAnimationFrame(() => {
+                        document.getElementById('department-presence')?.scrollIntoView({
+                          block: 'start',
+                          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                            ? 'instant'
+                            : 'smooth',
+                        });
+                      });
+                    }
+                  }}
                 >
                   {geography.name}
                 </Link>
