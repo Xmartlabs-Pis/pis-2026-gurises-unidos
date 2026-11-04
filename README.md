@@ -820,21 +820,61 @@ Abre dos tipos de PR:
   `package-lock.json`, sin esperar al calendario. Se activan en _Settings → Code security_ (alertas
   y security updates, las dos prendidas). Las alertas abiertas se ven en _Security → Dependabot_.
 - **Version updates**: una vez por semana revisa tres ecosistemas:
-  - `npm`: los minor y patch llegan agrupados en una PR para `dependencies` y otra para
-    `devDependencies`. Los majors llegan de a uno, porque pueden traer breaking changes y hay que
-    leer el changelog antes de aprobar.
-  - `github-actions`: todas las actions de `.github/workflows` en una sola PR.
+  - `npm`: una PR agrupada para `dependencies` y otra para `devDependencies`, solo minor y patch.
+  - `github-actions`: todas las actions de `.github/workflows` en una sola PR, majors incluidos.
   - `docker`: la imagen base del `Dockerfile`.
+
+En `npm` y `docker` los majors están ignorados (`ignore` con `version-update:semver-major`): suelen
+traer breaking changes y una migración (Prisma, Node), así que se hacen a mano en una PR propia,
+leyendo el changelog antes. Para ver qué majors hay disponibles: `npm outdated`.
+
+Las actions y la imagen de Docker usan tags de solo major (`@v4`, `node:24-alpine`), así que lo
+único que Dependabot puede proponerles es un major. Por eso en `github-actions` no se ignoran (si
+no, el bloque no abriría ninguna PR), y el bloque `docker` en la práctica no abre PRs: el salto de
+Node se hace a mano.
+
+El `ignore` no frena las security updates: Dependabot saltea los `ignore` por `update-types` para
+esas PRs, así que si el arreglo de una vulnerabilidad está en un major, la PR llega igual.
 
 Los títulos ya cumplen Conventional Commits, así que pasan el check y entran al CHANGELOG:
 `fix(deps): ...` para dependencias de producción (bump de patch en el release) y
 `chore(deps-dev): ...` / `chore(deps): ...` para dev, actions y Docker (no generan release).
 
 Las PRs de Dependabot se tratan como cualquier otra: 2 approvals, CI en verde y rama actualizada.
-Si se queda atrás de `development`, comentá `@dependabot rebase` en la PR; no la rebasees a mano,
-porque Dependabot deja de actualizar las PRs que tocó otra persona. Otros comandos útiles:
-`@dependabot recreate`, `@dependabot ignore this major version` y `@dependabot ignore this
-dependency`.
+El CI no corre `npm run build` ni los workflows de deploy, así que en las PRs de dependencias de
+producción o de actions conviene correr el build a mano y mirar el próximo deploy.
+
+### Comandos de Dependabot
+
+Se comentan en la PR de Dependabot, solos en el comentario:
+
+| Comando                                        | Qué hace                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| `@dependabot rebase`                           | Rebasea la PR sobre `development`. Usalo en vez de rebasear a mano. |
+| `@dependabot recreate`                         | Rehace la PR desde cero, pisando cambios manuales.                  |
+| `@dependabot ignore this major version`        | Cierra la PR y deja de proponer ese major del paquete.              |
+| `@dependabot ignore this minor version`        | Cierra la PR y deja de proponer ese minor del paquete.              |
+| `@dependabot ignore this patch version`        | Cierra la PR y deja de proponer esa versión puntual.                |
+| `@dependabot ignore this dependency`           | Cierra la PR y deja de actualizar el paquete.                       |
+| `@dependabot show <paquete> ignore conditions` | Muestra qué está ignorando para ese paquete.                        |
+
+Para cerrar o reabrir una PR de Dependabot se usa el botón de GitHub: `@dependabot close` y
+`@dependabot reopen` se dieron de baja.
+
+En las PRs agrupadas, los comandos apuntan a un paquete del grupo:
+
+- `@dependabot ignore <paquete>`: deja de actualizar el paquete.
+- `@dependabot ignore <paquete> major version` (o `minor version`, o `patch version`).
+- `@dependabot unignore <paquete>` (o `unignore *` para todo el grupo): borra los ignores puestos
+  con comandos (no toca los de `dependabot.yml`), cierra la PR y abre una nueva.
+
+No rebasees ni pushees a mano a una rama de Dependabot: deja de actualizar las PRs que tocó otra
+persona. Si un comando no responde a los pocos minutos (pasa con algunas security updates), cerrá
+la PR a mano.
+
+Una PR que quedó obsoleta (por ejemplo, porque otra PR ya actualizó el paquete) Dependabot la
+cierra sola recién la próxima vez que la revisa, no en el momento del merge. Para no esperar:
+`@dependabot recreate` (si ya está al día la cierra) o cerrala a mano.
 
 ### Vulnerabilidades sin PR
 
