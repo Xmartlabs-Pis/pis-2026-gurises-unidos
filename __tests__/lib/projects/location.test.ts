@@ -9,6 +9,7 @@ const NATIONAL = {
     { id: 3, name: 'Salto' },
   ],
   countries: [],
+  region: null,
   localities: [
     { departmentId: 2, city: 'Montevideo', neighborhood: 'Cerro Norte' },
     { departmentId: 1, city: 'Las Piedras', neighborhood: null },
@@ -20,6 +21,7 @@ const INTERNATIONAL = {
   geographicScope: 'international' as const,
   departments: [],
   countries: ['Argentina', 'Brasil'],
+  region: 'southAmerica' as const,
   localities: [],
 };
 
@@ -30,6 +32,11 @@ describe('getTerritoryLabel', () => {
 
   it('lists the countries of an international project', () => {
     expect(getTerritoryLabel(INTERNATIONAL)).toBe('Argentina, Brasil');
+  });
+
+  it('falls back to the region of an international project without countries', () => {
+    expect(getTerritoryLabel({ ...INTERNATIONAL, countries: [] })).toBe('Sudamérica');
+    expect(getTerritoryLabel({ ...INTERNATIONAL, countries: [], region: null })).toBe('');
   });
 });
 
@@ -45,6 +52,7 @@ describe('getLocationLines', () => {
 
   it('lists the countries of an international project', () => {
     expect(getLocationLines(INTERNATIONAL)).toEqual(['Argentina', 'Brasil']);
+    expect(getLocationLines({ ...INTERNATIONAL, countries: [] })).toEqual([]);
   });
 });
 

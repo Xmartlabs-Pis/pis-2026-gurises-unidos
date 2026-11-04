@@ -4,6 +4,7 @@ import {
   COUNTERPARTY_LABEL,
   GEOGRAPHIC_SCOPE_OPTIONS,
   INTENSITY_LABEL,
+  REGION_LABEL,
   STATUS_LABEL,
   ZONE_OPTIONS,
 } from '@/lib/project-display';
@@ -56,6 +57,7 @@ export const PROJECT_VALUE_LABELS: Record<string, Record<string, string>> = {
   geographicScope: Object.fromEntries(
     GEOGRAPHIC_SCOPE_OPTIONS.map(({ value, label }) => [value, label])
   ),
+  region: REGION_LABEL,
   zone: Object.fromEntries(ZONE_OPTIONS.map(({ value, label }) => [value, label])),
 };
 

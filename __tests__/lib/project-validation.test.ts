@@ -243,17 +243,52 @@ describe('geographic scope', () => {
         ...input,
         geographicScope: 'international',
         countries: ['Brasil'],
+        region: 'southAmerica',
         locations: [],
       }).success
     ).toBe(true);
   });
 
-  it('requires at least one country for an international project', () => {
+  it('accepts an international project without countries', () => {
     expect(
-      schema
-        .safeParse({ ...input, geographicScope: 'international', locations: [] })
-        .error?.flatten().fieldErrors.countries
-    ).toEqual(['Ingresá al menos un país']);
+      schema.parse({
+        ...input,
+        geographicScope: 'international',
+        countries: [],
+        region: 'otherRegions',
+        locations: [],
+      }).countries
+    ).toEqual([]);
+  });
+
+  it('accepts each region for an international project', () => {
+    for (const region of ['southAmerica', 'northAmerica', 'centralAmerica', 'otherRegions']) {
+      expect(
+        schema.parse({ ...input, geographicScope: 'international', region, locations: [] }).region
+      ).toBe(region);
+    }
+  });
+
+  it('requires a region for an international project', () => {
+    for (const region of [undefined, '']) {
+      expect(
+        schema
+          .safeParse({ ...input, geographicScope: 'international', region, locations: [] })
+          .error?.flatten().fieldErrors.region
+      ).toEqual(['Seleccioná una región']);
+    }
+  });
+
+  it('does not require a region for a national project', () => {
+    expect(schema.parse({ ...input, region: '' }).region).toBeNull();
+  });
+
+  it('rejects an invalid region', () => {
+    for (const region of ['europe', ['southAmerica', 'northAmerica']]) {
+      expect(schema.safeParse({ ...input, region }).error?.flatten().fieldErrors.region).toEqual([
+        'Seleccioná una región válida',
+      ]);
+    }
   });
 
   it('rejects a missing or invalid scope', () => {
@@ -325,6 +360,7 @@ describe('geographic scope', () => {
       schema.parse({
         ...input,
         countries: ['Brasil'],
+        region: 'southAmerica',
         locations: [
           { departmentId: '2', city: 'Pando', neighborhood: 'Centro' },
           { departmentId: '2', city: 'Las Piedras', neighborhood: '' },
@@ -339,7 +375,11 @@ describe('geographic scope', () => {
       { departmentId: 2, city: 'Las Piedras', neighborhood: null },
       { departmentId: 1, city: 'Salto', neighborhood: null },
     ]);
-    expect(projectData).toMatchObject({ geographicScope: 'national', countries: [] });
+    expect(projectData).toMatchObject({
+      geographicScope: 'national',
+      countries: [],
+      region: null,
+    });
     expect(projectData).not.toHaveProperty('locations');
   });
 
@@ -349,6 +389,7 @@ describe('geographic scope', () => {
         ...input,
         geographicScope: 'international',
         countries: ['Argentina', 'Brasil'],
+        region: 'southAmerica',
         locations: [{ departmentId: '1', city: 'Pando', neighborhood: 'Centro' }],
       }),
       BENEFICIARY_CATEGORY_KEYS
@@ -358,6 +399,7 @@ describe('geographic scope', () => {
     expect(projectData).toMatchObject({
       geographicScope: 'international',
       countries: ['Argentina', 'Brasil'],
+      region: 'southAmerica',
     });
   });
 });

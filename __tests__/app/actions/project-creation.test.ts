@@ -205,6 +205,7 @@ describe('createProject', () => {
         leadCoordinatorId: 1,
         geographicScope: 'national',
         countries: [],
+        region: null,
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
@@ -478,6 +479,7 @@ describe('createProject', () => {
         buildFormData({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
           locations: location('2', 'Pando'),
         })
       )
@@ -487,6 +489,7 @@ describe('createProject', () => {
       data: expect.objectContaining({
         geographicScope: 'international',
         countries: ['Argentina', 'Brasil'],
+        region: 'southAmerica',
         departments: { connect: [] },
         localities: { create: [] },
       }),
@@ -507,14 +510,33 @@ describe('createProject', () => {
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
-  test('requires a country for an international project without accessing the database', async () => {
+  test('requires a region for an international project without accessing the database', async () => {
     const result = await createProject(
       EMPTY_STATE,
-      buildFormData({ geographicScope: 'international' })
+      buildFormData({ geographicScope: 'international', countries: ['Argentina'] })
     );
 
-    expect(result.errors?.countries).toEqual(['Ingresá al menos un país']);
+    expect(result.errors?.region).toEqual(['Seleccioná una región']);
     expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('creates an international project with a region and no countries', async () => {
+    const { projectCreate } = setupTransaction();
+
+    await expect(
+      createProject(
+        EMPTY_STATE,
+        buildFormData({ geographicScope: 'international', region: 'otherRegions' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        geographicScope: 'international',
+        countries: [],
+        region: 'otherRegions',
+      }),
+    });
   });
 
   test('rejects departments that do not exist before creating the project', async () => {

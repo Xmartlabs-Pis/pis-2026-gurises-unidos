@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
-import type { GeographicScope } from '@/generated/prisma/enums';
+import type { GeographicScope, Region } from '@/generated/prisma/enums';
+import { REGION_LABEL } from '@/lib/project-display';
 
 export type ProjectLocality = {
   departmentId: number;
@@ -11,12 +12,14 @@ export type ProjectLocation = {
   geographicScope: GeographicScope;
   departments: { id: number; name: string }[];
   countries: string[];
+  region: Region | null;
   localities: ProjectLocality[];
 };
 
 export const PROJECT_TERRITORY_SELECT = {
   geographicScope: true,
   countries: true,
+  region: true,
   departments: { select: { id: true, name: true }, orderBy: { name: 'asc' } },
 } satisfies Prisma.ProjectSelect;
 
@@ -28,12 +31,19 @@ export const PROJECT_LOCATION_SELECT = {
   },
 } satisfies Prisma.ProjectSelect;
 
-type TerritoryInput = Pick<ProjectLocation, 'geographicScope' | 'countries'> & {
+type TerritoryInput = Pick<ProjectLocation, 'geographicScope' | 'countries' | 'region'> & {
   departments: { name: string }[];
 };
 
-export function getTerritoryNames({ geographicScope, departments, countries }: TerritoryInput) {
-  return geographicScope === 'international' ? countries : departments.map(({ name }) => name);
+export function getTerritoryNames({
+  geographicScope,
+  departments,
+  countries,
+  region,
+}: TerritoryInput) {
+  if (geographicScope === 'national') return departments.map(({ name }) => name);
+  if (countries.length > 0 || !region) return countries;
+  return [REGION_LABEL[region]];
 }
 
 export function getTerritoryLabel(location: TerritoryInput) {

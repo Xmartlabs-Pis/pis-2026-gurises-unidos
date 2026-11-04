@@ -37,6 +37,13 @@ enum GeographicScope {
   international
 }
 
+enum Region {
+  southAmerica
+  northAmerica
+  centralAmerica
+  otherRegions
+}
+
 enum Zone {
   city
   inland
@@ -154,6 +161,7 @@ model Project {
   leadCoordinatorId Int
   geographicScope   GeographicScope  @default(national)
   countries         String[]         @default([])
+  region            Region?
   zone              Zone?
   generalObjective  String?          @db.VarChar(500)
   publicDescription String?          @db.VarChar(1000)

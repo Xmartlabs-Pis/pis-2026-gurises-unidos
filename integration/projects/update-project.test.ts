@@ -263,6 +263,62 @@ describe('updateProject (integration)', () => {
     ]);
   });
 
+  test('persists and audits the region when the project becomes international', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Canadá'],
+          region: 'northAmerica',
+          locations: [],
+        })
+      ),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: ['Canadá'],
+      region: 'northAmerica',
+    });
+    const [log] = await auditLogsFor(projectId);
+    expect(log.details).toMatchObject({
+      changedFields: expect.arrayContaining(['geographicScope', 'countries', 'region']),
+      changes: expect.arrayContaining([{ field: 'region', from: null, to: 'northAmerica' }]),
+    });
+  });
+
+  test('clears the region when an international project becomes national', async () => {
+    const projectId = await createProjectFixture();
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        geographicScope: 'international',
+        countries: ['Chile'],
+        region: 'southAmerica',
+        departments: { set: [] },
+        localities: { deleteMany: {} },
+      },
+    });
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ region: 'southAmerica' })),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'national',
+      countries: [],
+      region: null,
+    });
+  });
+
   test('writes nothing when the submitted form matches the stored project', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);

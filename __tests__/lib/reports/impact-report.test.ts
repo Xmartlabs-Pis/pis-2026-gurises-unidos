@@ -62,6 +62,14 @@ describe('getImpactReportData', () => {
       {
         geographicScope: 'international',
         countries: ['Brasil'],
+        region: 'southAmerica',
+        topics: [],
+        departments: [],
+      },
+      {
+        geographicScope: 'international',
+        countries: [],
+        region: 'centralAmerica',
         topics: [],
         departments: [],
       },
@@ -96,7 +104,7 @@ describe('getImpactReportData', () => {
       { label: 'Montevideo', value: 2 },
       { label: 'Salto', value: 1 },
     ]);
-    expect(data?.internationalCountries).toEqual(['Brasil']);
+    expect(data?.internationalCountries).toEqual(['Brasil', 'Centroamérica']);
     expect(data?.categories).toEqual([
       { label: 'NNA directos', value: 40 },
       { label: 'Instituciones coordinadas', value: 3 },

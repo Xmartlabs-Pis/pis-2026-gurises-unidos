@@ -5,6 +5,7 @@ import { getCurrentYear } from '@/lib/metrics/year';
 import {
   COUNTERPARTY_LABEL,
   GEOGRAPHIC_SCOPE_OPTIONS,
+  REGION_LABEL,
   STATUS_LABEL,
   getIntensityLabel,
   sumBeneficiaries,
@@ -155,6 +156,13 @@ export async function getProjectSheetData(
       {
         label: 'Ubicaciones',
         value: project.geographicScope === 'national' ? getLocationLabel(project) : EMPTY_VALUE,
+      },
+      {
+        label: 'Región',
+        value:
+          project.geographicScope === 'international' && project.region
+            ? REGION_LABEL[project.region]
+            : EMPTY_VALUE,
       },
       { label: 'Visible en la web', value: project.showOnLanding ? 'Sí' : 'No' },
     ],

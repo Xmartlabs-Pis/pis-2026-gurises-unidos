@@ -4,6 +4,7 @@ import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { getMetricValues } from '@/lib/metrics/queries';
 import { getCurrentYear } from '@/lib/metrics/year';
 import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { getTerritoryNames } from '@/lib/projects/location';
 import { getReportProjectScope } from '@/lib/projects/permissions';
 import { formatDelta } from '@/lib/reports/format';
 
@@ -57,6 +58,7 @@ export async function getImpactReportData(
         select: {
           geographicScope: true,
           countries: true,
+          region: true,
           topics: { select: { name: true } },
           departments: { select: { name: true } },
         },
@@ -144,7 +146,7 @@ export async function getImpactReportData(
       ...new Set(
         projects
           .filter(({ geographicScope }) => geographicScope === 'international')
-          .flatMap(({ countries }) => countries)
+          .flatMap((project) => getTerritoryNames(project))
       ),
     ].sort((a, b) => a.localeCompare(b, 'es')),
   };

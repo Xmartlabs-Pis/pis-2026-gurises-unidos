@@ -14,6 +14,7 @@ const PROJECT = {
   leadCoordinatorId: 2,
   geographicScope: 'national' as const,
   countries: [],
+  region: null,
   departments: [{ id: 3 }, { id: 5 }, { id: 7 }],
   localities: [
     { departmentId: 5, city: 'Las Piedras', neighborhood: 'Centro' },
@@ -92,6 +93,7 @@ it('loads the stored location into form values grouped by department', () => {
   expect(projectToFormValues(PROJECT, 2026, BENEFICIARY_CATEGORY_OPTIONS)).toMatchObject({
     geographicScope: 'national',
     countries: [],
+    region: '',
     locations: [
       { departmentId: '3', city: 'Montevideo', neighborhood: '' },
       { departmentId: '5', city: 'Las Piedras', neighborhood: 'Centro' },
@@ -105,6 +107,7 @@ it('loads the stored location into form values grouped by department', () => {
         ...PROJECT,
         geographicScope: 'international',
         countries: ['Argentina'],
+        region: 'southAmerica',
         departments: [],
         localities: [],
       },
@@ -114,6 +117,7 @@ it('loads the stored location into form values grouped by department', () => {
   ).toMatchObject({
     geographicScope: 'international',
     countries: ['Argentina'],
+    region: 'southAmerica',
     locations: [],
   });
 });

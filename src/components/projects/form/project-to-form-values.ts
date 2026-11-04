@@ -44,6 +44,7 @@ export function projectToFormValues(
     leadCoordinatorId: String(project.leadCoordinatorId),
     geographicScope: project.geographicScope,
     countries: project.countries,
+    region: project.region ?? '',
     locations: toLocationFormValues(project.departments ?? [], project.localities ?? []),
     generalObjective: project.generalObjective ?? '',
     publicDescription: project.publicDescription ?? '',
