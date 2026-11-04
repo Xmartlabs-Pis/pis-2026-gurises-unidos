@@ -32,7 +32,7 @@
     "embla-carousel-react": "^8.6.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.43.0",
-    "next": "16.4.3",
+    "next": "16.4.5",
     "next-auth": "^5.0.0-beta.32",
     "react": "19.2.8",
     "react-day-picker": "^10.0.1",
@@ -58,7 +58,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.5",
     "jsdom": "^29.1.1",
     "prettier": "3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
@@ -79,6 +79,9 @@
     },
     "@ts-morph/common": {
       "minimatch": "^11.0.1"
+    },
+    "@react-email/ui": {
+      "next": "$next"
     }
   }
 }
