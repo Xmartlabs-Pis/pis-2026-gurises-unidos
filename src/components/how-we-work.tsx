@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { useTimedSelection } from '@/hooks/use-timed-selection';
 
 const LEVELS = [
@@ -46,8 +46,13 @@ export function HowWeWork() {
         id="work-level-panel"
         role="tabpanel"
         aria-labelledby={`work-level-${activeIndex}`}
-        className="pointer-events-none absolute inset-x-0 top-6 h-48 overflow-hidden max-lg:[clip-path:none]! sm:h-64 lg:pointer-events-auto lg:relative lg:top-0 lg:h-auto lg:min-h-full"
-        style={{ clipPath: `url(#${imageClipId})` }}
+        className="pointer-events-none absolute inset-x-0 top-0 h-48 overflow-hidden [clip-path:var(--work-image-mobile-clip)] sm:h-64 lg:pointer-events-auto lg:relative lg:h-auto lg:min-h-full lg:[clip-path:var(--work-image-desktop-clip)]"
+        style={
+          {
+            '--work-image-mobile-clip': `url(#${imageClipId}-mobile)`,
+            '--work-image-desktop-clip': `url(#${imageClipId})`,
+          } as CSSProperties
+        }
       >
         {LEVELS.map((level, index) => (
           <Image
@@ -57,7 +62,7 @@ export function HowWeWork() {
             aria-hidden={index !== activeIndex}
             fill
             sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
-            className={`object-cover transition-[opacity,transform] duration-700 motion-reduce:transition-none ${index === activeIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
+            className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === activeIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
           />
         ))}
         <div
@@ -66,17 +71,20 @@ export function HowWeWork() {
         />
         <div
           aria-hidden="true"
-          className="from-background via-background/40 pointer-events-none absolute inset-x-0 top-0 h-12 bg-linear-to-b to-transparent sm:h-16 lg:h-32"
+          className="from-background via-background/40 pointer-events-none absolute inset-x-0 top-0 hidden h-32 bg-linear-to-b to-transparent lg:block"
         />
         <div
           aria-hidden="true"
-          className="from-background/45 via-background/95 to-background pointer-events-none absolute inset-0 bg-linear-to-b from-30% via-80% lg:hidden"
+          className="via-background/95 to-background pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-30% via-80% lg:hidden"
         />
         <figcaption className="absolute inset-x-0 bottom-0 hidden px-6 pt-12 pb-10 text-sm text-white sm:px-10 lg:block">
           Acompañamiento {LEVELS[activeIndex].title.toLocaleLowerCase('es-UY')}
         </figcaption>
         <svg aria-hidden="true" width="0" height="0" className="pointer-events-none absolute">
           <defs>
+            <clipPath id={`${imageClipId}-mobile`} clipPathUnits="objectBoundingBox">
+              <path d="M0 .18 Q.5 0 1 0 V1 H0 Z" />
+            </clipPath>
             <clipPath id={imageClipId} clipPathUnits="objectBoundingBox">
               <path d="M0 0 H.99 Q1 .45 1 .985 Q.5 1.015 0 .955 Z" />
             </clipPath>
