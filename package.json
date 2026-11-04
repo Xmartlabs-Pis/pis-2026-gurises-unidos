@@ -55,7 +55,7 @@
     "@types/node": "^24.13.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@vitejs/plugin-react": "^5.2.0",
+    "@vitejs/plugin-react": "^6.1.2",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
