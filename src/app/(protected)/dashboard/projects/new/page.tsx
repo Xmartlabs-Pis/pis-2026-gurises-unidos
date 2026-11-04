@@ -1,14 +1,25 @@
+import { Suspense } from 'react';
 import { createProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
 import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { requireUser } from '@/lib/auth/require-user';
 import { ProjectForm } from '@/components/projects/form/project-form';
+import { ProjectFormSkeleton } from '@/components/projects/form/project-form-skeleton';
 import { getRandomProjectPlaceholder } from '@/lib/projects/project-placeholders';
+import type { UserRole } from '@/generated/prisma/enums';
 
 export default async function NewProjectPage() {
   const user = await requireUser();
 
+  return (
+    <Suspense fallback={<ProjectFormSkeleton />}>
+      <NewProjectForm user={user} />
+    </Suspense>
+  );
+}
+
+async function NewProjectForm({ user }: { user: { id: number; role: UserRole } }) {
   const [coordinators, departments, topics, strategicLines, beneficiaryCategories] =
     await Promise.all([
       prisma.user.findMany({

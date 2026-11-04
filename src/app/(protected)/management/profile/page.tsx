@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { PageHeader } from '@/components/layout/page-header';
+import { ProfileSkeleton } from '@/components/profile/profile-skeleton';
 import { ProfileForm } from '@/components/profile-form';
 import prisma from '@/lib/prisma';
 
@@ -12,6 +14,23 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
+  return (
+    <div className="bg-primary-foreground flex w-full flex-1 flex-col">
+      <PageHeader
+        className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
+        eyebrow="Cuenta"
+        title="Mi perfil"
+        description="Consultá y actualizá tus datos personales."
+      />
+
+      <Suspense fallback={<ProfileSkeleton />}>
+        <ProfileContent userId={userId} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function ProfileContent({ userId }: { userId: number }) {
   const profile = await prisma.user.findFirst({
     where: {
       id: userId,
@@ -35,16 +54,5 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
-  return (
-    <div className="bg-primary-foreground flex w-full flex-1 flex-col">
-      <PageHeader
-        className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
-        eyebrow="Cuenta"
-        title="Mi perfil"
-        description="Consultá y actualizá tus datos personales."
-      />
-
-      <ProfileForm profile={profile} />
-    </div>
-  );
+  return <ProfileForm profile={profile} />;
 }
