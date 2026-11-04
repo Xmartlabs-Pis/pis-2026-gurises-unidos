@@ -129,11 +129,11 @@ async function validateUniqueName(
 async function hasDirectChildrenInOtherYears(
   tx: Prisma.TransactionClient,
   projectId: number,
-  year: number
+  years: number[]
 ) {
   const value = await tx.projectBeneficiaryValue.findFirst({
     where: {
-      beneficiary: { projectId, year: { not: year } },
+      beneficiary: { projectId, year: { notIn: years } },
       category: { key: DIRECT_CHILDREN_KEY },
       value: { gt: 0 },
     },
@@ -223,10 +223,11 @@ export async function createProject(
     await discardOwnedUnusedCover(uploadedPath, user.id);
     return { errors: parsed.errors };
   }
-  const { keys, beneficiaryData } = parsed;
+  const { keys } = parsed;
+  const beneficiaryYears = [parsed.beneficiaryData, ...parsed.beneficiaryDraftData];
   const resolved = resolveIntensity(
     parsed.projectData.intensity,
-    beneficiaryData.counts[DIRECT_CHILDREN_KEY] > 0
+    beneficiaryYears.some(({ counts }) => counts[DIRECT_CHILDREN_KEY] > 0)
   );
   if ('error' in resolved) {
     await discardOwnedUnusedCover(uploadedPath, user.id);
@@ -269,24 +270,23 @@ export async function createProject(
           entity: 'project',
           entityId: project.id,
         });
-        const beneficiary = await tx.projectBeneficiary.create({
-          data: {
-            year: beneficiaryData.year,
-            projectId: project.id,
+        for (const { year, counts } of beneficiaryYears) {
+          const beneficiary = await tx.projectBeneficiary.create({
+            data: {
+              year,
+              projectId: project.id,
+              authorId: user.id,
+              values: { create: toBeneficiaryValuesCreate(counts) },
+            },
+          });
+          await logAudit(tx, {
             authorId: user.id,
-            values: { create: toBeneficiaryValuesCreate(beneficiaryData.counts) },
-          },
-        });
-        await logAudit(tx, {
-          authorId: user.id,
-          action: 'creation',
-          entity: 'beneficiary',
-          entityId: beneficiary.id,
-          details: {
-            year: beneficiaryData.year,
-            values: beneficiaryData.counts,
-          },
-        });
+            action: 'creation',
+            entity: 'beneficiary',
+            entityId: beneficiary.id,
+            details: { year, values: counts },
+          });
+        }
         return { projectId: project.id };
       },
       { maxWait: 10_000, timeout: 30_000 }
@@ -328,11 +328,13 @@ export async function updateProject(
     keys,
     projectData,
     beneficiaryData,
+    beneficiaryDraftData,
     topicIds,
     strategicLineIds,
     departmentIds,
     localities,
   } = parsed;
+  const beneficiaryYears = [beneficiaryData, ...beneficiaryDraftData];
   let previousCover: string | null = null;
   try {
     const requestedCover =
@@ -401,8 +403,12 @@ export async function updateProject(
         }
         const resolved = resolveIntensity(
           projectData.intensity,
-          beneficiaryData.counts[DIRECT_CHILDREN_KEY] > 0 ||
-            (await hasDirectChildrenInOtherYears(tx, projectId, beneficiaryData.year))
+          beneficiaryYears.some(({ counts }) => counts[DIRECT_CHILDREN_KEY] > 0) ||
+            (await hasDirectChildrenInOtherYears(
+              tx,
+              projectId,
+              beneficiaryYears.map(({ year }) => year)
+            ))
         );
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
@@ -451,44 +457,46 @@ export async function updateProject(
             },
           });
         }
-        const where = { projectId_year: { projectId, year: beneficiaryData.year } };
-        const existing = await tx.projectBeneficiary.findUnique({
-          where,
-          select: BENEFICIARY_VALUES_SELECT,
-        });
-        const previousCounts = existing && toBeneficiaryCounts(existing.values);
-        const changes = keys
-          .map((key) => ({
-            field: key,
-            from: previousCounts?.[key] ?? 0,
-            to: beneficiaryData.counts[key],
-          }))
-          .filter(({ from, to }) => from !== to);
-        if (!existing || changes.length) {
-          await tx.projectBeneficiaryValue.deleteMany({
-            where: formCategoryValuesWhere(projectId, beneficiaryData.year, keys),
-          });
-          const beneficiary = await tx.projectBeneficiary.upsert({
+        for (const { year, counts } of beneficiaryYears) {
+          const where = { projectId_year: { projectId, year } };
+          const existing = await tx.projectBeneficiary.findUnique({
             where,
-            create: {
-              year: beneficiaryData.year,
-              projectId,
-              authorId: user.id,
-              values: { create: toBeneficiaryValuesCreate(beneficiaryData.counts) },
-            },
-            update: {
-              authorId: user.id,
-              recordedAt: new Date(),
-              values: { create: toBeneficiaryValuesCreate(beneficiaryData.counts) },
-            },
+            select: BENEFICIARY_VALUES_SELECT,
           });
-          await logAudit(tx, {
-            authorId: user.id,
-            action: existing ? 'update' : 'creation',
-            entity: 'beneficiary',
-            entityId: beneficiary.id,
-            details: { year: beneficiaryData.year, changes },
-          });
+          const previousCounts = existing && toBeneficiaryCounts(existing.values);
+          const changes = keys
+            .map((key) => ({
+              field: key,
+              from: previousCounts?.[key] ?? 0,
+              to: counts[key],
+            }))
+            .filter(({ from, to }) => from !== to);
+          if (!existing || changes.length) {
+            await tx.projectBeneficiaryValue.deleteMany({
+              where: formCategoryValuesWhere(projectId, year, keys),
+            });
+            const beneficiary = await tx.projectBeneficiary.upsert({
+              where,
+              create: {
+                year,
+                projectId,
+                authorId: user.id,
+                values: { create: toBeneficiaryValuesCreate(counts) },
+              },
+              update: {
+                authorId: user.id,
+                recordedAt: new Date(),
+                values: { create: toBeneficiaryValuesCreate(counts) },
+              },
+            });
+            await logAudit(tx, {
+              authorId: user.id,
+              action: existing ? 'update' : 'creation',
+              entity: 'beneficiary',
+              entityId: beneficiary.id,
+              details: { year, changes },
+            });
+          }
         }
         return null;
       },

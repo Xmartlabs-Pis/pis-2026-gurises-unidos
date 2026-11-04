@@ -157,6 +157,73 @@ describe('updateProject (integration)', () => {
     }
   );
 
+  test('persists and audits the beneficiaries edited in every year', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          year: '2023',
+          families: '20',
+          beneficiaryDrafts: [
+            JSON.stringify({ year: '2024', families: '99' }),
+            JSON.stringify({ year: '2022', families: '7' }),
+          ],
+        })
+      ),
+      projectId
+    );
+
+    const { projectBeneficiaries } = await loadProject(projectId);
+    expect(projectBeneficiaries.map(({ year, families }) => [year, families])).toEqual([
+      [2022, 7],
+      [2023, 20],
+      [2024, 99],
+    ]);
+    const audits = await auditLogsFor(projectId);
+    expect(audits.filter(({ entity }) => entity === 'beneficiary')).toHaveLength(3);
+  });
+
+  test('clears intensity when drafts remove the last direct children', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          year: '2023',
+          intensity: '',
+          directChildrenAdolescents: '0',
+          beneficiaryDrafts: [JSON.stringify({ year: '2024', families: '2' })],
+        })
+      ),
+      projectId
+    );
+
+    expect((await loadProject(projectId)).intensity).toBeNull();
+  });
+
+  test('rejects drafts outside the project period without changing any data', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ beneficiaryDrafts: [JSON.stringify({ year: '2019', families: '7' })] })
+    );
+
+    expect(result.errors?.beneficiaryDrafts).toHaveLength(1);
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
   test('rejects marking as inactive before stored beneficiary years without changing any data', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);

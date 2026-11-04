@@ -9,12 +9,15 @@ export type ProjectLocationFormValue = {
   neighborhood: string;
 };
 
+export type BeneficiaryYearDraft = { year: string } & { [K in BeneficiaryFieldName]?: string };
+
 export type ProjectFormValues = Omit<
   { [K in keyof ProjectFormData]: string },
-  ProjectFormListField | 'locations'
+  ProjectFormListField | 'locations' | 'beneficiaryDrafts'
 > & {
   coverPhotoUrl: string | null;
   locations: ProjectLocationFormValue[];
+  beneficiaryDrafts: BeneficiaryYearDraft[];
 } & { [K in ProjectFormListField]: string[] } & {
   [K in BeneficiaryFieldName]?: string;
 };

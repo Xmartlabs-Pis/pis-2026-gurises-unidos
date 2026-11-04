@@ -678,7 +678,7 @@ describe('updateProject persistence', () => {
     ).rejects.toThrow('Redirect: /dashboard/projects/10');
     expect(mocks.findDirectChildrenValue).toHaveBeenCalledWith({
       where: {
-        beneficiary: { projectId: 10, year: { not: 2024 } },
+        beneficiary: { projectId: 10, year: { notIn: [2024] } },
         category: { key: 'directChildrenAdolescents' },
         value: { gt: 0 },
       },

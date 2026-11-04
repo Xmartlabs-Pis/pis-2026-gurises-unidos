@@ -403,3 +403,48 @@ describe('geographic scope', () => {
     });
   });
 });
+
+describe('beneficiary drafts', () => {
+  const schema = buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS);
+  const form = {
+    ...BASE_PROJECT,
+    status: 'active',
+    endYear: '',
+    intensity: '',
+    year: '2024',
+    topicIds: ['1'],
+    strategicLineIds: ['1'],
+  };
+
+  it('splits drafts into counts per year', () => {
+    const parsed = schema.parse({ ...form, beneficiaryDrafts: [{ year: '2023', families: '7' }] });
+    const [draft] = splitProjectFormData(parsed, BENEFICIARY_CATEGORY_KEYS).beneficiaryDraftData;
+    expect(draft.year).toBe(2023);
+    expect(draft.counts.families).toBe(7);
+    expect(draft.counts.youth18To29).toBe(0);
+  });
+
+  it.each([
+    ['before the start year', form, '2019'],
+    ['after the end year', { ...form, status: 'inactive', endYear: '2024' }, '2025'],
+  ])('rejects a draft %s', (_case, values, year) => {
+    const result = schema.safeParse({ ...values, beneficiaryDrafts: [{ year }] });
+    expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toHaveLength(1);
+  });
+
+  it('rejects invalid counts', () => {
+    const result = schema.safeParse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2022', families: '-1' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('requires intensity when a draft has direct children', () => {
+    const result = schema.safeParse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2022', directChildrenAdolescents: '1' }],
+    });
+    expect(result.error?.flatten().fieldErrors.intensity).toEqual(['Elegí una intensidad']);
+  });
+});
