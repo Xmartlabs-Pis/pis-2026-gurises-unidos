@@ -43,7 +43,7 @@ export function PublicFooter({
   function yearHref(value: number) {
     const params = new URLSearchParams(searchParams.toString());
     params.set('year', String(value));
-    return `/?${params.toString()}`;
+    return `${pathname}?${params.toString()}`;
   }
 
   return (

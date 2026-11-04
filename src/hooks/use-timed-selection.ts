@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 export function useTimedSelection(count: number, duration = 12000, initialIndex = 0) {
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [cycle, setCycle] = useState(0);
   const [isInView, setIsInView] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
+  const [isPointerWithin, setIsPointerWithin] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLSpanElement>(null);
   const elapsedRef = useRef(0);
-  const isRunning = isInView && isDocumentVisible;
+  const pointerTargetRef = useRef<HTMLElement | null>(null);
+  const isRunning =
+    isInView && isDocumentVisible && !isPointerWithin && !isPaused && !prefersReducedMotion;
 
   useEffect(() => {
     const element = sectionRef.current;
@@ -22,15 +27,35 @@ export function useTimedSelection(count: number, duration = 12000, initialIndex 
     const updateVisibility = () => setIsDocumentVisible(!document.hidden);
     updateVisibility();
     document.addEventListener('visibilitychange', updateVisibility);
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setPrefersReducedMotion(motionPreference.matches);
+    updateMotionPreference();
+    motionPreference.addEventListener('change', updateMotionPreference);
+    const updateInteraction = () => {
+      pointerTargetRef.current = element.querySelector<HTMLElement>(
+        '[data-timed-selection-surface]:hover'
+      );
+      setIsPointerWithin(
+        Boolean(pointerTargetRef.current?.hasAttribute('data-timed-selection-pause'))
+      );
+    };
+    updateInteraction();
     return () => {
       observer.disconnect();
       document.removeEventListener('visibilitychange', updateVisibility);
+      motionPreference.removeEventListener('change', updateMotionPreference);
     };
   }, []);
 
   useEffect(() => {
     elapsedRef.current = 0;
     if (progressRef.current) progressRef.current.style.transform = 'scaleX(0)';
+    const frameId = requestAnimationFrame(() => {
+      setIsPointerWithin(
+        Boolean(pointerTargetRef.current?.hasAttribute('data-timed-selection-pause'))
+      );
+    });
+    return () => cancelAnimationFrame(frameId);
   }, [activeIndex, cycle]);
 
   useEffect(() => {
@@ -77,5 +102,35 @@ export function useTimedSelection(count: number, duration = 12000, initialIndex 
       [nextIndex]?.focus();
   }
 
-  return { activeIndex, sectionRef, progressRef, selectIndex, handleKeyDown };
+  function togglePause() {
+    setIsPaused((paused) => !paused);
+  }
+
+  const hoverPauseProps = {
+    'data-timed-selection-pause': '',
+    'data-timed-selection-surface': '',
+    onPointerEnter: (event: PointerEvent<HTMLElement>) => {
+      pointerTargetRef.current = event.currentTarget;
+      setIsPointerWithin(event.currentTarget.hasAttribute('data-timed-selection-pause'));
+    },
+    onPointerLeave: () => {
+      pointerTargetRef.current = null;
+      setIsPointerWithin(false);
+    },
+    onPointerCancel: () => {
+      pointerTargetRef.current = null;
+      setIsPointerWithin(false);
+    },
+  };
+
+  return {
+    activeIndex,
+    sectionRef,
+    progressRef,
+    selectIndex,
+    handleKeyDown,
+    hoverPauseProps,
+    isPaused,
+    togglePause,
+  };
 }

@@ -72,6 +72,15 @@ test('viewing all topics from the listing scrolls to its top', () => {
   expect(navigation.push).not.toHaveBeenCalled();
 });
 
+test.each(['/', '/projects'])('changing the footer year stays on %s', (pathname) => {
+  navigation.pathname = pathname;
+  render(<PublicFooter topics={TOPICS} years={YEARS} year={2025} />);
+  const link = screen.getByRole('link', { name: '2024' });
+  expect(link.getAttribute('href')).toBe(`${pathname}?year=2024`);
+  fireEvent.click(link);
+  expect(navigation.push).toHaveBeenCalledWith(`${pathname}?year=2024`, { scroll: false });
+});
+
 function GeographySelection() {
   const navigation = usePublicGeography();
   return (

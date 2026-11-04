@@ -6,6 +6,7 @@ import { useTimedSelection } from '@/hooks/use-timed-selection';
 import { GeographyProjectCarousel } from '@/components/map/geography-project-carousel';
 import type { PublicRegion } from '@/lib/projects/public-projects';
 import { usePublicGeography } from '@/components/public-geography';
+import { TimedSelectionControl } from '@/components/timed-selection-control';
 
 export function RegionExplorer({ regions, year }: { regions: PublicRegion[]; year: number }) {
   const navigation = usePublicGeography();
@@ -33,11 +34,16 @@ function RegionExplorerContent({
   initialIndex: number;
 }) {
   const id = useId();
-  const { activeIndex, sectionRef, progressRef, selectIndex, handleKeyDown } = useTimedSelection(
-    regions.length,
-    12000,
-    initialIndex
-  );
+  const {
+    activeIndex,
+    sectionRef,
+    progressRef,
+    selectIndex,
+    handleKeyDown,
+    hoverPauseProps,
+    isPaused,
+    togglePause,
+  } = useTimedSelection(regions.length, 12000, initialIndex);
   const selected = regions[activeIndex];
   if (!selected) return null;
 
@@ -47,9 +53,12 @@ function RegionExplorerContent({
       className="grid w-full items-start gap-14 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:gap-28"
     >
       <div className="flex min-w-0 flex-col gap-6">
-        <p className="text-muted-foreground text-sm leading-5">
-          Trabajamos junto a comunidades y organizaciones de la región y otras geografías.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-muted-foreground text-sm leading-5">
+            Trabajamos junto a comunidades y organizaciones de la región y otras geografías.
+          </p>
+          <TimedSelectionControl isPaused={isPaused} onToggle={togglePause} label="regiones" />
+        </div>
         <div
           role="tablist"
           aria-label="Regiones de trabajo"
@@ -59,6 +68,8 @@ function RegionExplorerContent({
           {regions.map((region, index) => (
             <button
               key={region.id}
+              {...hoverPauseProps}
+              data-timed-selection-pause={index === activeIndex ? '' : undefined}
               id={`${id}-${region.id}`}
               type="button"
               role="tab"
@@ -107,6 +118,7 @@ function RegionExplorerContent({
         </div>
       </div>
       <div
+        {...hoverPauseProps}
         id={`${id}-projects`}
         role="tabpanel"
         aria-labelledby={`${id}-${selected.id}`}

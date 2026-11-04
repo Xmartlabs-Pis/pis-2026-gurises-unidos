@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useId, type CSSProperties } from 'react';
 import { useTimedSelection } from '@/hooks/use-timed-selection';
+import { TimedSelectionControl } from '@/components/timed-selection-control';
 
 const LEVELS = [
   {
@@ -33,9 +34,16 @@ const LEVELS = [
 
 export function HowWeWork() {
   const imageClipId = useId();
-  const { activeIndex, sectionRef, progressRef, selectIndex, handleKeyDown } = useTimedSelection(
-    LEVELS.length
-  );
+  const {
+    activeIndex,
+    sectionRef,
+    progressRef,
+    selectIndex,
+    handleKeyDown,
+    hoverPauseProps,
+    isPaused,
+    togglePause,
+  } = useTimedSelection(LEVELS.length);
 
   return (
     <div
@@ -43,10 +51,11 @@ export function HowWeWork() {
       className="relative mx-auto grid w-full max-w-360 lg:min-h-150 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]"
     >
       <figure
+        {...hoverPauseProps}
         id="work-level-panel"
         role="tabpanel"
         aria-labelledby={`work-level-${activeIndex}`}
-        className="pointer-events-none absolute inset-x-0 top-0 h-48 overflow-hidden [clip-path:var(--work-image-mobile-clip)] sm:h-64 lg:pointer-events-auto lg:relative lg:h-auto lg:min-h-full lg:[clip-path:var(--work-image-desktop-clip)]"
+        className="absolute inset-x-0 top-0 h-48 overflow-hidden [clip-path:var(--work-image-mobile-clip)] sm:h-64 lg:relative lg:h-auto lg:min-h-full lg:[clip-path:var(--work-image-desktop-clip)]"
         style={
           {
             '--work-image-mobile-clip': `url(#${imageClipId}-mobile)`,
@@ -91,7 +100,7 @@ export function HowWeWork() {
           </defs>
         </svg>
       </figure>
-      <div className="relative flex min-w-0 flex-col gap-6 px-6 pt-28 pb-10 sm:pt-40 lg:px-12 lg:py-14">
+      <div className="pointer-events-none relative flex min-w-0 flex-col gap-6 px-6 pt-28 pb-10 sm:pt-40 lg:pointer-events-auto lg:px-12 lg:py-14">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
             <h2 className="text-foreground text-2xl leading-8 font-bold">Cómo trabajamos</h2>
@@ -99,6 +108,11 @@ export function HowWeWork() {
               Acompañamos en cuatro niveles que se potencian entre sí
             </p>
           </div>
+          <TimedSelectionControl
+            isPaused={isPaused}
+            onToggle={togglePause}
+            label="Cómo trabajamos"
+          />
         </div>
         <div
           role="tablist"
@@ -109,6 +123,8 @@ export function HowWeWork() {
           {LEVELS.map((level, index) => (
             <button
               key={level.title}
+              {...hoverPauseProps}
+              data-timed-selection-pause={index === activeIndex ? '' : undefined}
               id={`work-level-${index}`}
               type="button"
               role="tab"
@@ -118,7 +134,7 @@ export function HowWeWork() {
               tabIndex={index === activeIndex ? 0 : -1}
               onClick={() => selectIndex(index)}
               onKeyDown={(event) => handleKeyDown(event, index)}
-              className={`border-border focus-visible:outline-foreground relative flex flex-col overflow-hidden rounded-lg border px-5 py-4 text-left transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 ${index === activeIndex ? 'bg-background lg:bg-white' : 'bg-white'}`}
+              className={`border-border focus-visible:outline-foreground pointer-events-auto relative flex flex-col overflow-hidden rounded-lg border px-5 py-4 text-left transition-colors duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 ${index === activeIndex ? 'bg-background lg:bg-white' : 'bg-white'}`}
             >
               <span className="lg:text-foreground text-xl leading-7 font-medium text-neutral-950">
                 {level.title}

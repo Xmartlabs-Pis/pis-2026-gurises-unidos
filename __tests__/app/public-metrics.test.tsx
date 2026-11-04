@@ -20,9 +20,6 @@ vi.mock('@/lib/metrics/queries', () => ({
   getMetricSettings: vi.fn(),
   getMetricValues: vi.fn(),
 }));
-vi.mock('@/lib/projects/department-project-counts', () => ({
-  getDepartmentProjectCounts: vi.fn(async () => []),
-}));
 vi.mock('@/components/projects/projects-by-topic', () => ({ ProjectsByTopic: vi.fn(() => null) }));
 vi.mock('@/components/how-we-work', () => ({ HowWeWork: () => null }));
 vi.mock('next/navigation', () => ({

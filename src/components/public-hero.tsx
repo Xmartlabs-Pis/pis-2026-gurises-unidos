@@ -5,18 +5,20 @@ export function PublicHero({
   year,
   years: publishedYears,
   title,
+  action,
   children,
 }: {
   year: number;
   years: number[];
   title: ReactNode;
+  action?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <section className="public-hero w-full pt-16">
       <div className="mx-auto w-full max-w-360 px-4 pt-12 pb-20 sm:px-6 lg:px-16 lg:pt-14 lg:pb-24">
         <div className="flex w-full flex-col gap-3">
-          <div className="flex items-center">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             {publishedYears.length > 1 ? (
               <MetricsYearSelect
                 year={year}
@@ -29,6 +31,7 @@ export function PublicHero({
                 {year}
               </span>
             )}
+            {action}
           </div>
           <h1 className="max-w-122 text-4xl leading-tight font-bold tracking-tight text-white lg:text-5xl">
             {title}

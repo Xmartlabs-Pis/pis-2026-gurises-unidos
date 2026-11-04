@@ -4,6 +4,9 @@ import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 import { getPublishedYears } from '@/lib/metrics/queries';
 import { resolveYearParam } from '@/lib/metrics/year';
 import { getPublishedTopics } from '@/lib/projects/public-projects';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button';
 
 export const metadata = { title: 'Todos nuestros proyectos | Gurises Unidos' };
 
@@ -24,6 +27,19 @@ export default async function ProjectsPage({
       <PublicHero
         year={year}
         years={years}
+        action={
+          <Link
+            href={`/?year=${year}`}
+            className={buttonVariants({
+              variant: 'outline',
+              className:
+                'h-9 border-white/30 bg-transparent px-3 text-white hover:bg-white/10 hover:text-white',
+            })}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Volver al informe
+          </Link>
+        }
         title={
           <>
             Todos nuestros <span className="block">proyectos</span>

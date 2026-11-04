@@ -28,6 +28,9 @@ test('renders the public project view with the requested published year and shar
   expect(screen.getByText('Projects for 2025')).toBeDefined();
   expect(ProjectsByTopic).toHaveBeenCalledWith({ year: 2025 });
   expect(getPublishedTopics).toHaveBeenCalledWith(2025);
+  expect(screen.getByRole('link', { name: 'Volver al informe' }).getAttribute('href')).toBe(
+    '/?year=2025'
+  );
   expect(screen.getByRole('link', { name: 'Education' }).getAttribute('href')).toBe(
     '/projects?year=2025#topic-4'
   );
