@@ -187,6 +187,21 @@ describe('createProject', () => {
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
+  test('assigns the tenth color placeholder when creating a project without a cover', async () => {
+    const { projectCreate } = setupTransaction();
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.999999);
+    try {
+      await expect(createProject(EMPTY_STATE, buildFormData())).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ coverPhoto: '/images/project-placeholders/10.webp' }),
+      });
+    } finally {
+      random.mockRestore();
+    }
+  });
+
   test('creates the project and its beneficiary record in one transaction, then redirects', async () => {
     const { projectCreate, beneficiaryCreate } = setupTransaction();
 
@@ -210,7 +225,7 @@ describe('createProject', () => {
         publicDescription: null,
         internalNotes: null,
         showOnLanding: true,
-        coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
+        coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
         createdBy: 7,
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
@@ -304,7 +319,7 @@ describe('createProject', () => {
       );
       expect(projectCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
+          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
         }),
       });
     } finally {

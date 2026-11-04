@@ -35,7 +35,7 @@ function RegionExplorerContent({
   const id = useId();
   const { activeIndex, sectionRef, progressRef, selectIndex, handleKeyDown } = useTimedSelection(
     regions.length,
-    9000,
+    12000,
     initialIndex
   );
   const selected = regions[activeIndex];

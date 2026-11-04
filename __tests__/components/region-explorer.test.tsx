@@ -53,7 +53,12 @@ const REGIONS = GEOGRAPHIC_REGIONS.map((region, index) => ({
 test('cycles through all four regional carousels and returns to the first', () => {
   render(<RegionExplorer regions={REGIONS} year={2026} />);
   for (const index of [1, 2, 3, 0]) {
-    act(() => vi.advanceTimersByTime(9100));
+    const previousRegion = screen
+      .getAllByRole('tab')
+      .find((tab) => tab.getAttribute('aria-selected') === 'true');
+    act(() => vi.advanceTimersByTime(11900));
+    expect(previousRegion?.getAttribute('aria-selected')).toBe('true');
+    act(() => vi.advanceTimersByTime(200));
     expect(
       screen.getByRole('tab', { name: REGIONS[index].name }).getAttribute('aria-selected')
     ).toBe('true');
@@ -74,7 +79,7 @@ test('clicking a region immediately filters its carousel and restarts the countd
   expect(screen.getByRole('tab', { name: 'Otras geografías' }).getAttribute('aria-selected')).toBe(
     'true'
   );
-  act(() => vi.advanceTimersByTime(3200));
+  act(() => vi.advanceTimersByTime(6200));
   expect(screen.getByRole('tab', { name: 'América del Sur' }).getAttribute('aria-selected')).toBe(
     'true'
   );

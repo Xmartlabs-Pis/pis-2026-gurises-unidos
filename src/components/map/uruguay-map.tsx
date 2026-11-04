@@ -3,7 +3,6 @@
 import 'leaflet/dist/leaflet.css';
 import type { Feature } from 'geojson';
 import {
-  Browser,
   geoJSON,
   type GeoJSON as LeafletGeoJSON,
   type LatLngBounds,
@@ -13,12 +12,10 @@ import {
   svg,
 } from 'leaflet';
 import { useEffect, useMemo, useRef, type RefObject } from 'react';
-import { GeoJSON, MapContainer, ZoomControl, useMap } from 'react-leaflet';
+import { GeoJSON, MapContainer, useMap } from 'react-leaflet';
 import { getUruguayMapData } from '@/lib/map/uruguay-map';
 
 const FIT_PADDING_PX = 8;
-const MAX_ZOOM_LEVELS_IN = 3;
-const BOUNDS_PADDING_RATIO = 0.4;
 const RENDER_PADDING_RATIO = 1;
 
 export type UruguayMapProps = {
@@ -44,7 +41,7 @@ function FitToDepartments({ bounds }: { bounds: LatLngBounds }) {
     const fit = () => {
       const zoom = map.getBoundsZoom(bounds, false, point(FIT_PADDING_PX, FIT_PADDING_PX));
       map.setMinZoom(zoom);
-      map.setMaxZoom(zoom + MAX_ZOOM_LEVELS_IN);
+      map.setMaxZoom(zoom);
       map.setView(bounds.getCenter(), zoom, { animate: false });
     };
     fit();
@@ -130,7 +127,6 @@ export default function UruguayMap({
   );
   const geoJsonRef = useRef<LeafletGeoJSON>(null);
   const bounds = useMemo(() => geoJSON(departments).getBounds(), [departments]);
-  const maxBounds = useMemo(() => bounds.pad(BOUNDS_PADDING_RATIO), [bounds]);
   const renderer = useMemo(() => svg({ padding: RENDER_PADDING_RATIO }), []);
 
   return (
@@ -141,17 +137,14 @@ export default function UruguayMap({
       renderer={renderer}
       zoomControl={false}
       attributionControl={false}
-      dragging={!Browser.mobile}
-      maxBounds={maxBounds}
-      maxBoundsViscosity={0.5}
+      dragging={false}
       scrollWheelZoom={false}
       doubleClickZoom={false}
-      touchZoom={true}
+      touchZoom={false}
       boxZoom={false}
       keyboard={false}
       className="department-map h-full w-full"
     >
-      <ZoomControl position="topleft" zoomInTitle="Acercar" zoomOutTitle="Alejar" />
       <GeoJSON
         ref={geoJsonRef}
         data={departments}

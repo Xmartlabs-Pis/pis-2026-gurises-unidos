@@ -37,7 +37,10 @@ test('automatically visits all four levels and loops to the first', () => {
   render(<HowWeWork />);
   expect(selectedTitle()).toContain('Individual');
   for (const title of ['Familiar', 'Institucional', 'Comunitario', 'Individual']) {
-    advance(9100);
+    const previousTitle = selectedTitle();
+    advance(11900);
+    expect(selectedTitle()).toBe(previousTitle);
+    advance(200);
     expect(selectedTitle()).toContain(title);
   }
 });
@@ -49,7 +52,7 @@ test('manual selection updates the image panel and restarts the duration', () =>
   expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('work-level-3');
   advance(6000);
   expect(selectedTitle()).toContain('Comunitario');
-  advance(3200);
+  advance(6200);
   expect(selectedTitle()).toContain('Individual');
 });
 

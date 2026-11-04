@@ -1,15 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Menu } from 'lucide-react';
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -60,7 +51,7 @@ export function Header() {
           ref={navigationRef}
           aria-hidden={isNavigationHidden}
           inert={isNavigationHidden}
-          className={`bg-surface-brand-deep relative h-16 will-change-transform ${isNavigationHidden ? 'pointer-events-none' : 'pointer-events-auto'}`}
+          className={`bg-surface-brand-deep relative hidden h-16 will-change-transform lg:block ${isNavigationHidden ? 'pointer-events-none' : 'pointer-events-auto'}`}
         >
           <div className="relative mx-auto flex h-16 max-w-360 items-center justify-end gap-4 px-4 sm:px-6 lg:px-16">
             <nav className="hidden items-center gap-6 text-sm text-white/85 lg:flex">
@@ -75,32 +66,6 @@ export function Header() {
               </Link>
             </nav>
           </div>
-
-          {/* Mobile nav */}
-          <Sheet>
-            <SheetTrigger
-              className="absolute top-5 right-4 text-white sm:right-6 lg:hidden"
-              aria-label="Abrir menú"
-            >
-              <Menu className="size-6" />
-            </SheetTrigger>
-            <SheetContent side="right" className="theme-public w-72">
-              <SheetHeader>
-                <SheetTitle>Menú</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-4 px-4 text-sm">
-                <SheetClose nativeButton={false} render={<Link href="#department-presence" />}>
-                  Proyectos
-                </SheetClose>
-                <SheetClose nativeButton={false} render={<Link href="#how-we-work" />}>
-                  Cómo trabajamos
-                </SheetClose>
-                <SheetClose nativeButton={false} render={<Link href="#mission" />}>
-                  Nuestra Misión
-                </SheetClose>
-              </nav>
-            </SheetContent>
-          </Sheet>
         </div>
       )}
       <Link
