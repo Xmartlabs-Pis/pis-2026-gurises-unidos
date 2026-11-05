@@ -207,6 +207,26 @@ describe('TopicCarousel', () => {
     expect(mocks.loadPublicProjectsPage).toHaveBeenCalledOnce();
   });
 
+  test('clears the failed state and resumes loading after a successful retry', async () => {
+    mocks.loadPublicProjectsPage
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ items: [project(2)], page: 2, hasMore: true })
+      .mockResolvedValueOnce({ items: [project(3)], page: 3, hasMore: false });
+    renderCarousel();
+
+    await scrollTo(NEAR_THE_END);
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText('Proyecto 2')).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByTestId('carousel-skeleton')).toBeDefined();
+
+    await scrollTo(NEAR_THE_END);
+
+    expect(await screen.findByText('Proyecto 3')).toBeDefined();
+    expect(mocks.loadPublicProjectsPage).toHaveBeenLastCalledWith(2026, 4, 3);
+  });
+
   test('retries a failed load', async () => {
     mocks.loadPublicProjectsPage
       .mockRejectedValueOnce(new Error('network'))

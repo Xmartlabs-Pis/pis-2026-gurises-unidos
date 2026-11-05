@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const { changeSearch, updateFilters, clearFilters, urlFiltersOptions } = vi.hoisted(() => ({
@@ -49,6 +49,9 @@ describe('UsersListToolbar', () => {
     );
     expect(screen.getByRole('combobox', { name: 'Filtrar por estado' }).textContent).toContain(
       'Deshabilitado'
+    );
+    expect(screen.getByRole('combobox', { name: 'Ordenar por' }).textContent).toContain(
+      'Ordenar: Estado'
     );
     expect(screen.getByText('2 usuarios')).toBeDefined();
   });
@@ -114,6 +117,17 @@ describe('UsersListToolbar', () => {
 
     await chooseOption('Ordenar por', 'Nombre');
     expect(updateFilters).toHaveBeenLastCalledWith({ sort: null });
+  });
+
+  test('shows the sort value without its prefix in the mobile sheet', async () => {
+    render(<UsersListToolbar filters={{ sortBy: 'status' }} filteredCount={1} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    const sheet = within(await screen.findByRole('dialog'));
+
+    const sortTrigger = sheet.getByRole('combobox', { name: 'Ordenar por' });
+    expect(sortTrigger.textContent).toContain('Estado');
+    expect(sortTrigger.textContent).not.toContain('Ordenar:');
   });
 
   test('clears the filters from the mobile sheet', async () => {
