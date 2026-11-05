@@ -72,7 +72,7 @@ export function PublishedYearsSelect({
         </div>
       </div>
       <p id="published-years-description" className="text-muted-foreground text-sm">
-        Elegí qué años se podrán consultar en el sitio público. Las métricas y temáticas visibles
+        Elegí qué años se podrán consultar en el reporte público. Las métricas y temáticas visibles
         serán las mismas para todos los años.
       </p>
       <fieldset

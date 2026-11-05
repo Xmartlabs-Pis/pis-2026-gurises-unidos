@@ -14,7 +14,7 @@ import {
 export function MetricsYearSelect({
   year,
   years,
-  label = 'Año a mostrar en sitio público',
+  label = 'Año a mostrar en reporte público',
   className,
   compact = false,
 }: {

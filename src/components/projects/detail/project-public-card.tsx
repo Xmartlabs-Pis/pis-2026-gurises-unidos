@@ -28,7 +28,7 @@ export function ProjectPublicCard({ name, coverPhoto, coverCrop }: ProjectPublic
             className: 'text-foreground mt-2 h-auto p-0',
           })}
         >
-          Ver vista pública →
+          Ver reporte público →
         </Link>
       </div>
     </section>

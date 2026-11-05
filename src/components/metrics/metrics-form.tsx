@@ -142,10 +142,10 @@ export function MetricsForm({
                     checked={metric.showPublicly}
                     disabled={isPending}
                     onCheckedChange={(checked) => setVisibility(metric.key, checked)}
-                    aria-label={`Mostrar ${metric.name} en el sitio público`}
+                    aria-label={`Mostrar ${metric.name} en el reporte público`}
                   />
                   <label htmlFor={`${metric.key}-visibility`} className="cursor-pointer text-sm">
-                    Mostrar en el sitio público
+                    Mostrar en el reporte público
                   </label>
                 </div>
               </article>
@@ -167,7 +167,7 @@ export function MetricsForm({
                   </TooltipTrigger>
                   <TooltipContent className="leading-relaxed">
                     Al guardar los cambios, activar o desactivar una temática mostrará u ocultará su
-                    carrusel en la vista pública. Los proyectos ocultos individualmente no se
+                    carrusel en el reporte público. Los proyectos ocultos individualmente no se
                     muestran ni se cuentan. Esta configuración no modifica los proyectos del
                     dashboard.
                   </TooltipContent>
@@ -186,7 +186,7 @@ export function MetricsForm({
               </div>
             </div>
             <p className="text-muted-foreground text-sm">
-              Seleccioná las temáticas cuyos carruseles querés mostrar en el sitio público. Se
+              Seleccioná las temáticas cuyos carruseles querés mostrar en el reporte público. Se
               cuentan solo los proyectos publicados con actividad registrada en {year}.
             </p>
             {topics.length === 0 ? (
@@ -209,7 +209,7 @@ export function MetricsForm({
                       id={`topic-${topic.id}-visibility`}
                       checked={topic.showPublicly}
                       disabled={isPending}
-                      aria-label={`Mostrar proyectos de ${topic.name} en el sitio público`}
+                      aria-label={`Mostrar proyectos de ${topic.name} en el reporte público`}
                       onCheckedChange={(showPublicly) =>
                         setTopicVisibility((current) => ({ ...current, [topic.id]: showPublicly }))
                       }
@@ -222,7 +222,7 @@ export function MetricsForm({
           <ContributorsManager contributors={contributors} />
         </section>
         <aside
-          aria-label="Vista previa del sitio público"
+          aria-label="Vista previa del reporte público"
           className="bg-card border-border-default flex w-full flex-col overflow-hidden border xl:sticky xl:top-6 xl:mt-6 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto"
         >
           <div className="bg-surface-page border-border-default flex h-12 w-full shrink-0 items-center justify-between gap-2 border-b px-5 py-3 text-sm">
@@ -271,11 +271,11 @@ export function MetricsForm({
               )}
             </div>
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
-              Estas cifras se actualizan automáticamente en el sitio público.
+              Estas cifras se actualizan automáticamente en el reporte público.
             </p>
             <div className="text-center">
               <Button render={<Link href="/" />} nativeButton={false} variant="link" size="lg">
-                Ver sitio público →
+                Ver reporte público →
               </Button>
             </div>
           </div>

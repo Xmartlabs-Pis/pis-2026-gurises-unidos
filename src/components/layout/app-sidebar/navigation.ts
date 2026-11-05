@@ -62,8 +62,8 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         icon: FolderKanban,
       },
       {
-        id: 'publicView',
-        title: 'Vista pública',
+        id: 'publicReport',
+        title: 'Reporte público',
         href: '/',
         icon: Globe,
         match: 'exact',

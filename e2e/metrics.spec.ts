@@ -34,7 +34,7 @@ test('shows and hides metrics on the public site', async ({ page }) => {
   await expect(publicStats(page)).not.toContainText(HIDDEN_METRIC);
 
   await page.goto('/management/metrics');
-  const preview = page.getByRole('complementary', { name: 'Vista previa del sitio público' });
+  const preview = page.getByRole('complementary', { name: 'Vista previa del reporte público' });
   await visibilitySwitch(page, HIDDEN_METRIC).click();
   await visibilitySwitch(page, VISIBLE_METRIC).click();
   await expect(preview).toContainText(HIDDEN_METRIC);
