@@ -161,6 +161,22 @@ it('marks system categories and does not offer to delete them', () => {
   expect(row('Familias').queryByRole('button', { name: 'Eliminar' })).toBeNull();
 });
 
+it('offers to delete only non-system categories from the mobile menu', async () => {
+  render(<BeneficiaryCategoriesManagement categories={CATEGORIES} />);
+
+  await clickButton(row('Familias').getByRole('button', { name: 'Acciones para Familias' }));
+  expect(await screen.findByRole('menuitem', { name: 'Editar' })).toBeDefined();
+  expect(screen.queryByRole('menuitem', { name: 'Eliminar' })).toBeNull();
+
+  await act(async () => {
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+  });
+  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+
+  await clickButton(row('Docentes').getByRole('button', { name: 'Acciones para Docentes' }));
+  expect(await screen.findByRole('menuitem', { name: 'Eliminar' })).toBeDefined();
+});
+
 it('explains that a category with projects cannot be deleted', async () => {
   render(<BeneficiaryCategoriesManagement categories={CATEGORIES} />);
 

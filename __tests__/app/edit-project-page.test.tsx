@@ -60,6 +60,8 @@ vi.mock('@/components/layout/topbar-context', () => ({
 }));
 
 import EditProjectPage from '@/app/(protected)/dashboard/projects/[id]/edit/page';
+import { toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 
 const PROJECT = {
   id: 42,
@@ -131,6 +133,64 @@ test('renders the project for an admin, who can select the coordinator', async (
     })
   );
   expect(mocks.getProjectHistory).toHaveBeenCalledWith(42, [91]);
+});
+
+test('keeps the current coordinator and topics selectable even if they are no longer active', async () => {
+  await openPage();
+
+  expect(mocks.findManyUsers.mock.calls[0][0].where).toEqual({
+    OR: [ASSIGNABLE_LEAD_COORDINATOR_WHERE, { id: 7 }],
+  });
+  expect(mocks.findManyTopics.mock.calls[0][0].where).toEqual({
+    OR: [{ isActive: true }, { id: { in: [3] } }],
+  });
+  expect(mocks.findManyStrategicLines.mock.calls[0][0].where).toEqual({ isActive: true });
+});
+
+test('passes the loaded options to the form', async () => {
+  const coordinators = [{ id: 7, firstName: 'Ana', lastName: 'García' }];
+  const departments = [{ id: 1, name: 'Montevideo' }];
+  const topics = [{ id: 3, name: 'Educación' }];
+  const strategicLines = [{ id: 5, name: 'Formación' }];
+  const beneficiaryCategories = [{ id: 9, name: 'Docentes' }];
+  mocks.findManyUsers.mockResolvedValue(coordinators);
+  mocks.findManyDepartments.mockResolvedValue(departments);
+  mocks.findManyTopics.mockResolvedValue(topics);
+  mocks.findManyStrategicLines.mockResolvedValue(strategicLines);
+  mocks.getActiveBeneficiaryCategories.mockResolvedValue(beneficiaryCategories);
+
+  render(await openPage());
+
+  expect(mocks.projectFormProps).toHaveBeenCalledWith(
+    expect.objectContaining({
+      coordinators,
+      departments,
+      topics,
+      strategicLines,
+      beneficiaryCategories,
+    })
+  );
+});
+
+test('builds the form values from the project and its beneficiary counts', async () => {
+  const beneficiaryRecords = [{ year: 2026, ...toBeneficiaryCounts([]) }];
+  const categories = [{ id: 9, name: 'Docentes' }];
+  mocks.getActiveBeneficiaryCategories.mockResolvedValue(categories);
+
+  render(await openPage());
+
+  expect(mocks.projectToFormValues).toHaveBeenCalledExactlyOnceWith(
+    { ...PROJECT, projectBeneficiaries: beneficiaryRecords },
+    new Date().getFullYear(),
+    categories
+  );
+  expect(mocks.projectFormProps).toHaveBeenCalledWith(
+    expect.objectContaining({
+      beneficiaryRecords,
+      currentYear: new Date().getFullYear(),
+      initialValues: { name: PROJECT.name },
+    })
+  );
 });
 
 test('lets the lead coordinator edit without selecting another coordinator', async () => {

@@ -1,19 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { changeSearch, updateFilters, clearFilters } = vi.hoisted(() => ({
+const { changeSearch, updateFilters, clearFilters, urlFiltersOptions } = vi.hoisted(() => ({
   changeSearch: vi.fn(),
   updateFilters: vi.fn(),
   clearFilters: vi.fn(),
+  urlFiltersOptions: vi.fn(),
 }));
 
 vi.mock('@/hooks/use-url-filters', () => ({
-  useUrlFilters: ({ search }: { search?: string }) => ({
-    searchText: search ?? '',
-    changeSearch,
-    updateFilters,
-    clearFilters,
-  }),
+  useUrlFilters: (options: { search?: string }) => {
+    urlFiltersOptions(options);
+    return {
+      searchText: options.search ?? '',
+      changeSearch,
+      updateFilters,
+      clearFilters,
+    };
+  },
 }));
 
 import { UsersListToolbar } from '@/components/users/users-list-toolbar';
@@ -58,6 +62,12 @@ describe('UsersListToolbar', () => {
       'Todos los estados'
     );
     expect(screen.getByText('No hay resultados')).toBeDefined();
+  });
+
+  test('keeps the search in the q URL param', () => {
+    render(<UsersListToolbar filters={{ search: 'ana' }} filteredCount={1} />);
+
+    expect(urlFiltersOptions).toHaveBeenCalledWith({ search: 'ana', searchKey: 'q' });
   });
 
   test('forwards the typed search', () => {

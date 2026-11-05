@@ -121,6 +121,29 @@ describe('TopicCarousel', () => {
     expect(screen.getByTestId('carousel-skeleton')).toBeDefined();
   });
 
+  test('starts loading at the threshold of remaining slides', async () => {
+    mocks.loadPublicProjectsPage.mockReturnValue(new Promise(() => {}));
+    renderCarousel();
+
+    await scrollTo([7]);
+
+    expect(mocks.loadPublicProjectsPage).toHaveBeenCalledOnce();
+  });
+
+  test('loads on mount when the visible slides are already close to the end', async () => {
+    mocks.loadPublicProjectsPage.mockResolvedValue({
+      items: [project(2)],
+      page: 2,
+      hasMore: false,
+    });
+    mocks.slidesInView.mockReturnValue(NEAR_THE_END);
+
+    renderCarousel();
+
+    expect(await screen.findByText('Proyecto 2')).toBeDefined();
+    expect(mocks.loadPublicProjectsPage).toHaveBeenCalledExactlyOnceWith(2026, 4, 2);
+  });
+
   test('appends the next page when scrolling close to the end', async () => {
     mocks.loadPublicProjectsPage.mockResolvedValue({
       items: [project(2)],

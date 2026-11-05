@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createUser, updateUser } from '@/app/actions/users';
 import { UserForm } from '@/components/user-form';
@@ -200,10 +200,10 @@ describe('submitting the form', () => {
 
     fillNewUser();
     await clickButton(CREATE_LABEL);
-    expect(await screen.findByRole('alertdialog')).toBeDefined();
+    const dialog = within(await screen.findByRole('alertdialog'));
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'Cancelar' }).at(-1)!);
+      fireEvent.click(dialog.getByRole('button', { name: 'Cancelar' }));
     });
 
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
