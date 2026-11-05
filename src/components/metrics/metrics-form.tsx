@@ -15,15 +15,14 @@ import { formatNumber } from '@/lib/format';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
 import { notify } from '@/lib/notify';
-import type { TopicStatistic } from '@/lib/metrics/topic-statistics';
-import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+import type { TopicVisibilitySetting } from '@/lib/metrics/topic-visibility';
 import { PublishedYearsSelect } from '@/components/metrics/published-years-select';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 
 function getSettingsSignature(
   years: number[],
   metrics: Pick<MetricSetting, 'key' | 'showPublicly'>[],
-  topics: Pick<TopicStatistic, 'id' | 'showPublicly'>[]
+  topics: Pick<TopicVisibilitySetting, 'id' | 'showPublicly'>[]
 ) {
   return JSON.stringify({
     years: [...years].sort((a, b) => a - b),
@@ -49,7 +48,7 @@ export function MetricsForm({
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];
-  initialTopics: TopicStatistic[];
+  initialTopics: TopicVisibilitySetting[];
   years: number[];
   initialPublishedYears: number[];
 }) {
@@ -65,7 +64,7 @@ export function MetricsForm({
     showPublicly: topicVisibility[topic.id] ?? topic.showPublicly,
   }));
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
-  const visibleTopics = getVisibleTopics(topics);
+  const visibleTopics = topics.filter((topic) => topic.showPublicly && topic.projectCount > 0);
   const settingsSignature = getSettingsSignature(publishedYears, metrics, topics);
   const hasUnsavedChanges = settingsSignature !== savedSignature;
 
@@ -152,10 +151,10 @@ export function MetricsForm({
               </article>
             ))}
           </div>
-          <section aria-labelledby="topic-statistics-heading" className="flex flex-col gap-4">
+          <section aria-labelledby="topic-visibility-heading" className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h2 id="topic-statistics-heading" className="text-lg font-semibold">
+                <h2 id="topic-visibility-heading" className="text-lg font-semibold">
                   Proyectos por temática
                 </h2>
                 <Tooltip>
@@ -168,28 +167,27 @@ export function MetricsForm({
                   </TooltipTrigger>
                   <TooltipContent className="leading-relaxed">
                     Al guardar los cambios, activar o desactivar una temática mostrará u ocultará su
-                    barra y su carrusel en la vista pública. Los proyectos ocultos individualmente
-                    siguen contando en la barra. Esta configuración no modifica los proyectos del
+                    carrusel en la vista pública. Los proyectos ocultos individualmente no se
+                    muestran ni se cuentan. Esta configuración no modifica los proyectos del
                     dashboard.
                   </TooltipContent>
                 </Tooltip>
               </div>
               <div className="flex items-center gap-3">
                 <Switch
-                  id="topic-statistics-visibility"
+                  id="topic-visibility-all"
                   checked={topics.length > 0 && topics.every((topic) => topic.showPublicly)}
                   disabled={isPending || topics.length === 0}
                   onCheckedChange={setAllTopicsVisibility}
                 />
-                <label htmlFor="topic-statistics-visibility" className="cursor-pointer text-sm">
+                <label htmlFor="topic-visibility-all" className="cursor-pointer text-sm">
                   Mostrar todas las temáticas
                 </label>
               </div>
             </div>
             <p className="text-muted-foreground text-sm">
-              Seleccioná las temáticas que querés mostrar en el sitio público. Se cuentan los
-              proyectos con actividad registrada en {year}, incluidos los ocultos en el sitio
-              público.
+              Seleccioná las temáticas cuyos carruseles querés mostrar en el sitio público. Se
+              cuentan solo los proyectos publicados con actividad registrada en {year}.
             </p>
             {topics.length === 0 ? (
               <p className="text-muted-foreground text-sm">No hay temáticas activas.</p>

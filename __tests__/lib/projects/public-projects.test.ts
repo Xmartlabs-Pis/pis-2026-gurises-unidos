@@ -4,9 +4,165 @@ import {
   PUBLIC_PROJECTS_PAGE_SIZE,
   getPublicProjectsPage,
   getPublicTopics,
+  getPublicDepartments,
+  getPublishedTopics,
+  getPublicRegions,
 } from '@/lib/projects/public-projects';
 
 const TOPIC_ID = 2;
+
+describe('getPublicRegions', () => {
+  test('only queries published international projects with active public topics and activity in the selected year', async () => {
+    prismaMock.project.findMany.mockResolvedValue([]);
+    await getPublicRegions(2025);
+    expect(prismaMock.project.findMany).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        showOnLanding: true,
+        projectBeneficiaries: { some: { year: 2025 } },
+        geographicScope: 'international',
+        region: { in: ['southAmerica', 'centralAmerica', 'northAmerica', 'otherRegions'] },
+        topics: { some: { isActive: true, showPublicly: true } },
+      },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      select: expect.objectContaining({
+        region: true,
+        projectBeneficiaries: expect.objectContaining({ where: { year: 2025 } }),
+      }),
+    });
+  });
+
+  test('groups projects by their stored region without inferring it from their countries', async () => {
+    prismaMock.project.findMany.mockResolvedValue([
+      row(1, {
+        geographicScope: 'international',
+        region: 'southAmerica',
+        countries: ['Brasil'],
+        departments: [],
+        internalNotes: 'Private note',
+      }),
+      row(2, {
+        geographicScope: 'international',
+        region: 'northAmerica',
+        countries: ['Argentina'],
+        departments: [],
+      }),
+      row(3, {
+        geographicScope: 'international',
+        region: 'centralAmerica',
+        countries: ['Panamá'],
+        departments: [],
+      }),
+      row(4, {
+        geographicScope: 'international',
+        region: 'otherRegions',
+        countries: ['España'],
+        departments: [],
+      }),
+    ]);
+    const regions = await getPublicRegions(2026);
+    expect(regions.map(({ id, projects }) => [id, projects.map(({ id }) => id)])).toEqual([
+      ['south-america', [1]],
+      ['central-america', [3]],
+      ['north-america', [2]],
+      ['other-geographies', [4]],
+    ]);
+    expect(regions[0].projects[0]).toEqual({
+      id: 1,
+      name: 'Proyecto 1',
+      territory: 'Brasil',
+      description: '',
+      coverPhoto: '/images/project-placeholders/1.webp',
+      reach: 15,
+    });
+  });
+
+  test('keeps empty regions and shows the stored region label when no country is specified', async () => {
+    prismaMock.project.findMany.mockResolvedValue([
+      row(1, {
+        geographicScope: 'international',
+        region: 'southAmerica',
+        countries: [],
+        departments: [],
+      }),
+    ]);
+    const regions = await getPublicRegions(2026);
+    expect(regions).toHaveLength(4);
+    expect(regions[0].projects[0].territory).toBe('Sudamérica');
+    expect(regions.slice(1).every(({ projects }) => projects.length === 0)).toBe(true);
+  });
+});
+
+test('lists only active published topics with public projects for the selected year in the footer', async () => {
+  const topics = [{ id: 12, name: 'Education' }];
+  prismaMock.topic.findMany.mockResolvedValue(topics);
+  expect(await getPublishedTopics(2026)).toEqual(topics);
+  expect(prismaMock.topic.findMany).toHaveBeenCalledWith({
+    where: {
+      isActive: true,
+      showPublicly: true,
+      projects: {
+        some: {
+          deletedAt: null,
+          showOnLanding: true,
+          projectBeneficiaries: { some: { year: 2026 } },
+        },
+      },
+    },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+});
+
+describe('getPublicDepartments', () => {
+  test('only includes visible projects from the requested year and public topics', async () => {
+    prismaMock.department.findMany.mockResolvedValue([]);
+
+    expect(await getPublicDepartments(2025)).toEqual([]);
+    expect(prismaMock.department.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          projects: expect.objectContaining({
+            where: {
+              deletedAt: null,
+              showOnLanding: true,
+              projectBeneficiaries: { some: { year: 2025 } },
+              topics: { some: { isActive: true, showPublicly: true } },
+            },
+            select: expect.objectContaining({
+              projectBeneficiaries: expect.objectContaining({ where: { year: 2025 } }),
+            }),
+          }),
+        }),
+      })
+    );
+  });
+
+  test('keeps departments without projects and returns only public project fields', async () => {
+    prismaMock.department.findMany.mockResolvedValue([
+      { id: 1, name: 'Montevideo', projects: [row(1)] },
+      { id: 2, name: 'Canelones', projects: [] },
+    ]);
+
+    expect(await getPublicDepartments(2025)).toEqual([
+      {
+        id: 1,
+        name: 'Montevideo',
+        projects: [
+          {
+            id: 1,
+            name: 'Proyecto 1',
+            territory: 'Montevideo',
+            description: '',
+            coverPhoto: '/images/project-placeholders/1.webp',
+            reach: 15,
+          },
+        ],
+      },
+      { id: 2, name: 'Canelones', projects: [] },
+    ]);
+  });
+});
 
 function row(id: number, location: object = {}) {
   return {

@@ -16,11 +16,13 @@ export function MetricsYearSelect({
   years,
   label = 'Año a mostrar en sitio público',
   className,
+  compact = false,
 }: {
   year: number;
   years: number[];
   label?: string;
   className?: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -37,7 +39,11 @@ export function MetricsYearSelect({
     <div className="flex items-center gap-2">
       <label
         htmlFor="metrics-year"
-        className="text-muted-foreground font-sans text-sm leading-5 font-normal tracking-normal"
+        className={
+          compact
+            ? 'sr-only'
+            : 'text-muted-foreground font-sans text-sm leading-5 font-normal tracking-normal'
+        }
       >
         {label}
       </label>
@@ -51,7 +57,12 @@ export function MetricsYearSelect({
         <SelectTrigger
           id="metrics-year"
           aria-describedby="metrics-year-status"
-          className={cn('bg-background w-22 rounded-lg px-2.5 text-sm shadow-none', className)}
+          className={cn(
+            compact
+              ? 'public-hero-badge text-primary [&_svg]:text-primary h-9! w-auto min-w-20 rounded-full! border-0 px-3 text-sm font-semibold shadow-none'
+              : 'bg-background w-22 rounded-lg px-2.5 text-sm shadow-none',
+            className
+          )}
         >
           <SelectValue />
         </SelectTrigger>
