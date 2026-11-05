@@ -106,7 +106,7 @@ it('keeps the original creation appearance separate from edit styling', () => {
   );
   expect(container.querySelector('form')?.classList.contains('bg-muted/30')).toBe(true);
   expect(screen.queryByText('Cobertura')).toBeNull();
-  expect(screen.queryByText('Ver vista pública →')).toBeNull();
+  expect(screen.queryByText('Ver reporte público →')).toBeNull();
   expect(screen.getByLabelText('Nombre del proyecto').classList.contains('md:text-sm')).toBe(true);
   expect(screen.getByLabelText('Foto de portada').tagName).toBe('BUTTON');
   expect((screen.getByLabelText('Foto de portada') as HTMLButtonElement).disabled).toBe(false);
