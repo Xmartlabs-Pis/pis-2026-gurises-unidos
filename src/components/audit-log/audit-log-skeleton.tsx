@@ -2,7 +2,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function AuditLogSkeleton() {
   return (
-    <div className="flex w-full flex-1 flex-col gap-5 px-4 pt-6 pb-8 sm:px-6">
+    <div aria-busy="true" className="flex w-full flex-1 flex-col gap-5 px-4 pt-6 pb-8 sm:px-6">
+      <span className="sr-only">Cargando…</span>
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <Skeleton className="h-9 w-full max-w-md rounded-lg" />

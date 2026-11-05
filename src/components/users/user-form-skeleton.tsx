@@ -1,31 +1,14 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { FieldSkeleton, InfoRows } from '@/components/ui/form-skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
-
-function FieldSkeleton() {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="h-9 w-full rounded-lg" />
-    </div>
-  );
-}
-
-function InfoRows({ count }: { count: number }) {
-  return (
-    <div className="flex flex-col gap-4">
-      {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="flex items-center justify-between gap-4">
-          <Skeleton className="h-3 w-28" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function UserFormSkeleton() {
   return (
-    <div className="bg-primary-foreground flex w-full min-w-0 flex-1 flex-col pt-6">
+    <div
+      aria-busy="true"
+      className="bg-primary-foreground flex w-full min-w-0 flex-1 flex-col pt-6"
+    >
+      <span className="sr-only">Cargando…</span>
       <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_425px]">
           <div className="flex min-w-0 flex-col gap-5">
@@ -36,12 +19,12 @@ export function UserFormSkeleton() {
               <CardContent className="px-6">
                 <div className="flex flex-col gap-4">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FieldSkeleton />
-                    <FieldSkeleton />
+                    <FieldSkeleton labelClassName="w-24" />
+                    <FieldSkeleton labelClassName="w-24" />
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <FieldSkeleton />
-                    <FieldSkeleton />
+                    <FieldSkeleton labelClassName="w-24" />
+                    <FieldSkeleton labelClassName="w-24" />
                   </div>
                 </div>
               </CardContent>
@@ -52,7 +35,7 @@ export function UserFormSkeleton() {
                 <Skeleton className="h-6 w-24" />
               </CardHeader>
               <CardContent className="px-6">
-                <FieldSkeleton />
+                <FieldSkeleton labelClassName="w-24" />
               </CardContent>
             </Card>
 
@@ -82,7 +65,7 @@ export function UserFormSkeleton() {
               <Skeleton className="h-6 w-28" />
             </CardHeader>
             <CardContent className="px-6">
-              <InfoRows count={4} />
+              <InfoRows count={4} rowClassName="h-3" />
             </CardContent>
           </Card>
         </div>

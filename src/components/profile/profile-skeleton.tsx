@@ -1,32 +1,14 @@
-import { cn } from 'cn';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { FieldSkeleton, InfoRows } from '@/components/ui/form-skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
-
-function FieldSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <Skeleton className="h-4 w-28" />
-      <Skeleton className="h-9 w-full rounded-lg" />
-    </div>
-  );
-}
-
-function InfoRows({ count }: { count: number }) {
-  return (
-    <div className="flex flex-col gap-4">
-      {Array.from({ length: count }, (_, index) => (
-        <div key={index} className="flex items-center justify-between gap-4">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-4 w-24" />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function ProfileSkeleton() {
   return (
-    <div className="bg-primary-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col pt-6">
+    <div
+      aria-busy="true"
+      className="bg-primary-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col pt-6"
+    >
+      <span className="sr-only">Cargando…</span>
       <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_425px]">
           <div className="flex min-w-0 flex-col gap-5">

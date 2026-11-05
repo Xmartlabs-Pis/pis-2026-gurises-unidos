@@ -1,6 +1,4 @@
-import { Suspense } from 'react';
 import { UserForm } from '@/components/user-form';
-import { UserFormSkeleton } from '@/components/users/user-form-skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { requireAdmin } from '@/lib/auth/require-admin';
 
@@ -18,15 +16,9 @@ export default async function NewUserPage() {
         />
 
         <div className="flex flex-1 flex-col">
-          <Suspense fallback={<UserFormSkeleton />}>
-            <NewUserForm />
-          </Suspense>
+          <UserForm />
         </div>
       </div>
     </div>
   );
-}
-
-async function NewUserForm() {
-  return <UserForm />;
 }

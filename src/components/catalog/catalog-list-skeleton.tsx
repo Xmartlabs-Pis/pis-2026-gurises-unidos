@@ -2,7 +2,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function CatalogListSkeleton() {
   return (
-    <div className="bg-surface-page mx-auto flex w-full max-w-[1185px] flex-col gap-5 px-6 pt-6 pb-8">
+    <div
+      aria-busy="true"
+      className="bg-surface-page mx-auto flex w-full max-w-[1185px] flex-col gap-5 px-6 pt-6 pb-8"
+    >
+      <span className="sr-only">Cargando…</span>
       <div className="border-border bg-card flex w-full flex-col gap-4 rounded-[14px] border p-6">
         <Skeleton className="h-6 w-48" />
         <div className="flex w-full items-center gap-2">

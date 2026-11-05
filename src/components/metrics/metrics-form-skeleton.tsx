@@ -17,7 +17,8 @@ function MetricCardSkeleton() {
 
 export function MetricsFormSkeleton() {
   return (
-    <div className="flex flex-1 flex-col">
+    <div aria-busy="true" className="flex flex-1 flex-col">
+      <span className="sr-only">Cargando…</span>
       <div className="mx-auto grid w-full max-w-[1185px] items-start gap-y-6 xl:grid-cols-[minmax(0,760fr)_minmax(0,425fr)]">
         <section className="bg-surface-page flex min-w-0 flex-col gap-5 px-6 pt-6 pb-8">
           <div className="flex min-w-0 flex-col gap-2">

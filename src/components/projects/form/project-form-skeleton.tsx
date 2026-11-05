@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from 'cn';
+import { FieldSkeleton } from '@/components/ui/form-skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function FormSectionSkeleton({
@@ -31,25 +32,18 @@ function FormSectionSkeleton({
   );
 }
 
-function FieldSkeleton({ className }: { className?: string }) {
-  return (
-    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <Skeleton className="h-4 w-28" />
-      <Skeleton className="h-9 w-full rounded-lg" />
-    </div>
-  );
-}
-
 export function ProjectFormSkeleton({ mode = 'create' }: { mode?: 'create' | 'edit' }) {
   const isEditing = mode === 'edit';
 
   const form = (
     <div
+      aria-busy={isEditing ? undefined : true}
       className={cn(
         'flex min-h-0 w-full min-w-0 flex-1 flex-col',
         isEditing ? 'bg-surface-page' : 'bg-muted/30'
       )}
     >
+      {!isEditing && <span className="sr-only">Cargando…</span>}
       <div
         className={cn(
           'mx-auto grid w-full max-w-[1185px] flex-1 content-start items-start',
@@ -164,7 +158,8 @@ export function ProjectFormSkeleton({ mode = 'create' }: { mode?: 'create' | 'ed
   if (!isEditing) return form;
 
   return (
-    <div className="bg-surface-page flex min-h-0 w-full flex-1 flex-col">
+    <div aria-busy="true" className="bg-surface-page flex min-h-0 w-full flex-1 flex-col">
+      <span className="sr-only">Cargando…</span>
       <div className="mx-auto flex w-full max-w-[1185px] min-w-0 flex-col items-start gap-1.5 px-4 pt-6 pb-2.5 sm:px-6">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="h-9 w-72 max-w-full" />
