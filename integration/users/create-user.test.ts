@@ -4,7 +4,7 @@ import { hashToken } from '@/lib/auth/user-tokens';
 import { acceptInvitation } from '@/app/actions/invitation';
 import prisma from '@/lib/prisma';
 import { loadSeedData, type SeedData } from '../fixtures';
-import { signInAs } from '../session';
+import { signInAs, signOut } from '../session';
 import { createTestUser, deleteTestUsers } from './user-helpers';
 
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ set: vi.fn() })) }));
@@ -209,6 +209,7 @@ describe('createUser (integration)', () => {
     formData.set('token', INVITATION_TOKEN);
     formData.set('newPassword', PASSWORD);
     formData.set('confirmNewPassword', PASSWORD);
+    signOut();
 
     await expect(acceptInvitation({}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/dashboard$/);
 
