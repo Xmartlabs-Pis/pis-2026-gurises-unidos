@@ -123,13 +123,14 @@ export function CoverPhotoField({
         type="button"
         variant="ghost"
         aria-describedby={descriptionId}
-        className="border-input bg-muted text-muted-foreground hover:bg-accent h-auto min-h-18 w-full min-w-0 shrink rounded-lg border px-4 py-3 text-center text-xs leading-4 font-normal"
+        title={file?.name}
+        className="border-input bg-muted text-muted-foreground hover:bg-accent h-auto min-h-18 w-full min-w-0 shrink overflow-hidden rounded-lg border px-4 py-3 text-center text-xs leading-4 font-normal whitespace-normal"
         onClick={openDialog}
       >
-        <span id={descriptionId}>
+        <span id={descriptionId} className="block w-full min-w-0">
           {file ? (
-            <span className="flex max-w-full min-w-0 items-center justify-center">
-              <span className="truncate">{file.name}</span>
+            <span className="flex w-full min-w-0 items-center justify-center">
+              <span className="min-w-0 truncate">{file.name}</span>
               <span className="shrink-0"> · Cambiar imagen</span>
             </span>
           ) : previewUrl ? (

@@ -211,6 +211,10 @@ it('previews a selected cover without putting the file on the form', async () =>
   const submitted = new FormData(container.querySelector('form')!);
   expect(submitted.get('coverPhoto')).toBeNull();
   expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
+  const filename = screen.getByText('portada.png');
+  expect(filename.className).toContain('truncate');
+  expect(filename.className).toContain('min-w-0');
+  expect(picker.className).toContain('overflow-hidden');
   expect(
     screen.getByRole('button', { name: 'Foto de portada', description: /portada\.png/ })
   ).toBeTruthy();
