@@ -432,6 +432,16 @@ describe('beneficiary drafts', () => {
     expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toHaveLength(1);
   });
 
+  it.each([
+    ['repeats another draft', [{ year: '2022' }, { year: '2022' }]],
+    ['repeats the selected year', [{ year: '2024' }]],
+  ])('rejects a draft that %s', (_case, beneficiaryDrafts) => {
+    const result = schema.safeParse({ ...form, beneficiaryDrafts });
+    expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toEqual([
+      'No repitas años de beneficiarios',
+    ]);
+  });
+
   it('rejects invalid counts', () => {
     const result = schema.safeParse({
       ...form,

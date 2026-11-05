@@ -173,3 +173,42 @@ it('blocks the submit while a draft is invalid', async () => {
 
   await waitFor(() => expect(screen.queryByText('Revisá los beneficiarios de 2024')).toBeNull());
 });
+
+it('does not resubmit the selected year when the start year moves past the previous one', async () => {
+  renderForm();
+
+  selectYear('2020');
+  fireEvent.change(screen.getByLabelText('Familias'), { target: { value: '5' } });
+  selectYear('2022');
+  fireEvent.change(screen.getByLabelText('Familias'), { target: { value: '12' } });
+  selectYear('2021');
+  fireEvent.change(screen.getByLabelText('Año de inicio'), { target: { value: '2022' } });
+
+  await waitFor(() =>
+    expect((screen.getByLabelText('Familias') as HTMLInputElement).value).toBe('12')
+  );
+  expect(submittedDrafts()).toEqual([]);
+});
+
+it('shows errors that apply to the whole list of drafts', async () => {
+  const submitAction = vi.fn();
+  renderForm({
+    mode: 'edit',
+    submitAction,
+    initialValues: {
+      name: 'Project',
+      startYear: '2020',
+      counterpartyType: 'publicSector',
+      leadCoordinatorId: '1',
+      topicIds: ['1'],
+      strategicLineIds: ['1'],
+      locations: [{ departmentId: '1', city: 'Pando', neighborhood: '' }],
+      beneficiaryDrafts: [{ year: '2026' }],
+    },
+  });
+
+  fireEvent.submit(screen.getByLabelText('Familias').closest('form') as HTMLFormElement);
+
+  expect(await screen.findByText('No repitas años de beneficiarios')).toBeTruthy();
+  expect(submitAction).not.toHaveBeenCalled();
+});

@@ -77,6 +77,11 @@ export function BeneficiariesSection({
   const invalidDraftYears = drafts
     .filter((_, index) => errors.beneficiaryDrafts?.[index])
     .map((draft) => draft.year);
+  const draftsError =
+    errors.beneficiaryDrafts?.message ??
+    (invalidDraftYears.length > 0
+      ? `Revisá los beneficiarios de ${invalidDraftYears.join(', ')}`
+      : undefined);
 
   const selectYear = useCallback(
     (beneficiaryYear: string) => {
@@ -128,13 +133,14 @@ export function BeneficiariesSection({
   }, [startYear, status, endYear, year, selectYear]);
 
   useEffect(() => {
-    const nextDrafts = drafts.filter((draft) =>
+    const currentDrafts = getValues('beneficiaryDrafts');
+    const nextDrafts = currentDrafts.filter((draft) =>
       yearOptions.some(({ value }) => value === draft.year)
     );
-    if (nextDrafts.length < drafts.length) {
+    if (nextDrafts.length < currentDrafts.length) {
       setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
     }
-  }, [drafts, yearOptions, setValue]);
+  }, [drafts, yearOptions, getValues, setValue]);
 
   return (
     <FormSection
@@ -151,11 +157,7 @@ export function BeneficiariesSection({
           options={yearOptions}
           onValueChange={selectYear}
           description="Al guardar se aplican los cambios de todos los años."
-          messages={
-            invalidDraftYears.length > 0
-              ? [`Revisá los beneficiarios de ${invalidDraftYears.join(', ')}`]
-              : undefined
-          }
+          messages={draftsError ? [draftsError] : undefined}
         />
         {drafts.map((draft) => (
           <input

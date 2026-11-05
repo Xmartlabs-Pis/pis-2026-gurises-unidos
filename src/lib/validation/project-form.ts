@@ -133,6 +133,13 @@ export function buildProjectFormSchema(keys: readonly string[]) {
       }
     )
     .refine(
+      (data) => {
+        const years = [data.year, ...data.beneficiaryDrafts.map(({ year }) => year)];
+        return new Set(years).size === years.length;
+      },
+      { message: 'No repitas años de beneficiarios', path: ['beneficiaryDrafts'] }
+    )
+    .refine(
       (data) =>
         data.intensity !== null ||
         ![data as Record<string, unknown>, ...data.beneficiaryDrafts].some(
