@@ -34,6 +34,7 @@ vi.mock('@/app/actions/password', () => ({
 }));
 
 import EditUserPage from '@/app/(protected)/management/users/[id]/edit/page';
+import { hydrateSuspensePage, resolveSuspenseChild } from '../helpers/suspense-page';
 
 beforeEach(() => {
   authMock.mockReset();
@@ -65,7 +66,9 @@ test('loads the selected user and prefills the edit form', async () => {
     creator: { firstName: 'Mario', lastName: 'Pérez' },
   });
 
-  render(await EditUserPage({ params: Promise.resolve({ id: '42' }) }));
+  render(
+    await hydrateSuspensePage(await EditUserPage({ params: Promise.resolve({ id: '42' }) }))
+  );
 
   expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Ana');
   expect((screen.getByLabelText('Apellido') as HTMLInputElement).value).toBe('García');
@@ -97,7 +100,7 @@ test('shows the forbidden page to coordinators without querying the database', a
 test('returns not found for a deleted user', async () => {
   findUniqueMock.mockResolvedValue(null);
 
-  await expect(EditUserPage({ params: Promise.resolve({ id: '42' }) })).rejects.toThrow(
-    'NEXT_NOT_FOUND'
-  );
+  await expect(
+    resolveSuspenseChild(await EditUserPage({ params: Promise.resolve({ id: '42' }) }))
+  ).rejects.toThrow('NEXT_NOT_FOUND');
 });

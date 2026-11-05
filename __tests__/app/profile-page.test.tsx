@@ -20,6 +20,7 @@ vi.mock('@/components/profile-form', () => ({ ProfileForm: profileFormMock }));
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
 import ProfilePage from '@/app/(protected)/management/profile/page';
+import { hydrateSuspensePage, resolveSuspenseChild } from '../helpers/suspense-page';
 
 beforeEach(() => {
   authMock.mockReset();
@@ -62,7 +63,7 @@ describe('ProfilePage', () => {
     };
     findFirstMock.mockResolvedValue(profile);
 
-    render(await ProfilePage());
+    render(await hydrateSuspensePage(await ProfilePage()));
 
     expect(findFirstMock).toHaveBeenCalledWith({
       where: {
@@ -91,6 +92,8 @@ describe('ProfilePage', () => {
     authMock.mockResolvedValue({ user: { id: '7', role: 'coordinator' } });
     findFirstMock.mockResolvedValue(null);
 
-    await expect(ProfilePage()).rejects.toThrow('NEXT_REDIRECT:/login');
+    await expect(resolveSuspenseChild(await ProfilePage())).rejects.toThrow(
+      'NEXT_REDIRECT:/login'
+    );
   });
 });

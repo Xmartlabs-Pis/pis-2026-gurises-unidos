@@ -26,8 +26,9 @@ vi.mock('@/components/audit-log/audit-log-pagination', () => ({
 }));
 
 import AuditHistoryPage from '@/app/(protected)/management/history/page';
+import { hydrateSuspensePage, resolveSuspenseChild } from '../helpers/suspense-page';
 
-function renderPage(params: Record<string, string> = {}) {
+async function renderPage(params: Record<string, string> = {}) {
   return AuditHistoryPage({ searchParams: Promise.resolve(params) });
 }
 
@@ -68,7 +69,7 @@ describe('AuditHistoryPage', () => {
   });
 
   it('lists the entries for an admin', async () => {
-    render((await renderPage()) as ReactElement);
+    render(await hydrateSuspensePage((await renderPage()) as ReactElement));
 
     expect(screen.getByRole('heading', { name: 'Historial de cambios' })).toBeDefined();
     expect(screen.getAllByText('Huerta Cerro Norte').length).toBeGreaterThan(0);
@@ -77,7 +78,7 @@ describe('AuditHistoryPage', () => {
   });
 
   it('passes the parsed filters to the query', async () => {
-    await renderPage({ action: 'update', entity: 'user', page: '2' });
+    await resolveSuspenseChild((await renderPage({ action: 'update', entity: 'user', page: '2' })) as ReactElement);
 
     expect(mocks.listAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'update', entity: 'user', page: 2 })
@@ -104,7 +105,7 @@ describe('AuditHistoryPage', () => {
       totalPages: 1,
     });
 
-    render((await renderPage({ action: 'loginFailure' })) as ReactElement);
+    render(await hydrateSuspensePage((await renderPage({ action: 'loginFailure' })) as ReactElement));
 
     expect(screen.getAllByText('Sin autenticar')).toHaveLength(2);
     expect(screen.getAllByText('Acceso fallido')).toHaveLength(2);
@@ -113,8 +114,8 @@ describe('AuditHistoryPage', () => {
   });
 
   it('redirects to the canonical url when params are invalid', async () => {
-    await expect(renderPage({ action: 'foo', page: '1' })).rejects.toThrow(
-      'NEXT_REDIRECT:/management/history'
-    );
+    await expect(
+      resolveSuspenseChild((await renderPage({ action: 'foo', page: '1' })) as ReactElement)
+    ).rejects.toThrow('NEXT_REDIRECT:/management/history');
   });
 });
