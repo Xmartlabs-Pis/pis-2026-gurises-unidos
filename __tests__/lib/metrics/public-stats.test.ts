@@ -11,7 +11,7 @@ it('formats only the publicly shown metrics, keeping their order', () => {
   const values = { children_reached: 6315, families: 800 } as MetricValues;
 
   expect(getPublicStats(settings, values)).toEqual([
-    { key: 'children_reached', value: '6.315', description: 'Total de NNA' },
+    { key: 'children_reached', value: '6.315', description: 'NNA alcanzados' },
     { key: 'families', value: '800', description: 'Familias acompañadas' },
   ]);
 });

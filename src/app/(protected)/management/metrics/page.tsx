@@ -9,7 +9,7 @@ import {
 } from '@/lib/metrics/queries';
 import { getCurrentYear, resolveYearParam } from '@/lib/metrics/year';
 import { PageHeader } from '@/components/layout/page-header';
-import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
+import { getTopicVisibilitySettings } from '@/lib/metrics/topic-visibility';
 
 export default async function MetricsPage({
   searchParams,
@@ -27,7 +27,7 @@ export default async function MetricsPage({
   const [values, initialMetrics, initialTopics, contributors] = await Promise.all([
     getMetricValues(year),
     getMetricSettings(),
-    getTopicStatistics(year),
+    getTopicVisibilitySettings(year),
     getContributors(),
   ]);
 

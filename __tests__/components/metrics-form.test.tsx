@@ -48,7 +48,7 @@ beforeEach(() => {
 });
 
 it('preserves pending edits while updating annual values and topic counts', async () => {
-  const totalCard = screen.getByLabelText('Total de NNA').closest('article')!;
+  const totalCard = screen.getByLabelText('NNA alcanzados').closest('article')!;
   fireEvent.click(within(totalCard).getByRole('switch'));
   fireEvent.click(screen.getByRole('switch', { name: /Health/ }));
   fireEvent.click(screen.getByRole('checkbox', { name: '2024' }));
@@ -72,11 +72,11 @@ it('preserves pending edits while updating annual values and topic counts', asyn
   };
   rerender(<MetricsForm {...nextProps} />);
 
-  expect(screen.getByLabelText('Total de NNA')).toHaveProperty('value', '400');
+  expect(screen.getByLabelText('NNA alcanzados')).toHaveProperty('value', '400');
   expect(screen.getByRole('checkbox', { name: '2024' }).getAttribute('aria-checked')).toBe('false');
   expect(screen.getByRole('switch', { name: /Health/ }).getAttribute('aria-checked')).toBe('true');
   const preview = within(screen.getByRole('complementary'));
-  expect(preview.queryByText('Total de NNA')).toBeNull();
+  expect(preview.queryByText('NNA alcanzados')).toBeNull();
   expect(preview.getByText('Impacto 2024')).toBeDefined();
   expect(preview.getByText('300')).toBeDefined();
   expect(preview.getByText('14')).toBeDefined();
@@ -84,7 +84,7 @@ it('preserves pending edits while updating annual values and topic counts', asyn
   rerender(<MetricsForm {...nextProps} year="2025" initialTopics={TOPICS} />);
   expect(preview.getByText('Impacto 2025')).toBeDefined();
   expect(preview.getByText('1')).toBeDefined();
-  expect(preview.queryByText('Total de NNA')).toBeNull();
+  expect(preview.queryByText('NNA alcanzados')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
   await waitFor(() =>
     expect(saveMock).toHaveBeenCalledWith(
@@ -210,12 +210,12 @@ it('enables all topics and then hides their statistics together', () => {
 it('toggles the combined child total in the preview and saves its visibility', async () => {
   const preview = within(screen.getByRole('complementary'));
   const metricCards = screen.getAllByRole('article');
-  expect(within(metricCards[0]).getByText('Total de NNA')).toBeDefined();
-  expect(screen.getByLabelText('Total de NNA')).toHaveProperty('value', '140');
+  expect(within(metricCards[0]).getByText('NNA alcanzados')).toBeDefined();
+  expect(screen.getByLabelText('NNA alcanzados')).toHaveProperty('value', '140');
   expect(preview.getByText('140')).toBeDefined();
-  const totalCard = screen.getByLabelText('Total de NNA').closest('article')!;
+  const totalCard = screen.getByLabelText('NNA alcanzados').closest('article')!;
   fireEvent.click(within(totalCard).getByRole('switch'));
-  expect(preview.queryByText('Total de NNA')).toBeNull();
+  expect(preview.queryByText('NNA alcanzados')).toBeNull();
   expect(preview.getByText('NNA directos')).toBeDefined();
   expect(preview.getByText('NNA indirectos')).toBeDefined();
   fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
@@ -252,7 +252,7 @@ it('toggles direct and indirect children independently in the preview', () => {
   expect(
     screen.getByRole('switch', { name: 'Publicar todos los años' }).getAttribute('aria-checked')
   ).toBe('true');
-  expect(preview.getByText('Total de NNA')).toBeDefined();
+  expect(preview.getByText('NNA alcanzados')).toBeDefined();
 
   expect(within(directCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');
   expect(within(indirectCard).getByRole('switch').getAttribute('aria-checked')).toBe('true');

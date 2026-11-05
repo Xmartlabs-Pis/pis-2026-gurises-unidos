@@ -1,45 +1,24 @@
 import { getContributors } from '@/lib/contributors';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from 'cn';
-import { formatIncrement, formatNumber } from '@/lib/format';
+import { ContributorStrip } from '@/components/contributor-strip';
+import { formatIncrement } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getPublicStats } from '@/lib/metrics/public-stats';
 import { resolveYearParam } from '@/lib/metrics/year';
-import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { Suspense } from 'react';
 import { DepartmentPresence } from '@/components/map/department-presence';
 import { DepartmentPresenceSkeleton } from '@/components/map/department-presence-skeleton';
-import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
-import { TopicCarouselSkeleton } from '@/components/projects/topic-carousel-skeleton';
-import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
-import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+import { HowWeWork } from '@/components/how-we-work';
+import { RegionPresence } from '@/components/map/region-presence';
+import { RegionPresenceSkeleton } from '@/components/map/region-presence-skeleton';
+import { TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PublicGeographyTabs } from '@/components/public-geography';
+import { PublicFooter } from '@/components/public-footer';
+import { getPublishedTopics } from '@/lib/projects/public-projects';
 
-const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
-
-const LEVELS = [
-  {
-    number: '01',
-    title: 'Individual',
-    description: 'Niños, niñas, adolescentes y jóvenes: acompañamiento directo y personalizado.',
-  },
-  {
-    number: '02',
-    title: 'Familiar',
-    description: 'La familia como unidad: fortalecimiento de vínculos y entornos protectores.',
-  },
-  {
-    number: '03',
-    title: 'Institucional',
-    description: 'Escuelas, centros de salud e instituciones que rodean a cada gurí.',
-  },
-  {
-    number: '04',
-    title: 'Comunitario',
-    description: 'Territorios y comunidades donde se teje la red de protección.',
-  },
-];
+import { PublicHero } from '@/components/public-hero';
+import { PublicCollaborate } from '@/components/public-collaborate';
 
 export default async function Home({
   searchParams,
@@ -48,226 +27,125 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, topics, contributors] = await Promise.all([
+  const [values, previousValues, settings, contributors, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getTopicStatistics(year),
     getContributors(),
+    getPublishedTopics(year),
   ]);
   const stats = getPublicStats(settings, values).map((stat) => ({
     ...stat,
     increment: formatIncrement(values[stat.key], previousValues[stat.key], year - 1),
   }));
 
-  const visibleTopics = getVisibleTopics(topics);
-  const maxTopicProjectCount = Math.max(1, ...visibleTopics.map((topic) => topic.projectCount));
-
   return (
     <>
-      <section className="w-full">
-        <div className="mx-auto flex min-h-115.5 w-full max-w-360 flex-col gap-9 px-4 pt-13 pb-12 sm:px-6 lg:px-16">
-          <div className="flex w-full flex-col gap-3 lg:h-48.5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="bg-card text-primary flex h-6.5 w-42.5 items-center justify-center rounded-[20px] px-3 py-1.25 text-xs leading-4 font-medium tracking-normal">
-                Informe de impacto · {year}
-              </span>
-              {publishedYears.length > 1 && (
-                <MetricsYearSelect
-                  year={year}
-                  years={publishedYears}
-                  label="Año del informe"
-                  className="bg-white! text-slate-900 [&_svg]:text-slate-600"
-                />
-              )}
-            </div>
-            <h1 className="text-foreground w-full max-w-122 text-3xl leading-9 font-bold tracking-normal lg:h-24 lg:text-5xl lg:leading-12">
-              Transformando vidas en Uruguay
-            </h1>
-            <p className="text-foreground w-full text-base leading-6 font-normal tracking-normal lg:h-12">
-              Trabajamos con niños, niñas, adolescentes, familias y comunidades en todo el
-              territorio uruguayo.
-            </p>
-          </div>
-          <div
-            role="group"
-            aria-label={`Impacto ${year}`}
-            className={`lg:bg-card grid w-full grid-cols-2 gap-3 lg:gap-0 lg:rounded-xl ${getStatsColumnsClass(stats.length)}`}
-          >
-            {stats.map((stat) => (
+      <PublicHero
+        year={year}
+        years={publishedYears}
+        title={
+          <>
+            Nuestro informe <span className="block">de impacto</span>
+          </>
+        }
+      >
+        {stats.length > 0 && (
+          <div className="public-hero-stats relative pb-20">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 1440 80"
+              preserveAspectRatio="none"
+              className="public-hero-wave pointer-events-none absolute inset-x-0 -top-16 h-16 w-full"
+            >
+              <path d="M0 78 Q720 90 1440 0 V80 H0 Z" fill="currentColor" />
+            </svg>
+            <div className="mx-auto w-full max-w-360 px-4 sm:px-6 lg:px-16">
               <div
-                key={stat.key}
-                className="bg-card flex min-h-33 flex-col gap-1 rounded-xl px-4 py-6 max-lg:last:odd:col-span-2 lg:bg-transparent lg:px-8"
+                role="group"
+                aria-label={`Impacto ${year}`}
+                className={`grid w-full grid-cols-2 gap-x-6 gap-y-8 pt-8 lg:gap-x-0 ${getStatsColumnsClass(stats.length)}`}
               >
-                <span className="text-primary w-full text-3xl leading-9 font-bold tracking-normal lg:text-4xl lg:leading-10 lg:font-black">
-                  {stat.value}
-                </span>
-                <span className="text-foreground w-full text-sm leading-5 font-normal tracking-normal">
-                  {stat.description}
-                </span>
-                {stat.increment && (
-                  <span className="text-primary w-full text-xs leading-4 font-normal tracking-normal">
-                    {stat.increment}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      {visibleTopics.length > 0 && (
-        <section aria-labelledby="public-topic-statistics-heading" className="w-full">
-          <div className="mx-auto flex w-full max-w-360 flex-col gap-5 px-4 pt-2 pb-6 sm:px-6 lg:px-16">
-            <div className="flex flex-col gap-1">
-              <h2
-                id="public-topic-statistics-heading"
-                className="text-foreground text-2xl leading-8 font-bold sm:text-3xl sm:leading-9"
-              >
-                Proyectos por temática
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Proyectos con actividad registrada en {year}
-              </p>
-            </div>
-            <dl className="grid w-full max-w-246 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-5 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:gap-x-6">
-              {visibleTopics.map((topic) => (
-                <div
-                  key={topic.id}
-                  className="col-span-full grid grid-cols-subgrid items-center gap-y-2"
-                >
-                  <dt className="text-foreground text-sm leading-5 font-medium">{topic.name}</dt>
-                  <dd className="contents">
-                    <div
-                      aria-hidden="true"
-                      className="bg-card col-span-2 row-start-2 h-3 overflow-hidden rounded-full sm:col-span-1 sm:col-start-2 sm:row-start-1"
-                    >
-                      <div
-                        className="bg-primary h-full rounded-full"
-                        style={{ width: `${(topic.projectCount / maxTopicProjectCount) * 100}%` }}
-                      />
-                    </div>
-                    <span className="col-start-2 row-start-1 flex items-baseline gap-2 whitespace-nowrap sm:col-start-3">
-                      <span className="text-primary text-2xl leading-8 font-bold tabular-nums">
-                        {formatNumber(topic.projectCount)}
-                      </span>
-                      <span className="text-foreground text-sm leading-5">
-                        {topic.projectCount === 1 ? 'proyecto' : 'proyectos'}
-                      </span>
+                {stats.map((stat) => (
+                  <div
+                    key={stat.key}
+                    className="flex flex-col gap-1 max-lg:last:odd:col-span-2 lg:px-8"
+                  >
+                    <span className="text-primary text-3xl leading-9 font-black lg:text-4xl lg:leading-10">
+                      {stat.value}
                     </span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </section>
-      )}
-      <section id="projects" className="w-full scroll-mt-4">
-        <div
-          className={`mx-auto flex min-h-71 w-full max-w-360 flex-col gap-4 px-4 pb-18 sm:px-6 lg:px-14 ${visibleTopics.length > 0 ? 'pt-6' : 'pt-18'}`}
-        >
-          <div className="flex w-full max-w-75.75 flex-col gap-1 lg:h-15">
-            <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-              Nuestros proyectos
-            </h2>
-            <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-              Organizados por temática
-            </p>
-          </div>
-          <Suspense key={year} fallback={<TopicCarouselSkeleton />}>
-            <ProjectsByTopic year={year} />
-          </Suspense>
-        </div>
-      </section>
-      <section className="w-full">
-        <div className="mx-auto flex w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-16 lg:pt-12 lg:pb-12">
-          <Suspense fallback={<DepartmentPresenceSkeleton />}>
-            <DepartmentPresence />
-          </Suspense>
-        </div>
-      </section>
-      <section className="w-full">
-        <div className="mx-auto flex min-h-77 w-full max-w-360 flex-col gap-7 px-5 py-8 sm:px-6 lg:px-14 lg:pt-12 lg:pb-14">
-          <div className="flex min-h-14 w-full max-w-93.75 flex-col gap-1">
-            <h2 className="text-foreground text-2xl leading-8 font-bold tracking-normal">
-              Cómo trabajamos
-            </h2>
-            <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-              Acompañamos en cuatro niveles que se potencian entre sí
-            </p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {LEVELS.map((level) => (
-              <div
-                key={level.number}
-                className="border-primary flex flex-col gap-2 pt-4 lg:border-t-2"
-              >
-                <span className="text-primary text-sm font-bold">{level.number}</span>
-                <h3 className="text-foreground text-lg leading-7 font-semibold">{level.title}</h3>
-                <p className="text-muted-foreground text-sm leading-5">{level.description}</p>
+                    <span className="text-sm leading-5 text-white/90">{stat.description}</span>
+                    {stat.increment && (
+                      <span className="text-primary text-xs leading-4 font-bold">
+                        {stat.increment}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
+        )}
+      </PublicHero>
+      <section id="department-presence" className="w-full scroll-mt-16">
+        <div className="mx-auto flex w-full max-w-360 flex-col gap-6 px-5 py-12 sm:px-6 lg:px-16 lg:py-16">
+          <h2 className="text-foreground text-center text-2xl leading-8 font-bold">
+            Nuestro impacto por geografía
+          </h2>
+          <PublicGeographyTabs>
+            <TabsList
+              aria-label="Seleccionar geografía"
+              className="bg-card mx-auto h-11! w-64 rounded-full p-1"
+            >
+              <TabsTrigger value="uruguay" className="rounded-full px-5 data-active:bg-white">
+                Uruguay
+              </TabsTrigger>
+              <TabsTrigger value="region" className="rounded-full px-5 data-active:bg-white">
+                Región
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="uruguay">
+              <Suspense fallback={<DepartmentPresenceSkeleton />}>
+                <DepartmentPresence year={year} />
+              </Suspense>
+            </TabsContent>
+            <TabsContent value="region">
+              <Suspense fallback={<RegionPresenceSkeleton />}>
+                <RegionPresence year={year} />
+              </Suspense>
+            </TabsContent>
+          </PublicGeographyTabs>
         </div>
       </section>
-      <section className="w-full">
-        <div className="mx-auto flex min-h-70 w-full max-w-360 flex-col gap-3 px-6 py-11 lg:px-14 lg:py-18">
-          <h2 className="text-primary text-center text-xs leading-4 font-bold tracking-normal">
+      <section id="how-we-work" className="w-full scroll-mt-16">
+        <HowWeWork />
+      </section>
+      <section id="mission" className="w-full scroll-mt-16">
+        <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-16 pb-12 text-center sm:px-6 lg:px-16 lg:pt-24 lg:pb-16">
+          <h2 className="text-foreground text-xs leading-4 font-bold tracking-[0.14em]">
             NUESTRA MISIÓN
           </h2>
-          <p className="text-foreground text-center text-xl leading-7 font-bold tracking-normal sm:text-3xl sm:leading-9 sm:font-medium">
+          <p className="text-foreground max-w-260 text-2xl leading-9 font-medium sm:text-3xl sm:leading-10">
             Hace {new Date().getFullYear() - FIRST_PROJECT_YEAR} años defendemos los derechos de la
             niñez y la adolescencia en Uruguay, transformando realidades junto a las comunidades.
           </p>
         </div>
       </section>
       {contributors.length > 0 && (
-        <section className="w-full">
-          <div className="mx-auto flex min-h-53.5 w-full max-w-360 flex-col gap-5 px-4 pt-12 pb-14 sm:px-6 lg:px-14">
-            <div className="flex w-full max-w-126.5 flex-col gap-1">
-              <h2 className="text-foreground text-xl leading-7 font-bold tracking-normal">
-                Quienes nos acompañan
-              </h2>
-              <p className="text-muted-foreground text-sm leading-5 font-normal tracking-normal">
-                Organismos públicos, fundaciones y aliados que hacen posible nuestro trabajo
-              </p>
-            </div>
-            <div className="flex w-full max-w-332 flex-wrap gap-3">
-              {contributors.map((contributor) => (
-                <span
-                  key={contributor.id}
-                  className="bg-card text-foreground flex min-h-9.5 max-w-full items-center rounded-full px-4 py-2.25 text-sm leading-5 font-normal tracking-normal break-words"
-                >
-                  {contributor.name}
-                </span>
-              ))}
-            </div>
+        <section aria-labelledby="contributors-heading" className="w-full">
+          <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-4 pb-16 text-center sm:px-6 lg:px-16 lg:pb-24">
+            <h2
+              id="contributors-heading"
+              className="text-foreground text-xs leading-4 font-bold tracking-[0.14em]"
+            >
+              CON EL APOYO DE
+            </h2>
+            <ContributorStrip contributors={contributors} />
           </div>
         </section>
       )}
-      <section className="w-full">
-        <div className="mx-auto flex min-h-78 w-full max-w-360 flex-col gap-4 px-4 pt-18 pb-20 sm:px-6 lg:px-14">
-          <h2 className="text-foreground text-center text-2xl leading-8 font-bold tracking-normal sm:text-3xl sm:leading-9">
-            Sé parte de esta transformación
-          </h2>
-          <p className="text-muted-foreground text-center leading-6 font-normal tracking-normal">
-            Conocé en qué proyectos podés colaborar y cómo tu apoyo se convierte en impacto real
-            para miles de gurises.
-          </p>
-          <div className="mx-auto flex h-11 w-39.25 flex-col pt-2">
-            <a
-              href={COLLABORATE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                buttonVariants(),
-                'bg-foreground text-background hover:bg-foreground/90 h-9 w-full gap-2.5 px-4 py-2'
-              )}
-            >
-              Quiero colaborar
-            </a>
-          </div>
-        </div>
-      </section>
+      <PublicCollaborate />
+      <PublicFooter topics={topics} years={publishedYears} year={year} />
     </>
   );
 }

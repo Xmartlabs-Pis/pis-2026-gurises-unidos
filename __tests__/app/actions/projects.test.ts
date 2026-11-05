@@ -1294,7 +1294,7 @@ describe('project review regressions', () => {
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toMatch(
-      /^\/images\/project-placeholders\/[1-6]\.webp$/
+      /^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/
     );
   });
 

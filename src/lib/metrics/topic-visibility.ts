@@ -1,6 +1,6 @@
 import prisma from '@/lib/prisma';
 
-export async function getTopicStatistics(year: number) {
+export async function getTopicVisibilitySettings(year: number) {
   const topics = await prisma.topic.findMany({
     where: { isActive: true },
     orderBy: { name: 'asc' },
@@ -11,7 +11,11 @@ export async function getTopicStatistics(year: number) {
       _count: {
         select: {
           projects: {
-            where: { deletedAt: null, projectBeneficiaries: { some: { year } } },
+            where: {
+              deletedAt: null,
+              showOnLanding: true,
+              projectBeneficiaries: { some: { year } },
+            },
           },
         },
       },
@@ -25,4 +29,4 @@ export async function getTopicStatistics(year: number) {
   }));
 }
 
-export type TopicStatistic = Awaited<ReturnType<typeof getTopicStatistics>>[number];
+export type TopicVisibilitySetting = Awaited<ReturnType<typeof getTopicVisibilitySettings>>[number];

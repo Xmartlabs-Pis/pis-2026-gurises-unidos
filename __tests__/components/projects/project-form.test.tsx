@@ -309,7 +309,9 @@ it('submits a placeholder when an uploaded cover is removed', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
   const data = new FormData(container.querySelector('form')!);
   expect(data.get('removeCoverPhoto')).toBe('true');
-  expect(data.get('projectPlaceholder')).toMatch(/^\/images\/project-placeholders\/[1-6]\.webp$/);
+  expect(data.get('projectPlaceholder')).toMatch(
+    /^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/
+  );
   expect(container.querySelector('img')?.getAttribute('src')).toContain('project-placeholders');
 });
 

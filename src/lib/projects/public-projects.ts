@@ -1,6 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getTerritoryLabel } from '@/lib/projects/location';
+import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 
 export const PUBLIC_PROJECTS_PAGE_SIZE = 12;
 
@@ -30,6 +31,64 @@ export type PublicTopic = {
   total: number;
   initialPage: PublicProjectsPage;
 };
+
+export type PublicDepartment = {
+  id: number;
+  name: string;
+  projects: PublicProject[];
+};
+
+export type PublicRegion = (typeof GEOGRAPHIC_REGIONS)[number] & { projects: PublicProject[] };
+
+export async function getPublishedTopics(year: number) {
+  return prisma.topic.findMany({
+    where: { isActive: true, showPublicly: true, projects: { some: publicProjectWhere(year) } },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+}
+
+export async function getPublicDepartments(year: number): Promise<PublicDepartment[]> {
+  const departments = await prisma.department.findMany({
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      projects: {
+        where: {
+          ...publicProjectWhere(year),
+          topics: { some: { isActive: true, showPublicly: true } },
+        },
+        orderBy: PUBLIC_PROJECT_ORDER,
+        select: publicProjectSelect(year),
+      },
+    },
+  });
+
+  return departments.map(({ id, name, projects }) => ({
+    id,
+    name,
+    projects: projects.map(toPublicProject),
+  }));
+}
+
+export async function getPublicRegions(year: number): Promise<PublicRegion[]> {
+  const projects = await prisma.project.findMany({
+    where: {
+      ...publicProjectWhere(year),
+      geographicScope: 'international',
+      region: { in: GEOGRAPHIC_REGIONS.map(({ region }) => region) },
+      topics: { some: { isActive: true, showPublicly: true } },
+    },
+    orderBy: PUBLIC_PROJECT_ORDER,
+    select: publicProjectSelect(year),
+  });
+
+  return GEOGRAPHIC_REGIONS.map((region) => ({
+    ...region,
+    projects: projects.filter((project) => project.region === region.region).map(toPublicProject),
+  }));
+}
 
 function publicProjectWhere(year: number) {
   return {
