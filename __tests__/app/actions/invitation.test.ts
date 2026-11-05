@@ -14,6 +14,7 @@ const {
   findValidUserTokenMock,
   consumeUserTokenMock,
   signInMock,
+  authMock,
   cookieStore,
 } = vi.hoisted(() => ({
   redirectMock: vi.fn((url: string) => {
@@ -24,13 +25,14 @@ const {
   findValidUserTokenMock: vi.fn(),
   consumeUserTokenMock: vi.fn(),
   signInMock: vi.fn(),
+  authMock: vi.fn(),
   cookieStore: { set: vi.fn() },
 }));
 
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieStore) }));
 vi.mock('next-auth', () => import('@auth/core/errors'));
-vi.mock('@/auth', () => ({ signIn: signInMock }));
+vi.mock('@/auth', () => ({ signIn: signInMock, auth: authMock }));
 vi.mock('@/lib/audit-log', () => ({ logAudit: logAuditMock }));
 vi.mock('@/lib/credentials', () => ({ hashPassword: hashMock }));
 vi.mock('@/lib/auth/user-tokens', () => ({
@@ -68,6 +70,8 @@ beforeEach(() => {
   redirectMock.mockClear();
   logAuditMock.mockReset();
   signInMock.mockReset();
+  authMock.mockReset();
+  authMock.mockResolvedValue(null);
   cookieStore.set.mockReset();
   hashMock.mockResolvedValue('new-hash');
   consumeUserTokenMock.mockResolvedValue(true);
@@ -114,6 +118,19 @@ describe('acceptInvitation', () => {
       expect.any(String),
       SESSION_EXPIRATION_COOKIE_OPTIONS
     );
+  });
+
+  test('keeps the existing session and redirects to login when someone is already signed in', async () => {
+    const tx = setupTransaction();
+    authMock.mockResolvedValue({ user: { id: 'admin-id', role: 'admin' } });
+
+    await expect(acceptInvitation({}, buildFormData())).rejects.toThrow(
+      'NEXT_REDIRECT:/login?invitationAccepted=1'
+    );
+
+    expect(tx.user.updateMany).toHaveBeenCalled();
+    expect(signInMock).not.toHaveBeenCalled();
+    expect(cookieStore.set).not.toHaveBeenCalled();
   });
 
   test('redirects to login when the automatic sign in fails', async () => {
