@@ -235,11 +235,15 @@ describe('TopicCarousel', () => {
   test('hides the controls when the carousel cannot scroll', () => {
     renderCarousel();
 
+    expect(screen.queryByRole('button', { name: 'Anterior' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Siguiente' })).toBeNull();
   });
 
-  test('shows the controls when the carousel can scroll', () => {
-    mocks.scrollState.canScrollNext = true;
+  test.each([
+    ['forward', { canScrollPrev: false, canScrollNext: true }],
+    ['back', { canScrollPrev: true, canScrollNext: false }],
+  ])('shows the controls when the carousel can only scroll %s', (_direction, scrollState) => {
+    Object.assign(mocks.scrollState, scrollState);
     renderCarousel();
 
     expect(screen.getByRole('button', { name: 'Anterior' })).toBeDefined();

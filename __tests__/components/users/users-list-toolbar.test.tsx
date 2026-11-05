@@ -31,6 +31,7 @@ beforeEach(() => {
   changeSearch.mockClear();
   updateFilters.mockClear();
   clearFilters.mockClear();
+  urlFiltersOptions.mockClear();
 });
 
 describe('UsersListToolbar', () => {

@@ -1,19 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { BENEFICIARY_CATEGORY_KEYS, beneficiaryValueRows } from '../mocks/beneficiary-values';
+import { prismaMock } from '../mocks/prisma';
 
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
-  findFirst: vi.fn(),
-  findManyUsers: vi.fn(),
-  findManyDepartments: vi.fn(),
-  findManyTopics: vi.fn(),
-  findManyStrategicLines: vi.fn(),
   getProjectHistory: vi.fn(),
   getActiveBeneficiaryCategories: vi.fn(),
   getBeneficiaryCategoryLabels: vi.fn(),
   projectToFormValues: vi.fn(),
   projectFormProps: vi.fn(),
+  projectHistoryProps: vi.fn(),
   updateProject: vi.fn(),
   forbidden: vi.fn(() => {
     throw new Error('NEXT_FORBIDDEN');
@@ -25,15 +23,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('next/navigation', () => ({ forbidden: mocks.forbidden, notFound: mocks.notFound }));
 vi.mock('@/lib/auth/require-user', () => ({ requireUser: mocks.requireUser }));
-vi.mock('@/lib/prisma', () => ({
-  default: {
-    project: { findFirst: mocks.findFirst },
-    user: { findMany: mocks.findManyUsers },
-    department: { findMany: mocks.findManyDepartments },
-    topic: { findMany: mocks.findManyTopics },
-    strategicLine: { findMany: mocks.findManyStrategicLines },
-  },
-}));
 vi.mock('@/lib/projects/history', () => ({ getProjectHistory: mocks.getProjectHistory }));
 vi.mock('@/lib/beneficiary-categories', () => ({
   getActiveBeneficiaryCategories: mocks.getActiveBeneficiaryCategories,
@@ -50,18 +39,25 @@ vi.mock('@/components/projects/form/project-form', () => ({
   },
 }));
 vi.mock('@/components/projects/form/project-history', () => ({
-  ProjectHistory: () => <div>Historial del proyecto</div>,
+  ProjectHistory: (props: unknown) => {
+    mocks.projectHistoryProps(props);
+    return <div>Historial del proyecto</div>;
+  },
 }));
 vi.mock('@/components/projects/delete-project-section', () => ({
-  DeleteProjectSection: () => <div>Eliminar proyecto</div>,
+  DeleteProjectSection: ({ projectId }: { projectId: number }) => (
+    <div>Eliminar proyecto {projectId}</div>
+  ),
 }));
 vi.mock('@/components/layout/topbar-context', () => ({
   BreadcrumbResourceLabel: ({ label }: { label: string }) => <nav>{label}</nav>,
 }));
 
 import EditProjectPage from '@/app/(protected)/dashboard/projects/[id]/edit/page';
-import { toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
+
+const CURRENT_YEAR = 2026;
+const CATEGORY_KEY = BENEFICIARY_CATEGORY_KEYS[0];
 
 const PROJECT = {
   id: 42,
@@ -73,39 +69,55 @@ const PROJECT = {
   strategicLines: [],
   departments: [],
   localities: [],
-  projectBeneficiaries: [{ id: 91, year: 2026, values: [] }],
+  projectBeneficiaries: [
+    { id: 91, year: 2026, values: beneficiaryValueRows({ [CATEGORY_KEY]: 12 }) },
+    { id: 90, year: 2025, values: beneficiaryValueRows({ [CATEGORY_KEY]: 4 }) },
+  ],
 };
 
 function openPage(id = '42') {
   return EditProjectPage({ params: Promise.resolve({ id }) });
 }
 
+function projectFormProps() {
+  return mocks.projectFormProps.mock.calls[0][0];
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(CURRENT_YEAR, 5, 15));
   mocks.requireUser.mockResolvedValue({ id: 1, role: 'admin' });
-  mocks.findFirst.mockResolvedValue(PROJECT);
-  mocks.findManyUsers.mockResolvedValue([]);
-  mocks.findManyDepartments.mockResolvedValue([]);
-  mocks.findManyTopics.mockResolvedValue([]);
-  mocks.findManyStrategicLines.mockResolvedValue([]);
+  prismaMock.project.findFirst.mockResolvedValue(PROJECT);
+  prismaMock.user.findMany.mockResolvedValue([]);
+  prismaMock.department.findMany.mockResolvedValue([]);
+  prismaMock.topic.findMany.mockResolvedValue([]);
+  prismaMock.strategicLine.findMany.mockResolvedValue([]);
   mocks.getProjectHistory.mockResolvedValue([]);
   mocks.getActiveBeneficiaryCategories.mockResolvedValue([]);
   mocks.getBeneficiaryCategoryLabels.mockResolvedValue({});
   mocks.projectToFormValues.mockReturnValue({ name: PROJECT.name });
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 test('returns not found for an invalid id without querying the database', async () => {
   await expect(openPage('invalid')).rejects.toThrow('NEXT_NOT_FOUND');
 
-  expect(mocks.findFirst).not.toHaveBeenCalled();
+  expect(prismaMock.project.findFirst).not.toHaveBeenCalled();
 });
 
 test('returns not found for a missing or deleted project', async () => {
-  mocks.findFirst.mockResolvedValue(null);
+  prismaMock.project.findFirst.mockResolvedValue(null);
 
   await expect(openPage()).rejects.toThrow('NEXT_NOT_FOUND');
 
-  expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: 42, deletedAt: null });
+  expect(prismaMock.project.findFirst.mock.calls[0][0].where).toEqual({
+    id: 42,
+    deletedAt: null,
+  });
 });
 
 test('forbids a coordinator who does not lead the project', async () => {
@@ -113,7 +125,7 @@ test('forbids a coordinator who does not lead the project', async () => {
 
   await expect(openPage()).rejects.toThrow('NEXT_FORBIDDEN');
 
-  expect(mocks.findManyUsers).not.toHaveBeenCalled();
+  expect(prismaMock.user.findMany).not.toHaveBeenCalled();
 });
 
 test('renders the project for an admin, who can select the coordinator', async () => {
@@ -122,9 +134,7 @@ test('renders the project for an admin, who can select the coordinator', async (
   expect(screen.getByRole('heading', { name: 'Huertas comunitarias' })).toBeDefined();
   expect(screen.getByText('Activo')).toBeDefined();
   expect(screen.getByText(/intensidad/)).toBeDefined();
-  expect(screen.getByText('Historial del proyecto')).toBeDefined();
-  expect(screen.getByText('Eliminar proyecto')).toBeDefined();
-  expect(mocks.projectFormProps).toHaveBeenCalledWith(
+  expect(projectFormProps()).toEqual(
     expect.objectContaining({
       mode: 'edit',
       projectId: 42,
@@ -132,19 +142,18 @@ test('renders the project for an admin, who can select the coordinator', async (
       canSelectCoordinator: true,
     })
   );
-  expect(mocks.getProjectHistory).toHaveBeenCalledWith(42, [91]);
 });
 
 test('keeps the current coordinator and topics selectable even if they are no longer active', async () => {
   await openPage();
 
-  expect(mocks.findManyUsers.mock.calls[0][0].where).toEqual({
+  expect(prismaMock.user.findMany.mock.calls[0][0].where).toEqual({
     OR: [ASSIGNABLE_LEAD_COORDINATOR_WHERE, { id: 7 }],
   });
-  expect(mocks.findManyTopics.mock.calls[0][0].where).toEqual({
+  expect(prismaMock.topic.findMany.mock.calls[0][0].where).toEqual({
     OR: [{ isActive: true }, { id: { in: [3] } }],
   });
-  expect(mocks.findManyStrategicLines.mock.calls[0][0].where).toEqual({ isActive: true });
+  expect(prismaMock.strategicLine.findMany.mock.calls[0][0].where).toEqual({ isActive: true });
 });
 
 test('passes the loaded options to the form', async () => {
@@ -153,15 +162,15 @@ test('passes the loaded options to the form', async () => {
   const topics = [{ id: 3, name: 'Educación' }];
   const strategicLines = [{ id: 5, name: 'Formación' }];
   const beneficiaryCategories = [{ id: 9, name: 'Docentes' }];
-  mocks.findManyUsers.mockResolvedValue(coordinators);
-  mocks.findManyDepartments.mockResolvedValue(departments);
-  mocks.findManyTopics.mockResolvedValue(topics);
-  mocks.findManyStrategicLines.mockResolvedValue(strategicLines);
+  prismaMock.user.findMany.mockResolvedValue(coordinators);
+  prismaMock.department.findMany.mockResolvedValue(departments);
+  prismaMock.topic.findMany.mockResolvedValue(topics);
+  prismaMock.strategicLine.findMany.mockResolvedValue(strategicLines);
   mocks.getActiveBeneficiaryCategories.mockResolvedValue(beneficiaryCategories);
 
   render(await openPage());
 
-  expect(mocks.projectFormProps).toHaveBeenCalledWith(
+  expect(projectFormProps()).toEqual(
     expect.objectContaining({
       coordinators,
       departments,
@@ -172,35 +181,68 @@ test('passes the loaded options to the form', async () => {
   );
 });
 
-test('builds the form values from the project and its beneficiary counts', async () => {
-  const beneficiaryRecords = [{ year: 2026, ...toBeneficiaryCounts([]) }];
+test('builds the form values from each year of beneficiary counts', async () => {
   const categories = [{ id: 9, name: 'Docentes' }];
   mocks.getActiveBeneficiaryCategories.mockResolvedValue(categories);
 
   render(await openPage());
 
+  const expectedRecords = [
+    expect.objectContaining({ year: 2026, [CATEGORY_KEY]: 12 }),
+    expect.objectContaining({ year: 2025, [CATEGORY_KEY]: 4 }),
+  ];
   expect(mocks.projectToFormValues).toHaveBeenCalledExactlyOnceWith(
-    { ...PROJECT, projectBeneficiaries: beneficiaryRecords },
-    new Date().getFullYear(),
+    expect.objectContaining({ id: 42, projectBeneficiaries: expectedRecords }),
+    CURRENT_YEAR,
     categories
   );
-  expect(mocks.projectFormProps).toHaveBeenCalledWith(
+  expect(projectFormProps()).toEqual(
     expect.objectContaining({
-      beneficiaryRecords,
-      currentYear: new Date().getFullYear(),
+      beneficiaryRecords: expectedRecords,
+      currentYear: CURRENT_YEAR,
       initialValues: { name: PROJECT.name },
     })
   );
 });
 
+test('binds the submit action to the edited project', async () => {
+  const previousState = {};
+  const formData = new FormData();
+
+  render(await openPage());
+  await projectFormProps().submitAction(previousState, formData);
+
+  expect(mocks.updateProject).toHaveBeenCalledExactlyOnceWith(42, previousState, formData);
+});
+
+test('targets the edited project in the delete section', async () => {
+  render(await openPage());
+
+  expect(screen.getByText('Eliminar proyecto 42')).toBeDefined();
+});
+
+test('shows the history of the project and its beneficiary records', async () => {
+  const entries = [{ id: 1 }];
+  const fieldLabels = { name: 'Nombre' };
+  mocks.getProjectHistory.mockResolvedValue(entries);
+  mocks.getBeneficiaryCategoryLabels.mockResolvedValue(fieldLabels);
+
+  render(await openPage());
+
+  expect(mocks.getProjectHistory).toHaveBeenCalledExactlyOnceWith(42, [91, 90]);
+  expect(mocks.projectHistoryProps).toHaveBeenCalledWith({ entries, fieldLabels });
+});
+
 test('lets the lead coordinator edit without selecting another coordinator', async () => {
   mocks.requireUser.mockResolvedValue({ id: 7, role: 'coordinator' });
-  mocks.findFirst.mockResolvedValue({ ...PROJECT, status: 'inactive', intensity: null });
+  prismaMock.project.findFirst.mockResolvedValue({
+    ...PROJECT,
+    status: 'inactive',
+    intensity: null,
+  });
 
   render(await openPage());
 
   expect(screen.queryByText(/intensidad/)).toBeNull();
-  expect(mocks.projectFormProps).toHaveBeenCalledWith(
-    expect.objectContaining({ canSelectCoordinator: false })
-  );
+  expect(projectFormProps()).toEqual(expect.objectContaining({ canSelectCoordinator: false }));
 });

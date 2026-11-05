@@ -139,8 +139,10 @@ describe('submitting the form', () => {
     await waitFor(() => expect(createUser).toHaveBeenCalledOnce());
     const formData = vi.mocked(createUser).mock.calls[0][1];
     expect(formData.get('firstName')).toBe('Ana');
+    expect(formData.get('lastName')).toBe('García');
     expect(formData.get('documentId')).toBe('77777777');
     expect(formData.get('email')).toBe('ana@example.com');
+    expect(formData.get('role')).toBe('coordinator');
     expect(updateUser).not.toHaveBeenCalled();
   });
 
@@ -150,7 +152,13 @@ describe('submitting the form', () => {
     await clickButton('Guardar usuario');
 
     await waitFor(() => expect(updateUser).toHaveBeenCalledOnce());
-    expect(vi.mocked(updateUser).mock.calls[0][0]).toBe(7);
+    const [id, , formData] = vi.mocked(updateUser).mock.calls[0];
+    expect(id).toBe(7);
+    expect(formData.get('firstName')).toBe('Ana');
+    expect(formData.get('lastName')).toBe('García');
+    expect(formData.get('documentId')).toBe('77777777');
+    expect(formData.get('email')).toBe('ana@example.com');
+    expect(formData.get('role')).toBe('admin');
     expect(createUser).not.toHaveBeenCalled();
   });
 
@@ -223,6 +231,7 @@ describe('submitting the form', () => {
 
     await clickButton('Deshabilitar usuario');
 
-    expect(await screen.findByRole('alertdialog')).toBeDefined();
+    const dialog = within(await screen.findByRole('alertdialog'));
+    expect(dialog.getByText('¿Deshabilitar a Ana García?')).toBeDefined();
   });
 });
