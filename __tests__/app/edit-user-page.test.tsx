@@ -66,9 +66,7 @@ test('loads the selected user and prefills the edit form', async () => {
     creator: { firstName: 'Mario', lastName: 'Pérez' },
   });
 
-  render(
-    await hydrateSuspensePage(await EditUserPage({ params: Promise.resolve({ id: '42' }) }))
-  );
+  render(await hydrateSuspensePage(await EditUserPage({ params: Promise.resolve({ id: '42' }) })));
 
   expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Ana');
   expect((screen.getByLabelText('Apellido') as HTMLInputElement).value).toBe('García');

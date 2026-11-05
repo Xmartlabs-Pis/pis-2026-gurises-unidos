@@ -92,8 +92,6 @@ describe('ProfilePage', () => {
     authMock.mockResolvedValue({ user: { id: '7', role: 'coordinator' } });
     findFirstMock.mockResolvedValue(null);
 
-    await expect(resolveSuspenseChild(await ProfilePage())).rejects.toThrow(
-      'NEXT_REDIRECT:/login'
-    );
+    await expect(resolveSuspenseChild(await ProfilePage())).rejects.toThrow('NEXT_REDIRECT:/login');
   });
 });

@@ -78,7 +78,9 @@ describe('AuditHistoryPage', () => {
   });
 
   it('passes the parsed filters to the query', async () => {
-    await resolveSuspenseChild((await renderPage({ action: 'update', entity: 'user', page: '2' })) as ReactElement);
+    await resolveSuspenseChild(
+      (await renderPage({ action: 'update', entity: 'user', page: '2' })) as ReactElement
+    );
 
     expect(mocks.listAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'update', entity: 'user', page: 2 })
@@ -105,7 +107,9 @@ describe('AuditHistoryPage', () => {
       totalPages: 1,
     });
 
-    render(await hydrateSuspensePage((await renderPage({ action: 'loginFailure' })) as ReactElement));
+    render(
+      await hydrateSuspensePage((await renderPage({ action: 'loginFailure' })) as ReactElement)
+    );
 
     expect(screen.getAllByText('Sin autenticar')).toHaveLength(2);
     expect(screen.getAllByText('Acceso fallido')).toHaveLength(2);

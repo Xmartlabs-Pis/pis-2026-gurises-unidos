@@ -138,9 +138,7 @@ async function renderPage(
     params: Promise.resolve(params),
     searchParams: Promise.resolve(searchParams),
   });
-  render(
-    <TopbarProvider>{await hydrateSuspensePage(page)}</TopbarProvider>
-  );
+  render(<TopbarProvider>{await hydrateSuspensePage(page)}</TopbarProvider>);
 }
 
 test('shows the project change history to users who can edit the project', async () => {

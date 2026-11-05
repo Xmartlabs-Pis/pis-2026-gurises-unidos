@@ -59,7 +59,7 @@ export async function resolveSuspenseChild(page: ReactElement): Promise<ReactEle
   }
 
   const renderChild = asyncChild.type as AsyncPageComponent;
-  return renderChild(asyncChild.props);
+  return renderChild(asyncChild.props as Record<string, unknown>);
 }
 
 export async function hydrateSuspensePage(page: ReactElement): Promise<ReactElement> {
