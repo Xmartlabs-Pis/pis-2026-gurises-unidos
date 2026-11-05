@@ -275,3 +275,45 @@ it.each([
     expect(screen.queryByText(/^Ubicaciones:/)).toBeNull();
   }
 );
+
+it('says the user updated the cover when that is the only change', () => {
+  render(
+    <ProjectHistory
+      fieldLabels={FIELD_LABELS}
+      entries={[
+        entry(1, 'update', 'project', {
+          changes: [
+            {
+              field: 'coverPhoto',
+              from: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+              to: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
+            },
+            { field: 'coverCrop', from: null, to: { x: 0, y: 25, width: 100, height: 50 } },
+          ],
+        }),
+      ]}
+    />
+  );
+  expect(screen.getByText('Test User actualizó la imagen de portada')).toBeDefined();
+  expect(screen.queryByText('Imagen de portada actualizada')).toBeNull();
+  expect(screen.queryByText(/uploads\/covers/)).toBeNull();
+});
+
+it('keeps other project changes and mentions the cover once', () => {
+  render(
+    <ProjectHistory
+      fieldLabels={FIELD_LABELS}
+      entries={[
+        entry(1, 'update', 'project', {
+          changes: [
+            { field: 'name', from: 'Original project', to: 'Updated project' },
+            { field: 'coverCrop', from: { x: 0, y: 0, width: 40, height: 40 }, to: null },
+          ],
+        }),
+      ]}
+    />
+  );
+  expect(screen.getByText('Test User actualizó el proyecto')).toBeDefined();
+  expect(screen.getByText('Nombre: Original project → Updated project')).toBeDefined();
+  expect(screen.getByText('Imagen de portada actualizada')).toBeDefined();
+});

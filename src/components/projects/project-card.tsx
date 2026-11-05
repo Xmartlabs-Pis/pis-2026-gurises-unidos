@@ -1,5 +1,5 @@
-import Image from 'next/image';
 import Link from 'next/link';
+import { CoverFrame } from '@/components/projects/cover/cover-frame';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -26,6 +26,7 @@ type PublicProjectCardProps = {
   name: string;
   description: string;
   coverPhoto: string | null;
+  coverCrop?: unknown;
   reach: number;
 };
 
@@ -71,23 +72,20 @@ function PublicProjectCard({
   name,
   description,
   coverPhoto,
+  coverCrop,
   reach,
 }: PublicProjectCardProps) {
   const styles = PUBLIC_VARIANT_STYLES[variant];
 
   return (
     <article className={`${styles.card} flex h-full flex-col overflow-hidden`}>
-      <div className={`${styles.image} relative w-full`}>
-        {coverPhoto && (
-          <Image
-            src={coverPhoto}
-            alt={`Portada de ${name}`}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover"
-          />
-        )}
-      </div>
+      <CoverFrame
+        src={coverPhoto}
+        alt={coverPhoto ? `Portada de ${name}` : ''}
+        crop={coverCrop}
+        sizes="(min-width: 1024px) 25rem, 18.75rem"
+        className={styles.image}
+      />
       <div className="flex flex-1 flex-col gap-2 px-5 py-4">
         <div className="flex items-center gap-2">
           <span className={`${styles.dot} size-1.5 rounded-full`} />

@@ -1,16 +1,28 @@
-import { ImageUploadField } from '@/components/ui/forms/image-upload-field';
 import { TextareaField } from '@/components/ui/forms/textarea-field';
 import { FormSection } from '@/components/ui/forms/form-section';
+import type { CoverCrop } from '@/lib/projects/cover-crop';
+import { CoverPhotoField } from '../cover-photo-field';
+import type { CoverDraft } from '../use-project-cover';
 
 export function PublicInfoSection({
-  coverFile,
-  imageUrl,
-  onCoverFileChange,
+  previewUrl,
+  crop,
+  file,
+  canRemoveSaved,
+  hasUnsavedSelection,
+  hasUnsavedCrop,
+  onApplyCover,
+  onClearUnsavedCover,
   onRemoveSavedCover,
 }: {
-  coverFile: File | null;
-  imageUrl: string | null;
-  onCoverFileChange: (file: File | null) => void;
+  previewUrl: string | null;
+  crop: CoverCrop | null;
+  file: File | null;
+  canRemoveSaved: boolean;
+  hasUnsavedSelection: boolean;
+  hasUnsavedCrop: boolean;
+  onApplyCover: (draft: CoverDraft) => void;
+  onClearUnsavedCover: () => void;
   onRemoveSavedCover?: () => void;
 }) {
   return (
@@ -33,12 +45,15 @@ export function PublicInfoSection({
         placeholder="Contá de qué trata el proyecto, a quiénes ayuda y cuál es su impacto..."
         description="Máx. 1000 caracteres"
       />
-      <ImageUploadField
-        id="coverPhoto"
-        label="Foto de portada"
-        value={coverFile}
-        imageUrl={imageUrl}
-        onValueChange={onCoverFileChange}
+      <CoverPhotoField
+        previewUrl={previewUrl}
+        crop={crop}
+        file={file}
+        canRemoveSaved={canRemoveSaved}
+        hasUnsavedSelection={hasUnsavedSelection}
+        hasUnsavedCrop={hasUnsavedCrop}
+        onApply={onApplyCover}
+        onClearUnsaved={onClearUnsavedCover}
         onRemoveSaved={onRemoveSavedCover}
       />
     </FormSection>

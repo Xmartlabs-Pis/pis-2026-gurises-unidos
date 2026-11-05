@@ -226,6 +226,7 @@ describe('createProject', () => {
         internalNotes: null,
         showOnLanding: true,
         coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
+        coverCrop: Prisma.DbNull,
         createdBy: 7,
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
@@ -305,6 +306,22 @@ describe('createProject', () => {
     }
   });
 
+  test('reuses an in-use cover and stores its crop', async () => {
+    const coverPhotoPath = '/uploads/covers/44444444-4444-4444-8444-444444444444.webp';
+    const crop = { x: 5, y: 5, width: 90, height: 80 };
+    findLiveCoverMock.mockResolvedValue({ id: 8 });
+    const { projectCreate } = setupTransaction();
+    const data = buildFormData();
+    data.set('coverPhotoPath', coverPhotoPath);
+    data.set('coverCrop', JSON.stringify(crop));
+    await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
+      'NEXT_REDIRECT:/dashboard/projects/42'
+    );
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ coverPhoto: coverPhotoPath, coverCrop: crop }),
+    });
+  });
+
   test('ignores a cover path that the user does not own', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
     process.env.COVER_UPLOAD_DIR = directory;
@@ -320,6 +337,31 @@ describe('createProject', () => {
       expect(projectCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({
           coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
+        }),
+      });
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('drops the crop when the cover path is rejected', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 3);
+      const { projectCreate } = setupTransaction();
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      data.set('coverCrop', JSON.stringify({ x: 5, y: 5, width: 90, height: 80 }));
+      await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
+          coverCrop: Prisma.DbNull,
         }),
       });
     } finally {

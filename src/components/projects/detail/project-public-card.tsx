@@ -1,26 +1,24 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from 'cn';
+import { CoverFrame } from '@/components/projects/cover/cover-frame';
 import { buttonVariants } from '@/components/ui/button';
 
 type ProjectPublicCardProps = {
   name: string;
   coverPhoto: string | null;
+  coverCrop?: unknown;
 };
 
-export function ProjectPublicCard({ name, coverPhoto }: ProjectPublicCardProps) {
+export function ProjectPublicCard({ name, coverPhoto, coverCrop }: ProjectPublicCardProps) {
   return (
     <section className="border-border bg-card grid min-h-32 grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 rounded-[14px] border p-4 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4 sm:p-5">
-      <div
-        className={cn(
-          'relative aspect-video overflow-hidden rounded-lg',
-          !coverPhoto && 'bg-project-cover'
-        )}
-      >
-        {coverPhoto && (
-          <Image src={coverPhoto} alt={`Portada de ${name}`} fill className="object-cover" />
-        )}
-      </div>
+      <CoverFrame
+        src={coverPhoto}
+        alt={coverPhoto ? `Portada de ${name}` : ''}
+        crop={coverCrop}
+        sizes="10rem"
+        className={cn('rounded-lg', !coverPhoto && 'bg-project-cover')}
+      />
       <div className="min-w-0">
         <h2 className="text-sm font-semibold">Tarjeta pública</h2>
         <Link

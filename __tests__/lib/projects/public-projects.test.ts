@@ -227,6 +227,7 @@ describe('getPublicTopics', () => {
             territory: 'Montevideo',
             description: '',
             coverPhoto: '/images/project-placeholders/1.webp',
+            coverCrop: null,
             reach: 15,
           },
         ],

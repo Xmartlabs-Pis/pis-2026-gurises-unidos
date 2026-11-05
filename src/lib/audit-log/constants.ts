@@ -42,6 +42,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   generalObjective: 'Objetivo general',
   publicDescription: 'Descripción pública',
   coverPhoto: 'Foto de portada',
+  coverCrop: 'Encuadre de portada',
   internalNotes: 'Notas internas',
   showOnLanding: 'Visibilidad en la página pública',
   topics: 'Temáticas',
@@ -54,6 +55,9 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   user: 'Usuario',
   authentication: 'Autenticación',
 };
+
+export const COVER_PHOTO_UPDATE_LABEL = 'actualizó la imagen de portada';
+export const COVER_PHOTO_UPDATE_DETAIL = 'Imagen de portada actualizada';
 
 export const PROJECT_TEXT_CHANGE_LABELS: Record<string, string> = {
   generalObjective: 'modificado',

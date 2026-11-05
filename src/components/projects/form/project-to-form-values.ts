@@ -1,5 +1,6 @@
 import type { Project } from '@/generated/prisma/client';
 import type { BeneficiaryCategoryOption, BeneficiaryCounts } from '@/lib/project-display';
+import { parseCoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectLocality } from '@/lib/projects/location';
 import { getDefaultValues } from './get-default-values';
 import type { ProjectLocationFormValue, ProjectFormValues } from './project-form-values';
@@ -51,6 +52,7 @@ export function projectToFormValues(
     internalNotes: project.internalNotes ?? '',
     showOnLanding: String(project.showOnLanding),
     coverPhotoUrl: project.coverPhoto,
+    coverCrop: parseCoverCrop(project.coverCrop),
     topicIds: project.topics.map(({ id }) => String(id)),
     strategicLineIds: project.strategicLines?.map(({ id }) => String(id)) ?? [],
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),
