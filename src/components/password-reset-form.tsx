@@ -80,7 +80,8 @@ export function PasswordResetForm({
             label="Nueva contraseña"
             type={showNewPassword ? 'text' : 'password'}
             autoComplete="new-password"
-            placeholder="Mínimo 8 caracteres"
+            placeholder="Tu nueva contraseña"
+            description="Al menos 8 caracteres, con mayúscula, minúscula y número."
             onChange={() => clearServerError('newPassword')}
             trailingAction={
               <InputVisibilityToggle
