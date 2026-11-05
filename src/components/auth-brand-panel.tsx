@@ -19,7 +19,7 @@ export function AuthBrandPanel({ children }: { children?: ReactNode }) {
       </div>
       <Image
         src={loginImage}
-        loading="eager"
+        fetchPriority="high"
         className="hidden aspect-auto w-150 lg:flex"
         alt="Red de Impacto"
       />
