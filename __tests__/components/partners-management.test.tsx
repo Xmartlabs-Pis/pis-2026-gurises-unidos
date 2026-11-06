@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { PartnersManagement } from '@/components/partners/partners-management';
 import { createPartner } from '@/app/actions/partners';
@@ -59,4 +59,27 @@ it('asks for a name before creating a partner', () => {
 
   expect(screen.getByText('Ingresá un nombre para el socio')).toBeDefined();
   expect(createPartner).not.toHaveBeenCalled();
+});
+
+it('lets the user edit the type only when the partner has no projects', async () => {
+  render(<PartnersManagement partners={PARTNERS} />);
+
+  const basf = screen.getByText('BASF').closest('li');
+  fireEvent.click(within(basf!).getByRole('button', { name: 'Editar' }));
+  const freeDialog = await screen.findByRole('alertdialog');
+  expect(
+    within(freeDialog).getByRole('combobox', { name: 'Tipo de contraparte' }).textContent
+  ).toContain('Sector Privado');
+  expect(within(freeDialog).queryByText(/asociado a proyectos/)).toBeNull();
+  fireEvent.click(within(freeDialog).getByRole('button', { name: 'Cancelar' }));
+  await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+
+  const inau = screen.getByText('INAU').closest('li');
+  fireEvent.click(within(inau!).getByRole('button', { name: 'Editar' }));
+  const lockedDialog = await screen.findByRole('alertdialog');
+  expect(within(lockedDialog).getByText(/asociado a proyectos/)).toBeDefined();
+  expect(
+    lockedDialog.querySelector<HTMLInputElement>('input[type="hidden"][name="counterpartyType"]')
+      ?.value
+  ).toBe('publicSector');
 });

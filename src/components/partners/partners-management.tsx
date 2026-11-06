@@ -9,7 +9,7 @@ import {
 } from '@/app/actions/partners';
 import { ProjectCountLink } from '@/components/project-count-link';
 import { COUNTERPARTY_LABEL, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
-import { partnerNameSchema, partnerSchema } from '@/lib/validation/partner';
+import { partnerSchema } from '@/lib/validation/partner';
 import type { CounterpartyType } from '@/generated/prisma/enums';
 import { MoreHorizontal } from 'lucide-react';
 import { Input } from '../ui/input';
@@ -147,6 +147,8 @@ function PartnerRow({ partner }: { partner: Partner }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editedName, setEditedName] = useState(partner.name);
+  const [editedType, setEditedType] = useState<string | null>(partner.counterpartyType);
+  const isTypeLocked = partner._count.projects > 0;
   const [editClientError, setEditClientError] = useState<string>();
   const [showEditErrors, setShowEditErrors] = useState(false);
   const [editState, editFormAction, editPending] = useActionState(
@@ -166,6 +168,7 @@ function PartnerRow({ partner }: { partner: Partner }) {
     setIsEditOpen(open);
     if (open) {
       setEditedName(partner.name);
+      setEditedType(partner.counterpartyType);
       setEditClientError(undefined);
       setShowEditErrors(false);
     }
@@ -173,7 +176,7 @@ function PartnerRow({ partner }: { partner: Partner }) {
 
   function handleEditSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     setShowEditErrors(true);
-    const result = partnerNameSchema.safeParse({ name: editedName });
+    const result = partnerSchema.safeParse({ name: editedName, counterpartyType: editedType });
 
     if (!result.success) {
       event.preventDefault();
@@ -234,7 +237,9 @@ function PartnerRow({ partner }: { partner: Partner }) {
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Editar socio</AlertDialogTitle>
-                <AlertDialogDescription>Cambiá el nombre del socio.</AlertDialogDescription>
+                <AlertDialogDescription>
+                  Cambiá el nombre o el tipo de contraparte del socio.
+                </AlertDialogDescription>
               </AlertDialogHeader>
               <form
                 action={editFormAction}
@@ -249,11 +254,54 @@ function PartnerRow({ partner }: { partner: Partner }) {
                   maxLength={100}
                   required
                   disabled={editPending}
+                  aria-label="Nombre del socio"
                 />
+                <div className="flex flex-col gap-1.5">
+                  <Select
+                    items={COUNTERPARTY_OPTIONS}
+                    name={isTypeLocked ? undefined : 'counterpartyType'}
+                    value={editedType}
+                    onValueChange={setEditedType}
+                    disabled={editPending || isTypeLocked}
+                    required
+                  >
+                    <SelectTrigger
+                      aria-label="Tipo de contraparte"
+                      className="border-input bg-background w-full rounded-lg px-3 text-sm data-[size=default]:h-9"
+                    >
+                      <SelectValue placeholder="Tipo de contraparte" className="min-w-0 truncate" />
+                    </SelectTrigger>
+                    <SelectContent align="start">
+                      {COUNTERPARTY_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {isTypeLocked && (
+                    <>
+                      <input
+                        type="hidden"
+                        name="counterpartyType"
+                        value={partner.counterpartyType}
+                      />
+                      <p className="text-muted-foreground text-xs">
+                        No se puede cambiar el tipo de un socio asociado a proyectos.
+                      </p>
+                    </>
+                  )}
+                </div>
                 {showEditErrors &&
-                  (editClientError ?? editState.errors?.name?.[0] ?? editState.formError) && (
+                  (editClientError ??
+                    editState.errors?.name?.[0] ??
+                    editState.errors?.counterpartyType?.[0] ??
+                    editState.formError) && (
                     <p className="text-destructive text-sm">
-                      {editClientError ?? editState.errors?.name?.[0] ?? editState.formError}
+                      {editClientError ??
+                        editState.errors?.name?.[0] ??
+                        editState.errors?.counterpartyType?.[0] ??
+                        editState.formError}
                     </p>
                   )}
                 <AlertDialogFooter>

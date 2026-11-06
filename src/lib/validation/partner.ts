@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const partnerNameSchema = z.object({
+const partnerNameSchema = z.object({
   name: z
     .string({ error: 'Ingresá un nombre para el socio' })
     .trim()

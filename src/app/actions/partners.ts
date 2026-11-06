@@ -7,7 +7,7 @@ import prisma from '@/lib/prisma';
 import { logAudit } from '@/lib/audit-log';
 import { Prisma } from '@/generated/prisma/client';
 import { parseId } from '@/lib/validation/ids';
-import { partnerNameSchema, partnerSchema } from '@/lib/validation/partner';
+import { partnerSchema } from '@/lib/validation/partner';
 
 export type PartnerActionState = {
   errors?: Record<string, string[]>;
@@ -243,12 +243,15 @@ export async function editPartner(
     return { formError: 'El socio no es válido.' };
   }
 
-  const name = String(formData.get('name') ?? '');
-  const values = { name, counterpartyType: '' };
-  const parsed = partnerNameSchema.safeParse({ name });
+  const values = {
+    name: String(formData.get('name') ?? ''),
+    counterpartyType: String(formData.get('counterpartyType') ?? ''),
+  };
+  const parsed = partnerSchema.safeParse(values);
   if (!parsed.success) {
     return { errors: z.flattenError(parsed.error).fieldErrors, values };
   }
+  const { name, counterpartyType } = parsed.data;
 
   try {
     const error = await prisma.$transaction(async (tx) => {
@@ -256,14 +259,14 @@ export async function editPartner(
 
       const partner = await tx.partner.findFirst({
         where: { id, isActive: true },
-        select: { name: true },
+        select: { name: true, counterpartyType: true },
       });
       if (!partner) return 'El socio no existe o ya fue eliminado.';
 
       const duplicate = await tx.partner.findFirst({
         where: {
           id: { not: id },
-          name: { equals: parsed.data.name, mode: 'insensitive' },
+          name: { equals: name, mode: 'insensitive' },
         },
         select: { isActive: true },
       });
@@ -273,13 +276,27 @@ export async function editPartner(
           : 'Ese nombre pertenece a un socio dado de baja. Elegí otro nombre.';
       }
 
-      await tx.partner.update({ where: { id }, data: { name: parsed.data.name } });
+      if (counterpartyType !== partner.counterpartyType) {
+        const projectCount = await tx.project.count({
+          where: { deletedAt: null, partners: { some: { id } } },
+        });
+        if (projectCount > 0) {
+          return 'No se puede cambiar el tipo de un socio asociado a proyectos.';
+        }
+      }
+
+      await tx.partner.update({ where: { id }, data: { name, counterpartyType } });
       await logAudit(tx, {
         authorId: user.id,
         action: 'update',
         entity: 'partner',
         entityId: id,
-        details: { previousName: partner.name, name: parsed.data.name },
+        details: {
+          previousName: partner.name,
+          name,
+          previousCounterpartyType: partner.counterpartyType,
+          counterpartyType,
+        },
       });
       return null;
     });

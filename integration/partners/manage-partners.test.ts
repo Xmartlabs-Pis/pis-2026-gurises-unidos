@@ -220,7 +220,9 @@ test.each([0, -1, '1', null])('rejects invalid deletion identifiers: %s', async 
 test('renames a partner without changing its type and audits the change', async () => {
   signInAs(seed.adminId, 'admin');
   const partner = await createFixture();
-  expect((await editPartner(partner.id, {}, buildForm('  Renamed partner  '))).success).toBe(true);
+  expect(
+    (await editPartner(partner.id, {}, buildForm('  Renamed partner  ', 'publicSector'))).success
+  ).toBe(true);
   expect(await prisma.partner.findUniqueOrThrow({ where: { id: partner.id } })).toMatchObject({
     name: 'Renamed partner',
     counterpartyType: 'publicSector',
@@ -228,8 +230,52 @@ test('renames a partner without changing its type and audits the change', async 
   const log = await prisma.auditLog.findFirstOrThrow({
     where: { entity: 'partner', entityId: partner.id, action: 'update' },
   });
-  expect(log.details).toEqual({ previousName: partner.name, name: 'Renamed partner' });
+  expect(log.details).toEqual({
+    previousName: partner.name,
+    name: 'Renamed partner',
+    previousCounterpartyType: 'publicSector',
+    counterpartyType: 'publicSector',
+  });
 });
+
+test('changes the type of a partner without projects', async () => {
+  signInAs(seed.adminId, 'admin');
+  const partner = await createFixture();
+  const result = await editPartner(partner.id, {}, buildForm(partner.name, 'privateSector'));
+  expect(result.success).toBe(true);
+  expect(await prisma.partner.findUniqueOrThrow({ where: { id: partner.id } })).toMatchObject({
+    name: partner.name,
+    counterpartyType: 'privateSector',
+  });
+});
+
+test('rejects changing the type of a partner with projects but allows renaming it', async () => {
+  signInAs(seed.adminId, 'admin');
+  const partner = await createFixture();
+  const project = await prisma.project.findFirstOrThrow({ where: { deletedAt: null } });
+  await prisma.partner.update({
+    where: { id: partner.id },
+    data: { projects: { connect: { id: project.id } } },
+  });
+  const result = await editPartner(partner.id, {}, buildForm(partner.name, 'privateSector'));
+  expect(result.formError).toContain('asociado a proyectos');
+  expect(await prisma.partner.findUniqueOrThrow({ where: { id: partner.id } })).toMatchObject({
+    counterpartyType: 'publicSector',
+  });
+  const renamed = await editPartner(partner.id, {}, buildForm('Renamed', 'publicSector'));
+  expect(renamed.success).toBe(true);
+});
+
+test.each(['', 'unknownSector', null])(
+  'rejects editing with an invalid type: %s',
+  async (counterpartyType) => {
+    signInAs(seed.adminId, 'admin');
+    const partner = await createFixture();
+    const result = await editPartner(partner.id, {}, buildForm('Renamed', counterpartyType));
+    expect(result.errors?.counterpartyType).toBeDefined();
+    expect(await prisma.partner.findUnique({ where: { id: partner.id } })).toEqual(partner);
+  }
+);
 
 test('rejects renaming to the name of an active or deleted partner', async () => {
   signInAs(seed.adminId, 'admin');
