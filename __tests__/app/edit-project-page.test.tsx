@@ -55,6 +55,7 @@ vi.mock('@/components/layout/topbar-context', () => ({
 
 import EditProjectPage from '@/app/(protected)/dashboard/projects/[id]/edit/page';
 import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
+import { resolveSuspenseChild } from '../helpers/suspense-page';
 
 const CURRENT_YEAR = 2026;
 const CATEGORY_KEY = BENEFICIARY_CATEGORY_KEYS[0];
@@ -75,8 +76,8 @@ const PROJECT = {
   ],
 };
 
-function openPage(id = '42') {
-  return EditProjectPage({ params: Promise.resolve({ id }) });
+async function openPage(id = '42') {
+  return resolveSuspenseChild(await EditProjectPage({ params: Promise.resolve({ id }) }));
 }
 
 function projectFormProps() {
