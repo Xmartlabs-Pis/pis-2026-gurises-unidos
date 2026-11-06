@@ -53,6 +53,7 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       publicDescription: true,
       internalNotes: true,
       coverPhoto: true,
+      coverCrop: true,
       zone: true,
       ...PROJECT_LOCATION_SELECT,
       leadCoordinator: {

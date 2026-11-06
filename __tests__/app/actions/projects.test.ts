@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -1207,6 +1207,88 @@ describe('project review regressions', () => {
     expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
   });
 
+  it('rejects an uploaded path that no live project uses', async () => {
+    const unusedPath = '/uploads/covers/55555555-5555-4555-8555-555555555555.webp';
+    const crop = { x: 10, y: 5, width: 80, height: 70 };
+    expect(
+      await updateProject(
+        10,
+        {},
+        formData({ coverPhotoPath: unusedPath, coverCrop: JSON.stringify(crop) })
+      )
+    ).toEqual({
+      formError: 'La imagen de portada que elegiste ya no está disponible. Elegí otra.',
+    });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it('reuses an in-use cover and stores the crop without copying the file', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const sharedPath = '/uploads/covers/44444444-4444-4444-8444-444444444444.webp';
+    const crop = { x: 10, y: 5, width: 80, height: 70 };
+    try {
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: '/images/project-placeholders/1.webp',
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+        localities: LOCALITIES,
+      });
+      mocks.findLiveCover.mockResolvedValue({ id: 4 });
+      await expect(
+        updateProject(
+          10,
+          {},
+          formData({ coverPhotoPath: sharedPath, coverCrop: JSON.stringify(crop) })
+        )
+      ).rejects.toThrow('Redirect:');
+      expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+      expect(mocks.updateProject.mock.calls[0][0].where).toEqual({ id: 10 });
+      expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(sharedPath);
+      expect(mocks.updateProject.mock.calls[0][0].data.coverCrop).toEqual(crop);
+      await expect(readdir(path.join(directory, 'covers'))).rejects.toThrow();
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('stores a new crop without rewriting the shared file or the other project', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const sharedPath = '/uploads/covers/44444444-4444-4444-8444-444444444444.webp';
+    const crop = { x: 12, y: 8, width: 70, height: 60 };
+    try {
+      await writeOwnedCover(directory, sharedPath, 3, 'shared');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: sharedPath,
+        coverCrop: { x: 0, y: 0, width: 100, height: 100 },
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        departments: [{ id: 3 }],
+        localities: LOCALITIES,
+      });
+      await expect(
+        updateProject(10, {}, formData({ coverCrop: JSON.stringify(crop) }))
+      ).rejects.toThrow('Redirect:');
+      expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+      expect(mocks.updateProject.mock.calls[0][0].where).toEqual({ id: 10 });
+      expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
+      expect(mocks.updateProject.mock.calls[0][0].data.coverCrop).toEqual(crop);
+      expect(
+        await readFile(path.join(directory, 'covers', path.basename(sharedPath)), 'utf8')
+      ).toBe('shared');
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('replaces an uploaded cover and deletes the previous file', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
     process.env.COVER_UPLOAD_DIR = directory;
@@ -1280,6 +1362,33 @@ describe('project review regressions', () => {
     expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(
       '/images/project-placeholders/3.webp'
     );
+  });
+
+  it('clears the crop when the cover is removed', async () => {
+    mocks.findProject.mockResolvedValue({
+      id: 10,
+      leadCoordinatorId: 2,
+      coverPhoto: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+      coverCrop: { x: 0, y: 0, width: 40, height: 40 },
+      topics: [{ id: 1 }],
+      strategicLines: [{ id: 1 }],
+      departments: [{ id: 3 }],
+      localities: LOCALITIES,
+    });
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: '/images/project-placeholders/3.webp',
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(
+      '/images/project-placeholders/3.webp'
+    );
+    expect(mocks.updateProject.mock.calls[0][0].data.coverCrop).toBe(Prisma.DbNull);
   });
 
   it('ignores a forged placeholder when the cover is removed', async () => {

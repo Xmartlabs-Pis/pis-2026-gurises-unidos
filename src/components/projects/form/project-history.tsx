@@ -2,7 +2,13 @@ import type { AuditAction, AuditEntity } from '@/generated/prisma/enums';
 import { FormSection } from '@/components/ui/forms/form-section';
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import { PROJECT_FIELD_LABELS, PROJECT_TEXT_CHANGE_LABELS } from '@/lib/audit-log/constants';
+import {
+  COVER_CHANGE_FIELDS,
+  COVER_PHOTO_UPDATE_DETAIL,
+  COVER_PHOTO_UPDATE_LABEL,
+  PROJECT_FIELD_LABELS,
+  PROJECT_TEXT_CHANGE_LABELS,
+} from '@/lib/audit-log/constants';
 import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
 
 type ProjectHistoryProps = {
@@ -71,9 +77,23 @@ type AuditChange = {
   to: AuditValue;
 };
 
-function describeEntry(
-  entry: ProjectHistoryProps['entries'][number]
-): { label: string; changes: AuditChange[] } | null {
+type EntryDescription = {
+  label: string;
+  changes: AuditChange[];
+  coverUpdated: boolean;
+};
+
+function isCoverChange(change: unknown) {
+  return (
+    typeof change === 'object' &&
+    change !== null &&
+    'field' in change &&
+    typeof change.field === 'string' &&
+    COVER_CHANGE_FIELDS.has(change.field)
+  );
+}
+
+function describeEntry(entry: ProjectHistoryProps['entries'][number]): EntryDescription | null {
   if (entry.entity === 'project') {
     const label = PROJECT_ACTION_LABELS[entry.action];
 
@@ -81,15 +101,23 @@ function describeEntry(
 
     const details = projectDetailsSchema.safeParse(entry.details);
 
-    if (!details.success) return { label, changes: [] };
+    if (!details.success) return { label, changes: [], coverUpdated: false };
 
+    let coverUpdated = false;
     const changes = (details.data.changes ?? []).flatMap((change) => {
+      if (isCoverChange(change)) {
+        coverUpdated = true;
+        return [];
+      }
       const parsedChange = projectChangeSchema.safeParse(change);
-
       return parsedChange.success ? [parsedChange.data] : [];
     });
 
-    return { label, changes };
+    if (entry.action === 'update' && coverUpdated && changes.length === 0) {
+      return { label: COVER_PHOTO_UPDATE_LABEL, changes: [], coverUpdated: false };
+    }
+
+    return { label, changes, coverUpdated };
   }
 
   if (entry.entity !== 'beneficiary') return null;
@@ -101,6 +129,7 @@ function describeEntry(
   return {
     label: `${BENEFICIARY_ACTION_LABEL} de ${details.data.year}`,
     changes: details.data.changes,
+    coverUpdated: false,
   };
 }
 
@@ -122,7 +151,7 @@ export function ProjectHistory({ entries, fieldLabels }: ProjectHistoryProps) {
       ) : (
         <div className="max-h-96 overflow-y-auto">
           <ol className="ml-1 space-y-[18px] border-l-2 pl-[18px]">
-            {described.map(({ entry, label, changes }) => (
+            {described.map(({ entry, label, changes, coverUpdated }) => (
               <li key={entry.id} className="relative text-sm leading-5">
                 <span className="bg-history-marker absolute top-1.5 -left-6 size-2.5 rounded-full" />
 
@@ -145,8 +174,9 @@ export function ProjectHistory({ entries, fieldLabels }: ProjectHistoryProps) {
                   {label}
                 </p>
 
-                {changes.length > 0 && (
+                {(changes.length > 0 || coverUpdated) && (
                   <ul className="text-muted-foreground mt-1 space-y-0.5">
+                    {coverUpdated && <li>{COVER_PHOTO_UPDATE_DETAIL}</li>}
                     {changes.map((change) => {
                       const isProject = entry.entity === 'project';
                       const labels = isProject ? PROJECT_FIELD_LABELS : fieldLabels;

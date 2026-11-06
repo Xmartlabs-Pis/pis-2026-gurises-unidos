@@ -26,6 +26,7 @@ export function getDefaultValues(
     internalNotes: '',
     showOnLanding: 'true',
     coverPhotoUrl: null,
+    coverCrop: null,
     ...Object.fromEntries(categories.map(({ key }) => [key, '0'])),
   };
 }

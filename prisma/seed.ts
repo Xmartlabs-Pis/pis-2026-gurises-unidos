@@ -481,6 +481,7 @@ async function main() {
           region: null,
           generalObjective: null,
           coverPhoto: PROJECT_PLACEHOLDERS[index % PROJECT_PLACEHOLDERS.length],
+          coverCrop: Prisma.DbNull,
           internalNotes: null,
           createdBy: admin.id,
           deletedAt: null,

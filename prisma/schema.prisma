@@ -166,6 +166,7 @@ model Project {
   generalObjective  String?          @db.VarChar(500)
   publicDescription String?          @db.VarChar(1000)
   coverPhoto        String?
+  coverCrop         Json?
   internalNotes     String?          @db.VarChar(1000)
   showOnLanding     Boolean          @default(true)
   createdAt         DateTime         @default(now())

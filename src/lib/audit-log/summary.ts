@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
-import { PROJECT_FIELD_LABELS, PROJECT_TEXT_CHANGE_LABELS } from '@/lib/audit-log/constants';
+import {
+  COVER_CHANGE_FIELDS,
+  COVER_PHOTO_UPDATE_DETAIL,
+  COVER_PHOTO_UPDATE_LABEL,
+  PROJECT_FIELD_LABELS,
+  PROJECT_TEXT_CHANGE_LABELS,
+} from '@/lib/audit-log/constants';
 import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
 import {
   loginFailureDetailsSchema,
@@ -48,6 +54,20 @@ function formatChanges(
     .join(', ');
 }
 
+function describeProjectChanges(changes: AuditChange[]) {
+  const otherChanges = changes.filter((change) => !COVER_CHANGE_FIELDS.has(change.field));
+  const coverUpdated = otherChanges.length !== changes.length;
+  const formatted = formatChanges(
+    otherChanges,
+    PROJECT_FIELD_LABELS,
+    PROJECT_VALUE_LABELS,
+    PROJECT_TEXT_CHANGE_LABELS
+  );
+  if (!coverUpdated) return formatted;
+  if (otherChanges.length === 0) return COVER_PHOTO_UPDATE_LABEL;
+  return `${formatted}, ${COVER_PHOTO_UPDATE_DETAIL}`;
+}
+
 function formatBeneficiaryTotal(total: number) {
   return total === 1 ? '1 beneficiario' : `${total} beneficiarios`;
 }
@@ -86,12 +106,7 @@ export function describeAuditDetails(
       : null;
   }
   if (details.changes?.length) {
-    return formatChanges(
-      details.changes,
-      PROJECT_FIELD_LABELS,
-      PROJECT_VALUE_LABELS,
-      PROJECT_TEXT_CHANGE_LABELS
-    );
+    return describeProjectChanges(details.changes);
   }
   if (details.changedFields?.length) {
     const fields = details.changedFields.map((field) => PROJECT_FIELD_LABELS[field] ?? field);

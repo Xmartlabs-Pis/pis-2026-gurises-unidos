@@ -55,6 +55,7 @@ const REGIONS = GEOGRAPHIC_REGIONS.map((region, index) => ({
       territory: region.name,
       description: '',
       coverPhoto: null,
+      coverCrop: null,
       reach: 10,
     },
   ],

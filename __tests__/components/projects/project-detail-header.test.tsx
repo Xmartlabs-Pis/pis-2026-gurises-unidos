@@ -30,6 +30,7 @@ const PROJECT: ProjectDetail['project'] = {
   publicDescription: 'Community support project.',
   internalNotes: null,
   coverPhoto: null,
+  coverCrop: null,
   leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
   departments: [{ id: 1, name: 'Montevideo' }],
   topics: [{ id: 1, name: 'Educación' }],

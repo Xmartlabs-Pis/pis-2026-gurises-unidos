@@ -45,6 +45,15 @@ export async function ownedUploadedCoverPath(coverPath: string | null, userId: n
   return owner?.userId === userId ? coverPath : null;
 }
 
+export async function reusedCoverPath(coverPath: string | null) {
+  if (!coverPath || !isUploadedCoverPath(coverPath)) return null;
+  const inUse = await prisma.project.findFirst({
+    where: { coverPhoto: coverPath, deletedAt: null },
+    select: { id: true },
+  });
+  return inUse ? coverPath : null;
+}
+
 export async function claimUploadedCover(coverPath: string | null) {
   if (!coverPath || !isUploadedCoverPath(coverPath)) return;
   try {

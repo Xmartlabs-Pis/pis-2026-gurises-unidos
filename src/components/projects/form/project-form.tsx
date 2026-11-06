@@ -122,7 +122,7 @@ export function ProjectForm({
     ...getDefaultValues(currentYear, beneficiaryCategories),
     ...initialValues,
   };
-  const cover = useProjectCover(defaultValues.coverPhotoUrl ?? null);
+  const cover = useProjectCover(defaultValues.coverPhotoUrl ?? null, defaultValues.coverCrop);
   const [uploading, setUploading] = useState(false);
   const [state, formAction, pending] = useActionState(submitAction, INITIAL_STATE);
   const busy = pending || uploading;
@@ -138,6 +138,7 @@ export function ProjectForm({
     ...defaultValues,
     ...watchedValues,
     coverPhotoUrl: cover.previewUrl,
+    coverCrop: cover.crop,
   } as ProjectFormValues;
 
   const { locationLabel, coverageLabel, beneficiaryTotal } = getPreviewLabels(
@@ -242,6 +243,12 @@ export function ProjectForm({
             <input type="hidden" name="projectPlaceholder" value={cover.removedPlaceholder} />
           </>
         )}
+        {cover.existingPath && (
+          <input type="hidden" name="coverPhotoPath" value={cover.existingPath} />
+        )}
+        {cover.cropDirty && cover.crop && (
+          <input type="hidden" name="coverCrop" value={JSON.stringify(cover.crop)} />
+        )}
         <div
           className={cn(
             'mx-auto grid w-full max-w-[1185px] flex-1 content-start items-start',
@@ -278,10 +285,15 @@ export function ProjectForm({
             />
 
             <PublicInfoSection
-              coverFile={cover.file}
-              imageUrl={cover.fieldImageUrl}
-              onCoverFileChange={cover.changeFile}
-              onRemoveSavedCover={cover.canRemove ? cover.remove : undefined}
+              previewUrl={cover.previewUrl}
+              crop={cover.crop}
+              file={cover.file}
+              canRemoveSaved={cover.canRemoveSaved}
+              hasUnsavedSelection={cover.hasUnsavedSelection}
+              hasUnsavedCrop={cover.hasUnsavedCrop}
+              onApplyCover={cover.apply}
+              onClearUnsavedCover={cover.clearUnsaved}
+              onRemoveSavedCover={cover.canRemoveSaved ? cover.remove : undefined}
             />
 
             <VisibilitySection />
