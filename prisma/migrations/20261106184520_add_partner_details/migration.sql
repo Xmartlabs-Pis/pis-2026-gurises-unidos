@@ -14,6 +14,10 @@ WHERE lower("name") IN ('fundación telefónica', 'fundación upm', 'pepsico', '
 UPDATE "Partner" SET "counterpartyType" = 'internationalCooperation'
 WHERE lower("name") IN ('unfpa', 'osf');
 
+-- Partners outside the list only exist as test data in staging.
+UPDATE "Partner" SET "counterpartyType" = 'privateSector'
+WHERE "counterpartyType" IS NULL;
+
 ALTER TABLE "Partner" ALTER COLUMN "counterpartyType" SET NOT NULL;
 
 DROP INDEX "Partner_name_case_insensitive_key";
