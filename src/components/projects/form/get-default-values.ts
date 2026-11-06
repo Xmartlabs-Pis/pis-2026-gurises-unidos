@@ -7,6 +7,7 @@ export function getDefaultValues(
 ): ProjectFormValues {
   return {
     year: String(currentYear),
+    beneficiaryDrafts: [],
     name: '',
     status: 'active',
     topicIds: [],

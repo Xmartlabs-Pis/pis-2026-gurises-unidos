@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFormContext, useFormState, useWatch } from 'react-hook-form';
 import { ChevronDown } from 'lucide-react';
 import { cn } from 'cn';
@@ -47,18 +47,22 @@ export function BeneficiariesSection({
   'isEditing' | 'yearOptions' | 'beneficiaryRecords' | 'beneficiaryCategories'
 >) {
   const { getValues, setValue } = useFormContext<ProjectFormValues>();
-  const beneficiaryDrafts = useRef<Record<string, Partial<Record<string, string>>>>({});
 
   const startYear = useWatch({ name: 'startYear' });
   const status = useWatch({ name: 'status' });
   const endYear = useWatch({ name: 'endYear' });
   const year = useWatch({ name: 'year' });
+  const drafts = useWatch<ProjectFormValues, 'beneficiaryDrafts'>({ name: 'beneficiaryDrafts' });
   const intensity = useWatch<ProjectFormValues, 'intensity'>({ name: 'intensity' });
   const directChildren = useWatch({ name: DIRECT_CHILDREN_KEY });
   const hasDirectChildren =
     Number(directChildren) > 0 ||
+    drafts.some((draft) => Number(draft[DIRECT_CHILDREN_KEY]) > 0) ||
     beneficiaryRecords.some(
-      (record) => String(record.year) !== year && record[DIRECT_CHILDREN_KEY] > 0
+      (record) =>
+        String(record.year) !== year &&
+        !drafts.some((draft) => draft.year === String(record.year)) &&
+        record[DIRECT_CHILDREN_KEY] > 0
     );
 
   const visibleCategories = beneficiaryCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS);
@@ -70,27 +74,38 @@ export function BeneficiariesSection({
   const hasExtraValues = extraKeys.some((key) => Number(formValues[key]) > 0);
   const hasExtraErrors = extraKeys.some((key) => errors[key]);
   const open = hasExtraErrors || (userOpen ?? hasExtraValues);
+  const invalidDraftYears = drafts
+    .filter((_, index) => errors.beneficiaryDrafts?.[index])
+    .map((draft) => draft.year);
+  const draftsError =
+    errors.beneficiaryDrafts?.message ??
+    (invalidDraftYears.length > 0
+      ? `Revisá los beneficiarios de ${invalidDraftYears.join(', ')}`
+      : undefined);
 
-  // TODO: Implement multiple years support on the backend
-  // right now we only support one year
   const selectYear = useCallback(
     (beneficiaryYear: string) => {
       const current = getValues();
-      beneficiaryDrafts.current[current.year] = Object.fromEntries(
-        beneficiaryCategories.map(({ key }) => [key, current[key]])
-      );
+      if (beneficiaryYear === current.year) return;
+      const currentRecord = beneficiaryRecords.find((item) => String(item.year) === current.year);
       const record = beneficiaryRecords.find((item) => String(item.year) === beneficiaryYear);
-      const counts = Object.fromEntries(
-        beneficiaryCategories.map(({ key }) => [key, String(record?.[key] ?? 0)])
-      );
-      const nextCounts = {
-        ...counts,
-        ...beneficiaryDrafts.current[beneficiaryYear],
-      };
+      const draft = current.beneficiaryDrafts.find((item) => item.year === beneficiaryYear);
+      const nextDrafts = current.beneficiaryDrafts.filter((item) => item !== draft);
+      if (
+        beneficiaryCategories.some(
+          ({ key }) => Number(current[key]) !== (currentRecord?.[key] ?? 0)
+        )
+      ) {
+        nextDrafts.push({
+          year: current.year,
+          ...Object.fromEntries(beneficiaryCategories.map(({ key }) => [key, current[key]])),
+        });
+      }
       for (const { key } of beneficiaryCategories) {
-        setValue(key, String(nextCounts[key] ?? '0'), { shouldValidate: true });
+        setValue(key, String(draft?.[key] ?? record?.[key] ?? 0), { shouldValidate: true });
       }
       setValue('year', beneficiaryYear);
+      setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
     },
     [getValues, setValue, beneficiaryRecords, beneficiaryCategories]
   );
@@ -117,6 +132,16 @@ export function BeneficiariesSection({
     }
   }, [startYear, status, endYear, year, selectYear]);
 
+  useEffect(() => {
+    const currentDrafts = getValues('beneficiaryDrafts');
+    const nextDrafts = currentDrafts.filter((draft) =>
+      yearOptions.some(({ value }) => value === draft.year)
+    );
+    if (nextDrafts.length < currentDrafts.length) {
+      setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
+    }
+  }, [drafts, yearOptions, getValues, setValue]);
+
   return (
     <FormSection
       title="Beneficiarios principales"
@@ -131,11 +156,17 @@ export function BeneficiariesSection({
           label="Año de beneficiarios"
           options={yearOptions}
           onValueChange={selectYear}
+          description="Al guardar se aplican los cambios de todos los años."
+          messages={draftsError ? [draftsError] : undefined}
         />
-        <p className="text-muted-foreground mt-2 text-xs">
-          Se guardan únicamente los beneficiarios del año seleccionado. Los cambios de otros años no
-          se guardarán al salir.
-        </p>
+        {drafts.map((draft) => (
+          <input
+            key={draft.year}
+            type="hidden"
+            name="beneficiaryDrafts"
+            value={JSON.stringify(draft)}
+          />
+        ))}
       </div>
       <div className="sm:col-span-2">
         <SelectField
