@@ -209,6 +209,11 @@ html:has(.theme-public) {
   --sidebar-ring: #f5970c;
 }
 
+.theme-public.auth-brand-panel {
+  --foreground: #ffffff;
+  --muted-foreground: #ffffffb3;
+}
+
 .theme-public main > section {
   background-color: var(--background);
 }
