@@ -5,7 +5,7 @@ const SKELETON_CARDS = 5;
 export function CarouselCardSkeleton() {
   return (
     <div className="border-border-default h-full w-full overflow-hidden rounded-[10px] border bg-white">
-      <Skeleton className="h-48 w-full rounded-none" />
+      <Skeleton className="aspect-video w-full rounded-none" />
       <div className="flex flex-col gap-3 px-5 py-4">
         <Skeleton className="h-4 w-1/3" />
         <Skeleton className="h-6 w-2/3" />

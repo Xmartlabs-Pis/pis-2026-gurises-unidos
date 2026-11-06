@@ -36,7 +36,7 @@ export type ProjectCardProps = InternalProjectCardProps | PublicProjectCardProps
 const PUBLIC_VARIANT_STYLES = {
   'public-light': {
     card: 'bg-white border border-border-default rounded-[10px]',
-    image: 'bg-muted h-48',
+    image: 'bg-muted',
     dot: 'hidden',
     territory: 'text-muted-foreground',
     name: 'text-foreground',
@@ -46,7 +46,7 @@ const PUBLIC_VARIANT_STYLES = {
   },
   'public-dark': {
     card: 'bg-card border-border rounded-xl',
-    image: 'bg-background h-54.5',
+    image: 'bg-background',
     dot: 'bg-primary',
     territory: 'text-foreground',
     name: 'text-foreground',
