@@ -16,6 +16,7 @@ import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
 import { IntensityInfo } from '../intensity-info';
 import type { ProjectFormValues } from '../project-form-values';
+import { hasBeneficiaryDraftChanges } from '../project-form-signature';
 import type { SectionProps } from './section-props';
 
 const VISIBLE_BENEFICIARY_FIELDS = 10;
@@ -57,10 +58,11 @@ export function BeneficiariesSection({
   yearOptions,
   beneficiaryRecords,
   beneficiaryCategories,
+  onUnsavedChangesChange,
 }: Pick<
   SectionProps,
   'isEditing' | 'yearOptions' | 'beneficiaryRecords' | 'beneficiaryCategories'
->) {
+> & { onUnsavedChangesChange?: (changed: boolean) => void }) {
   const { getValues, setValue } = useFormContext<ProjectFormValues>();
 
   const startYear = useWatch({ name: 'startYear' });
@@ -160,6 +162,19 @@ export function BeneficiariesSection({
       setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
     }
   }, [drafts, yearOptions, getValues, setValue]);
+
+  useEffect(() => {
+    if (!onUnsavedChangesChange) return;
+    const draftsByYear = {
+      ...Object.fromEntries(drafts.map((draft) => [draft.year, draft])),
+      [String(year)]: Object.fromEntries(
+        beneficiaryCategories.map(({ key }) => [key, String(formValues[key] ?? '0')])
+      ),
+    };
+    onUnsavedChangesChange(
+      hasBeneficiaryDraftChanges(draftsByYear, beneficiaryRecords, beneficiaryCategories)
+    );
+  }, [year, drafts, formValues, beneficiaryRecords, beneficiaryCategories, onUnsavedChangesChange]);
 
   return (
     <FormSection
