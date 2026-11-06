@@ -360,7 +360,7 @@ describe('createProject', () => {
       );
       expect(projectCreate).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
+          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
           coverCrop: Prisma.DbNull,
         }),
       });
