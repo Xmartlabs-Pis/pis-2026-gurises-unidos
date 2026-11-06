@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { createContributorSortingStrategy } from '@/components/metrics/contributor-sorting';
+import { createPartnerSortingStrategy } from '@/components/metrics/partner-sorting';
 
 test('packs variable-width pills into rows without overlap or scaling', () => {
   const rects = [
@@ -9,7 +9,7 @@ test('packs variable-width pills into rows without overlap or scaling', () => {
     new DOMRect(212, 86, 160, 44),
   ];
   const layout = { left: 20, top: 30, width: 400, gap: 12 };
-  const strategy = createContributorSortingStrategy(layout);
+  const strategy = createPartnerSortingStrategy(layout);
   const transformed = rects.map((rect, index) => {
     const transform = strategy({
       rects,
@@ -48,13 +48,13 @@ test('measures once per drag and reuses positions for previously visited targets
   const readWidth = vi.fn(() => 100);
   Object.defineProperty(rects[0], 'width', { get: readWidth });
   const layout = { left: 0, top: 0, width: 300, gap: 12 };
-  const strategy = createContributorSortingStrategy(layout);
+  const strategy = createPartnerSortingStrategy(layout);
   const args = { rects, activeIndex: 0, overIndex: 1, index: 0, activeNodeRect: rects[0] };
   const first = strategy(args);
   strategy({ ...args, index: 1 });
   strategy({ ...args, overIndex: 0 });
   expect(strategy(args)).toBe(first);
   expect(readWidth).toHaveBeenCalledTimes(1);
-  createContributorSortingStrategy(layout)(args);
+  createPartnerSortingStrategy(layout)(args);
   expect(readWidth).toHaveBeenCalledTimes(2);
 });

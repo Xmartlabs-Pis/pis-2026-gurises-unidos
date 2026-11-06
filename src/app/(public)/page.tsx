@@ -1,5 +1,5 @@
-import { getContributors } from '@/lib/contributors';
-import { ContributorStrip } from '@/components/contributor-strip';
+import { getPartners } from '@/lib/partners';
+import { PartnerStrip } from '@/components/partner-strip';
 import { formatIncrement } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { getPublicStats } from '@/lib/metrics/public-stats';
@@ -27,11 +27,11 @@ export default async function Home({
 }) {
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
-  const [values, previousValues, settings, contributors, topics] = await Promise.all([
+  const [values, previousValues, settings, partners, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getContributors(),
+    getPartners(),
     getPublishedTopics(year),
   ]);
   const stats = getPublicStats(settings, values).map((stat) => ({
@@ -131,16 +131,16 @@ export default async function Home({
           </p>
         </div>
       </section>
-      {contributors.length > 0 && (
-        <section aria-labelledby="contributors-heading" className="w-full">
+      {partners.length > 0 && (
+        <section aria-labelledby="partners-heading" className="w-full">
           <div className="mx-auto flex w-full max-w-360 flex-col items-center gap-6 px-5 pt-4 pb-16 text-center sm:px-6 lg:px-16 lg:pb-24">
             <h2
-              id="contributors-heading"
+              id="partners-heading"
               className="text-foreground text-xs leading-4 font-bold tracking-[0.14em]"
             >
               CON EL APOYO DE
             </h2>
-            <ContributorStrip contributors={contributors} />
+            <PartnerStrip partners={partners} />
           </div>
         </section>
       )}

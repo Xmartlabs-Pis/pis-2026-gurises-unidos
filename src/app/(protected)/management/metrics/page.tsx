@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getContributors } from '@/lib/contributors';
+import { getPartners } from '@/lib/partners';
 import { MetricsForm } from '@/components/metrics/metrics-form';
 import { MetricsFormSkeleton } from '@/components/metrics/metrics-form-skeleton';
 import { requireAdmin } from '@/lib/auth/require-admin';
@@ -48,16 +48,16 @@ async function MetricsContent({
     getPublishedYears(currentYear),
   ]);
   const year = resolveYearParam((await searchParams).year, years, publishedYears[0]);
-  const [values, initialMetrics, initialTopics, contributors] = await Promise.all([
+  const [values, initialMetrics, initialTopics, partners] = await Promise.all([
     getMetricValues(year),
     getMetricSettings(),
     getTopicVisibilitySettings(year),
-    getContributors(),
+    getPartners(),
   ]);
 
   return (
     <MetricsForm
-      contributors={contributors}
+      partners={partners}
       year={String(year)}
       values={values}
       initialMetrics={initialMetrics}

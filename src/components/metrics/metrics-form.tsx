@@ -1,7 +1,7 @@
 'use client';
 
-import { ContributorsManager } from '@/components/metrics/contributors-manager';
-import type { Contributor } from '@/lib/contributors';
+import { PartnersManager } from '@/components/metrics/partners-manager';
+import type { Partner } from '@/lib/partners';
 
 import Link from 'next/link';
 import { Info } from 'lucide-react';
@@ -45,9 +45,9 @@ export function MetricsForm({
   initialTopics,
   years,
   initialPublishedYears,
-  contributors = [],
+  partners = [],
 }: {
-  contributors?: Contributor[];
+  partners?: Partner[];
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];
@@ -235,7 +235,7 @@ export function MetricsForm({
               </div>
             )}
           </section>
-          <ContributorsManager contributors={contributors} />
+          <PartnersManager partners={partners} />
         </section>
         <aside
           aria-label="Vista previa del reporte público"

@@ -243,7 +243,7 @@ html:has(.theme-public) {
   background-color: var(--surface-brand-deep);
 }
 
-.contributor-strip {
+.partner-strip {
   mask-image: linear-gradient(
     to right,
     transparent,

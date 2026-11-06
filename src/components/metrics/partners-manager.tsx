@@ -12,20 +12,13 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
 import {
-  createContributorSortingStrategy,
-  type ContributorSortingStrategy,
-} from '@/components/metrics/contributor-sorting';
-import {
-  SortableContributor,
-  ContributorDragPreview,
-} from '@/components/metrics/sortable-contributor';
+  createPartnerSortingStrategy,
+  type PartnerSortingStrategy,
+} from '@/components/metrics/partner-sorting';
+import { SortablePartner, PartnerDragPreview } from '@/components/metrics/sortable-partner';
 import { Plus } from 'lucide-react';
-import {
-  createContributor,
-  deleteContributor,
-  reorderContributors,
-} from '@/app/actions/contributors';
-import type { Contributor } from '@/lib/contributors';
+import { createPartner, deletePartner, reorderPartners } from '@/app/actions/partners';
+import type { Partner } from '@/lib/partners';
 import { notify } from '@/lib/notify';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -40,40 +33,40 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-export function ContributorsManager({ contributors }: { contributors: Contributor[] }) {
+export function PartnersManager({ partners }: { partners: Partner[] }) {
   const [name, setName] = useState('');
-  const [selectedContributor, setSelectedContributor] = useState<Contributor | null>(null);
+  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
   const [error, setError] = useState<string>();
   const [isPending, startTransition] = useTransition();
-  const [orderedContributors, setOrderedContributors] = useState<Contributor[] | null>(null);
+  const [orderedPartners, setOrderedPartners] = useState<Partner[] | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const sortingStrategyRef = useRef<ContributorSortingStrategy | null>(null);
+  const sortingStrategyRef = useRef<PartnerSortingStrategy | null>(null);
   const [previewHeight, setPreviewHeight] = useState<number>();
   const sortingStrategy = useCallback<SortingStrategy>(
     (args) => sortingStrategyRef.current?.(args) ?? null,
     []
   );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const displayedContributors = orderedContributors ?? contributors;
+  const displayedPartners = orderedPartners ?? partners;
 
-  function saveOrder(nextContributors: Contributor[]) {
+  function saveOrder(nextPartners: Partner[]) {
     setError(undefined);
     startTransition(async () => {
       try {
-        const result = await reorderContributors(nextContributors.map(({ id }) => id));
+        const result = await reorderPartners(nextPartners.map(({ id }) => id));
         if (!result.success) setError(result.message);
         else notify.success({ title: result.message });
       } catch {
         setError('No se pudo guardar el orden. Intentá de nuevo.');
       } finally {
-        setOrderedContributors(null);
+        setOrderedPartners(null);
       }
     });
   }
 
-  function moveContributor(id: number, targetIndex: number) {
-    const next = [...displayedContributors];
+  function movePartner(id: number, targetIndex: number) {
+    const next = [...displayedPartners];
     const sourceIndex = next.findIndex((item) => item.id === id);
     if (
       sourceIndex < 0 ||
@@ -82,18 +75,18 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
       sourceIndex === targetIndex
     )
       return null;
-    const [contributor] = next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, contributor);
-    setOrderedContributors(next);
+    const [partner] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, partner);
+    setOrderedPartners(next);
     return next;
   }
 
-  function addContributor() {
+  function addPartner() {
     if (isPending || !name.trim()) return;
     setError(undefined);
     startTransition(async () => {
       try {
-        const result = await createContributor(name);
+        const result = await createPartner(name);
         if (!result.success) {
           setError(result.message);
           return;
@@ -106,17 +99,17 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
     });
   }
 
-  function removeContributor() {
-    if (!selectedContributor || isPending) return;
+  function removePartner() {
+    if (!selectedPartner || isPending) return;
     setError(undefined);
     startTransition(async () => {
       try {
-        const result = await deleteContributor(selectedContributor.id);
+        const result = await deletePartner(selectedPartner.id);
         if (!result.success) {
           setError(result.message);
           return;
         }
-        setSelectedContributor(null);
+        setSelectedPartner(null);
         notify.success({ title: result.message });
       } catch {
         setError('No se pudo eliminar el contribuyente. Intentá de nuevo.');
@@ -126,36 +119,36 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
 
   return (
     <section
-      aria-labelledby="contributors-heading"
+      aria-labelledby="partners-heading"
       className="bg-card border-border-default flex flex-col gap-4 rounded-[14px] border p-5"
     >
       <div className="flex flex-col gap-2">
-        <h2 id="contributors-heading" className="text-lg font-semibold">
+        <h2 id="partners-heading" className="text-lg font-semibold">
           Quienes nos acompañan
         </h2>
-        <p id="contributors-description" className="text-muted-foreground text-sm">
+        <p id="partners-description" className="text-muted-foreground text-sm">
           Agregá un contribuyente con el botón + o presioná Enter para publicarlo de inmediato. Los
           contribuyentes se muestran en todos los años del reporte público.
         </p>
       </div>
       <div className="flex flex-col gap-2">
-        <label htmlFor="contributor-name" className="text-sm font-medium">
+        <label htmlFor="partner-name" className="text-sm font-medium">
           Nombre del contribuyente
         </label>
         <div className="flex min-w-0 gap-2">
           <Input
-            id="contributor-name"
+            id="partner-name"
             value={name}
             maxLength={100}
             disabled={isPending}
             className="h-9 min-w-0 flex-1"
             placeholder="Ej: INAU"
-            aria-describedby="contributors-description"
+            aria-describedby="partners-description"
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
                 event.preventDefault();
-                addContributor();
+                addPartner();
               }
             }}
           />
@@ -164,26 +157,26 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
             variant="outline"
             size="icon-lg"
             disabled={isPending || !name.trim()}
-            onClick={addContributor}
+            onClick={addPartner}
             aria-label="Agregar contribuyente"
           >
             <Plus aria-hidden="true" />
           </Button>
         </div>
       </div>
-      {error && !selectedContributor && (
+      {error && !selectedPartner && (
         <p role="alert" className="text-destructive text-sm">
           {error}
         </p>
       )}
-      {contributors.length ? (
+      {partners.length ? (
         <>
-          <p id="contributors-order-description" className="text-muted-foreground text-sm">
+          <p id="partners-order-description" className="text-muted-foreground text-sm">
             Arrastrá desde el ícono de cada píldora para cambiar su orden en el reporte público.
             También podés usar las flechas del teclado al enfocar el ícono.
           </p>
           <DndContext
-            id="contributors-sortable"
+            id="partners-sortable"
             sensors={sensors}
             collisionDetection={(args) => {
               const collisions = pointerWithin(args);
@@ -194,7 +187,7 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
               if (!list) return;
               const { left, top, width } = list.getBoundingClientRect();
               const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
-              sortingStrategyRef.current = createContributorSortingStrategy({
+              sortingStrategyRef.current = createPartnerSortingStrategy({
                 left,
                 top,
                 width,
@@ -204,8 +197,8 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
             }}
             onDragOver={({ active, over }) => {
               if (!over) return;
-              const sourceIndex = displayedContributors.findIndex(({ id }) => id === active.id);
-              const targetIndex = displayedContributors.findIndex(({ id }) => id === over.id);
+              const sourceIndex = displayedPartners.findIndex(({ id }) => id === active.id);
+              const targetIndex = displayedPartners.findIndex(({ id }) => id === over.id);
               setPreviewHeight(sortingStrategyRef.current?.getHeight(sourceIndex, targetIndex));
             }}
             onDragCancel={() => {
@@ -216,34 +209,34 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
               setDraggedId(null);
               setPreviewHeight(undefined);
               if (!over || active.id === over.id) return;
-              const sourceIndex = displayedContributors.findIndex(({ id }) => id === active.id);
-              const targetIndex = displayedContributors.findIndex(({ id }) => id === over.id);
+              const sourceIndex = displayedPartners.findIndex(({ id }) => id === active.id);
+              const targetIndex = displayedPartners.findIndex(({ id }) => id === over.id);
               if (sourceIndex < 0 || targetIndex < 0) return;
-              const next = arrayMove(displayedContributors, sourceIndex, targetIndex);
-              setOrderedContributors(next);
+              const next = arrayMove(displayedPartners, sourceIndex, targetIndex);
+              setOrderedPartners(next);
               saveOrder(next);
             }}
           >
-            <SortableContext items={displayedContributors} strategy={sortingStrategy}>
+            <SortableContext items={displayedPartners} strategy={sortingStrategy}>
               <ul
                 ref={listRef}
                 style={{ minHeight: previewHeight }}
                 aria-label="Contribuyentes publicados"
                 className="flex min-w-0 flex-wrap content-start gap-3"
               >
-                {displayedContributors.map((contributor, index) => (
-                  <SortableContributor
-                    key={contributor.id}
-                    contributor={contributor}
+                {displayedPartners.map((partner, index) => (
+                  <SortablePartner
+                    key={partner.id}
+                    partner={partner}
                     disabled={isPending || draggedId !== null}
-                    reorderDisabled={isPending || contributors.length < 2}
+                    reorderDisabled={isPending || partners.length < 2}
                     onDelete={() => {
                       setError(undefined);
-                      setSelectedContributor(contributor);
+                      setSelectedPartner(partner);
                     }}
                     onMove={(direction) => {
                       if (draggedId !== null) return;
-                      const next = moveContributor(contributor.id, index + direction);
+                      const next = movePartner(partner.id, index + direction);
                       if (next) saveOrder(next);
                     }}
                   />
@@ -251,9 +244,9 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
               </ul>
             </SortableContext>
             <DragOverlay adjustScale={false}>
-              {draggedId !== null && displayedContributors.find(({ id }) => id === draggedId) && (
-                <ContributorDragPreview
-                  contributor={displayedContributors.find(({ id }) => id === draggedId)!}
+              {draggedId !== null && displayedPartners.find(({ id }) => id === draggedId) && (
+                <PartnerDragPreview
+                  partner={displayedPartners.find(({ id }) => id === draggedId)!}
                 />
               )}
             </DragOverlay>
@@ -263,17 +256,17 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
         <p className="text-muted-foreground text-sm">No hay contribuyentes publicados.</p>
       )}
       <AlertDialog
-        open={!!selectedContributor}
+        open={!!selectedPartner}
         onOpenChange={(open) => {
           if (!open && !isPending) {
-            setSelectedContributor(null);
+            setSelectedPartner(null);
             setError(undefined);
           }
         }}
       >
         <AlertDialogContent size="sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar a {selectedContributor?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>¿Eliminar a {selectedPartner?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               Dejará de aparecer en el reporte público. Esta acción no se puede deshacer.
             </AlertDialogDescription>
@@ -285,7 +278,7 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
           )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={isPending} onClick={removeContributor}>
+            <AlertDialogAction disabled={isPending} onClick={removePartner}>
               {isPending ? 'Eliminando…' : 'Eliminar'}
             </AlertDialogAction>
           </AlertDialogFooter>

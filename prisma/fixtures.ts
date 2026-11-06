@@ -7,7 +7,7 @@ export const ADMIN = {
   status: 'active',
 } as const;
 
-export const CONTRIBUTORS = [
+export const PARTNERS = [
   'INAU',
   'INEFOP',
   'ANEP',
@@ -30,7 +30,7 @@ export const TABLES = [
   'AuditLog',
   'Report',
   'Metric',
-  'Contributor',
+  'Partner',
   'PublicSettings',
   'Project',
   'StrategicLine',

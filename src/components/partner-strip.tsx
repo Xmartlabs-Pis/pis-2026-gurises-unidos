@@ -1,9 +1,9 @@
 'use client';
 
 import { useRef, useState, type PointerEvent } from 'react';
-import type { Contributor } from '@/lib/contributors';
+import type { Partner } from '@/lib/partners';
 
-export function ContributorStrip({ contributors }: { contributors: Contributor[] }) {
+export function PartnerStrip({ partners }: { partners: Partner[] }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null);
 
@@ -50,15 +50,15 @@ export function ContributorStrip({ contributors }: { contributors: Contributor[]
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onLostPointerCapture={endDrag}
-      className={`contributor-strip focus-visible:outline-foreground w-full max-w-260 [scrollbar-width:none] overflow-x-auto overscroll-x-contain py-1 select-none focus-visible:outline-2 focus-visible:outline-offset-4 [&::-webkit-scrollbar]:hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`partner-strip focus-visible:outline-foreground w-full max-w-260 [scrollbar-width:none] overflow-x-auto overscroll-x-contain py-1 select-none focus-visible:outline-2 focus-visible:outline-offset-4 [&::-webkit-scrollbar]:hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       <ul className="flex w-max min-w-full justify-center gap-3 px-8">
-        {contributors.map((contributor) => (
+        {partners.map((partner) => (
           <li
-            key={contributor.id}
+            key={partner.id}
             className="bg-card text-foreground flex min-h-10 shrink-0 items-center justify-center rounded-full px-5 py-2 text-sm leading-5 font-medium whitespace-nowrap"
           >
-            {contributor.name}
+            {partner.name}
           </li>
         ))}
       </ul>

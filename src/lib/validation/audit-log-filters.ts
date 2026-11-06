@@ -13,7 +13,7 @@ export const LISTED_AUDIT_ENTITIES = [
   'publicSettings',
   'metric',
   'topic',
-  'contributor',
+  'partner',
   'authentication',
 ] as const;
 

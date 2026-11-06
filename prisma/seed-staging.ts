@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
-import { ADMIN, BENEFICIARY_CATEGORIES, CONTRIBUTORS, STRATEGIC_LINES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, PARTNERS, STRATEGIC_LINES } from './fixtures';
 import {
   formCategoryValuesWhere,
   SYSTEM_BENEFICIARY_KEYS,
@@ -258,14 +258,14 @@ async function main() {
         }
       }
 
-      const { _max: contributorOrder } = await tx.contributor.aggregate({
+      const { _max: partnerOrder } = await tx.partner.aggregate({
         where: { deletedAt: null },
         _max: { sortOrder: true },
       });
-      await tx.contributor.createMany({
-        data: CONTRIBUTORS.map((name, index) => ({
+      await tx.partner.createMany({
+        data: PARTNERS.map((name, index) => ({
           name,
-          sortOrder: (contributorOrder.sortOrder ?? 0) + index + 1,
+          sortOrder: (partnerOrder.sortOrder ?? 0) + index + 1,
         })),
         skipDuplicates: true,
       });

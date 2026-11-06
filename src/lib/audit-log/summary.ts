@@ -37,7 +37,7 @@ const PUBLIC_REPORT_ENTITIES = new Set<ListedAuditEntity>([
   'publicSettings',
   'metric',
   'topic',
-  'contributor',
+  'partner',
 ]);
 
 const USER_FIELD_LABELS: Record<string, string> = { status: 'Estado', role: 'Rol' };

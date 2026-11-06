@@ -89,7 +89,7 @@ describe('parseAuditLogFilters', () => {
     expect(parseAuditLogFilters({ entity }).entity).toBeUndefined();
   });
 
-  it.each(['publicSettings', 'metric', 'topic', 'contributor'])('keeps the %s entity', (entity) => {
+  it.each(['publicSettings', 'metric', 'topic', 'partner'])('keeps the %s entity', (entity) => {
     expect(parseAuditLogFilters({ entity }).entity).toBe(entity);
   });
 

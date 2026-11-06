@@ -1,10 +1,10 @@
 import { arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
 
-export type ContributorSortingStrategy = SortingStrategy & {
+export type PartnerSortingStrategy = SortingStrategy & {
   getHeight: (activeIndex: number, overIndex: number) => number | undefined;
 };
 
-export function createContributorSortingStrategy({
+export function createPartnerSortingStrategy({
   left,
   top,
   width,
@@ -14,7 +14,7 @@ export function createContributorSortingStrategy({
   top: number;
   width: number;
   gap: number;
-}): ContributorSortingStrategy {
+}): PartnerSortingStrategy {
   let measuredRects: { left: number; top: number; width: number; height: number }[] | null = null;
   const positionsByTarget = new Map<string, ReturnType<SortingStrategy>[]>();
   const heightsByTarget = new Map<string, number>();

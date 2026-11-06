@@ -179,12 +179,12 @@ describe('describeAuditDetails', () => {
     ).toBe('Nombre: Salud → Bienestar');
   });
 
-  test('shows the contributors as an ordered set before and after the new order', () => {
+  test('shows the partners as an ordered set before and after the new order', () => {
     expect(
       describeAuditDetails(
         {
           action: 'update',
-          entity: 'contributor',
+          entity: 'partner',
           details: { order: { from: ['A', 'B', 'C'], to: ['B', 'C', 'A'] } },
         },
         {}
