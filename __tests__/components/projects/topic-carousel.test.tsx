@@ -65,6 +65,7 @@ function project(id: number) {
     territory: 'Montevideo',
     description: 'Descripción',
     coverPhoto: null,
+    coverCrop: null,
     reach: 10,
   };
 }
