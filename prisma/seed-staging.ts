@@ -259,12 +259,12 @@ async function main() {
       }
 
       const { _max: partnerOrder } = await tx.partner.aggregate({
-        where: { deletedAt: null },
+        where: { isActive: true },
         _max: { sortOrder: true },
       });
       await tx.partner.createMany({
-        data: PARTNERS.map((name, index) => ({
-          name,
+        data: PARTNERS.map((partner, index) => ({
+          ...partner,
           sortOrder: (partnerOrder.sortOrder ?? 0) + index + 1,
         })),
         skipDuplicates: true,

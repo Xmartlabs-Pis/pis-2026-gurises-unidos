@@ -183,6 +183,7 @@ model Project {
   deleter         User?             @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
   topics          Topic[]
   strategicLines  StrategicLine[]
+  partners        Partner[]
 
   projectCoordinators  ProjectCoordinator[]
   projectBeneficiaries ProjectBeneficiary[]
@@ -276,10 +277,14 @@ model PublicSettings {
 }
 
 model Partner {
-  id        Int       @id @default(autoincrement())
-  name      String    @db.VarChar(100)
-  sortOrder Int       @default(0)
-  deletedAt DateTime?
+  id               Int              @id @default(autoincrement())
+  name             String           @unique @db.VarChar(100)
+  counterpartyType CounterpartyType
+  sortOrder        Int              @default(0)
+  isActive         Boolean          @default(true)
+  showPublicly     Boolean          @default(true)
+
+  projects Project[]
 }
 
 model Report {

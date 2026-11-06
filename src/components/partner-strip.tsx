@@ -1,9 +1,9 @@
 'use client';
 
 import { useRef, useState, type PointerEvent } from 'react';
-import type { Partner } from '@/lib/partners';
+import type { PublicPartner } from '@/lib/partners';
 
-export function PartnerStrip({ partners }: { partners: Partner[] }) {
+export function PartnerStrip({ partners }: { partners: PublicPartner[] }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null);
 

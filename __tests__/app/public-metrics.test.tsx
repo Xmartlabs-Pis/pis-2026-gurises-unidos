@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import Home from '@/app/(public)/page';
-import { getPartners } from '@/lib/partners';
+import { getPublicPartners } from '@/lib/partners';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
-vi.mock('@/lib/partners', () => ({ getPartners: vi.fn(async () => []) }));
+vi.mock('@/lib/partners', () => ({ getPublicPartners: vi.fn(async () => []) }));
 vi.mock('@/lib/projects/public-projects', () => ({
   getPublishedTopics: vi.fn(async () => []),
   getPublicDepartments: vi.fn(async () => []),
@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getPartners).mockResolvedValue([]);
+  vi.mocked(getPublicPartners).mockResolvedValue([]);
   vi.mocked(getPublishedYears).mockResolvedValue([2025]);
   vi.mocked(getMetricSettings).mockResolvedValue(METRIC_DEFINITIONS);
   vi.mocked(getMetricValues).mockImplementation(async (year) => ({
@@ -45,7 +45,7 @@ beforeEach(() => {
 });
 
 test('renders published partners from the database', async () => {
-  vi.mocked(getPartners).mockResolvedValue([{ id: 42, name: 'Published partner' }]);
+  vi.mocked(getPublicPartners).mockResolvedValue([{ id: 42, name: 'Published partner' }]);
   render(await Home({ searchParams: Promise.resolve({}) }));
   expect(screen.getByText('Published partner')).toBeDefined();
   expect(screen.queryByText('INAU')).toBeNull();
@@ -57,7 +57,7 @@ test('hides the partners section when none are published', async () => {
 });
 
 test('renders every partner in the order returned by the database', async () => {
-  vi.mocked(getPartners).mockResolvedValue([
+  vi.mocked(getPublicPartners).mockResolvedValue([
     { id: 42, name: 'Second alphabetically' },
     { id: 7, name: 'First alphabetically' },
     { id: 9, name: 'Third alphabetically' },

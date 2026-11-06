@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { getPartners } from '@/lib/partners';
+import { getMetricsPartners } from '@/lib/partners';
 import { MetricsForm } from '@/components/metrics/metrics-form';
 import { MetricsFormSkeleton } from '@/components/metrics/metrics-form-skeleton';
 import { requireAdmin } from '@/lib/auth/require-admin';
@@ -52,7 +52,7 @@ async function MetricsContent({
     getMetricValues(year),
     getMetricSettings(),
     getTopicVisibilitySettings(year),
-    getPartners(),
+    getMetricsPartners(),
   ]);
 
   return (

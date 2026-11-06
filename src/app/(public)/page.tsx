@@ -1,4 +1,4 @@
-import { getPartners } from '@/lib/partners';
+import { getPublicPartners } from '@/lib/partners';
 import { PartnerStrip } from '@/components/partner-strip';
 import { formatIncrement } from '@/lib/format';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
@@ -31,7 +31,7 @@ export default async function Home({
     getMetricValues(year),
     getMetricValues(year - 1),
     getMetricSettings(),
-    getPartners(),
+    getPublicPartners(),
     getPublishedTopics(year),
   ]);
   const stats = getPublicStats(settings, values).map((stat) => ({

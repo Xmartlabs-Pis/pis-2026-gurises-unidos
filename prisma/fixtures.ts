@@ -8,17 +8,17 @@ export const ADMIN = {
 } as const;
 
 export const PARTNERS = [
-  'INAU',
-  'INEFOP',
-  'ANEP',
-  'Ministerio del Interior',
-  'Fundación Telefónica',
-  'Fundación UPM',
-  'Reaching U',
-  'PepsiCo',
-  'BASF',
-  'OSF',
-  'UNFPA',
+  { name: 'INAU', counterpartyType: 'publicSector' },
+  { name: 'INEFOP', counterpartyType: 'publicSector' },
+  { name: 'ANEP', counterpartyType: 'publicSector' },
+  { name: 'Ministerio del Interior', counterpartyType: 'publicSector' },
+  { name: 'Fundación Telefónica', counterpartyType: 'privateSector' },
+  { name: 'Fundación UPM', counterpartyType: 'privateSector' },
+  { name: 'Reaching U', counterpartyType: 'privateSector' },
+  { name: 'PepsiCo', counterpartyType: 'privateSector' },
+  { name: 'BASF', counterpartyType: 'privateSector' },
+  { name: 'OSF', counterpartyType: 'internationalCooperation' },
+  { name: 'UNFPA', counterpartyType: 'internationalCooperation' },
 ] as const;
 
 export const TABLES = [

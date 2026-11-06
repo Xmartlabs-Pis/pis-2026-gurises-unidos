@@ -1,7 +1,7 @@
 'use client';
 
 import { PartnersManager } from '@/components/metrics/partners-manager';
-import type { Partner } from '@/lib/partners';
+import type { MetricsPartner } from '@/lib/partners';
 
 import Link from 'next/link';
 import { Info } from 'lucide-react';
@@ -47,7 +47,7 @@ export function MetricsForm({
   initialPublishedYears,
   partners = [],
 }: {
-  partners?: Partner[];
+  partners?: MetricsPartner[];
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];

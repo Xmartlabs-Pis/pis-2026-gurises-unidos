@@ -10,35 +10,28 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { SortableContext, arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, type SortingStrategy } from '@dnd-kit/sortable';
 import {
+  HIDDEN_ZONE_ID,
+  VISIBLE_ZONE_ID,
   createPartnerSortingStrategy,
+  getPartnerPlacement,
   type PartnerSortingStrategy,
 } from '@/components/metrics/partner-sorting';
-import { SortablePartner, PartnerDragPreview } from '@/components/metrics/sortable-partner';
-import { Plus } from 'lucide-react';
-import { createPartner, deletePartner, reorderPartners } from '@/app/actions/partners';
-import type { Partner } from '@/lib/partners';
-import { notify } from '@/lib/notify';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+  HiddenPartner,
+  PartnerDragPreview,
+  PartnerDropZone,
+  SortablePartner,
+} from '@/components/metrics/sortable-partner';
+import { placePartner, reorderPartners, setPartnerVisibility } from '@/app/actions/partners';
+import type { MetricsPartner } from '@/lib/partners';
+import { notify } from '@/lib/notify';
 
-export function PartnersManager({ partners }: { partners: Partner[] }) {
-  const [name, setName] = useState('');
-  const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
+export function PartnersManager({ partners }: { partners: MetricsPartner[] }) {
   const [error, setError] = useState<string>();
   const [isPending, startTransition] = useTransition();
-  const [orderedPartners, setOrderedPartners] = useState<Partner[] | null>(null);
+  const [optimisticPartners, setOptimisticPartners] = useState<MetricsPartner[] | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const sortingStrategyRef = useRef<PartnerSortingStrategy | null>(null);
@@ -48,71 +41,63 @@ export function PartnersManager({ partners }: { partners: Partner[] }) {
     []
   );
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-  const displayedPartners = orderedPartners ?? partners;
+  const displayedPartners = optimisticPartners ?? partners;
+  const visiblePartners = displayedPartners.filter((partner) => partner.showPublicly);
+  const hiddenPartners = displayedPartners.filter((partner) => !partner.showPublicly);
+  const draggedPartner = displayedPartners.find(({ id }) => id === draggedId);
 
-  function saveOrder(nextPartners: Partner[]) {
+  function savePartners(
+    nextPartners: MetricsPartner[],
+    save: (order: number[]) => Promise<{ success: boolean; message: string }>
+  ) {
     setError(undefined);
+    setOptimisticPartners(nextPartners);
     startTransition(async () => {
       try {
-        const result = await reorderPartners(nextPartners.map(({ id }) => id));
+        const result = await save(nextPartners.map(({ id }) => id));
         if (!result.success) setError(result.message);
         else notify.success({ title: result.message });
       } catch {
         setError('No se pudo guardar el orden. Intentá de nuevo.');
       } finally {
-        setOrderedPartners(null);
+        setOptimisticPartners(null);
       }
     });
   }
 
-  function movePartner(id: number, targetIndex: number) {
-    const next = [...displayedPartners];
-    const sourceIndex = next.findIndex((item) => item.id === id);
-    if (
-      sourceIndex < 0 ||
-      targetIndex < 0 ||
-      targetIndex >= next.length ||
-      sourceIndex === targetIndex
-    )
-      return null;
-    const [partner] = next.splice(sourceIndex, 1);
-    next.splice(targetIndex, 0, partner);
-    setOrderedPartners(next);
-    return next;
+  function moveWithKeyboard(id: number, targetIndex: number) {
+    if (targetIndex < 0 || targetIndex >= visiblePartners.length) return;
+    const placement = getPartnerPlacement(
+      visiblePartners,
+      hiddenPartners,
+      id,
+      visiblePartners[targetIndex].id
+    );
+    if (placement) savePartners([...placement.visible, ...placement.hidden], reorderPartners);
   }
 
-  function addPartner() {
-    if (isPending || !name.trim()) return;
+  function dropPartner(activeId: number, overId: number | string) {
+    const placement = getPartnerPlacement(visiblePartners, hiddenPartners, activeId, overId);
+    if (!placement) return;
+    const nextPartners = [...placement.visible, ...placement.hidden];
+    if (!placement.visibilityChanged) {
+      savePartners(nextPartners, reorderPartners);
+      return;
+    }
+    const showPublicly = placement.visible.some(({ id }) => id === activeId);
+    savePartners(nextPartners, (order) => placePartner({ id: activeId, showPublicly, order }));
+  }
+
+  function toggleVisibility(partner: MetricsPartner) {
+    if (isPending) return;
     setError(undefined);
     startTransition(async () => {
       try {
-        const result = await createPartner(name);
-        if (!result.success) {
-          setError(result.message);
-          return;
-        }
-        setName('');
-        notify.success({ title: result.message });
+        const result = await setPartnerVisibility(partner.id, !partner.showPublicly);
+        if (!result.success) setError(result.message);
+        else notify.success({ title: result.message });
       } catch {
-        setError('No se pudo agregar el contribuyente. Intentá de nuevo.');
-      }
-    });
-  }
-
-  function removePartner() {
-    if (!selectedPartner || isPending) return;
-    setError(undefined);
-    startTransition(async () => {
-      try {
-        const result = await deletePartner(selectedPartner.id);
-        if (!result.success) {
-          setError(result.message);
-          return;
-        }
-        setSelectedPartner(null);
-        notify.success({ title: result.message });
-      } catch {
-        setError('No se pudo eliminar el contribuyente. Intentá de nuevo.');
+        setError('No se pudo actualizar la visibilidad. Intentá de nuevo.');
       }
     });
   }
@@ -127,44 +112,11 @@ export function PartnersManager({ partners }: { partners: Partner[] }) {
           Quienes nos acompañan
         </h2>
         <p id="partners-description" className="text-muted-foreground text-sm">
-          Agregá un contribuyente con el botón + o presioná Enter para publicarlo de inmediato. Los
-          contribuyentes se muestran en todos los años del reporte público.
+          Arrastrá cada socio entre las dos zonas, o hacé clic en el ojo, para mostrarlo u ocultarlo
+          en todos los años del sitio público. Los socios se crean desde la sección Socios.
         </p>
       </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor="partner-name" className="text-sm font-medium">
-          Nombre del contribuyente
-        </label>
-        <div className="flex min-w-0 gap-2">
-          <Input
-            id="partner-name"
-            value={name}
-            maxLength={100}
-            disabled={isPending}
-            className="h-9 min-w-0 flex-1"
-            placeholder="Ej: INAU"
-            aria-describedby="partners-description"
-            onChange={(event) => setName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                event.preventDefault();
-                addPartner();
-              }
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-lg"
-            disabled={isPending || !name.trim()}
-            onClick={addPartner}
-            aria-label="Agregar contribuyente"
-          >
-            <Plus aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
-      {error && !selectedPartner && (
+      {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}
         </p>
@@ -172,7 +124,7 @@ export function PartnersManager({ partners }: { partners: Partner[] }) {
       {partners.length ? (
         <>
           <p id="partners-order-description" className="text-muted-foreground text-sm">
-            Arrastrá desde el ícono de cada píldora para cambiar su orden en el reporte público.
+            Arrastrá desde el ícono de cada píldora para cambiar su orden en el sitio público.
             También podés usar las flechas del teclado al enfocar el ícono.
           </p>
           <DndContext
@@ -180,6 +132,8 @@ export function PartnersManager({ partners }: { partners: Partner[] }) {
             sensors={sensors}
             collisionDetection={(args) => {
               const collisions = pointerWithin(args);
+              const pills = collisions.filter(({ id }) => typeof id === 'number');
+              if (pills.length) return pills;
               return collisions.length ? collisions : closestCenter(args);
             }}
             onDragStart={({ active }) => {
@@ -197,8 +151,8 @@ export function PartnersManager({ partners }: { partners: Partner[] }) {
             }}
             onDragOver={({ active, over }) => {
               if (!over) return;
-              const sourceIndex = displayedPartners.findIndex(({ id }) => id === active.id);
-              const targetIndex = displayedPartners.findIndex(({ id }) => id === over.id);
+              const sourceIndex = visiblePartners.findIndex(({ id }) => id === active.id);
+              const targetIndex = visiblePartners.findIndex(({ id }) => id === over.id);
               setPreviewHeight(sortingStrategyRef.current?.getHeight(sourceIndex, targetIndex));
             }}
             onDragCancel={() => {
@@ -209,81 +163,66 @@ export function PartnersManager({ partners }: { partners: Partner[] }) {
               setDraggedId(null);
               setPreviewHeight(undefined);
               if (!over || active.id === over.id) return;
-              const sourceIndex = displayedPartners.findIndex(({ id }) => id === active.id);
-              const targetIndex = displayedPartners.findIndex(({ id }) => id === over.id);
-              if (sourceIndex < 0 || targetIndex < 0) return;
-              const next = arrayMove(displayedPartners, sourceIndex, targetIndex);
-              setOrderedPartners(next);
-              saveOrder(next);
+              dropPartner(Number(active.id), over.id);
             }}
           >
-            <SortableContext items={displayedPartners} strategy={sortingStrategy}>
-              <ul
-                ref={listRef}
-                style={{ minHeight: previewHeight }}
-                aria-label="Contribuyentes publicados"
-                className="flex min-w-0 flex-wrap content-start gap-3"
-              >
-                {displayedPartners.map((partner, index) => (
-                  <SortablePartner
+            <h3 className="text-sm font-medium">Visibles en el sitio público</h3>
+            <PartnerDropZone id={VISIBLE_ZONE_ID}>
+              {visiblePartners.length === 0 && (
+                <p className="text-muted-foreground text-sm">
+                  Arrastrá un socio acá para mostrarlo.
+                </p>
+              )}
+              <SortableContext items={visiblePartners} strategy={sortingStrategy}>
+                <ul
+                  ref={listRef}
+                  style={{ minHeight: previewHeight }}
+                  aria-label="Socios visibles"
+                  className="flex min-w-0 flex-wrap content-start gap-3"
+                >
+                  {visiblePartners.map((partner, index) => (
+                    <SortablePartner
+                      key={partner.id}
+                      partner={partner}
+                      disabled={isPending || draggedId !== null}
+                      reorderDisabled={isPending}
+                      onToggleVisibility={() => toggleVisibility(partner)}
+                      onMove={(direction) => {
+                        if (draggedId !== null) return;
+                        moveWithKeyboard(partner.id, index + direction);
+                      }}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </PartnerDropZone>
+            <h3 className="text-sm font-medium">Ocultos en el sitio público</h3>
+            <PartnerDropZone id={HIDDEN_ZONE_ID}>
+              {hiddenPartners.length === 0 && (
+                <p className="text-muted-foreground text-sm">
+                  Arrastrá un socio acá para ocultarlo.
+                </p>
+              )}
+              <ul aria-label="Socios ocultos" className="flex min-w-0 flex-wrap gap-3">
+                {hiddenPartners.map((partner) => (
+                  <HiddenPartner
                     key={partner.id}
                     partner={partner}
                     disabled={isPending || draggedId !== null}
-                    reorderDisabled={isPending || partners.length < 2}
-                    onDelete={() => {
-                      setError(undefined);
-                      setSelectedPartner(partner);
-                    }}
-                    onMove={(direction) => {
-                      if (draggedId !== null) return;
-                      const next = movePartner(partner.id, index + direction);
-                      if (next) saveOrder(next);
-                    }}
+                    dragDisabled={isPending}
+                    onToggleVisibility={() => toggleVisibility(partner)}
                   />
                 ))}
               </ul>
-            </SortableContext>
+            </PartnerDropZone>
             <DragOverlay adjustScale={false}>
-              {draggedId !== null && displayedPartners.find(({ id }) => id === draggedId) && (
-                <PartnerDragPreview
-                  partner={displayedPartners.find(({ id }) => id === draggedId)!}
-                />
-              )}
+              {draggedPartner && <PartnerDragPreview partner={draggedPartner} />}
             </DragOverlay>
           </DndContext>
         </>
       ) : (
-        <p className="text-muted-foreground text-sm">No hay contribuyentes publicados.</p>
+        <p className="text-muted-foreground text-sm">No hay socios cargados.</p>
       )}
-      <AlertDialog
-        open={!!selectedPartner}
-        onOpenChange={(open) => {
-          if (!open && !isPending) {
-            setSelectedPartner(null);
-            setError(undefined);
-          }
-        }}
-      >
-        <AlertDialogContent size="sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar a {selectedPartner?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Dejará de aparecer en el reporte público. Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {error && (
-            <p role="alert" className="text-destructive text-sm">
-              {error}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction disabled={isPending} onClick={removePartner}>
-              {isPending ? 'Eliminando…' : 'Eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </section>
   );
 }
