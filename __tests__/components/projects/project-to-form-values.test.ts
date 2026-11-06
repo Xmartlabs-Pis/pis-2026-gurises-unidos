@@ -27,6 +27,7 @@ const PROJECT = {
   internalNotes: null,
   showOnLanding: true,
   coverPhoto: '/cover.png',
+  coverCrop: null,
   createdAt: new Date('2024-01-01'),
   createdBy: 1,
   updatedAt: null,
@@ -57,6 +58,7 @@ it('defaults to the current year without copying historical beneficiary counts',
     directChildrenAdolescents: '0',
     topicIds: ['1', '4'],
     coverPhotoUrl: '/cover.png',
+    coverCrop: null,
     internalNotes: '',
   });
 });

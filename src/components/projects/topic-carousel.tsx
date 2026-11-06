@@ -99,6 +99,7 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
               name={project.name}
               description={project.description}
               coverPhoto={project.coverPhoto}
+              coverCrop={project.coverCrop}
               reach={project.reach}
             />
           </CarouselItem>

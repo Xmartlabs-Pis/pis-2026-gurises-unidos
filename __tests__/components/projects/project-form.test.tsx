@@ -1,8 +1,29 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
+import { listProjectCovers } from '@/app/actions/project-covers';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
 import { notify } from '@/lib/notify';
+
+vi.mock('react-easy-crop', async () => {
+  const React = await import('react');
+  return {
+    default: function MockCropper({
+      onCropComplete,
+    }: {
+      onCropComplete?: (area: { x: number; y: number; width: number; height: number }) => void;
+    }) {
+      React.useEffect(() => {
+        onCropComplete?.({ x: 0, y: 12.5, width: 100, height: 75 });
+      }, [onCropComplete]);
+      return <div data-testid="cover-cropper" />;
+    },
+  };
+});
+
+vi.mock('@/app/actions/project-covers', () => ({
+  listProjectCovers: vi.fn().mockResolvedValue([]),
+}));
 
 const { routerPushMock, routerRefreshMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
@@ -25,6 +46,18 @@ vi.mock('@/lib/notify', () => ({
 
 function getCoverPhotoInput(container: HTMLElement) {
   return container.querySelector('input[type="file"]') as HTMLInputElement;
+}
+
+const APPLIED_CROP = { x: 0, y: 12.5, width: 100, height: 75 };
+
+async function chooseCoverFile(container: HTMLElement, file: File) {
+  fireEvent.click(screen.getByLabelText('Foto de portada'));
+  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
+  const apply = await screen.findByRole('button', { name: 'Aplicar' });
+  await waitFor(() => {
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+  fireEvent.click(apply);
 }
 
 it('submits prefilled values and the recorded year, preserves edits on failure, and allows retry', async () => {
@@ -144,7 +177,7 @@ it('shows and submits the selected project placeholder during creation', () => {
   );
 });
 
-it('previews a selected cover without putting the file on the form', () => {
+it('previews a selected cover without putting the file on the form', async () => {
   const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
   const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   const { container } = render(
@@ -163,7 +196,7 @@ it('previews a selected cover without putting the file on the form', () => {
     />
   );
   const file = new File(['image'], 'portada.png', { type: 'image/png' });
-  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
+  await chooseCoverFile(container, file);
 
   const input = getCoverPhotoInput(container);
   const picker = screen.getByLabelText('Foto de portada');
@@ -172,14 +205,53 @@ it('previews a selected cover without putting the file on the form', () => {
   expect(input).not.toBe(picker);
   expect(input.closest('.overflow-hidden')).not.toBeNull();
   expect(input.getAttribute('form')).toBe('cover-photo-detached');
-  expect(container.querySelector('.aspect-video')?.getAttribute('style')).toContain('blob:preview');
+  expect(container.querySelector('img')?.getAttribute('src')).toBe('blob:preview');
+  expect(container.querySelector('img')?.getAttribute('style')).toContain('width:');
   expect(input.name).toBe('');
-  expect(new FormData(container.querySelector('form')!).get('coverPhoto')).toBeNull();
+  const submitted = new FormData(container.querySelector('form')!);
+  expect(submitted.get('coverPhoto')).toBeNull();
+  expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
+  const filename = screen.getByText('portada.png');
+  expect(filename.className).toContain('truncate');
+  expect(filename.className).toContain('min-w-0');
+  expect(picker.className).toContain('overflow-hidden');
   expect(
     screen.getByRole('button', { name: 'Foto de portada', description: /portada\.png/ })
   ).toBeTruthy();
   createObjectURL.mockRestore();
   revokeObjectURL.mockRestore();
+});
+
+it('submits an already uploaded cover and its crop', async () => {
+  const coverPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+  vi.mocked(listProjectCovers).mockResolvedValue([
+    { path: coverPath, projectName: 'Comedor', usedBy: 1 },
+  ]);
+  const { container } = render(
+    <ProjectForm
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      initialValues={{ counterpartyType: 'publicSector' }}
+      submitAction={vi.fn()}
+    />
+  );
+
+  fireEvent.click(screen.getByLabelText('Foto de portada'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Comedor' }));
+  const apply = await screen.findByRole('button', { name: 'Aplicar' });
+  await waitFor(() => {
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+  fireEvent.click(apply);
+
+  const submitted = new FormData(container.querySelector('form')!);
+  expect(submitted.get('coverPhotoPath')).toBe(coverPath);
+  expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
+  vi.mocked(listProjectCovers).mockResolvedValue([]);
 });
 
 it('uploads the selected cover and submits the returned path', async () => {
@@ -218,7 +290,7 @@ it('uploads the selected cover and submits the returned path', async () => {
     />
   );
   const file = new File(['image'], 'portada.png', { type: 'image/png' });
-  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
+  await chooseCoverFile(container, file);
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
@@ -236,6 +308,7 @@ it('uploads the selected cover and submits the returned path', async () => {
   expect(submitted.get('coverPhotoPath')).toBe(
     '/uploads/covers/11111111-1111-4111-8111-111111111111.webp'
   );
+  expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
   expect(submitted.get('coverPhoto')).toBeNull();
   vi.unstubAllGlobals();
 });
@@ -275,9 +348,7 @@ it('does not submit when the cover upload fails', async () => {
       submitAction={submitAction}
     />
   );
-  fireEvent.change(getCoverPhotoInput(container), {
-    target: { files: [new File(['image'], 'portada.png', { type: 'image/png' })] },
-  });
+  await chooseCoverFile(container, new File(['image'], 'portada.png', { type: 'image/png' }));
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
@@ -313,6 +384,46 @@ it('submits a placeholder when an uploaded cover is removed', () => {
     /^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/
   );
   expect(container.querySelector('img')?.getAttribute('src')).toContain('project-placeholders');
+});
+
+it('reverts a crop on the current cover and can still remove the photo', async () => {
+  const coverPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+  const savedCrop = { x: 0, y: 10, width: 100, height: 80 };
+  const { container } = render(
+    <ProjectForm
+      mode="edit"
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        coverPhotoUrl: coverPath,
+        coverCrop: savedCrop,
+      }}
+      submitAction={vi.fn()}
+    />
+  );
+
+  fireEvent.click(screen.getByLabelText('Foto de portada'));
+  const apply = await screen.findByRole('button', { name: 'Aplicar' });
+  await waitFor(() => {
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+  fireEvent.click(apply);
+
+  const form = () => new FormData(container.querySelector('form')!);
+  expect(form().get('coverCrop')).toBe(JSON.stringify(savedCrop));
+  expect(form().get('removeCoverPhoto')).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Deshacer encuadre' }));
+  expect(form().get('coverCrop')).toBeNull();
+  expect(form().get('removeCoverPhoto')).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
+  expect(form().get('removeCoverPhoto')).toBe('true');
 });
 
 it('sends multiple selected topics and preserves them after a failed save', async () => {

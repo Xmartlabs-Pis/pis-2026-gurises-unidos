@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
+import { parseCoverCrop, type CoverCrop } from '@/lib/projects/cover-crop';
 import { getTerritoryLabel } from '@/lib/projects/location';
 import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 
@@ -16,6 +17,7 @@ export type PublicProject = {
   territory: string;
   description: string;
   coverPhoto: string | null;
+  coverCrop: CoverCrop | null;
   reach: number;
 };
 
@@ -104,6 +106,7 @@ function publicProjectSelect(year: number) {
     name: true,
     publicDescription: true,
     coverPhoto: true,
+    coverCrop: true,
     geographicScope: true,
     countries: true,
     region: true,
@@ -129,6 +132,7 @@ function toPublicProject(row: PublicProjectRow): PublicProject {
     territory: getTerritoryLabel(row),
     description: row.publicDescription ?? '',
     coverPhoto: row.coverPhoto,
+    coverCrop: parseCoverCrop(row.coverCrop),
     reach: values.reduce((sum, { value }) => sum + value, 0),
   };
 }

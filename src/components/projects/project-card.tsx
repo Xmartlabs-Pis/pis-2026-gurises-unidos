@@ -1,11 +1,12 @@
-import Image from 'next/image';
 import Link from 'next/link';
+import { CoverFrame } from '@/components/projects/cover/cover-frame';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { formatNumber } from '@/lib/format';
 import { STATUS_LABEL, getIntensityLabel } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
+import type { CoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectListItem } from '@/lib/projects/list';
 
 type InternalProjectCardProps = {
@@ -26,6 +27,7 @@ type PublicProjectCardProps = {
   name: string;
   description: string;
   coverPhoto: string | null;
+  coverCrop: CoverCrop | null;
   reach: number;
 };
 
@@ -34,7 +36,7 @@ export type ProjectCardProps = InternalProjectCardProps | PublicProjectCardProps
 const PUBLIC_VARIANT_STYLES = {
   'public-light': {
     card: 'bg-white border border-border-default rounded-[10px]',
-    image: 'bg-muted h-48',
+    image: 'bg-muted',
     dot: 'hidden',
     territory: 'text-muted-foreground',
     name: 'text-foreground',
@@ -44,7 +46,7 @@ const PUBLIC_VARIANT_STYLES = {
   },
   'public-dark': {
     card: 'bg-card border-border rounded-xl',
-    image: 'bg-background h-54.5',
+    image: 'bg-background',
     dot: 'bg-primary',
     territory: 'text-foreground',
     name: 'text-foreground',
@@ -71,23 +73,20 @@ function PublicProjectCard({
   name,
   description,
   coverPhoto,
+  coverCrop,
   reach,
 }: PublicProjectCardProps) {
   const styles = PUBLIC_VARIANT_STYLES[variant];
 
   return (
     <article className={`${styles.card} flex h-full flex-col overflow-hidden`}>
-      <div className={`${styles.image} relative w-full`}>
-        {coverPhoto && (
-          <Image
-            src={coverPhoto}
-            alt={`Portada de ${name}`}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover"
-          />
-        )}
-      </div>
+      <CoverFrame
+        src={coverPhoto}
+        alt={coverPhoto ? `Portada de ${name}` : ''}
+        crop={coverCrop}
+        sizes="(min-width: 1024px) 25rem, 18.75rem"
+        className={styles.image}
+      />
       <div className="flex flex-1 flex-col gap-2 px-5 py-4">
         <div className="flex items-center gap-2">
           <span className={`${styles.dot} size-1.5 rounded-full`} />

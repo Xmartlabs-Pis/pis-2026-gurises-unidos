@@ -78,7 +78,11 @@ async function ProjectDetail({ params, searchParams }: ProjectDetailPageProps) {
             <div className="grid items-stretch gap-4 lg:grid-cols-2">
               <div className="flex min-w-0 flex-col gap-4">
                 <BeneficiaryDistribution data={distribution} year={selectedYear} />
-                <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
+                <ProjectPublicCard
+                  name={project.name}
+                  coverPhoto={project.coverPhoto}
+                  coverCrop={project.coverCrop}
+                />
               </div>
               <InstitutionalContribution data={institutionalContribution} />
             </div>
@@ -86,7 +90,11 @@ async function ProjectDetail({ params, searchParams }: ProjectDetailPageProps) {
         ) : (
           <>
             <ProjectYearEmptyState year={selectedYear} />
-            <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
+            <ProjectPublicCard
+              name={project.name}
+              coverPhoto={project.coverPhoto}
+              coverCrop={project.coverCrop}
+            />
           </>
         )}
         {history && fieldLabels && <ProjectHistory entries={history} fieldLabels={fieldLabels} />}

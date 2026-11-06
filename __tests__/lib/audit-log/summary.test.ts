@@ -208,3 +208,48 @@ test('describes locality snapshots without ids alongside other project changes',
       'Ubicaciones: Montevideo, Montevideo, Centro → Canelones, Las Piedras, Centro'
   );
 });
+
+test('summarizes a cover photo and crop as one sentence', () => {
+  expect(
+    describeAuditDetails(
+      {
+        action: 'update',
+        entity: 'project',
+        details: {
+          changes: [
+            {
+              field: 'coverPhoto',
+              from: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+              to: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
+            },
+            {
+              field: 'coverCrop',
+              from: null,
+              to: { x: 0, y: 25, width: 100, height: 50 },
+            },
+          ],
+        },
+      },
+      {}
+    )
+  ).toBe('actualizó la imagen de portada');
+});
+
+test('mentions the cover once when other fields change too', () => {
+  expect(
+    describeAuditDetails(
+      {
+        action: 'update',
+        entity: 'project',
+        details: {
+          changes: [
+            { field: 'name', from: 'Original project', to: 'Updated project' },
+            { field: 'coverPhoto', from: '/old.webp', to: '/new.webp' },
+            { field: 'coverCrop', from: null, to: { x: 0, y: 0, width: 100, height: 100 } },
+          ],
+        },
+      },
+      {}
+    )
+  ).toBe('Nombre: Original project → Updated project, Imagen de portada actualizada');
+});

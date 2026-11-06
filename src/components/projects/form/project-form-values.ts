@@ -1,4 +1,5 @@
 import type { BeneficiaryFieldName } from '@/lib/project-display';
+import type { CoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectFormData } from '@/lib/validation/project-form';
 
 type ProjectFormListField = 'topicIds' | 'strategicLineIds' | 'countries';
@@ -16,6 +17,7 @@ export type ProjectFormValues = Omit<
   ProjectFormListField | 'locations' | 'beneficiaryDrafts'
 > & {
   coverPhotoUrl: string | null;
+  coverCrop: CoverCrop | null;
   locations: ProjectLocationFormValue[];
   beneficiaryDrafts: BeneficiaryYearDraft[];
 } & { [K in ProjectFormListField]: string[] } & {

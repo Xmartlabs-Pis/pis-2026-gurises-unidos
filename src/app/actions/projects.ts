@@ -13,7 +13,9 @@ import {
   discardOwnedUnusedCover,
   discardUnusedUploadedCover,
   ownedUploadedCoverPath,
+  reusedCoverPath,
 } from '@/lib/projects/pending-cover';
+import { coverCropFromForm, sameCoverCrop, type CoverCrop } from '@/lib/projects/cover-crop';
 import {
   getRandomProjectPlaceholder,
   isProjectPlaceholder,
@@ -28,7 +30,7 @@ import {
   LOCATIONS_ERROR_MESSAGE,
   TOPICS_ERROR_MESSAGE,
 } from '@/lib/validation/project-form';
-import type { Prisma } from '@/generated/prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import type { Intensity } from '@/generated/prisma/enums';
 import {
   DIRECT_CHILDREN_KEY,
@@ -154,9 +156,31 @@ function resolveIntensity(
 const STALE_CATEGORIES_MESSAGE =
   'Las categorías de beneficiarios cambiaron. Recargá la página e intentá de nuevo.';
 
+const UNAVAILABLE_COVER_MESSAGE =
+  'La imagen de portada que elegiste ya no está disponible. Elegí otra.';
+
 function submittedPlaceholder(formData: FormData) {
   const submitted = formData.get('projectPlaceholder');
   return isProjectPlaceholder(submitted) ? submitted : getRandomProjectPlaceholder();
+}
+
+async function requestedCoverPath(uploadedPath: string | null, formData: FormData, userId: number) {
+  return (
+    (await ownedUploadedCoverPath(uploadedPath, userId)) ??
+    (await reusedCoverPath(uploadedPath)) ??
+    (wantsCoverRemoved(formData) ? submittedPlaceholder(formData) : null)
+  );
+}
+
+function nextCoverCrop(formData: FormData, coverChanged: boolean) {
+  if (wantsCoverRemoved(formData)) return null;
+  const submitted = coverCropFromForm(formData);
+  if (coverChanged) return submitted ?? null;
+  return submitted;
+}
+
+function coverCropInput(crop: CoverCrop | null) {
+  return crop === null ? Prisma.DbNull : crop;
 }
 
 async function lockBeneficiaryCategories(tx: Prisma.TransactionClient, keys: string[]) {
@@ -237,8 +261,12 @@ export async function createProject(
   const { topicIds, strategicLineIds, departmentIds, localities } = parsed;
   let projectId: number;
   try {
-    const coverPhoto =
-      (await ownedUploadedCoverPath(uploadedPath, user.id)) ?? submittedPlaceholder(formData);
+    const requestedCover = await requestedCoverPath(uploadedPath, formData, user.id);
+    if (uploadedPath !== null && requestedCover === null) {
+      return { formError: UNAVAILABLE_COVER_MESSAGE };
+    }
+    const coverPhoto = requestedCover ?? submittedPlaceholder(formData);
+    const coverCrop = wantsCoverRemoved(formData) ? null : (coverCropFromForm(formData) ?? null);
     const result = await prisma.$transaction(
       async (tx): Promise<{ error: ProjectFormState } | { projectId: number }> => {
         await lockTopics(tx, topicIds);
@@ -261,6 +289,7 @@ export async function createProject(
             departments: { connect: departmentIds.map((id) => ({ id })) },
             localities: { create: localities },
             coverPhoto,
+            coverCrop: coverCropInput(coverCrop),
             createdBy: user.id,
           },
         });
@@ -337,9 +366,8 @@ export async function updateProject(
   const beneficiaryYears = [beneficiaryData, ...beneficiaryDraftData];
   let previousCover: string | null = null;
   try {
-    const requestedCover =
-      (await ownedUploadedCoverPath(uploadedPath, user.id)) ??
-      (wantsCoverRemoved(formData) ? submittedPlaceholder(formData) : null);
+    const requestedCover = await requestedCoverPath(uploadedPath, formData, user.id);
+    const rejectedCoverPath = uploadedPath !== null && requestedCover === null;
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
         await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -360,6 +388,7 @@ export async function updateProject(
             },
           };
         }
+        if (rejectedCoverPath) return { formError: UNAVAILABLE_COVER_MESSAGE };
         const currentTopicIds = previous.topics.map(({ id }) => id);
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
@@ -413,6 +442,8 @@ export async function updateProject(
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
         const coverChanged = requestedCover !== null && requestedCover !== previous.coverPhoto;
+        const nextCrop = nextCoverCrop(formData, coverChanged);
+        const cropChanged = nextCrop !== undefined && !sameCoverCrop(nextCrop, previous.coverCrop);
         const topicsChanged = !hasSameIds(topicIds, currentTopicIds);
         const strategicLinesChanged = !hasSameIds(strategicLineIds, currentStrategicLineIds);
         const departmentsChanged = !hasSameIds(
@@ -423,6 +454,7 @@ export async function updateProject(
         const fields = [
           ...changedFields(nextProjectData, previous),
           ...(coverChanged ? ['coverPhoto'] : []),
+          ...(cropChanged ? ['coverCrop'] : []),
           ...(topicsChanged ? ['topics'] : []),
           ...(strategicLinesChanged ? ['strategicLines'] : []),
           ...(departmentsChanged ? ['departments'] : []),
@@ -434,6 +466,9 @@ export async function updateProject(
             data: {
               ...nextProjectData,
               ...(coverChanged ? { coverPhoto: requestedCover } : {}),
+              ...(cropChanged && nextCrop !== undefined
+                ? { coverCrop: coverCropInput(nextCrop) }
+                : {}),
               ...(topicsChanged ? { topics: { set: topicIds.map((id) => ({ id })) } } : {}),
               ...(strategicLinesChanged
                 ? { strategicLines: { set: strategicLineIds.map((id) => ({ id })) } }
