@@ -54,7 +54,10 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
     try {
       const next = await loadPublicProjectsPage(year, topicId, pageRef.current + 1);
       pageRef.current = next.page;
-      setProjects((current) => [...current, ...next.items]);
+      setProjects((current) => {
+        const loadedIds = new Set(current.map((p) => p.id));
+        return [...current, ...next.items.filter((p) => !loadedIds.has(p.id))];
+      });
       setHasMore(next.hasMore);
     } catch {
       setFailed(true);
@@ -67,7 +70,7 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
     if (!api || failed) return;
     const onScroll = () => {
       const lastVisible = Math.max(...api.slidesInView());
-      if (lastVisible >= api.slideNodes().length - LOAD_MORE_THRESHOLD) loadMore();
+      if (lastVisible >= api.slideNodes().length - LOAD_MORE_THRESHOLD) void loadMore();
     };
     onScroll();
     api.on('select', onScroll).on('slidesInView', onScroll);
@@ -107,7 +110,11 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
                 <p role="alert" className="text-muted-foreground text-sm">
                   No se pudieron cargar más proyectos.
                 </p>
-                <Button variant="outline" className="h-9 border bg-white px-4" onClick={loadMore}>
+                <Button
+                  variant="outline"
+                  className="h-9 border bg-white px-4"
+                  onClick={() => void loadMore()}
+                >
                   Reintentar
                 </Button>
               </div>
