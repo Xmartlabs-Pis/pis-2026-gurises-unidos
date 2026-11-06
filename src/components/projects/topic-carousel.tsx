@@ -54,7 +54,10 @@ export function TopicCarousel({ year, topicId, topic, total, initialPage }: Topi
     try {
       const next = await loadPublicProjectsPage(year, topicId, pageRef.current + 1);
       pageRef.current = next.page;
-      setProjects((current) => [...current, ...next.items]);
+      setProjects((current) => {
+        const loadedIds = new Set(current.map((p) => p.id));
+        return [...current, ...next.items.filter((p) => !loadedIds.has(p.id))];
+      });
       setHasMore(next.hasMore);
     } catch {
       setFailed(true);

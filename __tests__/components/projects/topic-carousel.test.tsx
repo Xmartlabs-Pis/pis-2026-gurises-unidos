@@ -160,6 +160,20 @@ describe('TopicCarousel', () => {
     expect(screen.queryByTestId('carousel-skeleton')).toBeNull();
   });
 
+  test('skips projects already loaded when the next page repeats them', async () => {
+    mocks.loadPublicProjectsPage.mockResolvedValue({
+      items: [project(1), project(2)],
+      page: 2,
+      hasMore: false,
+    });
+    renderCarousel();
+
+    await scrollTo(NEAR_THE_END);
+
+    expect(await screen.findByText('Proyecto 2')).toBeDefined();
+    expect(screen.getAllByText('Proyecto 1')).toHaveLength(1);
+  });
+
   test('requests the following page number on each load', async () => {
     mocks.loadPublicProjectsPage
       .mockResolvedValueOnce({ items: [project(2)], page: 2, hasMore: true })
