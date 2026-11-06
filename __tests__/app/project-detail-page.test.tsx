@@ -26,6 +26,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import ProjectDetailPage from '@/app/(protected)/dashboard/projects/[id]/page';
+import { hydrateSuspensePage, resolveSuspenseChild } from '../helpers/suspense-page';
 
 const DETAIL = {
   status: 'success',
@@ -129,15 +130,15 @@ beforeEach(() => {
   ]);
 });
 
-async function renderPage() {
-  render(
-    <TopbarProvider>
-      {await ProjectDetailPage({
-        params: Promise.resolve({ id: '42' }),
-        searchParams: Promise.resolve({}),
-      })}
-    </TopbarProvider>
-  );
+async function renderPage(
+  params: { id: string } = { id: '42' },
+  searchParams: Record<string, string> = {}
+) {
+  const page = await ProjectDetailPage({
+    params: Promise.resolve(params),
+    searchParams: Promise.resolve(searchParams),
+  });
+  render(<TopbarProvider>{await hydrateSuspensePage(page)}</TopbarProvider>);
 }
 
 test('shows the project change history to users who can edit the project', async () => {
@@ -159,14 +160,7 @@ test('hides the project change history from users who cannot edit the project', 
 });
 
 test('renders the selected project year and its main sections', async () => {
-  render(
-    <TopbarProvider>
-      {await ProjectDetailPage({
-        params: Promise.resolve({ id: '42' }),
-        searchParams: Promise.resolve({ year: '2026' }),
-      })}
-    </TopbarProvider>
-  );
+  await renderPage({ id: '42' }, { year: '2026' });
 
   expect(getProjectDetailMock).toHaveBeenCalledWith('42', '2026');
   expect(screen.getByRole('heading', { level: 1, name: 'El Resorte' })).toBeDefined();
@@ -200,14 +194,7 @@ test.each([true, false])(
       },
     });
 
-    render(
-      <TopbarProvider>
-        {await ProjectDetailPage({
-          params: Promise.resolve({ id: '42' }),
-          searchParams: Promise.resolve({}),
-        })}
-      </TopbarProvider>
-    );
+    await renderPage();
 
     const description = screen.getByRole('region', { name: 'Descripción pública' });
     const notes = screen.getByRole('region', { name: 'Notas internas' });
@@ -229,14 +216,7 @@ test('shows empty messages for missing descriptions and notes', async () => {
     },
   });
 
-  render(
-    <TopbarProvider>
-      {await ProjectDetailPage({
-        params: Promise.resolve({ id: '42' }),
-        searchParams: Promise.resolve({}),
-      })}
-    </TopbarProvider>
-  );
+  await renderPage();
 
   expect(
     within(screen.getByRole('region', { name: 'Descripción pública' })).getByText(
@@ -254,10 +234,12 @@ test('returns not found for invalid project input', async () => {
   getProjectDetailMock.mockResolvedValue({ status: 'invalidInput', field: 'projectId' });
 
   await expect(
-    ProjectDetailPage({
-      params: Promise.resolve({ id: 'invalid' }),
-      searchParams: Promise.resolve({}),
-    })
+    resolveSuspenseChild(
+      await ProjectDetailPage({
+        params: Promise.resolve({ id: 'invalid' }),
+        searchParams: Promise.resolve({}),
+      })
+    )
   ).rejects.toThrow('NEXT_NOT_FOUND');
 
   expect(getProjectDetailMock).toHaveBeenCalledWith('invalid', undefined);
@@ -267,9 +249,11 @@ test('returns not found when the project does not exist', async () => {
   getProjectDetailMock.mockResolvedValue({ status: 'notFound' });
 
   await expect(
-    ProjectDetailPage({
-      params: Promise.resolve({ id: '42' }),
-      searchParams: Promise.resolve({}),
-    })
+    resolveSuspenseChild(
+      await ProjectDetailPage({
+        params: Promise.resolve({ id: '42' }),
+        searchParams: Promise.resolve({}),
+      })
+    )
   ).rejects.toThrow('NEXT_NOT_FOUND');
 });

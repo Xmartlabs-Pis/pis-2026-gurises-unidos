@@ -27,9 +27,13 @@ vi.mock('@/components/metrics/metrics-year-select', () => ({
 }));
 
 import DashboardPage from '@/app/(protected)/dashboard/page';
+import { resolveSuspenseChild } from '../helpers/suspense-page';
 
-function renderPage(year?: string | string[]) {
-  return DashboardPage({ searchParams: Promise.resolve(year === undefined ? {} : { year }) });
+async function renderPage(year?: string | string[]) {
+  const page = await DashboardPage({
+    searchParams: Promise.resolve(year === undefined ? {} : { year }),
+  });
+  return resolveSuspenseChild(page);
 }
 
 beforeEach(() => {

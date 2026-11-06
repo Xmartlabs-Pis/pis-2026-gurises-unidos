@@ -108,6 +108,25 @@ afterEach(async () => {
 });
 
 describe('createProject (integration)', () => {
+  test('persists the beneficiaries loaded in every year', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({
+          beneficiaryDrafts: [JSON.stringify({ year: '2022', families: '7' })],
+        })
+      )
+    );
+
+    const { projectBeneficiaries } = await loadProject(projectId);
+    expect(projectBeneficiaries.map(({ year, families }) => [year, families])).toEqual([
+      [2022, 7],
+      [BENEFICIARY_YEAR, 2],
+    ]);
+  });
+
   test('persists the project with its first beneficiaries and audits both', async () => {
     signInAs(seed.adminId);
 

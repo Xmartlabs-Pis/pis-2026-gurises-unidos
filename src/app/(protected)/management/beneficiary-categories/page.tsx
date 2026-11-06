@@ -1,12 +1,12 @@
+import { Suspense } from 'react';
 import { BeneficiaryCategoriesManagement } from '@/components/beneficiary-categories/beneficiary-categories-management';
+import { CatalogListSkeleton } from '@/components/catalog/catalog-list-skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { getBeneficiaryCategoriesWithUsage } from '@/lib/beneficiary-categories';
 
 export default async function BeneficiaryCategoriesPage() {
   await requireAdmin();
-
-  const categories = await getBeneficiaryCategoriesWithUsage();
 
   return (
     <div className="bg-primary-foreground flex w-full flex-1 flex-col">
@@ -18,10 +18,20 @@ export default async function BeneficiaryCategoriesPage() {
           description="Categorías de Beneficiarios que se cargan en cada proyecto. Las del sistema alimentan las métricas públicas y no se pueden eliminar."
         />
 
-        <div className="bg-surface-page mx-auto flex w-full max-w-[1185px] flex-col gap-5 px-6 pt-6 pb-8">
-          <BeneficiaryCategoriesManagement categories={categories} />
-        </div>
+        <Suspense fallback={<CatalogListSkeleton />}>
+          <BeneficiaryCategoriesContent />
+        </Suspense>
       </div>
+    </div>
+  );
+}
+
+async function BeneficiaryCategoriesContent() {
+  const categories = await getBeneficiaryCategoriesWithUsage();
+
+  return (
+    <div className="bg-surface-page mx-auto flex w-full max-w-[1185px] flex-col gap-5 px-6 pt-6 pb-8">
+      <BeneficiaryCategoriesManagement categories={categories} />
     </div>
   );
 }
