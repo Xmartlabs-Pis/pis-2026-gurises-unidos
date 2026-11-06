@@ -4,7 +4,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
 import { flattenError } from 'zod';
-import { auth, signIn, signOut } from '@/auth';
+import { signIn, signOut } from '@/auth';
+import prisma from '@/lib/prisma';
 import {
   getSessionExpirationTimestamp,
   SESSION_EXPIRATION_COOKIE,
@@ -59,9 +60,13 @@ export async function login(
     SESSION_EXPIRATION_COOKIE_OPTIONS
   );
 
-  const session = await auth();
+  // auth() reads the incoming request headers, which do not include the session cookie signIn just set.
+  const user = await prisma.user.findUnique({
+    where: { documentId },
+    select: { mustChangePassword: true },
+  });
 
-  if (session?.user?.mustChangePassword) {
+  if (user?.mustChangePassword) {
     redirect('/password-reset');
   }
 
