@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import Image from 'next/image';
-import loginImage from '@/assets/login-image.png';
 
 export function AuthBrandPanel({ children }: { children?: ReactNode }) {
   return (
-    <div className="theme-public bg-background flex grow flex-col place-content-center gap-4.5 pt-8 pr-6 pb-8 pl-6 lg:gap-12 lg:p-18">
+    <div className="theme-public auth-brand-panel bg-surface-brand-deep flex grow flex-col place-content-center gap-4.5 pt-8 pr-6 pb-8 pl-6 lg:gap-12 lg:p-18">
       <div className="flex flex-col gap-4">
         <p className="text-primary text-xs leading-4 font-medium tracking-[6%]">
           PLATAFORMA DE GESTIÓN E IMPACTO
@@ -18,7 +17,9 @@ export function AuthBrandPanel({ children }: { children?: ReactNode }) {
         </p>
       </div>
       <Image
-        src={loginImage}
+        src="/images/login-image.svg"
+        width={600}
+        height={300}
         fetchPriority="high"
         className="hidden aspect-auto w-150 lg:flex"
         alt="Red de Impacto"
