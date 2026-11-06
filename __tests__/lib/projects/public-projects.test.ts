@@ -73,6 +73,7 @@ describe('getPublicRegions', () => {
       territory: 'Brasil',
       description: '',
       coverPhoto: '/images/project-placeholders/1.webp',
+      coverCrop: null,
       reach: 15,
     });
   });
@@ -155,6 +156,7 @@ describe('getPublicDepartments', () => {
             territory: 'Montevideo',
             description: '',
             coverPhoto: '/images/project-placeholders/1.webp',
+            coverCrop: null,
             reach: 15,
           },
         ],
