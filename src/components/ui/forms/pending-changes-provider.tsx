@@ -144,7 +144,7 @@ function PendingChangesController({ children }: { children: ReactNode }) {
           if (!open && !saving.current) finish(false);
         }}
       >
-        <AlertDialogContent className="sm:max-w-xl">
+        <AlertDialogContent className="sm:max-w-xl!">
           <AlertDialogHeader>
             <AlertDialogTitle>Tenés cambios sin guardar</AlertDialogTitle>
             <AlertDialogDescription>
@@ -152,8 +152,10 @@ function PendingChangesController({ children }: { children: ReactNode }) {
               {dialog?.description && <span className="mt-2 block">{dialog.description}</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="sm:flex-wrap">
-            <AlertDialogCancel disabled={isSaving}>Seguir editando</AlertDialogCancel>
+          <AlertDialogFooter className="sm:flex-nowrap">
+            <AlertDialogCancel disabled={isSaving} className="sm:mr-auto">
+              Seguir editando
+            </AlertDialogCancel>
             <AlertDialogAction
               type="button"
               variant="outline"
