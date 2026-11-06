@@ -9,6 +9,7 @@ const OPTIONS = {
   departments: [{ id: 2 }],
   topics: [{ id: 1 }],
   strategicLines: [{ id: 5 }],
+  partners: [{ id: 8 }],
   beneficiaryCategories: [{ id: 3 }],
 };
 
@@ -23,6 +24,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: undefined,
       topicId: undefined,
       strategicLineId: undefined,
+      partnerId: undefined,
       beneficiaryCategoryId: undefined,
     });
     expect(filters).toMatchObject({
@@ -41,6 +43,7 @@ describe('resolveProjectListFilters', () => {
         departmentId: '2',
         topicId: '1',
         strategicLineId: '5',
+        partnerId: '8',
         beneficiaryCategoryId: '3',
         search: 'centro',
       },
@@ -54,6 +57,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: 2,
       topicId: 1,
       strategicLineId: 5,
+      partnerId: 8,
       beneficiaryCategoryId: 3,
     });
     expect(filters).toMatchObject({
@@ -63,6 +67,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: 2,
       topicId: 1,
       strategicLineId: 5,
+      partnerId: 8,
       beneficiaryCategoryId: 3,
     });
   });
@@ -95,6 +100,7 @@ describe('resolveProjectListFilters', () => {
         departmentId: '999',
         topicId: '7',
         strategicLineId: '1',
+        partnerId: '1',
         beneficiaryCategoryId: '5',
       },
       OPTIONS
@@ -105,6 +111,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: undefined,
       topicId: undefined,
       strategicLineId: undefined,
+      partnerId: undefined,
       beneficiaryCategoryId: undefined,
     });
     expect(filters).toMatchObject({
@@ -112,6 +119,7 @@ describe('resolveProjectListFilters', () => {
       departmentId: undefined,
       topicId: undefined,
       strategicLineId: undefined,
+      partnerId: undefined,
       beneficiaryCategoryId: undefined,
     });
   });

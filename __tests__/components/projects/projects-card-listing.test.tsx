@@ -100,6 +100,7 @@ type ListProps = {
   departmentId?: number;
   topicId?: number;
   strategicLineId?: number;
+  partnerId?: number;
   beneficiaryCategoryId?: number;
 };
 
@@ -114,6 +115,7 @@ function buildList({
   departmentId,
   topicId,
   strategicLineId,
+  partnerId,
   beneficiaryCategoryId,
 }: ListProps = {}) {
   return (
@@ -138,6 +140,7 @@ function buildList({
         { id: 5, name: 'Formación' },
         { id: 6, name: 'Incidencia en Políticas Públicas' },
       ]}
+      partners={[{ id: 8, name: 'INAU' }]}
       beneficiaryCategories={[
         { id: 3, name: 'Familias' },
         { id: 4, name: 'Jóvenes (18 a 29)' },
@@ -145,6 +148,7 @@ function buildList({
       departmentId={departmentId}
       topicId={topicId}
       strategicLineId={strategicLineId}
+      partnerId={partnerId}
       beneficiaryCategoryId={beneficiaryCategoryId}
     />
   );
@@ -758,4 +762,19 @@ test('exports the filtered year once a year is chosen after mixing years', async
     expect.objectContaining({ body: JSON.stringify({ year: 2025, projectIds: [1, 2] }) })
   );
   restore();
+});
+
+test('counts and clears the partner filter', async () => {
+  mocks.searchParams = new URLSearchParams('partnerId=8&status=inactive');
+  renderList({ partnerId: 8, status: 'inactive' });
+  const [button] = screen.getAllByRole('button', { name: 'Filtros de proyectos' });
+  expect(button.textContent).toBe('1');
+  fireEvent.click(button);
+  expect(
+    (await screen.findByRole('combobox', { name: 'Filtrar por socio' })).textContent
+  ).toContain('INAU');
+  fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
+  expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=inactive', {
+    scroll: false,
+  });
 });

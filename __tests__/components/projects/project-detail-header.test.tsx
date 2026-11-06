@@ -20,6 +20,7 @@ const PROJECT: ProjectDetail['project'] = {
     { id: 1, name: 'Formación' },
     { id: 2, name: 'Participación' },
   ],
+  partners: [],
   leadCoordinatorId: 7,
   zone: 'city',
   geographicScope: 'national',
@@ -207,4 +208,27 @@ test('shows the export button only to users who can edit the project', () => {
 
   rerender(<ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit />);
   expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+});
+
+test('shows the project partners only when it has some', () => {
+  const { rerender } = render(
+    <ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit={false} />
+  );
+  expect(screen.queryByText('Socios:')).toBeNull();
+  rerender(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        partners: [
+          { id: 1, name: 'ANEP' },
+          { id: 2, name: 'INAU' },
+        ],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+  expect(screen.getByText('Socios:')).toBeDefined();
+  expect(screen.getByText('ANEP, INAU')).toBeDefined();
 });

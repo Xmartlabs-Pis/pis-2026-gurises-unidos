@@ -687,6 +687,7 @@ type ProjectListQueryInput = {
   departmentId?: string;
   topicId?: string;
   strategicLineId?: string;
+  partnerId?: string;
   beneficiaryCategoryId?: string;
 };
 

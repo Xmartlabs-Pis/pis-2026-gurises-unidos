@@ -76,6 +76,7 @@ export async function getProjectSheetData(
       leadCoordinator: { select: { firstName: true, lastName: true } },
       topics: { orderBy: { name: 'asc' }, select: { name: true } },
       strategicLines: { orderBy: { name: 'asc' }, select: { name: true } },
+      partners: { orderBy: { name: 'asc' }, select: { name: true } },
       projectBeneficiaries: {
         where: { year: { in: [year, previousYear] } },
         select: { year: true, ...BENEFICIARY_VALUES_SELECT },
@@ -151,6 +152,10 @@ export async function getProjectSheetData(
       {
         label: 'Contrapartes',
         value: joinList(project.counterpartyTypes.map((type) => COUNTERPARTY_LABEL[type])),
+      },
+      {
+        label: 'Socios',
+        value: joinList(project.partners.map(({ name }) => name)),
       },
       {
         label: 'Líneas estratégicas',

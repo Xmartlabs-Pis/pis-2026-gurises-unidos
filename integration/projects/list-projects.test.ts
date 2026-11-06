@@ -95,3 +95,25 @@ describe('listProjects search (integration)', () => {
     expect(await searchProjectIds('onas')).not.toContain(projectId);
   });
 });
+
+describe('listProjects partner filter (integration)', () => {
+  test('returns only the projects associated with the partner', async () => {
+    const partner = await prisma.partner.create({
+      data: { name: 'Filtered partner', counterpartyType: 'publicSector' },
+    });
+    try {
+      const included = await createProjectFixture('Project with partner');
+      await createProjectFixture('Project without partner');
+      await prisma.project.update({
+        where: { id: included },
+        data: { partners: { connect: { id: partner.id } } },
+      });
+      const { items } = await listProjects(
+        parseProjectFilters({ status: 'all', partnerId: String(partner.id) })
+      );
+      expect(items.map(({ id }) => id)).toEqual([included]);
+    } finally {
+      await prisma.partner.delete({ where: { id: partner.id } });
+    }
+  });
+});

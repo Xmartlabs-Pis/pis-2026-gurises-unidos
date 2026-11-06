@@ -48,6 +48,10 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
           name: true,
         },
       },
+      partners: {
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      },
       leadCoordinatorId: true,
       generalObjective: true,
       publicDescription: true,

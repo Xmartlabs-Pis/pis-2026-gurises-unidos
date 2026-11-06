@@ -40,6 +40,7 @@ const DETAIL = {
       startYear: 2024,
       endYear: null,
       strategicLines: [{ id: 1, name: 'Formación' }],
+      partners: [],
       leadCoordinatorId: 7,
       zone: 'city',
       geographicScope: 'national',

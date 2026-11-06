@@ -42,10 +42,12 @@ type ProjectsCardListProps = {
   departments?: { id: number; name: string }[];
   topics?: { id: number; name: string }[];
   strategicLines?: { id: number; name: string }[];
+  partners?: { id: number; name: string }[];
   beneficiaryCategories?: { id: number; name: string }[];
   departmentId?: number;
   topicId?: number;
   strategicLineId?: number;
+  partnerId?: number;
   beneficiaryCategoryId?: number;
 };
 
@@ -61,10 +63,12 @@ export function ProjectsCardList({
   departments = [],
   topics = [],
   strategicLines = [],
+  partners = [],
   beneficiaryCategories = [],
   departmentId,
   topicId,
   strategicLineId,
+  partnerId,
   beneficiaryCategoryId,
 }: ProjectsCardListProps) {
   const { searchText, changeSearch, updateFilters, clearFilters, isPending } = useUrlFilters({
@@ -78,6 +82,7 @@ export function ProjectsCardList({
     Number(departmentId !== undefined) +
     Number(topicId !== undefined) +
     Number(strategicLineId !== undefined) +
+    Number(partnerId !== undefined) +
     Number(beneficiaryCategoryId !== undefined);
   const yearOptions: { value: YearFilterValue; label: string }[] = [
     { value: ALL_YEARS, label: 'Todos' },
@@ -97,9 +102,10 @@ export function ProjectsCardList({
       departmentId: departmentId?.toString(),
       topicId: topicId?.toString(),
       strategicLineId: strategicLineId?.toString(),
+      partnerId: partnerId?.toString(),
       beneficiaryCategoryId: beneficiaryCategoryId?.toString(),
     }),
-    [status, year, search, departmentId, topicId, strategicLineId, beneficiaryCategoryId]
+    [status, year, search, departmentId, topicId, strategicLineId, partnerId, beneficiaryCategoryId]
   );
 
   const filteredCountLabel = `${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
@@ -300,6 +306,13 @@ export function ProjectsCardList({
               value: strategicLineId,
             },
             {
+              key: 'partnerId',
+              label: 'Socio',
+              allLabel: 'Todos',
+              options: partners,
+              value: partnerId,
+            },
+            {
               key: 'beneficiaryCategoryId',
               label: 'Categoría de beneficiarios',
               allLabel: 'Todas',
@@ -350,6 +363,7 @@ export function ProjectsCardList({
               'departmentId',
               'topicId',
               'strategicLineId',
+              'partnerId',
               'beneficiaryCategoryId',
             ])
           }

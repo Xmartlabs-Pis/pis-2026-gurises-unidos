@@ -38,6 +38,7 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   const counterparties = project.counterpartyTypes
     .map((type) => COUNTERPARTY_LABEL[type])
     .join(', ');
+  const partners = project.partners.map(({ name }) => name).join(', ');
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
   const topics = project.topics.map(({ name }) => name).join(', ');
   const rows = [
@@ -48,6 +49,7 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
     { label: 'Contrapartes:', value: counterparties },
+    ...(partners ? [{ label: 'Socios:', value: partners }] : []),
   ];
   const classifications = [
     { label: 'Líneas Estratégicas:', value: strategicLines },
