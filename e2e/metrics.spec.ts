@@ -28,7 +28,7 @@ function publicStats(page: Page) {
   return page.getByRole('group', { name: /^Impacto \d{4}$/ });
 }
 
-test('shows and hides metrics on the public site', async ({ page }) => {
+test('shows and hides metrics on the public report', async ({ page }) => {
   await page.goto('/');
   await expect(publicStats(page)).toContainText(VISIBLE_METRIC);
   await expect(publicStats(page)).not.toContainText(HIDDEN_METRIC);
