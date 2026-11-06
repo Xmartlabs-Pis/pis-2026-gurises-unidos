@@ -95,7 +95,7 @@ it.each([
   ['intensity', 'Intensidad', 'medium', null, 'Media', 'Sin datos'],
   ['startYear', 'Año de inicio', 2019, 2020, '2019', '2020'],
   ['endYear', 'Año de fin', null, 2024, 'Sin datos', '2024'],
-  ['showOnLanding', 'Visibilidad en la página pública', true, false, 'Sí', 'No'],
+  ['showOnLanding', 'Visibilidad en el reporte público', true, false, 'Sí', 'No'],
   [
     'counterpartyType',
     'Contraparte',

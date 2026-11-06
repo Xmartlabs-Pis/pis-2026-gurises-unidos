@@ -407,7 +407,7 @@ Para verificar que quedó bien, en desktop y en el celular:
 - Se ven el título y todas las cifras publicadas, sin scroll dentro del iframe ni espacio vacío
   abajo.
 - Después de recargar la página, el código del bloque sigue teniendo el `<script>`.
-- "Ver informe completo" abre la vista pública en una pestaña nueva.
+- "Ver informe completo" abre el reporte público en una pestaña nueva.
 
 ## Deploy
 

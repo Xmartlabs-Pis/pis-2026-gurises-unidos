@@ -43,7 +43,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   publicDescription: 'Descripción pública',
   coverPhoto: 'Foto de portada',
   internalNotes: 'Notas internas',
-  showOnLanding: 'Visibilidad en la página pública',
+  showOnLanding: 'Visibilidad en el reporte público',
   topics: 'Temáticas',
   strategicLines: 'Líneas estratégicas',
 };

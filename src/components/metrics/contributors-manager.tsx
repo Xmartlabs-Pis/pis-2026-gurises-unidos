@@ -135,7 +135,7 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
         </h2>
         <p id="contributors-description" className="text-muted-foreground text-sm">
           Agregá un contribuyente con el botón + o presioná Enter para publicarlo de inmediato. Los
-          contribuyentes se muestran en todos los años del sitio público.
+          contribuyentes se muestran en todos los años del reporte público.
         </p>
       </div>
       <div className="flex flex-col gap-2">
@@ -179,7 +179,7 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
       {contributors.length ? (
         <>
           <p id="contributors-order-description" className="text-muted-foreground text-sm">
-            Arrastrá desde el ícono de cada píldora para cambiar su orden en el sitio público.
+            Arrastrá desde el ícono de cada píldora para cambiar su orden en el reporte público.
             También podés usar las flechas del teclado al enfocar el ícono.
           </p>
           <DndContext
@@ -275,7 +275,7 @@ export function ContributorsManager({ contributors }: { contributors: Contributo
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar a {selectedContributor?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dejará de aparecer en el sitio público. Esta acción no se puede deshacer.
+              Dejará de aparecer en el reporte público. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error && (
