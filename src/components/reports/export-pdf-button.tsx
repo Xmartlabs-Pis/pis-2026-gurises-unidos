@@ -11,6 +11,8 @@ const GENERIC_ERROR = 'No se pudo generar el PDF. Probá de nuevo.';
 type ExportPdfButtonProps = {
   href: string;
   label: string;
+  body?: unknown;
+  disabled?: boolean;
   className?: string;
 };
 
@@ -31,7 +33,13 @@ function downloadBlob(blob: Blob, fileName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function ExportPdfButton({ href, label, className }: ExportPdfButtonProps) {
+export function ExportPdfButton({
+  href,
+  label,
+  body,
+  disabled = false,
+  className,
+}: ExportPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const inFlight = useRef(false);
 
@@ -41,7 +49,17 @@ export function ExportPdfButton({ href, label, className }: ExportPdfButtonProps
     setIsGenerating(true);
 
     try {
-      const response = await fetch(href, { cache: 'no-store' });
+      const response = await fetch(
+        href,
+        body === undefined
+          ? { cache: 'no-store' }
+          : {
+              method: 'POST',
+              cache: 'no-store',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            }
+      );
       const isPdf = response.headers.get('Content-Type')?.includes('application/pdf');
 
       if (!response.ok || !isPdf) {
@@ -66,7 +84,7 @@ export function ExportPdfButton({ href, label, className }: ExportPdfButtonProps
     <Button
       variant="outline"
       className={className}
-      disabled={isGenerating}
+      disabled={disabled || isGenerating}
       aria-busy={isGenerating}
       onClick={handleExport}
     >

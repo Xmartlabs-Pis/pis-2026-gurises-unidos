@@ -5,15 +5,19 @@ import { getCurrentYear, resolveYearParam } from '@/lib/metrics/year';
 import { pdfResponse, reportErrorResponse } from '@/lib/reports/http';
 import { getImpactReportData, getImpactReportFileName } from '@/lib/reports/impact-report';
 import { renderImpactReport } from '@/lib/reports/render';
+import { impactReportRequestSchema } from '@/lib/validation/impact-report';
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   const user = await getActiveUser();
   if (!user) return reportErrorResponse(request, 'unauthorized');
 
+  const parsed = impactReportRequestSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return reportErrorResponse(request, 'invalidSelection');
+
   const currentYear = getCurrentYear();
-  const rawYear = request.nextUrl.searchParams.get('year') ?? undefined;
+  const rawYear = parsed.data.year?.toString();
   const year = resolveYearParam(rawYear, await getMetricYears(currentYear), currentYear);
-  const data = await getImpactReportData(user, year);
+  const data = await getImpactReportData(parsed.data.projectIds, year);
   if (!data) return reportErrorResponse(request, 'emptyReport');
 
   return pdfResponse(await renderImpactReport(data), getImpactReportFileName(year));

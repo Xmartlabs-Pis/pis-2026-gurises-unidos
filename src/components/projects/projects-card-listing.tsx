@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ListFilter } from 'lucide-react';
+import { Search, ListFilter, Loader2Icon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -20,7 +20,11 @@ import type { ProjectListItem } from '@/lib/projects/list';
 import { STATUS_FILTERS, type StatusFilterValue } from '@/lib/projects/constants';
 import { PROJECT_SEARCH_MAX_LENGTH } from '@/lib/validation/project-filters';
 import { ScrollToTopButton } from '@/components/scroll-to-top-button';
+import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { useUrlFilters } from '@/hooks/use-url-filters';
+import { loadProjectIds } from '@/app/actions/projects';
+import { notify } from '@/lib/notify';
+import type { ImpactReportRequest } from '@/lib/validation/impact-report';
 
 const ALL_YEARS = 'all';
 
@@ -99,6 +103,99 @@ export function ProjectsCardList({
   );
 
   const filteredCountLabel = `${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
+
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<number> | null>(null);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
+  const reportYear = beneficiaryYear ?? years[0];
+  const selectedCount = selectedIds?.size ?? 0;
+
+  function toggleSelection(id: number) {
+    setSelectedIds((current) => {
+      if (!current) return current;
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function selectAllFiltered() {
+    setIsSelectingAll(true);
+    try {
+      const ids = await loadProjectIds(query);
+      setSelectedIds((current) => (current ? new Set([...current, ...ids]) : current));
+    } catch {
+      notify.error({ title: 'No se pudieron seleccionar los proyectos. Probá de nuevo.' });
+    } finally {
+      setIsSelectingAll(false);
+    }
+  }
+
+  const reportRequest: ImpactReportRequest = {
+    year: reportYear,
+    projectIds: [...(selectedIds ?? [])],
+  };
+
+  const exportReportButton = (
+    <Button
+      variant="outline"
+      className="h-8 gap-2.5 rounded-md px-3 shadow-xs/10"
+      onClick={() => setSelectedIds(new Set())}
+    >
+      <p className="text-primary text-sm leading-5 font-medium tracking-normal">Exportar reporte</p>
+    </Button>
+  );
+
+  const selectionBar = selectedIds && (
+    <div
+      role="region"
+      aria-label="Selección de proyectos para el reporte"
+      className="bg-card sticky top-0 z-10 flex flex-col gap-3 rounded-lg border px-4 py-3 shadow-sm/10 lg:flex-row lg:items-center lg:justify-between"
+    >
+      <div className="flex flex-col gap-0.5">
+        <p className="text-primary text-sm leading-5 font-semibold">
+          {selectedCount === 1
+            ? '1 proyecto seleccionado'
+            : `${selectedCount} proyectos seleccionados`}
+        </p>
+        <p className="text-muted-foreground text-xs leading-4">
+          {reportYear === undefined
+            ? 'Elegí los proyectos a incluir en el reporte.'
+            : `Elegí los proyectos a incluir en el reporte ${reportYear}. Podés usar los filtros para encontrarlos.`}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isSelectingAll || total === 0}
+          aria-busy={isSelectingAll}
+          onClick={() => void selectAllFiltered()}
+        >
+          {isSelectingAll && <Loader2Icon className="animate-spin" aria-hidden="true" />}
+          Seleccionar filtrados ({total})
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={selectedCount === 0}
+          onClick={() => setSelectedIds(new Set())}
+        >
+          Limpiar selección
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setSelectedIds(null)}>
+          Cancelar
+        </Button>
+        <ExportPdfButton
+          href="/api/reports/impact"
+          body={reportRequest}
+          label="Exportar"
+          disabled={selectedCount === 0}
+          className="h-8 rounded-md px-3"
+        />
+      </div>
+    </div>
+  );
 
   const newProjectButton = (
     <Button
@@ -252,7 +349,10 @@ export function ProjectsCardList({
         </div>
         <div className="flex flex-col items-end gap-3">
           <div className="lg:hidden">{filterMenu}</div>
-          {newProjectButton}
+          <div className="flex flex-wrap justify-end gap-2">
+            {!selectedIds && exportReportButton}
+            {newProjectButton}
+          </div>
         </div>
       </div>
 
@@ -298,6 +398,8 @@ export function ProjectsCardList({
         {filteredCountLabel}
       </p>
 
+      {selectionBar}
+
       <ProjectCardsGrid
         key={JSON.stringify(query)}
         projects={projects}
@@ -305,6 +407,8 @@ export function ProjectsCardList({
         totalPages={totalPages}
         query={query}
         isPending={isPending}
+        selectedIds={selectedIds}
+        onToggleSelection={toggleSelection}
       />
       <ScrollToTopButton />
     </div>

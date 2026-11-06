@@ -128,6 +128,15 @@ export async function listProjects(filters: ProjectFilters): Promise<ProjectList
   };
 }
 
+export async function listProjectIds(filters: ProjectFilters): Promise<number[]> {
+  const rows = await prisma.project.findMany({
+    where: buildProjectWhere(filters),
+    select: { id: true },
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map(({ id }) => id);
+}
+
 export async function listBeneficiaryYears(): Promise<number[]> {
   const rows = await prisma.projectBeneficiary.findMany({
     where: { project: { deletedAt: null } },

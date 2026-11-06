@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Font, renderToBuffer } from '@react-pdf/renderer';
 import {
   ImpactReportDocument,
-  type ImpactPage,
+  type FittedImpactPage,
 } from '@/components/reports/pdf/impact-report-document';
 import { ProjectSheetDocument } from '@/components/reports/pdf/project-sheet-document';
 import { REPORT_FONT_FAMILY } from '@/components/reports/pdf/report-primitives';
@@ -52,7 +52,7 @@ async function findFit(render: (fit: number) => Promise<Buffer>, maxPages: numbe
 
 export async function renderImpactReport(data: ImpactReportData) {
   const logo = await getLogo();
-  const fitPage = (page: ImpactPage) =>
+  const fitPage = (page: FittedImpactPage) =>
     findFit(
       (fit) =>
         renderToBuffer(

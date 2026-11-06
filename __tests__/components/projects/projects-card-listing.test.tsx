@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   replace: vi.fn(),
   loadProjectsPage: vi.fn(),
+  loadProjectIds: vi.fn(),
   observers: [] as { callback: IntersectionObserverCallback; disconnected: boolean }[],
 }));
 
@@ -17,7 +18,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mocks.replace }),
 }));
 
-vi.mock('@/app/actions/projects', () => ({ loadProjectsPage: mocks.loadProjectsPage }));
+vi.mock('@/app/actions/projects', () => ({
+  loadProjectsPage: mocks.loadProjectsPage,
+  loadProjectIds: mocks.loadProjectIds,
+}));
 
 class IntersectionObserverMock {
   private readonly entry: { callback: IntersectionObserverCallback; disconnected: boolean };
@@ -160,6 +164,7 @@ beforeEach(() => {
   mocks.searchParams = new URLSearchParams();
   mocks.replace.mockClear();
   mocks.loadProjectsPage.mockReset();
+  mocks.loadProjectIds.mockReset();
   mocks.observers.length = 0;
 });
 
@@ -532,4 +537,88 @@ test('counts a year different from the default as an applied filter', () => {
   for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
     expect(button.textContent).toBe('1');
   }
+});
+
+function startReportSelection() {
+  fireEvent.click(screen.getByRole('button', { name: 'Exportar reporte' }));
+}
+
+test('turns the project cards into checkboxes when exporting a report', () => {
+  render(buildList({ projects: [buildProject(1, 'Alpha'), buildProject(2, 'Beta')] }));
+
+  startReportSelection();
+
+  expect(screen.queryByRole('link', { name: /Alpha/ })).toBeNull();
+  const alpha = screen.getByRole('checkbox', { name: 'Alpha' });
+  expect(alpha.getAttribute('aria-checked')).toBe('false');
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
+
+  fireEvent.click(alpha);
+  fireEvent.keyDown(screen.getByRole('checkbox', { name: 'Beta' }), { key: ' ' });
+
+  expect(alpha.getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByRole('checkbox', { name: 'Beta' }).getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByText('2 proyectos seleccionados')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(false);
+
+  fireEvent.click(alpha);
+
+  expect(screen.getByText('1 proyecto seleccionado')).toBeTruthy();
+});
+
+test('selects every project matching the current filters', async () => {
+  mocks.loadProjectIds.mockResolvedValue([1, 2, 3]);
+  render(buildList({ projects: [buildProject(1, 'Alpha')], total: 3, topicId: 2 }));
+
+  startReportSelection();
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar filtrados (3)' }));
+  });
+
+  expect(mocks.loadProjectIds).toHaveBeenCalledWith(
+    expect.objectContaining({ status: 'active', beneficiaryYear: '2025', topicId: '2' })
+  );
+  expect(screen.getByText('3 proyectos seleccionados')).toBeTruthy();
+});
+
+test('exports the report of the selected projects for the filtered year', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response('%PDF', {
+      headers: { 'Content-Type': 'application/pdf', 'X-Report-File-Name': 'Informe.pdf' },
+    })
+  );
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchMock;
+  URL.createObjectURL = vi.fn(() => 'blob:report');
+  URL.revokeObjectURL = vi.fn();
+  render(buildList({ projects: [buildProject(4, 'Alpha')], beneficiaryYear: 2024 }));
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar' }));
+  });
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/reports/impact',
+    expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ year: 2024, projectIds: [4] }),
+    })
+  );
+  globalThis.fetch = originalFetch;
+});
+
+test('restores the project links when the selection is cancelled', () => {
+  render(buildList({ projects: [buildProject(1, 'Alpha')] }));
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+  expect(screen.queryByRole('checkbox', { name: 'Alpha' })).toBeNull();
+  expect(screen.getByRole('link', { name: /Alpha/ }).getAttribute('href')).toBe(
+    '/dashboard/projects/1'
+  );
+  expect(screen.getByRole('button', { name: 'Exportar reporte' })).toBeTruthy();
 });
