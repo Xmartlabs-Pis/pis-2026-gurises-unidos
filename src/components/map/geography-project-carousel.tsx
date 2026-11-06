@@ -62,6 +62,7 @@ export function GeographyProjectCarousel({
                   name={project.name}
                   description={project.description}
                   coverPhoto={project.coverPhoto}
+                  coverCrop={project.coverCrop}
                   reach={project.reach}
                 />
               </CarouselItem>

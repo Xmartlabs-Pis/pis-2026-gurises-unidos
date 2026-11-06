@@ -88,6 +88,21 @@ export function coverCropStyle(crop: CoverCrop): {
   };
 }
 
+export function coverCropSizes(sizes: string, crop: CoverCrop) {
+  const scale = MAX_PERCENT / crop.width;
+  if (scale <= 1) return sizes;
+  return sizes
+    .split(',')
+    .map((entry) => {
+      const value = entry.trim();
+      const conditionEnd = value.lastIndexOf(') ');
+      const condition = conditionEnd === -1 ? '' : value.slice(0, conditionEnd + 2);
+      const length = conditionEnd === -1 ? value : value.slice(conditionEnd + 2);
+      return `${condition}calc(${length} * ${roundPercent(scale)})`;
+    })
+    .join(', ');
+}
+
 function percent(value: number) {
   return `${roundPercent(value)}%`;
 }

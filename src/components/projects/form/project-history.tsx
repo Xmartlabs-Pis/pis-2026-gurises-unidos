@@ -3,6 +3,7 @@ import { FormSection } from '@/components/ui/forms/form-section';
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import {
+  COVER_CHANGE_FIELDS,
   COVER_PHOTO_UPDATE_DETAIL,
   COVER_PHOTO_UPDATE_LABEL,
   PROJECT_FIELD_LABELS,
@@ -29,7 +30,6 @@ const PROJECT_ACTION_LABELS: Partial<Record<AuditAction, string>> = {
 };
 
 const BENEFICIARY_ACTION_LABEL = 'actualizó el número de beneficiarios';
-const COVER_CHANGE_FIELDS = new Set(['coverPhoto', 'coverCrop']);
 
 const namedValueSchema = z.object({
   id: z.number().optional(),

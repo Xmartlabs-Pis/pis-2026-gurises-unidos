@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { cn } from 'cn';
-import { coverCropStyle, parseCoverCrop } from '@/lib/projects/cover-crop';
+import { coverCropSizes, coverCropStyle, parseCoverCrop } from '@/lib/projects/cover-crop';
 
 export function CoverFrame({
   src,
@@ -25,7 +25,7 @@ export function CoverFrame({
           alt={alt}
           width={1600}
           height={900}
-          sizes={sizes}
+          sizes={coverCropSizes(sizes, parsed)}
           className="absolute max-w-none"
           style={coverCropStyle(parsed)}
         />

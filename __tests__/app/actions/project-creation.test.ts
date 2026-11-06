@@ -322,30 +322,7 @@ describe('createProject', () => {
     });
   });
 
-  test('ignores a cover path that the user does not own', async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
-    process.env.COVER_UPLOAD_DIR = directory;
-    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
-    try {
-      await writeOwnedCover(directory, coverPhotoPath, 3);
-      const { projectCreate } = setupTransaction();
-      const data = buildFormData();
-      data.set('coverPhotoPath', coverPhotoPath);
-      await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
-        'NEXT_REDIRECT:/dashboard/projects/42'
-      );
-      expect(projectCreate).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
-        }),
-      });
-    } finally {
-      delete process.env.COVER_UPLOAD_DIR;
-      await rm(directory, { recursive: true, force: true });
-    }
-  });
-
-  test('drops the crop when the cover path is rejected', async () => {
+  test('rejects a cover path that the user does not own', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
     process.env.COVER_UPLOAD_DIR = directory;
     const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
@@ -355,15 +332,10 @@ describe('createProject', () => {
       const data = buildFormData();
       data.set('coverPhotoPath', coverPhotoPath);
       data.set('coverCrop', JSON.stringify({ x: 5, y: 5, width: 90, height: 80 }));
-      await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
-        'NEXT_REDIRECT:/dashboard/projects/42'
-      );
-      expect(projectCreate).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
-          coverCrop: Prisma.DbNull,
-        }),
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        formError: 'La imagen de portada que elegiste ya no está disponible. Elegí otra.',
       });
+      expect(projectCreate).not.toHaveBeenCalled();
     } finally {
       delete process.env.COVER_UPLOAD_DIR;
       await rm(directory, { recursive: true, force: true });

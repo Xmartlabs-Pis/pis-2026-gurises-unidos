@@ -56,6 +56,8 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   authentication: 'Autenticación',
 };
 
+export const COVER_CHANGE_FIELDS = new Set(['coverPhoto', 'coverCrop']);
+
 export const COVER_PHOTO_UPDATE_LABEL = 'actualizó la imagen de portada';
 export const COVER_PHOTO_UPDATE_DETAIL = 'Imagen de portada actualizada';
 

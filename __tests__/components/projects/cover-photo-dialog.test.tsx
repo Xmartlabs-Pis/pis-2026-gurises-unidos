@@ -53,7 +53,7 @@ it('keeps the saved crop when the cropper reports its default area first', async
   });
 });
 
-it('keeps loaded covers in one horizontal row and skips thumbs far from the scroll', () => {
+it('keeps loaded covers in one horizontal row that loads the images lazily', () => {
   const covers = Array.from({ length: 12 }, (_, index) => ({
     path: `/uploads/covers/${index.toString(16).padStart(8, '0')}-1111-4111-8111-111111111111.webp`,
     projectName: `Proyecto ${index}`,
@@ -75,13 +75,12 @@ it('keeps loaded covers in one horizontal row and skips thumbs far from the scro
 
   const strip = document.querySelector('[data-cover-strip]');
   expect(strip?.className).toContain('overflow-x-auto');
+  expect(strip?.className).not.toContain('grid');
   expect(screen.getByRole('button', { name: 'Proyecto 0' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Proyecto 8' })).toBeNull();
-
-  Object.defineProperty(strip, 'scrollLeft', { configurable: true, value: 8 * 136 });
-  fireEvent.scroll(strip!);
-  expect(screen.getByRole('button', { name: 'Proyecto 8' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Proyecto 0' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Proyecto 11' })).toBeTruthy();
+  const images = strip?.querySelectorAll('img') ?? [];
+  expect(images).toHaveLength(covers.length);
+  expect([...images].every((image) => image.getAttribute('loading') === 'lazy')).toBe(true);
 });
 
 it('uses the cropper area when the image has no saved crop', async () => {

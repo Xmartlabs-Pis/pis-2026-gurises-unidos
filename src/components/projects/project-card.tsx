@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { formatNumber } from '@/lib/format';
 import { STATUS_LABEL, getIntensityLabel } from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
+import type { CoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectListItem } from '@/lib/projects/list';
 
 type InternalProjectCardProps = {
@@ -26,7 +27,7 @@ type PublicProjectCardProps = {
   name: string;
   description: string;
   coverPhoto: string | null;
-  coverCrop?: unknown;
+  coverCrop: CoverCrop | null;
   reach: number;
 };
 

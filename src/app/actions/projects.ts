@@ -156,6 +156,9 @@ function resolveIntensity(
 const STALE_CATEGORIES_MESSAGE =
   'Las categorías de beneficiarios cambiaron. Recargá la página e intentá de nuevo.';
 
+const UNAVAILABLE_COVER_MESSAGE =
+  'La imagen de portada que elegiste ya no está disponible. Elegí otra.';
+
 function submittedPlaceholder(formData: FormData) {
   const submitted = formData.get('projectPlaceholder');
   return isProjectPlaceholder(submitted) ? submitted : getRandomProjectPlaceholder();
@@ -169,9 +172,8 @@ async function requestedCoverPath(uploadedPath: string | null, formData: FormDat
   );
 }
 
-function nextCoverCrop(formData: FormData, coverChanged: boolean, rejectedCoverPath: boolean) {
+function nextCoverCrop(formData: FormData, coverChanged: boolean) {
   if (wantsCoverRemoved(formData)) return null;
-  if (rejectedCoverPath) return undefined;
   const submitted = coverCropFromForm(formData);
   if (coverChanged) return submitted ?? null;
   return submitted;
@@ -260,12 +262,11 @@ export async function createProject(
   let projectId: number;
   try {
     const requestedCover = await requestedCoverPath(uploadedPath, formData, user.id);
-    const rejectedCoverPath = uploadedPath !== null && requestedCover === null;
+    if (uploadedPath !== null && requestedCover === null) {
+      return { formError: UNAVAILABLE_COVER_MESSAGE };
+    }
     const coverPhoto = requestedCover ?? submittedPlaceholder(formData);
-    const coverCrop =
-      wantsCoverRemoved(formData) || rejectedCoverPath
-        ? null
-        : (coverCropFromForm(formData) ?? null);
+    const coverCrop = wantsCoverRemoved(formData) ? null : (coverCropFromForm(formData) ?? null);
     const result = await prisma.$transaction(
       async (tx): Promise<{ error: ProjectFormState } | { projectId: number }> => {
         await lockTopics(tx, topicIds);
@@ -387,6 +388,7 @@ export async function updateProject(
             },
           };
         }
+        if (rejectedCoverPath) return { formError: UNAVAILABLE_COVER_MESSAGE };
         const currentTopicIds = previous.topics.map(({ id }) => id);
         const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
@@ -440,7 +442,7 @@ export async function updateProject(
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
         const coverChanged = requestedCover !== null && requestedCover !== previous.coverPhoto;
-        const nextCrop = nextCoverCrop(formData, coverChanged, rejectedCoverPath);
+        const nextCrop = nextCoverCrop(formData, coverChanged);
         const cropChanged = nextCrop !== undefined && !sameCoverCrop(nextCrop, previous.coverCrop);
         const topicsChanged = !hasSameIds(topicIds, currentTopicIds);
         const strategicLinesChanged = !hasSameIds(strategicLineIds, currentStrategicLineIds);

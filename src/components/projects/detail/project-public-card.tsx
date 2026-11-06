@@ -16,7 +16,7 @@ export function ProjectPublicCard({ name, coverPhoto, coverCrop }: ProjectPublic
         src={coverPhoto}
         alt={coverPhoto ? `Portada de ${name}` : ''}
         crop={coverCrop}
-        sizes="10rem"
+        sizes="(min-width: 640px) 10rem, 7rem"
         className={cn('rounded-lg', !coverPhoto && 'bg-project-cover')}
       />
       <div className="min-w-0">

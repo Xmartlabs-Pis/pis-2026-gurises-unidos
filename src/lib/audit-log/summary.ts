@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Prisma } from '@/generated/prisma/client';
 import {
+  COVER_CHANGE_FIELDS,
   COVER_PHOTO_UPDATE_DETAIL,
   COVER_PHOTO_UPDATE_LABEL,
   PROJECT_FIELD_LABELS,
@@ -28,8 +29,6 @@ const auditDetailsSchema = z
 
 type AuditChange = { field: string; from: unknown; to: unknown };
 
-const COVER_FIELDS = new Set(['coverPhoto', 'coverCrop']);
-
 const USER_FIELD_LABELS: Record<string, string> = { status: 'Estado', role: 'Rol' };
 
 const USER_VALUE_LABELS: Record<string, Record<string, string>> = {
@@ -56,7 +55,7 @@ function formatChanges(
 }
 
 function describeProjectChanges(changes: AuditChange[]) {
-  const otherChanges = changes.filter((change) => !COVER_FIELDS.has(change.field));
+  const otherChanges = changes.filter((change) => !COVER_CHANGE_FIELDS.has(change.field));
   const coverUpdated = otherChanges.length !== changes.length;
   const formatted = formatChanges(
     otherChanges,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
@@ -22,16 +22,6 @@ import type { CoverDraft } from './use-project-cover';
 
 const COVER_ASPECT = 16 / 9;
 const THUMB_WIDTH = 128;
-const THUMB_GAP = 8;
-const STRIDE = THUMB_WIDTH + THUMB_GAP;
-const STRIP_PADDING = 4;
-const OVERSCAN = 3;
-
-function coverWindow(scrollLeft: number, viewport: number, count: number) {
-  const start = Math.max(0, Math.floor(scrollLeft / STRIDE) - OVERSCAN);
-  const end = Math.min(count, Math.ceil((scrollLeft + viewport) / STRIDE) + OVERSCAN);
-  return { start, end };
-}
 
 function coverLabel(cover: ReusableCover) {
   if (cover.usedBy <= 1) return cover.projectName;
@@ -191,59 +181,19 @@ function CoverStrip({
   selectedPath: string | null;
   onChoose: (path: string) => void;
 }) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const [range, setRange] = useState(() => coverWindow(0, 0, covers.length));
-  const selectedIndex = covers.findIndex((cover) => cover.path === selectedPath);
-
-  const publish = useCallback(
-    (node: HTMLDivElement) => {
-      const next = coverWindow(node.scrollLeft, node.clientWidth, covers.length);
-      setRange((current) =>
-        current.start === next.start && current.end === next.end ? current : next
-      );
-    },
-    [covers.length]
-  );
-
-  useLayoutEffect(() => {
-    const node = scrollerRef.current;
-    if (!node) return;
-    if (selectedIndex >= 0) {
-      const itemLeft = STRIP_PADDING + selectedIndex * STRIDE;
-      const itemRight = itemLeft + THUMB_WIDTH;
-      const viewEnd = node.scrollLeft + node.clientWidth;
-      if (itemLeft < node.scrollLeft || itemRight > viewEnd) {
-        node.scrollLeft = Math.max(0, itemLeft - STRIP_PADDING);
-      }
-    }
-    publish(node);
-  }, [publish, selectedIndex]);
-
   return (
     <div
-      ref={scrollerRef}
       data-cover-strip
-      className="min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain py-1"
-      onScroll={(event) => publish(event.currentTarget)}
+      className="flex min-w-0 gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain p-1"
     >
-      <div
-        className="relative"
-        style={{ width: covers.length * STRIDE, height: (THUMB_WIDTH * 9) / 16 }}
-      >
-        <div
-          className="absolute top-0 flex"
-          style={{ left: STRIP_PADDING + range.start * STRIDE, gap: THUMB_GAP }}
-        >
-          {covers.slice(range.start, range.end).map((cover) => (
-            <CoverThumb
-              key={cover.path}
-              cover={cover}
-              selected={cover.path === selectedPath}
-              onChoose={onChoose}
-            />
-          ))}
-        </div>
-      </div>
+      {covers.map((cover) => (
+        <CoverThumb
+          key={cover.path}
+          cover={cover}
+          selected={cover.path === selectedPath}
+          onChoose={onChoose}
+        />
+      ))}
     </div>
   );
 }
@@ -257,10 +207,17 @@ function CoverThumb({
   selected: boolean;
   onChoose: (path: string) => void;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
   const label = coverLabel(cover);
+
+  useEffect(() => {
+    if (!selected) return;
+    ref.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [selected]);
 
   return (
     <button
+      ref={ref}
       type="button"
       aria-pressed={selected}
       aria-label={label}
@@ -310,24 +267,16 @@ function CoverEditor({
           image={image.source}
           crop={cropPoint}
           zoom={zoom}
-          rotation={0}
           aspect={COVER_ASPECT}
           minZoom={1}
           maxZoom={3}
-          cropShape="rect"
           objectFit="cover"
-          zoomSpeed={1}
-          restrictPosition
-          keyboardStep={1}
           style={{
             cropAreaStyle: {
               overflow: 'visible',
               boxShadow: '0 0 0 999px rgba(0, 0, 0, 0.5)',
             },
           }}
-          classes={{}}
-          mediaProps={{}}
-          cropperProps={{}}
           onCropChange={setCropPoint}
           onZoomChange={setZoom}
           onCropComplete={onCropComplete}

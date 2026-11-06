@@ -1207,27 +1207,19 @@ describe('project review regressions', () => {
     expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
   });
 
-  it('ignores an uploaded path that no live project uses', async () => {
-    const unusedPath = '/uploads/covers/55555555-5555-4555-8555-555555555555.webp';
-    await expect(updateProject(10, {}, formData({ coverPhotoPath: unusedPath }))).rejects.toThrow(
-      'Redirect:'
-    );
-    expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
-    expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverCrop');
-  });
-
-  it('keeps the saved crop when a rejected cover path includes one', async () => {
+  it('rejects an uploaded path that no live project uses', async () => {
     const unusedPath = '/uploads/covers/55555555-5555-4555-8555-555555555555.webp';
     const crop = { x: 10, y: 5, width: 80, height: 70 };
-    await expect(
-      updateProject(
+    expect(
+      await updateProject(
         10,
         {},
         formData({ coverPhotoPath: unusedPath, coverCrop: JSON.stringify(crop) })
       )
-    ).rejects.toThrow('Redirect:');
-    expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
-    expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverCrop');
+    ).toEqual({
+      formError: 'La imagen de portada que elegiste ya no está disponible. Elegí otra.',
+    });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
   });
 
   it('reuses an in-use cover and stores the crop without copying the file', async () => {
