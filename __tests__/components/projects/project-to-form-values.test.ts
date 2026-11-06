@@ -8,7 +8,7 @@ const PROJECT = {
   searchName: 'project',
   status: 'active' as const,
   intensity: 'high' as const,
-  counterpartyType: 'publicSector' as const,
+  counterpartyTypes: ['publicSector' as const],
   startYear: 2024,
   endYear: null,
   leadCoordinatorId: 2,
@@ -83,11 +83,11 @@ it.each(['publicSector', 'privateSector', 'internationalCooperation'] as const)(
   'loads the stored counterparty into form values: %s',
   (counterpartyType) => {
     const values = projectToFormValues(
-      { ...PROJECT, counterpartyType },
+      { ...PROJECT, counterpartyTypes: [counterpartyType] },
       2026,
       BENEFICIARY_CATEGORY_OPTIONS
     );
-    expect(values.counterpartyType).toBe(counterpartyType);
+    expect(values.counterpartyTypes).toEqual([counterpartyType]);
   }
 );
 

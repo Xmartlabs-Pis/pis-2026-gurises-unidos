@@ -105,7 +105,7 @@ const VALID_DATA = {
   topicIds: '1',
   status: 'active',
   intensity: 'medium',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2019',
   leadCoordinatorId: '2',
   geographicScope: 'national',
@@ -221,14 +221,20 @@ describe.each([
   ['createProject', (data: FormData) => createProject({}, data)],
   ['updateProject', (data: FormData) => updateProject(10, {}, data)],
 ] as const)('%s', (_name, submit) => {
-  it.each([undefined, '', 'invalid'])(
-    'rejects a missing or invalid counterparty before accessing the database: %s',
-    async (counterpartyType) => {
-      const result = await submit(formData({ counterpartyType }));
-      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+  it.each(['', 'invalid'])(
+    'rejects an invalid counterparty before accessing the database: %s',
+    async (counterpartyTypes) => {
+      const result = await submit(formData({ counterpartyTypes }));
+      expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná una contraparte válida']);
       expect(mocks.transaction).not.toHaveBeenCalled();
     }
   );
+
+  it('rejects a project without counterparties before accessing the database', async () => {
+    const result = await submit(formData({ counterpartyTypes: undefined }));
+    expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná al menos una contraparte']);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
 
   it('requires intensity when direct children or adolescents are submitted', async () => {
     const result = await submit(formData({ intensity: '' }));
@@ -533,7 +539,7 @@ describe('updateProject persistence', () => {
           name: 'Updated project',
           status: 'active',
           intensity: 'medium',
-          counterpartyType: 'publicSector',
+          counterpartyTypes: ['publicSector'],
           startYear: 2019,
           endYear: null,
           leadCoordinatorId: 2,
@@ -1668,7 +1674,7 @@ describe('project audit details', () => {
   it.each([
     ['name', 'Renamed project', 'Updated project', 'Renamed project'],
     ['startYear', '2020', 2019, 2020],
-    ['counterpartyType', 'privateSector', 'publicSector', 'privateSector'],
+    ['counterpartyTypes', ['privateSector'], ['publicSector'], ['privateSector']],
     ['intensity', 'high', 'medium', 'high'],
     ['generalObjective', '', 'Objective', null],
     ['publicDescription', 'New description', 'Description', 'New description'],

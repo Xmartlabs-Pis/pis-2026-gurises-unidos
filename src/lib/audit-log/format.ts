@@ -58,6 +58,7 @@ export const PROJECT_VALUE_LABELS: Record<string, Record<string, string>> = {
   status: STATUS_LABEL,
   intensity: INTENSITY_LABEL,
   counterpartyType: COUNTERPARTY_LABEL,
+  counterpartyTypes: COUNTERPARTY_LABEL,
   geographicScope: Object.fromEntries(
     GEOGRAPHIC_SCOPE_OPTIONS.map(({ value, label }) => [value, label])
   ),

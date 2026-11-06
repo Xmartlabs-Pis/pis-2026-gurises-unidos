@@ -473,7 +473,7 @@ async function main() {
           project;
         const fixture: ProjectFixture = {
           ...fields,
-          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
+          counterpartyTypes: [COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length]],
           endYear: endYear ?? null,
           showOnLanding: showOnLanding ?? true,
           leadCoordinatorId: coordinator.id,

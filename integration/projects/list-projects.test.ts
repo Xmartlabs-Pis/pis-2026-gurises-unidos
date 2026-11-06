@@ -14,7 +14,7 @@ async function createProjectFixture(name: string) {
       name,
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear: 2020,
       leadCoordinatorId: seed.coordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },

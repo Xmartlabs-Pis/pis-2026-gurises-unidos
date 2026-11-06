@@ -57,6 +57,7 @@ async function main() {
         const activeProject = await tx.project.create({
           data: {
             ...E2E_ACTIVE_PROJECT,
+            counterpartyTypes: [...E2E_ACTIVE_PROJECT.counterpartyTypes],
             leadCoordinatorId: coordinator.id,
             departments: { connect: { id: department.id } },
             topics: { connect: { id: topic.id } },
@@ -67,6 +68,7 @@ async function main() {
         await tx.project.create({
           data: {
             ...E2E_INACTIVE_PROJECT,
+            counterpartyTypes: [...E2E_INACTIVE_PROJECT.counterpartyTypes],
             leadCoordinatorId: coordinator.id,
             departments: { connect: { id: department.id } },
             topics: { connect: { id: topic.id } },

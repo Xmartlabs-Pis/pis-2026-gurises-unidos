@@ -2,7 +2,7 @@ import type { BeneficiaryFieldName } from '@/lib/project-display';
 import type { CoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectFormData } from '@/lib/validation/project-form';
 
-type ProjectFormListField = 'topicIds' | 'strategicLineIds' | 'countries';
+type ProjectFormListField = 'topicIds' | 'counterpartyTypes' | 'strategicLineIds' | 'countries';
 
 export type ProjectLocationFormValue = {
   departmentId: string;

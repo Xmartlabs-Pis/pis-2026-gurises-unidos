@@ -29,7 +29,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
         { id: 4, name: 'Canelones' },
       ]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         topicIds: ['1'],

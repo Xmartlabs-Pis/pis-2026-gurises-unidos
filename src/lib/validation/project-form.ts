@@ -194,6 +194,7 @@ export function readProjectFormData(formData: FormData) {
   return {
     ...Object.fromEntries(formData),
     topicIds: formData.getAll('topicIds'),
+    counterpartyTypes: formData.getAll('counterpartyTypes'),
     strategicLineIds: formData.getAll('strategicLineIds'),
     countries: formData.getAll('countries'),
     beneficiaryDrafts: formData.getAll('beneficiaryDrafts').map(parseJsonField),

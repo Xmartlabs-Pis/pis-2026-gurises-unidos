@@ -35,7 +35,9 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   const territory = getLocationLabel(project);
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
-  const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
+  const counterparties = project.counterpartyTypes
+    .map((type) => COUNTERPARTY_LABEL[type])
+    .join(', ');
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
   const topics = project.topics.map(({ name }) => name).join(', ');
   const rows = [
@@ -45,7 +47,7 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
       : []),
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
-    { label: 'Contraparte:', value: counterparty },
+    { label: 'Contrapartes:', value: counterparties },
   ];
   const classifications = [
     { label: 'Líneas Estratégicas:', value: strategicLines },

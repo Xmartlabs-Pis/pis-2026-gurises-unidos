@@ -100,11 +100,11 @@ export function BasicInfoSection({
           required={status === 'inactive'}
         />
       </div>
-      <SelectField
-        id="counterpartyType"
-        name="counterpartyType"
-        label="Contraparte"
-        placeholder="Seleccionar contraparte..."
+      <MultiSelectField
+        id="counterpartyTypes"
+        name="counterpartyTypes"
+        label="Contrapartes"
+        placeholder="Seleccionar contrapartes..."
         options={COUNTERPARTY_OPTIONS}
         required
       />

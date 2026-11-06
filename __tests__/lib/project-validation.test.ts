@@ -80,7 +80,7 @@ const BASE_PROJECT = {
   name: 'Project',
   status: 'inactive',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2020',
   endYear: '2022',
   leadCoordinatorId: '1',
@@ -165,19 +165,41 @@ it('validates a custom beneficiary category and splits it into the counts', () =
 it.each(['publicSector', 'privateSector', 'internationalCooperation'])(
   'accepts counterparty %s',
   (counterpartyType) => {
-    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyType });
+    const result = projectSchema.safeParse({
+      ...BASE_PROJECT,
+      counterpartyTypes: [counterpartyType],
+    });
     expect(result.success).toBe(true);
-    expect(result.data?.counterpartyType).toBe(counterpartyType);
+    expect(result.data?.counterpartyTypes).toEqual([counterpartyType]);
   }
 );
 
-it.each(['', undefined, null, 'invalid'])(
-  'rejects a missing or invalid counterparty: %s',
-  (counterpartyType) => {
-    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyType });
+it('accepts several counterparties in a stable order and without repetitions', () => {
+  const result = projectSchema.safeParse({
+    ...BASE_PROJECT,
+    counterpartyTypes: ['privateSector', 'publicSector', 'privateSector'],
+  });
+  expect(result.data?.counterpartyTypes).toEqual(['publicSector', 'privateSector']);
+});
+
+it.each([[['']], [[null]], [['invalid']], [['publicSector', 'invalid']]])(
+  'rejects an invalid counterparty: %j',
+  (counterpartyTypes) => {
+    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyTypes });
     expect(result.success).toBe(false);
-    expect(result.error?.flatten().fieldErrors.counterpartyType).toEqual([
+    expect(result.error?.flatten().fieldErrors.counterpartyTypes).toEqual([
       'Seleccioná una contraparte válida',
+    ]);
+  }
+);
+
+it.each([[[]], [undefined], [null], ['publicSector']])(
+  'rejects a project without a list of counterparties: %j',
+  (counterpartyTypes) => {
+    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyTypes });
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.counterpartyTypes).toEqual([
+      'Seleccioná al menos una contraparte',
     ]);
   }
 );

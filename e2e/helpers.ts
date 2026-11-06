@@ -92,7 +92,7 @@ async function pickOption(page: Page, label: string, option: string) {
 export async function fillRequiredProjectFields(page: Page, name: string) {
   await page.getByLabel('Nombre del proyecto').fill(name);
   await pickOption(page, 'Temáticas', E2E_TOPICS[0]);
-  await pickOption(page, 'Contraparte', 'Sector Público');
+  await pickOption(page, 'Contrapartes', 'Sector Público');
   await pickOption(page, 'Coordinador responsable', COORDINATOR_NAME);
   await pickOption(page, 'Líneas Estratégicas', STRATEGIC_LINES[0]);
   await pickOption(page, 'Departamento', E2E_DEPARTMENT);

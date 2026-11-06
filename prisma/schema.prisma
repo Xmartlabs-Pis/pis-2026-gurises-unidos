@@ -151,28 +151,28 @@ model Department {
 }
 
 model Project {
-  id                Int              @id @default(autoincrement())
-  name              String           @db.VarChar(100)
-  searchName        String?          @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
+  id                Int                @id @default(autoincrement())
+  name              String             @db.VarChar(100)
+  searchName        String?            @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
   status            ProjectStatus
   intensity         Intensity?
-  counterpartyType  CounterpartyType
+  counterpartyTypes CounterpartyType[]
   startYear         Int
   endYear           Int?
   leadCoordinatorId Int
-  geographicScope   GeographicScope  @default(national)
-  countries         String[]         @default([])
+  geographicScope   GeographicScope    @default(national)
+  countries         String[]           @default([])
   region            Region?
   zone              Zone?
-  generalObjective  String?          @db.VarChar(500)
-  publicDescription String?          @db.VarChar(1000)
+  generalObjective  String?            @db.VarChar(500)
+  publicDescription String?            @db.VarChar(1000)
   coverPhoto        String?
   coverCrop         Json?
-  internalNotes     String?          @db.VarChar(1000)
-  showOnLanding     Boolean          @default(true)
-  createdAt         DateTime         @default(now())
+  internalNotes     String?            @db.VarChar(1000)
+  showOnLanding     Boolean            @default(true)
+  createdAt         DateTime           @default(now())
   createdBy         Int?
-  updatedAt         DateTime?        @updatedAt
+  updatedAt         DateTime?          @updatedAt
   deletedAt         DateTime?
   deletedBy         Int?
 

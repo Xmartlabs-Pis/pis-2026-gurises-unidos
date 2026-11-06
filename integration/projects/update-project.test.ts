@@ -20,7 +20,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     name: 'Project under edit',
     status: 'active',
     intensity: 'high',
-    counterpartyType: 'publicSector',
+    counterpartyTypes: ['publicSector'],
     startYear: '2020',
     leadCoordinatorId: String(seed.coordinatorId),
     geographicScope: 'national',
@@ -53,7 +53,7 @@ async function createProjectFixture(leadCoordinatorId = seed.coordinatorId) {
       name: 'Project under edit',
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear: 2020,
       leadCoordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
@@ -118,10 +118,10 @@ describe('updateProject (integration)', () => {
         'publicSector',
       ] as const) {
         await expectRedirectToProject(
-          updateProject(projectId, {}, buildFormData({ counterpartyType })),
+          updateProject(projectId, {}, buildFormData({ counterpartyTypes: [counterpartyType] })),
           projectId
         );
-        expect((await loadProject(projectId)).counterpartyType).toBe(counterpartyType);
+        expect((await loadProject(projectId)).counterpartyTypes).toEqual([counterpartyType]);
       }
       expect(await auditLogsFor(projectId)).toEqual(
         ['publicSector', 'privateSector', 'internationalCooperation'].map((from, index) =>
@@ -129,12 +129,12 @@ describe('updateProject (integration)', () => {
             entity: 'project',
             action: 'update',
             details: {
-              changedFields: ['counterpartyType'],
+              changedFields: ['counterpartyTypes'],
               changes: [
                 {
-                  field: 'counterpartyType',
-                  from,
-                  to: ['privateSector', 'internationalCooperation', 'publicSector'][index],
+                  field: 'counterpartyTypes',
+                  from: [from],
+                  to: [['privateSector', 'internationalCooperation', 'publicSector'][index]],
                 },
               ],
             },
@@ -150,12 +150,49 @@ describe('updateProject (integration)', () => {
       const projectId = await createProjectFixture();
       signInAs(seed.adminId);
       const before = await loadProject(projectId);
-      const result = await updateProject(projectId, {}, buildFormData({ counterpartyType }));
-      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+      const result = await updateProject(
+        projectId,
+        {},
+        buildFormData({ counterpartyTypes: [counterpartyType] })
+      );
+      expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná una contraparte válida']);
       expect(await loadProject(projectId)).toEqual(before);
       expect(await auditLogsFor(projectId)).toEqual([]);
     }
   );
+
+  test('rejects a project without counterparties without changing stored data', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+    const result = await updateProject(projectId, {}, buildFormData({ counterpartyTypes: [] }));
+    expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná al menos una contraparte']);
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
+  test('stores several counterparties and ignores the order they were selected in', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const counterpartyTypes = ['privateSector', 'publicSector'];
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ counterpartyTypes })),
+      projectId
+    );
+    expect((await loadProject(projectId)).counterpartyTypes).toEqual([
+      'publicSector',
+      'privateSector',
+    ]);
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({ counterpartyTypes: ['publicSector', 'privateSector'] })
+      ),
+      projectId
+    );
+    expect(await auditLogsFor(projectId)).toHaveLength(1);
+  });
 
   test('persists and audits the beneficiaries edited in every year', async () => {
     const projectId = await createProjectFixture();
@@ -841,12 +878,12 @@ describe('createProject counterparty (integration)', () => {
     async (counterpartyType) => {
       signInAs(seed.adminId);
       const name = `Counterparty ${counterpartyType}`;
-      await expect(createProject({}, buildFormData({ name, counterpartyType }))).rejects.toThrow(
-        /^NEXT_REDIRECT:\/dashboard\/projects\/\d+$/
-      );
+      await expect(
+        createProject({}, buildFormData({ name, counterpartyTypes: [counterpartyType] }))
+      ).rejects.toThrow(/^NEXT_REDIRECT:\/dashboard\/projects\/\d+$/);
       const project = await prisma.project.findFirstOrThrow({ where: { name } });
       createdProjectIds.push(project.id);
-      expect((await loadProject(project.id)).counterpartyType).toBe(counterpartyType);
+      expect((await loadProject(project.id)).counterpartyTypes).toEqual([counterpartyType]);
     }
   );
 });

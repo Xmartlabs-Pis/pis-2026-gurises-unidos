@@ -65,7 +65,7 @@ export async function getProjectSheetData(
       name: true,
       status: true,
       intensity: true,
-      counterpartyType: true,
+      counterpartyTypes: true,
       startYear: true,
       endYear: true,
       leadCoordinatorId: true,
@@ -148,7 +148,10 @@ export async function getProjectSheetData(
       { label: 'Período', value: `${project.startYear} a ${project.endYear ?? 'la actualidad'}` },
     ],
     extraFields: [
-      { label: 'Contraparte', value: COUNTERPARTY_LABEL[project.counterpartyType] },
+      {
+        label: 'Contrapartes',
+        value: joinList(project.counterpartyTypes.map((type) => COUNTERPARTY_LABEL[type])),
+      },
       {
         label: 'Líneas estratégicas',
         value: joinList(project.strategicLines.map(({ name }) => name)),

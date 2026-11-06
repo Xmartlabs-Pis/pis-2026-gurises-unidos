@@ -180,7 +180,7 @@ async function main() {
           name,
           status,
           intensity: INTENSITIES[index % INTENSITIES.length],
-          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
+          counterpartyTypes: [COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length]],
           startYear,
           endYear:
             status === 'inactive'

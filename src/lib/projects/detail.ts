@@ -39,7 +39,7 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       name: true,
       status: true,
       intensity: true,
-      counterpartyType: true,
+      counterpartyTypes: true,
       startYear: true,
       endYear: true,
       strategicLines: {

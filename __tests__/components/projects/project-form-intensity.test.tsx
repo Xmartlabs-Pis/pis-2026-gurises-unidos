@@ -32,7 +32,7 @@ function renderForm(props: Partial<ComponentProps<typeof ProjectForm>> = {}) {
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         strategicLineIds: ['1'],
         name: 'Existing project',
         topicIds: ['1'],
@@ -79,7 +79,7 @@ it('enables intensity when another saved year has direct children or adolescents
 it('submits no intensity while the project has no direct children or adolescents', async () => {
   const { container, submitAction } = renderForm({
     initialValues: {
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       strategicLineIds: ['1'],
       name: 'Existing project',
       topicIds: ['1'],

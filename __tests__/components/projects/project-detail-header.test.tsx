@@ -13,7 +13,7 @@ const PROJECT: ProjectDetail['project'] = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: 2020,
   endYear: null,
   strategicLines: [
@@ -151,7 +151,7 @@ test('does not show a region for a national project', () => {
 test('shows the project counterparty', () => {
   renderHeader(null);
 
-  expect(screen.getByText('Contraparte:')).toBeDefined();
+  expect(screen.getByText('Contrapartes:')).toBeDefined();
   expect(screen.getByText('Sector Público')).toBeDefined();
 });
 
