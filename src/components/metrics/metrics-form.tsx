@@ -5,7 +5,9 @@ import type { Contributor } from '@/lib/contributors';
 
 import Link from 'next/link';
 import { Info } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useRef, useState } from 'react';
+import { usePendingChanges } from '@/components/ui/forms/pending-changes-provider';
+import { UnsavedChangesIndicator } from '@/components/ui/forms/unsaved-changes-indicator';
 import { saveMetricSettings } from '@/app/actions/metrics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,7 +60,8 @@ export function MetricsForm({
   const [savedSignature, setSavedSignature] = useState(() =>
     getSettingsSignature(initialPublishedYears, initialMetrics, initialTopics)
   );
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const savingRef = useRef(false);
   const topics = initialTopics.map((topic) => ({
     ...topic,
     showPublicly: topicVisibility[topic.id] ?? topic.showPublicly,
@@ -68,24 +71,32 @@ export function MetricsForm({
   const settingsSignature = getSettingsSignature(publishedYears, metrics, topics);
   const hasUnsavedChanges = settingsSignature !== savedSignature;
 
-  function saveChanges() {
-    startTransition(async () => {
-      try {
-        const result = await saveMetricSettings({
-          publishedYears,
-          metrics: metrics.map(({ key, showPublicly }) => ({ key, showPublicly })),
-          topics: topics.map(({ id, showPublicly }) => ({ id, showPublicly })),
-        });
-        if (!result.success) {
-          notify.error({ title: result.message });
-          return;
-        }
-        setSavedSignature(settingsSignature);
-        notify.success({ title: result.message });
-      } catch {
-        notify.error({ title: 'No se pudieron guardar los cambios. Intentá de nuevo.' });
+  usePendingChanges({ hasUnsavedChanges, isSaving: isPending, onSave: saveChanges });
+
+  async function saveChanges(): Promise<boolean> {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setIsPending(true);
+    try {
+      const result = await saveMetricSettings({
+        publishedYears,
+        metrics: metrics.map(({ key, showPublicly }) => ({ key, showPublicly })),
+        topics: topics.map(({ id, showPublicly }) => ({ id, showPublicly })),
+      });
+      if (!result.success) {
+        notify.error({ title: result.message });
+        return false;
       }
-    });
+      setSavedSignature(settingsSignature);
+      notify.success({ title: result.message });
+      return true;
+    } catch {
+      notify.error({ title: 'No se pudieron guardar los cambios. Intentá de nuevo.' });
+      return false;
+    } finally {
+      savingRef.current = false;
+      setIsPending(false);
+    }
   }
 
   function setVisibility(key: string, showPublicly: boolean) {
@@ -102,6 +113,7 @@ export function MetricsForm({
     <div className="flex flex-1 flex-col">
       <div className="mx-auto grid w-full max-w-[1185px] items-start gap-y-6 xl:grid-cols-[minmax(0,760fr)_minmax(0,425fr)]">
         <section
+          inert={isPending}
           aria-label="Selección de métricas"
           className="bg-surface-page flex min-w-0 flex-col gap-5 px-6 pt-6 pb-8"
         >
@@ -302,17 +314,10 @@ export function MetricsForm({
           <span className="flex w-fit items-center gap-2.5 leading-5">Restablecer valores</span>
         </Button>
         <div className="flex flex-wrap items-center gap-3">
-          <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
-            {hasUnsavedChanges && (
-              <span className="flex items-center gap-2">
-                <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
-                Cambios sin guardar
-              </span>
-            )}
-          </span>
+          <UnsavedChangesIndicator visible={hasUnsavedChanges} />
           <Button
             disabled={isPending || !hasUnsavedChanges}
-            onClick={saveChanges}
+            onClick={() => void saveChanges()}
             className="h-9 w-fit flex-col gap-2.5 rounded-lg px-4 py-2 shadow-[0_1px_2px_0_rgb(0_0_0/10%)]"
           >
             {isPending ? 'Guardando…' : 'Guardar cambios'}

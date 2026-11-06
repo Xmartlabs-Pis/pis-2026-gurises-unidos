@@ -113,9 +113,10 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
   expect((screen.getByLabelText('Nombre del proyecto') as HTMLInputElement).value).toBe(
     'Edited project'
   );
-  expect(Object.fromEntries(new FormData(container.querySelector('form')!))).toEqual(
-    Object.fromEntries(submitted)
-  );
+  expect(Object.fromEntries(submitted)).toEqual({
+    ...Object.fromEntries(new FormData(container.querySelector('form')!)),
+    returnResult: 'true',
+  });
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });

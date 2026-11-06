@@ -435,5 +435,6 @@ export async function updateUser(
   }
 
   revalidatePath('/management/users');
+  if (formData.get('returnResult') === 'true') return { success: true };
   redirect('/management/users');
 }
