@@ -21,7 +21,8 @@ import logo from '@/assets/logo.png';
 import { AppSidebarFooter } from './footer';
 import { filterNavGroups, NAV_GROUPS } from './navigation';
 import { SidebarNavItem } from './nav-item';
-import Link from 'next/link';
+import { useEffect } from 'react';
+import { NavigationGuardLink as Link } from 'nextjs-nav-guard';
 
 interface Props {
   user: Session['user'];
@@ -32,17 +33,17 @@ export function AppSidebar({ user }: Props) {
   const { setOpenMobile } = useSidebar();
   const navGroups = filterNavGroups(NAV_GROUPS, user.role);
 
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-12 items-center gap-2 overflow-hidden p-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!">
-              <Link
-                href="/dashboard"
-                onClick={() => setOpenMobile(false)}
-                className="flex min-w-0 flex-1 items-center gap-2"
-              >
+              <Link href="/dashboard" className="flex min-w-0 flex-1 items-center gap-2">
                 <Image
                   className="size-8 shrink-0 rounded-md"
                   src={logo}

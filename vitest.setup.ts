@@ -11,6 +11,15 @@ vi.mock('@/lib/prisma', async () => {
   return { default: prismaMock };
 });
 
+vi.mock('@/components/ui/forms/pending-changes-provider', () => ({
+  usePendingChanges: () => ({
+    runWithoutConfirmation: (action: () => void) => action(),
+  }),
+  usePendingChangesContext: () => ({
+    confirmLeave: async () => true,
+  }),
+}));
+
 beforeEach(() => {
   resetPrismaMock();
 });

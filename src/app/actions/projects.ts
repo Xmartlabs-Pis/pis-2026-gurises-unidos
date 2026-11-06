@@ -553,6 +553,7 @@ export async function updateProject(
     return { formError: 'No se pudo actualizar el proyecto. Intentá de nuevo.' };
   }
   revalidateProject();
+  if (formData.get('returnResult') === 'true') return { success: true };
   redirect(`/dashboard/projects/${projectId}`);
 }
 

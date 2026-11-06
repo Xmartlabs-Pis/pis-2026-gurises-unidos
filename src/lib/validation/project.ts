@@ -82,4 +82,8 @@ export const projectSchema = z
 
 export const INTENSITY_REQUIRED_MESSAGE = 'Elegí una intensidad';
 
-export type ProjectFormState = { errors?: Record<string, string[]>; formError?: string };
+export type ProjectFormState = {
+  success?: boolean;
+  errors?: Record<string, string[]>;
+  formError?: string;
+};

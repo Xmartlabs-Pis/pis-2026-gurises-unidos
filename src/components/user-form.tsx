@@ -1,14 +1,9 @@
 'use client';
 
+import { useSaveAction } from '@/hooks/use-save-action';
+import { usePendingChanges } from '@/components/ui/forms/pending-changes-provider';
 import { useRouter } from 'next/navigation';
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useRef,
-  useState,
-  type SubmitEvent,
-} from 'react';
+import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
@@ -35,7 +30,7 @@ import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { ResetPasswordDialog } from '@/components/users/reset-password-dialog';
 import { UserStatusDialog } from '@/components/users/user-status-dialog';
 
-import { userEditFormSchema, type UserFormState } from '@/lib/validation/user';
+import { PRESERVED_FIELDS, userEditFormSchema, type UserFormState } from '@/lib/validation/user';
 import { STATUS_CLASSNAMES, STATUS_LABELS } from '@/lib/users/constants';
 import { notify } from '@/lib/notify';
 
@@ -98,7 +93,13 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
       ? 'La persona elegirá su contraseña al aceptar la invitación. Podés reenviarla desde la lista de usuarios.'
       : 'Se generará una contraseña temporal que la persona deberá cambiar al ingresar.';
   const action = isEditing && initialValues ? updateUser.bind(null, initialValues.id) : createUser;
-  const [state, formAction, pending] = useActionState(action, initialState);
+  const [state, submit, pending] = useSaveAction(
+    action,
+    initialState,
+    'No se pudo guardar el usuario. Intentá de nuevo.'
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+  const submissionRef = useRef(false);
   const lastSubmission = useRef<FormData | null>(null);
   const [answeredRestoreState, setAnsweredRestoreState] = useState<UserFormState>();
   const isRestoreDialogOpen =
@@ -117,17 +118,38 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   const { handleSubmit } = form;
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
+  const busy = pending || form.formState.isSubmitting;
+  const hasUnsavedChanges = isEditing && form.formState.isDirty;
+  const { runWithoutConfirmation } = usePendingChanges({
+    hasUnsavedChanges,
+    isSaving: isEditing && busy,
+    onSave: saveChanges,
+  });
+
+  async function saveChanges(): Promise<boolean> {
+    if (!formRef.current || submissionRef.current) return false;
+    submissionRef.current = true;
+    const formData = new FormData(formRef.current);
+    let saved = false;
+    try {
+      await handleSubmit(async () => {
+        if (isEditing) formData.set('returnResult', 'true');
+        lastSubmission.current = formData;
+        saved = await submit(formData);
+      })();
+      return saved;
+    } finally {
+      submissionRef.current = false;
+    }
+  }
+
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const submitter = event.nativeEvent.submitter;
-    return handleSubmit(() => {
-      const formData = submitter ? new FormData(formElement, submitter) : new FormData(formElement);
-      lastSubmission.current = formData;
-      startTransition(() => {
-        formAction(formData);
-      });
-    })(event);
+    void saveChanges().then((saved) => {
+      if (saved && isEditing) {
+        runWithoutConfirmation(() => router.push('/management/users'));
+      }
+    });
   }
 
   function handleCancelRestore() {
@@ -141,9 +163,7 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
     const formData = new FormData();
     lastSubmission.current.forEach((value, key) => formData.append(key, value));
     formData.set('confirmRestore', 'true');
-    startTransition(() => {
-      formAction(formData);
-    });
+    void submit(formData);
   }
 
   useEffect(() => {
@@ -155,18 +175,23 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
       return;
     }
 
-    if (!state.formError) return;
-    notify.error({ title: state.formError });
-  }, [state, router]);
+    if (state.formError) notify.error({ title: state.formError });
+    for (const name of PRESERVED_FIELDS) {
+      const message = state.errors?.[name]?.[0];
+      if (message) form.setError(name, { type: 'server', message });
+    }
+  }, [state, router, form]);
 
   return (
     <FormProvider {...form}>
       <form
+        ref={formRef}
+        aria-busy={busy}
         onSubmit={onSubmit}
         noValidate
         className="bg-primary-foreground flex w-full min-w-0 flex-1 flex-col pt-6"
       >
-        <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
+        <div inert={busy} className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
           <div
             className={cn(
               'grid grid-cols-1 gap-6',
@@ -319,7 +344,8 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
         <FormActions
           onCancel={() => router.push('/management/users')}
           submitLabel={isEditing ? 'Guardar usuario' : 'Guardar y enviar invitación'}
-          pending={pending}
+          pending={busy}
+          hasUnsavedChanges={hasUnsavedChanges}
         />
       </form>
 
