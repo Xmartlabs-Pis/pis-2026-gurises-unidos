@@ -53,6 +53,37 @@ it('keeps the saved crop when the cropper reports its default area first', async
   });
 });
 
+it('keeps loaded covers in one horizontal row and skips thumbs far from the scroll', () => {
+  const covers = Array.from({ length: 12 }, (_, index) => ({
+    path: `/uploads/covers/${index.toString(16).padStart(8, '0')}-1111-4111-8111-111111111111.webp`,
+    projectName: `Proyecto ${index}`,
+    usedBy: 1,
+  }));
+  render(
+    <CoverPhotoDialog
+      open
+      onOpenChange={() => {}}
+      covers={covers}
+      loadingCovers={false}
+      coversError={false}
+      image={null}
+      onRequestUpload={() => {}}
+      onChooseExisting={() => {}}
+      onApply={() => {}}
+    />
+  );
+
+  const strip = document.querySelector('[data-cover-strip]');
+  expect(strip?.className).toContain('overflow-x-auto');
+  expect(screen.getByRole('button', { name: 'Proyecto 0' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Proyecto 8' })).toBeNull();
+
+  Object.defineProperty(strip, 'scrollLeft', { configurable: true, value: 8 * 136 });
+  fireEvent.scroll(strip!);
+  expect(screen.getByRole('button', { name: 'Proyecto 8' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Proyecto 0' })).toBeNull();
+});
+
 it('uses the cropper area when the image has no saved crop', async () => {
   const onApply = renderDialog(null);
   await screen.findByTestId('cover-cropper');

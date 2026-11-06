@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
@@ -21,6 +21,17 @@ import { isUploadedCoverPath } from '@/lib/projects/uploaded-cover';
 import type { CoverDraft } from './use-project-cover';
 
 const COVER_ASPECT = 16 / 9;
+const THUMB_WIDTH = 128;
+const THUMB_GAP = 8;
+const STRIDE = THUMB_WIDTH + THUMB_GAP;
+const STRIP_PADDING = 4;
+const OVERSCAN = 3;
+
+function coverWindow(scrollLeft: number, viewport: number, count: number) {
+  const start = Math.max(0, Math.floor(scrollLeft / STRIDE) - OVERSCAN);
+  const end = Math.min(count, Math.ceil((scrollLeft + viewport) / STRIDE) + OVERSCAN);
+  return { start, end };
+}
 
 function coverLabel(cover: ReusableCover) {
   if (cover.usedBy <= 1) return cover.projectName;
@@ -70,10 +81,13 @@ export function CoverPhotoDialog({
     if (open) setQuery('');
   }
 
-  const normalizedQuery = query.trim().toLocaleLowerCase('es');
-  const visibleCovers = normalizedQuery
-    ? covers.filter((cover) => cover.projectName.toLocaleLowerCase('es').includes(normalizedQuery))
-    : covers;
+  const visibleCovers = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('es');
+    if (!normalizedQuery) return covers;
+    return covers.filter((cover) =>
+      cover.projectName.toLocaleLowerCase('es').includes(normalizedQuery)
+    );
+  }, [covers, query]);
 
   const rememberCrop = useCallback((crop: CoverCrop) => {
     setReadyCrop((current) => (current && sameCoverCrop(crop, current) ? current : crop));
@@ -97,8 +111,8 @@ export function CoverPhotoDialog({
             Elegí una imagen cargada o subí una nueva, y ajustá el encuadre.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
-          <div className="flex flex-col gap-2">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+          <div className="flex min-w-0 flex-col gap-2">
             <div className="flex items-center justify-between gap-3">
               <p className="text-foreground text-xs font-medium">
                 Imágenes cargadas
@@ -135,38 +149,11 @@ export function CoverPhotoDialog({
               </p>
             )}
             {visibleCovers.length > 0 && (
-              <div className="max-h-44 overflow-y-auto p-1">
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {visibleCovers.map((cover) => {
-                    const label = coverLabel(cover);
-                    return (
-                      <button
-                        key={cover.path}
-                        type="button"
-                        aria-pressed={image?.source === cover.path}
-                        aria-label={label}
-                        title={label}
-                        className={cn(
-                          'ring-border relative aspect-video overflow-hidden rounded-md ring-1',
-                          image?.source === cover.path && 'ring-primary ring-2'
-                        )}
-                        onClick={() => onChooseExisting(cover.path)}
-                      >
-                        <Image
-                          src={cover.path}
-                          alt=""
-                          fill
-                          sizes="120px"
-                          className="object-cover"
-                        />
-                        <span className="absolute inset-x-0 bottom-0 truncate bg-black/65 px-1.5 py-0.5 text-left text-[10px] leading-4 text-white">
-                          {label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <CoverStrip
+                covers={visibleCovers}
+                selectedPath={image?.source ?? null}
+                onChoose={onChooseExisting}
+              />
             )}
             {uploadError && (
               <p className="text-destructive text-xs" role="alert">
@@ -192,6 +179,104 @@ export function CoverPhotoDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CoverStrip({
+  covers,
+  selectedPath,
+  onChoose,
+}: {
+  covers: ReusableCover[];
+  selectedPath: string | null;
+  onChoose: (path: string) => void;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [range, setRange] = useState(() => coverWindow(0, 0, covers.length));
+  const selectedIndex = covers.findIndex((cover) => cover.path === selectedPath);
+
+  const publish = useCallback(
+    (node: HTMLDivElement) => {
+      const next = coverWindow(node.scrollLeft, node.clientWidth, covers.length);
+      setRange((current) =>
+        current.start === next.start && current.end === next.end ? current : next
+      );
+    },
+    [covers.length]
+  );
+
+  useLayoutEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    if (selectedIndex >= 0) {
+      const itemLeft = STRIP_PADDING + selectedIndex * STRIDE;
+      const itemRight = itemLeft + THUMB_WIDTH;
+      const viewEnd = node.scrollLeft + node.clientWidth;
+      if (itemLeft < node.scrollLeft || itemRight > viewEnd) {
+        node.scrollLeft = Math.max(0, itemLeft - STRIP_PADDING);
+      }
+    }
+    publish(node);
+  }, [publish, selectedIndex]);
+
+  return (
+    <div
+      ref={scrollerRef}
+      data-cover-strip
+      className="min-w-0 overflow-x-auto overflow-y-hidden overscroll-x-contain py-1"
+      onScroll={(event) => publish(event.currentTarget)}
+    >
+      <div
+        className="relative"
+        style={{ width: covers.length * STRIDE, height: (THUMB_WIDTH * 9) / 16 }}
+      >
+        <div
+          className="absolute top-0 flex"
+          style={{ left: STRIP_PADDING + range.start * STRIDE, gap: THUMB_GAP }}
+        >
+          {covers.slice(range.start, range.end).map((cover) => (
+            <CoverThumb
+              key={cover.path}
+              cover={cover}
+              selected={cover.path === selectedPath}
+              onChoose={onChoose}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoverThumb({
+  cover,
+  selected,
+  onChoose,
+}: {
+  cover: ReusableCover;
+  selected: boolean;
+  onChoose: (path: string) => void;
+}) {
+  const label = coverLabel(cover);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      aria-label={label}
+      title={label}
+      style={{ width: THUMB_WIDTH }}
+      className={cn(
+        'ring-border relative aspect-video shrink-0 overflow-hidden rounded-md ring-1',
+        selected && 'ring-primary ring-2'
+      )}
+      onClick={() => onChoose(cover.path)}
+    >
+      <Image src={cover.path} alt="" fill sizes={`${THUMB_WIDTH}px`} className="object-cover" />
+      <span className="absolute inset-x-0 bottom-0 truncate bg-black/65 px-1.5 py-0.5 text-left text-[10px] leading-4 text-white">
+        {label}
+      </span>
+    </button>
   );
 }
 
