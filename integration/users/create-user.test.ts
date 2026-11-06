@@ -36,6 +36,23 @@ function countRows() {
   return Promise.all([prisma.user.count(), prisma.auditLog.count()]);
 }
 
+async function inviteUser() {
+  signInAs(seed.adminId, 'admin');
+  await expect(createUser({}, buildFormData())).rejects.toThrow(
+    /^NEXT_REDIRECT:\/management\/users$/
+  );
+  const user = await prisma.user.findUniqueOrThrow({ where: { documentId: DOCUMENT_ID } });
+  await prisma.userToken.updateMany({
+    where: { userId: user.id, type: 'invitation' },
+    data: { tokenHash: hashToken(INVITATION_TOKEN) },
+  });
+  const formData = new FormData();
+  formData.set('token', INVITATION_TOKEN);
+  formData.set('newPassword', PASSWORD);
+  formData.set('confirmNewPassword', PASSWORD);
+  return { userId: user.id, formData };
+}
+
 beforeAll(async () => {
   seed = await loadSeedData();
 });
@@ -196,28 +213,27 @@ describe('createUser (integration)', () => {
   });
 
   test('activates the user once the invitation is accepted', async () => {
-    signInAs(seed.adminId, 'admin');
-    await expect(createUser({}, buildFormData())).rejects.toThrow(
-      /^NEXT_REDIRECT:\/management\/users$/
-    );
-    const user = await prisma.user.findUniqueOrThrow({ where: { documentId: DOCUMENT_ID } });
-    await prisma.userToken.updateMany({
-      where: { userId: user.id, type: 'invitation' },
-      data: { tokenHash: hashToken(INVITATION_TOKEN) },
-    });
-    const formData = new FormData();
-    formData.set('token', INVITATION_TOKEN);
-    formData.set('newPassword', PASSWORD);
-    formData.set('confirmNewPassword', PASSWORD);
+    const { userId, formData } = await inviteUser();
     signOut();
 
     await expect(acceptInvitation({}, formData)).rejects.toThrow(/^NEXT_REDIRECT:\/dashboard$/);
 
-    const activated = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const activated = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect(activated.status).toBe('active');
     expect(await acceptInvitation({}, formData)).toEqual({
       formError: 'Esta invitación ya fue usada. Si ya completaste tu registro, iniciá sesión.',
     });
+  });
+
+  test('activates the user without replacing the session of someone already signed in', async () => {
+    const { userId, formData } = await inviteUser();
+
+    await expect(acceptInvitation({}, formData)).rejects.toThrow(
+      /^NEXT_REDIRECT:\/login\?invitationAccepted=session$/
+    );
+
+    const activated = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(activated.status).toBe('active');
   });
 
   test('returns field errors and preserves the submitted values', async () => {
