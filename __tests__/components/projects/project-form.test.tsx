@@ -230,17 +230,23 @@ it('submits an already uploaded cover and its crop', async () => {
   ]);
   const { container } = render(
     <ProjectForm
+      mode="edit"
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
-      initialValues={{ counterpartyType: 'publicSector' }}
+      initialValues={{
+        counterpartyType: 'publicSector',
+        coverPhotoUrl: '/images/project-placeholders/2.webp',
+        coverCrop: APPLIED_CROP,
+      }}
       submitAction={vi.fn()}
     />
   );
 
+  expect(screen.queryByText('Cambios sin guardar')).toBeNull();
   fireEvent.click(screen.getByLabelText('Foto de portada'));
   fireEvent.click(await screen.findByRole('button', { name: 'Comedor' }));
   const apply = await screen.findByRole('button', { name: 'Aplicar' });
@@ -252,6 +258,9 @@ it('submits an already uploaded cover and its crop', async () => {
   const submitted = new FormData(container.querySelector('form')!);
   expect(submitted.get('coverPhotoPath')).toBe(coverPath);
   expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
+  expect(screen.getByText('Cambios sin guardar')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
+  expect(screen.queryByText('Cambios sin guardar')).toBeNull();
   vi.mocked(listProjectCovers).mockResolvedValue([]);
 });
 
