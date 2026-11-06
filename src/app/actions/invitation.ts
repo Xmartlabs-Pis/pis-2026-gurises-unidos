@@ -97,7 +97,7 @@ export async function acceptInvitation(
   }
 
   if (await auth()) {
-    redirect('/login?invitationAccepted=1');
+    redirect('/login?invitationAccepted=session');
   }
 
   try {

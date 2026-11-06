@@ -71,7 +71,7 @@ function LeftColumn({
 }: {
   sessionExpired: boolean;
   passwordChanged: boolean;
-  invitationAccepted: boolean;
+  invitationAccepted: 'login' | 'session' | null;
 }) {
   return (
     <div className="bg-background flex flex-col justify-between gap-6 pt-10 pr-6 pb-8 pl-6 lg:w-140 lg:min-w-140 lg:gap-0 lg:pt-14 lg:pr-18 lg:pb-10 lg:pl-18 2xl:min-w-[33%]">
@@ -99,9 +99,15 @@ function LeftColumn({
             contraseña.
           </p>
         ) : null}
-        {invitationAccepted ? (
+        {invitationAccepted === 'login' ? (
           <p className="text-status-success text-sm leading-5 font-medium tracking-normal">
             Tu registro se completó correctamente. Iniciá sesión con tu cédula y tu contraseña.
+          </p>
+        ) : null}
+        {invitationAccepted === 'session' ? (
+          <p className="text-status-success text-sm leading-5 font-medium tracking-normal">
+            El registro quedó completo. En este navegador ya hay una sesión abierta; la persona
+            invitada puede iniciar sesión con su cédula y su contraseña desde otro navegador.
           </p>
         ) : null}
         <LoginForm sessionExpired={sessionExpired} />
@@ -134,7 +140,9 @@ export default async function LoginPage({
       <LeftColumn
         sessionExpired={reason === SESSION_EXPIRATION_REASON}
         passwordChanged={passwordChanged === '1'}
-        invitationAccepted={invitationAccepted === '1'}
+        invitationAccepted={
+          invitationAccepted === '1' ? 'login' : invitationAccepted === 'session' ? 'session' : null
+        }
       />
       <RightColumn />
       <footer className="bg-background flex flex-col gap-0.5 p-6 pt-5 lg:hidden">

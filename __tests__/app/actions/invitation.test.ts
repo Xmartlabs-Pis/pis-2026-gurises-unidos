@@ -125,7 +125,7 @@ describe('acceptInvitation', () => {
     authMock.mockResolvedValue({ user: { id: 'admin-id', role: 'admin' } });
 
     await expect(acceptInvitation({}, buildFormData())).rejects.toThrow(
-      'NEXT_REDIRECT:/login?invitationAccepted=1'
+      'NEXT_REDIRECT:/login?invitationAccepted=session'
     );
 
     expect(tx.user.updateMany).toHaveBeenCalled();
