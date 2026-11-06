@@ -229,7 +229,7 @@ describe('createUser (integration)', () => {
     const { userId, formData } = await inviteUser();
 
     await expect(acceptInvitation({}, formData)).rejects.toThrow(
-      /^NEXT_REDIRECT:\/login\?invitationAccepted=session$/
+      /^NEXT_REDIRECT:\/dashboard\?invitationAccepted=1$/
     );
 
     const activated = await prisma.user.findUniqueOrThrow({ where: { id: userId } });

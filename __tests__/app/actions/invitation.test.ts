@@ -120,12 +120,12 @@ describe('acceptInvitation', () => {
     );
   });
 
-  test('keeps the existing session and redirects to login when someone is already signed in', async () => {
+  test('keeps the existing session and redirects to the dashboard when someone is already signed in', async () => {
     const tx = setupTransaction();
     authMock.mockResolvedValue({ user: { id: 'admin-id', role: 'admin' } });
 
     await expect(acceptInvitation({}, buildFormData())).rejects.toThrow(
-      'NEXT_REDIRECT:/login?invitationAccepted=session'
+      'NEXT_REDIRECT:/dashboard?invitationAccepted=1'
     );
 
     expect(tx.user.updateMany).toHaveBeenCalled();
