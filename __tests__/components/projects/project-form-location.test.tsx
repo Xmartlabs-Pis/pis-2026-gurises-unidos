@@ -20,6 +20,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"

@@ -65,6 +65,7 @@ function renderForm(props: Partial<ComponentProps<typeof ProjectForm>> = {}) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[]}
+      partners={[]}
       currentYear={2026}
       topics={[]}
       coordinators={[]}

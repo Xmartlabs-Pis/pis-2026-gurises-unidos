@@ -123,3 +123,12 @@ it('loads the stored location into form values grouped by department', () => {
     locations: [],
   });
 });
+
+it('loads the stored partners into form values', () => {
+  const values = projectToFormValues(
+    { ...PROJECT, partners: [{ id: 4 }, { id: 9 }] },
+    2026,
+    BENEFICIARY_CATEGORY_OPTIONS
+  );
+  expect(values.partnerIds).toEqual(['4', '9']);
+});

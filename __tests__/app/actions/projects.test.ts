@@ -168,6 +168,7 @@ beforeEach(() => {
     leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
+    partners: [],
     departments: [{ id: 3, name: 'Department 3' }],
     localities: AUDIT_LOCALITIES,
   });
@@ -199,6 +200,7 @@ beforeEach(() => {
         id,
         name: `Line ${id}`,
       })),
+      partners: [],
       departments: (departments?.set ?? [{ id: 3 }]).map(({ id }: { id: number }) => ({
         id,
         name: `Department ${id}`,
@@ -784,6 +786,7 @@ function unchangedRecords() {
     leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
+    partners: [],
     departments: [{ id: 3, name: 'Department 3' }],
     localities: AUDIT_LOCALITIES,
   });
@@ -1186,6 +1189,7 @@ describe('project review regressions', () => {
       ...projectData,
       topics: [{ id: 3 }, { id: 2 }],
       strategicLines: [{ id: 1 }],
+      partners: [],
       departments: [{ id: 3 }],
       localities: LOCALITIES,
     });
@@ -1309,6 +1313,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1338,6 +1343,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1427,6 +1433,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
       });
       mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -1481,6 +1488,7 @@ describe('project review regressions', () => {
         coverPhoto: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
       });
       expect(await updateProject(10, {}, formData({ coverPhotoPath: existingCover }))).toEqual({

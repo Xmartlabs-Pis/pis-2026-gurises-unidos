@@ -17,6 +17,7 @@ import {
   getActiveBeneficiaryCategories,
   getBeneficiaryCategoryLabels,
 } from '@/lib/beneficiary-categories';
+import { getProjectPartnerOptions } from '@/lib/partners';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { DeleteProjectSection } from '@/components/projects/delete-project-section';
 import { BreadcrumbResourceLabel } from '@/components/layout/topbar-context';
@@ -49,6 +50,7 @@ async function EditProjectForm({
     include: {
       topics: { select: { id: true } },
       strategicLines: { select: { id: true } },
+      partners: { select: { id: true } },
       departments: { select: { id: true }, orderBy: { name: 'asc' } },
       localities: {
         select: { departmentId: true, city: true, neighborhood: true },
@@ -74,6 +76,7 @@ async function EditProjectForm({
     history,
     topics,
     strategicLines,
+    partners,
     beneficiaryCategories,
     fieldLabels,
   ] = await Promise.all([
@@ -101,6 +104,7 @@ async function EditProjectForm({
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     }),
+    getProjectPartnerOptions(),
     getActiveBeneficiaryCategories(),
     getBeneficiaryCategoryLabels(),
   ]);
@@ -147,6 +151,7 @@ async function EditProjectForm({
         )}
         beneficiaryRecords={beneficiaryRecords}
         strategicLines={strategicLines}
+        partners={partners}
         beneficiaryCategories={beneficiaryCategories}
         topics={topics}
         currentYear={currentYear}

@@ -230,6 +230,7 @@ describe('createProject', () => {
         createdBy: 7,
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
+        partners: { connect: [] },
         departments: { connect: [{ id: 2 }] },
         localities: { create: [{ departmentId: 2, city: 'Las Piedras', neighborhood: null }] },
       },

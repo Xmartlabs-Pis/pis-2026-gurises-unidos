@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { deletePartner } from '@/app/actions/partners';
 import { createProject, updateProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
 import { toBeneficiaryValuesCreate } from '@/lib/project-display';
@@ -886,4 +887,144 @@ describe('createProject counterparty (integration)', () => {
       expect((await loadProject(project.id)).counterpartyTypes).toEqual([counterpartyType]);
     }
   );
+});
+
+describe('project partners (integration)', () => {
+  let createdPartnerIds: number[] = [];
+
+  afterEach(async () => {
+    await prisma.partner.deleteMany({ where: { id: { in: createdPartnerIds } } });
+    createdPartnerIds = [];
+  });
+
+  async function createPartner(
+    name: string,
+    counterpartyType: 'publicSector' | 'privateSector',
+    isActive = true
+  ) {
+    const partner = await prisma.partner.create({ data: { name, counterpartyType, isActive } });
+    createdPartnerIds.push(partner.id);
+    return partner;
+  }
+
+  function partnersOf(projectId: number) {
+    return prisma.partner.findMany({
+      where: { projects: { some: { id: projectId } } },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    });
+  }
+
+  test('creates a project with partners of several counterparties', async () => {
+    signInAs(seed.adminId);
+    const publicPartner = await createPartner('Public partner', 'publicSector');
+    const privatePartner = await createPartner('Private partner', 'privateSector');
+    const name = 'Project with partners';
+    await expect(
+      createProject(
+        {},
+        buildFormData({
+          name,
+          counterpartyTypes: ['publicSector', 'privateSector'],
+          partnerIds: [String(publicPartner.id), String(privatePartner.id)],
+        })
+      )
+    ).rejects.toThrow(/^NEXT_REDIRECT:/);
+    const project = await prisma.project.findFirstOrThrow({ where: { name } });
+    createdProjectIds.push(project.id);
+    expect(await partnersOf(project.id)).toEqual([
+      { id: publicPartner.id },
+      { id: privatePartner.id },
+    ]);
+  });
+
+  test('saves a project without partners', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    await expectRedirectToProject(updateProject(projectId, {}, buildFormData()), projectId);
+    expect(await partnersOf(projectId)).toEqual([]);
+  });
+
+  test('replaces the partners and records the names in the audit log', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const first = await createPartner('First partner', 'publicSector');
+    const second = await createPartner('Second partner', 'publicSector');
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ partnerIds: [String(first.id)] })),
+      projectId
+    );
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ partnerIds: [String(second.id)] })),
+      projectId
+    );
+    expect(await partnersOf(projectId)).toEqual([{ id: second.id }]);
+    expect((await auditLogsFor(projectId)).at(-1)).toEqual(
+      expect.objectContaining({
+        details: {
+          changedFields: ['partners'],
+          changes: [
+            {
+              field: 'partners',
+              from: [{ id: first.id, name: first.name }],
+              to: [{ id: second.id, name: second.name }],
+            },
+          ],
+        },
+      })
+    );
+  });
+
+  test('rejects a partner of a counterparty the project does not have', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const partner = await createPartner('Private partner', 'privateSector');
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ partnerIds: [String(partner.id)] })
+    );
+    expect(result.errors?.partnerIds).toBeDefined();
+    expect(await partnersOf(projectId)).toEqual([]);
+  });
+
+  test('rejects removing a counterparty while keeping its partners', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const partner = await createPartner('Public partner', 'publicSector');
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ partnerIds: [String(partner.id)] })),
+      projectId
+    );
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ counterpartyTypes: ['privateSector'], partnerIds: [String(partner.id)] })
+    );
+    expect(result.errors?.partnerIds).toBeDefined();
+    expect((await loadProject(projectId)).counterpartyTypes).toEqual(['publicSector']);
+  });
+
+  test('rejects a deleted partner', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const partner = await createPartner('Deleted partner', 'publicSector', false);
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ partnerIds: [String(partner.id)] })
+    );
+    expect(result.errors?.partnerIds).toBeDefined();
+  });
+
+  test('does not allow deleting a partner while a project uses it', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const partner = await createPartner('Used partner', 'publicSector');
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ partnerIds: [String(partner.id)] })),
+      projectId
+    );
+    expect((await deletePartner(partner.id)).formError).toContain('asociado a proyectos');
+  });
 });

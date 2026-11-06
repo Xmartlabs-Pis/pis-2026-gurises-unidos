@@ -31,5 +31,14 @@ export function getManagedPartners() {
   });
 }
 
+export function getProjectPartnerOptions() {
+  return prisma.partner.findMany({
+    where: { isActive: true },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, counterpartyType: true },
+  });
+}
+
 export type PublicPartner = Awaited<ReturnType<typeof getPublicPartners>>[number];
 export type MetricsPartner = Awaited<ReturnType<typeof getMetricsPartners>>[number];
+export type ProjectPartnerOption = Awaited<ReturnType<typeof getProjectPartnerOptions>>[number];

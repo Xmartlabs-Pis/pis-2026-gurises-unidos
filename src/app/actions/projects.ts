@@ -104,6 +104,29 @@ async function validateStrategicLines(
   return null;
 }
 
+async function validatePartners(
+  tx: Prisma.TransactionClient,
+  partnerIds: number[],
+  counterpartyTypes: string[]
+): Promise<ProjectFormState | null> {
+  if (partnerIds.length === 0) return null;
+  const validPartners = await tx.$queryRaw<{ id: number }[]>`
+    SELECT "id" FROM "Partner"
+    WHERE "id" = ANY(${partnerIds})
+      AND "isActive"
+      AND "counterpartyType"::text = ANY(${counterpartyTypes})
+    ORDER BY "id"
+    FOR SHARE
+  `;
+
+  if (validPartners.length !== partnerIds.length) {
+    return {
+      errors: { partnerIds: ['Elegí socios activos de las contrapartes seleccionadas'] },
+    };
+  }
+  return null;
+}
+
 async function validateDepartments(
   tx: Prisma.TransactionClient,
   departmentIds: number[]
@@ -263,7 +286,7 @@ export async function createProject(
     return resolved.error;
   }
   const projectData = { ...parsed.projectData, intensity: resolved.intensity };
-  const { topicIds, strategicLineIds, departmentIds, localities } = parsed;
+  const { topicIds, strategicLineIds, partnerIds, departmentIds, localities } = parsed;
   let projectId: number;
   try {
     const requestedCover = await requestedCoverPath(uploadedPath, formData, user.id);
@@ -282,6 +305,8 @@ export async function createProject(
         if (error) return { error };
         const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
         if (strategicLinesError) return { error: strategicLinesError };
+        const partnersError = await validatePartners(tx, partnerIds, projectData.counterpartyTypes);
+        if (partnersError) return { error: partnersError };
         const departmentsError = await validateDepartments(tx, departmentIds);
         if (departmentsError) return { error: departmentsError };
         const nameError = await validateUniqueName(tx, projectData.name, projectData.startYear);
@@ -291,6 +316,7 @@ export async function createProject(
             ...projectData,
             topics: { connect: topicIds.map((id) => ({ id })) },
             strategicLines: { connect: strategicLineIds.map((id) => ({ id })) },
+            partners: { connect: partnerIds.map((id) => ({ id })) },
             departments: { connect: departmentIds.map((id) => ({ id })) },
             localities: { create: localities },
             coverPhoto,
@@ -402,11 +428,13 @@ async function validateEndYear(
 async function validateProjectUpdate(
   tx: Prisma.TransactionClient,
   previous: EditableProject,
-  { keys, projectData, topicIds, strategicLineIds, departmentIds }: ParsedProjectForm
+  { keys, projectData, topicIds, strategicLineIds, partnerIds, departmentIds }: ParsedProjectForm
 ): Promise<ProjectFormState | null> {
   const currentTopicIds = previous.topics.map(({ id }) => id);
   const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
   if (strategicLinesError) return strategicLinesError;
+  const partnersError = await validatePartners(tx, partnerIds, projectData.counterpartyTypes);
+  if (partnersError) return partnersError;
   const departmentsError = await validateDepartments(tx, departmentIds);
   if (departmentsError) return departmentsError;
   await lockTopics(tx, [...currentTopicIds, ...topicIds]);
@@ -455,13 +483,18 @@ function buildRelationUpdates(
   {
     topicIds,
     strategicLineIds,
+    partnerIds,
     departmentIds,
     localities,
-  }: Pick<ParsedProjectForm, 'topicIds' | 'strategicLineIds' | 'departmentIds' | 'localities'>
+  }: Pick<
+    ParsedProjectForm,
+    'topicIds' | 'strategicLineIds' | 'partnerIds' | 'departmentIds' | 'localities'
+  >
 ): ProjectUpdate {
   const changes = Object.entries({
     topics: relationSet(topicIds, previous.topics),
     strategicLines: relationSet(strategicLineIds, previous.strategicLines),
+    partners: relationSet(partnerIds, previous.partners),
     departments: relationSet(departmentIds, previous.departments),
     localities: hasSameLocalities(localities, previous.localities)
       ? undefined

@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { listProjectCovers } from '@/app/actions/project-covers';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
@@ -68,6 +68,7 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
@@ -131,6 +132,7 @@ it('keeps the original creation appearance separate from edit styling', () => {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -158,6 +160,7 @@ it('shows and submits the selected project placeholder during creation', () => {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -185,6 +188,7 @@ it('previews a selected cover without putting the file on the form', async () =>
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -279,6 +283,7 @@ it('uploads the selected cover and submits the returned path', async () => {
       projectId={10}
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -339,6 +344,7 @@ it('does not submit when the cover upload fails', async () => {
       projectId={10}
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -375,6 +381,7 @@ it('submits a placeholder when an uploaded cover is removed', () => {
       mode="edit"
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -442,6 +449,7 @@ it('sends multiple selected topics and preserves them after a failed save', asyn
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       currentYear={2026}
       topics={[
         { id: 1, name: 'Education' },
@@ -479,6 +487,7 @@ it('disables the topics field and explains why when there are no topics', () => 
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -499,6 +508,7 @@ function renderFormWith(initialValues: Record<string, string>) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -532,6 +542,7 @@ it('submits the end year of an inactive project', async () => {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -564,6 +575,7 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       currentYear={2026}
       topics={[{ id: 1, name: 'Education' }]}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -613,6 +625,7 @@ it('clears an invalid end year and advances beneficiaries to the start year', as
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -673,6 +686,7 @@ function renderWithManyCategories(
     <ProjectForm
       beneficiaryCategories={MANY_CATEGORIES}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
@@ -746,6 +760,7 @@ it.each(['create', 'edit'] as const)(
       <ProjectForm
         beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
         strategicLines={[{ id: 1, name: 'Community Support' }]}
+        partners={[]}
         mode={mode}
         currentYear={2026}
         topics={[{ id: 1, name: 'Education' }]}
@@ -815,6 +830,7 @@ it.each([false, true])(
         canSelectCoordinator={canSelectCoordinator}
         beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
         strategicLines={[{ id: 1, name: 'Community Support' }]}
+        partners={[]}
         topics={[{ id: 1, name: 'Education' }]}
         currentYear={2026}
         coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -832,3 +848,66 @@ it.each([false, true])(
     ]);
   }
 );
+
+describe('partners selection', () => {
+  const PARTNERS = [
+    { id: 1, name: 'INAU', counterpartyType: 'publicSector' as const },
+    { id: 2, name: 'ANEP', counterpartyType: 'publicSector' as const },
+    { id: 3, name: 'BASF', counterpartyType: 'privateSector' as const },
+  ];
+
+  function renderForm(initialValues: Parameters<typeof ProjectForm>[0]['initialValues']) {
+    return render(
+      <ProjectForm
+        beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+        strategicLines={[{ id: 1, name: 'Community Support' }]}
+        partners={PARTNERS}
+        topics={[{ id: 1, name: 'Education' }]}
+        currentYear={2026}
+        mode="edit"
+        coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
+        departments={[{ id: 3, name: 'Montevideo' }]}
+        initialValues={{
+          name: 'Project',
+          topicIds: ['1'],
+          strategicLineIds: ['1'],
+          leadCoordinatorId: '2',
+          locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
+          ...initialValues,
+        }}
+        submitAction={vi.fn().mockResolvedValue({})}
+      />
+    );
+  }
+
+  function submittedPartners(container: HTMLElement) {
+    return Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="partnerIds"]')
+    ).map(({ value }) => value);
+  }
+
+  it('asks for a counterparty before offering partners', () => {
+    renderForm({ counterpartyTypes: [] });
+    expect(screen.getByText('Seleccioná una contraparte para ver sus socios.')).toBeTruthy();
+  });
+
+  it('offers only the partners of the selected counterparties', async () => {
+    renderForm({ counterpartyTypes: ['publicSector'] });
+    fireEvent.click(screen.getByLabelText('Socios'));
+    const options = await screen.findAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual(['INAU', 'ANEP']);
+  });
+
+  it('removes only the partners of a counterparty when it is deselected', async () => {
+    const { container } = renderForm({
+      counterpartyTypes: ['publicSector', 'privateSector'],
+      partnerIds: ['1', '3'],
+    });
+    expect(submittedPartners(container)).toEqual(['1', '3']);
+    fireEvent.click(screen.getByLabelText('Contrapartes'));
+    fireEvent.keyDown(await screen.findByRole('option', { name: 'Sector Privado' }), {
+      key: 'Enter',
+    });
+    await waitFor(() => expect(submittedPartners(container)).toEqual(['1']));
+  });
+});

@@ -27,6 +27,7 @@ function renderForm(props: Partial<ComponentProps<typeof ProjectForm>> = {}) {
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       topics={[{ id: 1, name: 'Education' }]}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       currentYear={2026}
       mode="edit"
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}

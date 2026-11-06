@@ -17,6 +17,7 @@ export function getDefaultValues(
     endYear: '',
     leadCoordinatorId: '',
     strategicLineIds: [],
+    partnerIds: [],
     geographicScope: 'national',
     countries: [],
     region: '',
