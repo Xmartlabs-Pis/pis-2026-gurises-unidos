@@ -1,6 +1,8 @@
 'use client';
 
-import { startTransition, useActionState, useEffect, type SubmitEvent } from 'react';
+import { useEffect, useRef, type SubmitEvent } from 'react';
+import { useSaveAction } from '@/hooks/use-save-action';
+import { usePendingChanges } from '@/components/ui/forms/pending-changes-provider';
 import { useRouter } from 'next/navigation';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +43,13 @@ export function ProfileForm({ profile }: { profile: Profile }) {
 }
 
 function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: () => void }) {
-  const [state, formAction, pending] = useActionState(updateProfile, INITIAL_STATE);
+  const [state, submit, pending] = useSaveAction(
+    updateProfile,
+    INITIAL_STATE,
+    'No se pudo actualizar tu perfil. Intentá de nuevo.'
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+  const submissionRef = useRef(false);
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema) as Resolver<ProfileFormValues>,
     defaultValues: {
@@ -53,14 +61,33 @@ function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: 
   });
   const { handleSubmit, reset } = form;
 
+  const busy = pending || form.formState.isSubmitting;
+  const hasUnsavedChanges = form.formState.isDirty;
+
+  usePendingChanges({
+    hasUnsavedChanges,
+    isSaving: busy,
+    onSave: saveChanges,
+  });
+
+  async function saveChanges(): Promise<boolean> {
+    if (!formRef.current || submissionRef.current) return false;
+    submissionRef.current = true;
+    const formData = new FormData(formRef.current);
+    let saved = false;
+    try {
+      await handleSubmit(async () => {
+        saved = await submit(formData);
+      })();
+      return saved;
+    } finally {
+      submissionRef.current = false;
+    }
+  }
+
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    return handleSubmit(() => {
-      startTransition(() => {
-        formAction(new FormData(formElement));
-      });
-    })(event);
+    void saveChanges();
   }
 
   useEffect(() => {
@@ -76,10 +103,16 @@ function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: 
   return (
     <FormProvider {...form}>
       <div className="bg-primary-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col pt-6">
-        <div className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
+        <div inert={busy} className="mx-auto w-full max-w-[1185px] flex-1 px-6 pb-6">
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_425px]">
             <div className="flex min-w-0 flex-col gap-5">
-              <form id={PROFILE_FORM_ID} onSubmit={onSubmit} noValidate>
+              <form
+                ref={formRef}
+                id={PROFILE_FORM_ID}
+                onSubmit={onSubmit}
+                aria-busy={busy}
+                noValidate
+              >
                 <Card className="gap-4 pt-5 pb-5">
                   <CardHeader className="px-6">
                     <CardTitle className="leading-6 font-semibold">Datos personales</CardTitle>
@@ -190,7 +223,8 @@ function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: 
           form={PROFILE_FORM_ID}
           onCancel={onCancel}
           submitLabel="Guardar cambios"
-          pending={pending}
+          pending={busy}
+          hasUnsavedChanges={hasUnsavedChanges}
         />
       </div>
     </FormProvider>
