@@ -1,8 +1,10 @@
+import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { formatDate, formatUserDate } from '@/lib/users/format';
 import { UserForm } from '@/components/user-form';
+import { UserFormSkeleton } from '@/components/users/user-form-skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +21,27 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
     redirect('/management/profile');
   }
 
+  return (
+    <div className="bg-primary-foreground flex w-full flex-1 flex-col">
+      <div className="flex w-full flex-1 flex-col">
+        <PageHeader
+          className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
+          eyebrow="Administración"
+          title="Editar usuario"
+          description="Administrá el acceso de las personas que utilizan el sistema."
+        />
+
+        <div className="flex flex-1 flex-col">
+          <Suspense fallback={<UserFormSkeleton />}>
+            <EditUserForm userId={userId} />
+          </Suspense>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function EditUserForm({ userId }: { userId: number }) {
   const user = await prisma.user.findUnique({
     where: { id: userId, deletedAt: null },
     select: {
@@ -48,37 +71,24 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
   const creatorName = user.creator ? `${user.creator.firstName} ${user.creator.lastName}` : '—';
 
   return (
-    <div className="bg-primary-foreground flex w-full flex-1 flex-col">
-      <div className="flex w-full flex-1 flex-col">
-        <PageHeader
-          className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
-          eyebrow="Administración"
-          title="Editar usuario"
-          description="Administrá el acceso de las personas que utilizan el sistema."
-        />
-
-        <div className="flex flex-1 flex-col">
-          <UserForm
-            key={user.id}
-            mode="edit"
-            initialValues={{
-              id: user.id,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              documentId: user.documentId,
-              email: user.email,
-              role: user.role,
-              status: user.status,
-              information: {
-                createdAt: formatUserDate(user.createdAt),
-                lastAccess: formatDate(user.lastAccess),
-                createdBy: creatorName,
-                updatedAt: formatUserDate(user.updatedAt),
-              },
-            }}
-          />
-        </div>
-      </div>
-    </div>
+    <UserForm
+      key={user.id}
+      mode="edit"
+      initialValues={{
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        documentId: user.documentId,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        information: {
+          createdAt: formatUserDate(user.createdAt),
+          lastAccess: formatDate(user.lastAccess),
+          createdBy: creatorName,
+          updatedAt: formatUserDate(user.updatedAt),
+        },
+      }}
+    />
   );
 }

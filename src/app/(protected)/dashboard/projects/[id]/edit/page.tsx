@@ -1,7 +1,10 @@
+import { Suspense } from 'react';
 import { ProjectHistory } from '@/components/projects/form/project-history';
+import { ProjectFormSkeleton } from '@/components/projects/form/project-form-skeleton';
 import { STATUS_LABEL, INTENSITY_LABEL } from '@/lib/project-display';
 import { forbidden, notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/require-user';
+import type { UserRole } from '@/generated/prisma/enums';
 import { canEditProject } from '@/lib/projects/permissions';
 import { getProjectHistory } from '@/lib/projects/history';
 import { parseId } from '@/lib/validation/ids';
@@ -20,7 +23,6 @@ import { BreadcrumbResourceLabel } from '@/components/layout/topbar-context';
 
 export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-
   const { id } = await params;
   const projectId = parseId(id);
 
@@ -28,6 +30,20 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  return (
+    <Suspense fallback={<ProjectFormSkeleton mode="edit" />}>
+      <EditProjectForm projectId={projectId} user={user} />
+    </Suspense>
+  );
+}
+
+async function EditProjectForm({
+  projectId,
+  user,
+}: {
+  projectId: number;
+  user: { id: number; role: UserRole };
+}) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
     include: {

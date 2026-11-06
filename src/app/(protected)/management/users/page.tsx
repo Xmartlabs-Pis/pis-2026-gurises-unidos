@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { UsersListSkeleton } from '@/components/users/users-list-skeleton';
 
 import {
   Empty,
@@ -25,18 +27,6 @@ export default async function UsersPage({
 }) {
   const admin = await requireAdmin();
 
-  const rawParams = await searchParams;
-  const filters = parseUserListFilters(rawParams);
-  redirectToCanonical('/management/users', rawParams, {
-    q: filters.search,
-    role: filters.role,
-    status: filters.status,
-    sort: filters.sortBy === 'name' ? undefined : filters.sortBy,
-  });
-  const [users, stats] = await Promise.all([getUserList(filters), getUserStats()]);
-
-  const hasOnlyCurrentAdmin = stats.total <= 1;
-
   return (
     <div className="bg-primary-foreground flex w-full flex-1 flex-col xl:min-h-0 xl:overflow-hidden">
       <div className="mx-auto flex w-full max-w-296 flex-1 flex-col xl:min-h-0">
@@ -58,40 +48,67 @@ export default async function UsersPage({
           </Button>
         </div>
 
-        {hasOnlyCurrentAdmin ? (
-          <div className="flex w-full flex-col gap-5 px-4 pt-6 pb-8 sm:px-6">
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Users />
-                </EmptyMedia>
-                <EmptyTitle>Todavía no hay usuarios registrados</EmptyTitle>
-                <EmptyDescription>
-                  Cuando agregues personas al sistema, vas a verlas listadas acá con su rol y
-                  estado.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button nativeButton={false} render={<Link href="/management/users/new" />}>
-                  Crear primer usuario
-                </Button>
-              </EmptyContent>
-            </Empty>
-          </div>
-        ) : (
-          <div className="flex w-full flex-1 flex-col gap-5 px-4 pt-6 pb-8 sm:px-6 xl:min-h-0">
-            <div className="shrink-0">
-              <UserStatsCards stats={stats} />
-            </div>
-
-            <div className="shrink-0">
-              <UsersListToolbar filters={filters} filteredCount={users.length} />
-            </div>
-
-            <UsersTable users={users} currentUserId={Number(admin.id)} />
-          </div>
-        )}
+        <Suspense fallback={<UsersListSkeleton />}>
+          <UsersContent searchParams={searchParams} currentUserId={Number(admin.id)} />
+        </Suspense>
       </div>
+    </div>
+  );
+}
+
+async function UsersContent({
+  searchParams,
+  currentUserId,
+}: {
+  searchParams: Promise<RawSearchParams>;
+  currentUserId: number;
+}) {
+  const rawParams = await searchParams;
+  const filters = parseUserListFilters(rawParams);
+  redirectToCanonical('/management/users', rawParams, {
+    q: filters.search,
+    role: filters.role,
+    status: filters.status,
+    sort: filters.sortBy === 'name' ? undefined : filters.sortBy,
+  });
+  const [users, stats] = await Promise.all([getUserList(filters), getUserStats()]);
+
+  const hasOnlyCurrentAdmin = stats.total <= 1;
+
+  if (hasOnlyCurrentAdmin) {
+    return (
+      <div className="flex w-full flex-col gap-5 px-4 pt-6 pb-8 sm:px-6">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users />
+            </EmptyMedia>
+            <EmptyTitle>Todavía no hay usuarios registrados</EmptyTitle>
+            <EmptyDescription>
+              Cuando agregues personas al sistema, vas a verlas listadas acá con su rol y estado.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button nativeButton={false} render={<Link href="/management/users/new" />}>
+              Crear primer usuario
+            </Button>
+          </EmptyContent>
+        </Empty>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex w-full flex-1 flex-col gap-5 px-4 pt-6 pb-8 sm:px-6 xl:min-h-0">
+      <div className="shrink-0">
+        <UserStatsCards stats={stats} />
+      </div>
+
+      <div className="shrink-0">
+        <UsersListToolbar filters={filters} filteredCount={users.length} />
+      </div>
+
+      <UsersTable users={users} currentUserId={currentUserId} />
     </div>
   );
 }
