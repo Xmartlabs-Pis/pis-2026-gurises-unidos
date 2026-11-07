@@ -307,7 +307,7 @@ export function MetricsForm({
             {hasUnsavedChanges && (
               <span className="flex items-center gap-2">
                 <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
-                Cambios sin guardar
+                <span>Cambios sin guardar</span>
               </span>
             )}
           </span>
