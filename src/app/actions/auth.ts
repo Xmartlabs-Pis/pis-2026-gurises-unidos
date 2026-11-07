@@ -60,17 +60,18 @@ export async function login(
     SESSION_EXPIRATION_COOKIE_OPTIONS
   );
 
-  // auth() reads the incoming request headers, which do not include the session cookie signIn just set.
-  const user = await prisma.user.findUnique({
-    where: { documentId },
-    select: { mustChangePassword: true },
-  });
-
-  if (user?.mustChangePassword) {
-    redirect('/password-reset');
+  let mustChangePassword = false;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { documentId },
+      select: { mustChangePassword: true },
+    });
+    mustChangePassword = Boolean(user?.mustChangePassword);
+  } catch (error) {
+    console.error('Failed to read mustChangePassword after login', error);
   }
 
-  redirect('/dashboard');
+  redirect(mustChangePassword ? '/password-reset' : '/dashboard');
 }
 
 export async function logout() {
