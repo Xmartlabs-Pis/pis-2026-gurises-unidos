@@ -21,20 +21,22 @@ const INPUT_CLASS_NAME =
 const LABEL_CLASS_NAME = 'text-foreground text-xs leading-4 font-medium';
 const PENDING_LOCATION_MESSAGE = 'Presioná "Agregar" para sumar la ubicación que escribiste';
 
-type InvalidControl = 'department' | 'city' | 'add';
+type InvalidControl = 'department' | 'city' | 'neighborhood' | 'add';
 
 function getInvalidControl({
   hasDraftError,
   hasFieldError,
   hasDepartment,
+  hasNeighborhood,
   hasPendingLocation,
 }: {
   hasDraftError: boolean;
   hasFieldError: boolean;
   hasDepartment: boolean;
+  hasNeighborhood: boolean;
   hasPendingLocation: boolean;
 }): InvalidControl | null {
-  if (hasDraftError) return 'city';
+  if (hasDraftError) return hasNeighborhood ? 'neighborhood' : 'city';
   if (!hasFieldError) return null;
   if (hasPendingLocation) return 'add';
   return hasDepartment ? 'city' : 'department';
@@ -74,6 +76,7 @@ export function LocationListField({
     hasDraftError: draftError !== null,
     hasFieldError: Boolean(fieldState.error),
     hasDepartment: Boolean(departmentId),
+    hasNeighborhood: neighborhood.trim() !== '',
     hasPendingLocation,
   });
 
@@ -173,6 +176,7 @@ export function LocationListField({
             value={neighborhood}
             placeholder="Ej: Malvín Norte"
             disabled={!hasCity}
+            aria-invalid={invalidControl === 'neighborhood'}
             maxLength={MAX_PLACE_NAME_LENGTH}
             onChange={(event) => {
               setNeighborhood(event.target.value);

@@ -169,8 +169,18 @@ it('rejects a repeated location ignoring case', async () => {
   addTag('Barrio (opcional)', 'CENTRO');
 
   expect(screen.getByText('Esa ubicación ya está agregada')).toBeTruthy();
-  expect(invalidControls()).toEqual(['locationCity']);
+  expect(invalidControls()).toEqual(['locationNeighborhood']);
   expect(addedLocations()).toEqual(['Montevideo, Montevideo, Centro']);
+});
+
+it('marks the city when a repeated location has no neighborhood', async () => {
+  renderForm({ locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }] });
+
+  await selectDepartment('Montevideo');
+  addTag('Ciudad', 'montevideo');
+
+  expect(screen.getByText('Esa ubicación ya está agregada')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationCity']);
 });
 
 it('removes a single location', async () => {
