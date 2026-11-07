@@ -43,7 +43,13 @@ export function AppSidebar({ user }: Props) {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex h-12 items-center gap-2 overflow-hidden p-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!">
-              <Link href="/dashboard" className="flex min-w-0 flex-1 items-center gap-2">
+              <Link
+                href="/dashboard"
+                className="flex min-w-0 flex-1 items-center gap-2"
+                onClick={() => {
+                  if (pathname === '/dashboard') setOpenMobile(false);
+                }}
+              >
                 <Image
                   className="size-8 shrink-0 rounded-md"
                   src={logo}

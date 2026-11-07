@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { NavigationGuardLink as Link } from 'nextjs-nav-guard';
 import { usePendingChangesContext } from '@/components/ui/forms/pending-changes-provider';
 import { logout } from '@/app/actions/auth';
@@ -71,7 +72,8 @@ function LogoutButton() {
 }
 
 export function AppSidebarFooter({ user }: Props) {
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const pathname = usePathname();
 
   if (isMobile) {
     return (
@@ -83,7 +85,14 @@ export function AppSidebarFooter({ user }: Props) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="h-10 gap-3 [&_svg]:size-5"
-              render={<Link href="/management/profile" />}
+              render={
+                <Link
+                  href="/management/profile"
+                  onClick={() => {
+                    if (pathname === '/management/profile') setOpenMobile(false);
+                  }}
+                />
+              }
             >
               <UserRound />
               <span>Mi perfil</span>
