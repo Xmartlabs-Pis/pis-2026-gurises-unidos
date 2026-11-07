@@ -17,7 +17,7 @@ const STATIC_SEGMENTS = new Set([
   'edit',
 ]);
 
-export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
+const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   metrics: 'Métricas',
   projects: 'Proyectos',
@@ -32,7 +32,7 @@ export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   edit: 'Editar',
 };
 
-export function formatBreadcrumbSegment(segment: string): string {
+function formatBreadcrumbSegment(segment: string): string {
   const decoded = decodeURIComponent(segment);
   return decoded
     .split('-')

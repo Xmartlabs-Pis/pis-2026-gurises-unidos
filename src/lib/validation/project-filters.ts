@@ -8,9 +8,9 @@ import {
 
 export const PROJECT_LIST_PAGE_SIZE = 20;
 export const PROJECT_LIST_MAX_PAGE_SIZE = 100;
-export const PROJECT_MIN_START_YEAR = 1989;
+const PROJECT_MIN_START_YEAR = 1989;
 export const PROJECT_SEARCH_MAX_LENGTH = 100;
-export const DEFAULT_PROJECT_STATUS = 'active';
+const DEFAULT_PROJECT_STATUS = 'active';
 
 const optionalYear = z.coerce
   .number()
@@ -22,7 +22,7 @@ const optionalYear = z.coerce
 
 const optionalPositiveInt = z.coerce.number().int().positive().optional().catch(undefined);
 
-export const projectFiltersSchema = z
+const projectFiltersSchema = z
   .object({
     search: z
       .string()

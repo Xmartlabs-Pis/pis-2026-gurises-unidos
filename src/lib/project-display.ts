@@ -75,14 +75,6 @@ export type BeneficiaryFieldName = SystemBeneficiaryKey | `custom${string}`;
 
 export type BeneficiaryCategoryOption = { key: BeneficiaryFieldName; name: string };
 
-export const TOPIC_OPTIONS = [
-  { value: 'education', label: 'Educación' },
-  { value: 'health', label: 'Salud' },
-  { value: 'protection', label: 'Protección' },
-  { value: 'community', label: 'Comunidad' },
-  { value: 'employment', label: 'Empleo' },
-] as const;
-
 export const ZONE_OPTIONS = [
   { value: 'city', label: 'Montevideo' },
   { value: 'inland', label: 'Interior' },
@@ -103,7 +95,6 @@ export const REGION_OPTIONS = [
 ] as const;
 
 export const FIRST_PROJECT_YEAR = 1989;
-export const PREVIEW_TOPIC_FALLBACK = 'Educación';
 export const PREVIEW_LOCATION_FALLBACK = 'Montevideo';
 
 export function sumBeneficiaries(counts: Record<string, number>) {
