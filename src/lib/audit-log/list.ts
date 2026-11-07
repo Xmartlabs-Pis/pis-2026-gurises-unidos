@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { Prisma } from '@/generated/prisma/client';
+import { AUDIT_ENTITY_LABELS } from '@/lib/audit-log/constants';
 import { describeAuditDetails } from '@/lib/audit-log/summary';
 import { loginFailureDetailsSchema } from '@/lib/audit-log/login-failure';
 import { getBeneficiaryCategoryLabels } from '@/lib/beneficiary-categories';
@@ -127,7 +128,7 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
       beneficiaries.map(({ id, year, project }) => [id, `${project.name} (${year})`])
     ),
     user: new Map(users.map(({ id, firstName, lastName }) => [id, `${firstName} ${lastName}`])),
-    publicSettings: new Map(),
+    publicSettings: new Map([[1, AUDIT_ENTITY_LABELS.publicSettings]]),
     metric: new Map(metrics.map(({ id, name }) => [id, name])),
     topic: new Map(topics.map(({ id, name }) => [id, name])),
     contributor: new Map(contributors.map(({ id, name }) => [id, name])),
