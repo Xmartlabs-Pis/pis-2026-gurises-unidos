@@ -79,6 +79,17 @@ function isAddDisabled() {
   return (screen.getByRole('button', { name: 'Agregar' }) as HTMLButtonElement).disabled;
 }
 
+function invalidControls() {
+  return [
+    screen.getByLabelText('Departamento'),
+    screen.getByLabelText('Ciudad'),
+    screen.getByLabelText('Barrio (opcional)'),
+    screen.getByRole('button', { name: 'Agregar' }),
+  ]
+    .filter((control) => control.getAttribute('aria-invalid') === 'true')
+    .map((control) => control.id || control.textContent);
+}
+
 function addedLocations() {
   const list = screen.queryByRole('list', { name: 'Ubicaciones agregadas' });
   return list
@@ -158,6 +169,7 @@ it('rejects a repeated location ignoring case', async () => {
   addTag('Barrio (opcional)', 'CENTRO');
 
   expect(screen.getByText('Esa ubicación ya está agregada')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationCity']);
   expect(addedLocations()).toEqual(['Montevideo, Montevideo, Centro']);
 });
 
@@ -185,6 +197,18 @@ it('requires at least one location for a national project', async () => {
   await submit();
 
   expect(await screen.findByText('Agregá al menos una ubicación')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationDepartment']);
+  expect(submitAction).not.toHaveBeenCalled();
+});
+
+it('marks the city instead of the department when a department is selected without a city', async () => {
+  const { submitAction, submit } = renderForm();
+
+  await selectDepartment('Canelones');
+  await submit();
+
+  expect(await screen.findByText('Agregá al menos una ubicación')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationCity']);
   expect(submitAction).not.toHaveBeenCalled();
 });
 
@@ -202,6 +226,7 @@ it('asks to add a typed location that was not added before saving', async () => 
   expect(
     await screen.findByText('Presioná "Agregar" para sumar la ubicación que escribiste')
   ).toBeTruthy();
+  expect(invalidControls()).toEqual(['Agregar']);
   expect(submitAction).not.toHaveBeenCalled();
 });
 
