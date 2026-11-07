@@ -622,3 +622,23 @@ test('restores the project links when the selection is cancelled', () => {
   );
   expect(screen.getByRole('button', { name: 'Exportar reporte' })).toBeTruthy();
 });
+
+test('uses the latest year for the report when listing all years', () => {
+  render(
+    <ProjectsCardList
+      projects={[buildProject(1, 'Alpha')]}
+      total={1}
+      page={1}
+      totalPages={1}
+      years={[2025, 2024]}
+      status="active"
+      beneficiaryYear={undefined}
+      search={undefined}
+    />
+  );
+
+  startReportSelection();
+
+  expect(screen.getByRole('combobox', { name: 'Año del reporte' }).textContent).toContain('2025');
+  expect(screen.queryByText(/reporte 2025/)).toBeNull();
+});
