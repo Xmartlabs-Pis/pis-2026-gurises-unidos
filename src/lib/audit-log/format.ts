@@ -1,5 +1,4 @@
 import { AUDIT_ENTITY_LABELS } from '@/lib/audit-log/constants';
-import type { AuditLogListItem } from '@/lib/audit-log/list';
 import {
   COUNTERPARTY_LABEL,
   GEOGRAPHIC_SCOPE_OPTIONS,
@@ -8,6 +7,7 @@ import {
   STATUS_LABEL,
   ZONE_OPTIONS,
 } from '@/lib/project-display';
+import type { ListedAuditEntity } from '@/lib/validation/audit-log-filters';
 
 export function formatAuditTime(date: Date) {
   return new Date(date).toLocaleTimeString('es-UY', {
@@ -23,7 +23,11 @@ export function auditEntityName({
   entity,
   entityId,
   entityName,
-}: Pick<AuditLogListItem, 'entity' | 'entityId' | 'entityName'>) {
+}: {
+  entity: ListedAuditEntity;
+  entityId: number | null;
+  entityName: string | null;
+}) {
   return (
     entityName ??
     (entityId === null
