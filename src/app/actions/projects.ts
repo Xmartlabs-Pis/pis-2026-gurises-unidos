@@ -31,7 +31,7 @@ import {
   TOPICS_ERROR_MESSAGE,
 } from '@/lib/validation/project-form';
 import { Prisma } from '@/generated/prisma/client';
-import type { Intensity } from '@/generated/prisma/enums';
+import type { Intensity, UserRole } from '@/generated/prisma/enums';
 import {
   DIRECT_CHILDREN_KEY,
   formCategoryValuesWhere,
@@ -256,7 +256,7 @@ export async function createProject(
   const beneficiaryYears = [parsed.beneficiaryData, ...parsed.beneficiaryDraftData];
   const resolved = resolveIntensity(
     parsed.projectData.intensity,
-    beneficiaryYears.some(({ counts }) => counts[DIRECT_CHILDREN_KEY] > 0)
+    hasDirectChildren(beneficiaryYears)
   );
   if ('error' in resolved) {
     await discardOwnedUnusedCover(uploadedPath, user.id);
@@ -342,6 +342,193 @@ export async function createProject(
   redirect(`/dashboard/projects/${projectId}`);
 }
 
+type ParsedProjectForm = Exclude<Awaited<ReturnType<typeof parseProjectForm>>, { errors: unknown }>;
+type ProjectData = ParsedProjectForm['projectData'];
+type BeneficiaryYear = ParsedProjectForm['beneficiaryData'];
+type EditableProject = NonNullable<Awaited<ReturnType<typeof lockProject>>>;
+type ProjectUpdate = { fields: string[]; data: Prisma.ProjectUncheckedUpdateInput };
+
+function hasDirectChildren(beneficiaryYears: BeneficiaryYear[]) {
+  return beneficiaryYears.some(({ counts }) => counts[DIRECT_CHILDREN_KEY] > 0);
+}
+
+async function lockProject(tx: Prisma.TransactionClient, projectId: number) {
+  await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+  return tx.project.findFirst({
+    where: { id: projectId, deletedAt: null },
+    include: PROJECT_AUDIT_INCLUDE,
+  });
+}
+
+function checkProjectEditable(
+  user: { id: number; role: UserRole },
+  previous: EditableProject,
+  projectData: ProjectData
+): ProjectFormState | null {
+  if (!canEditProject(user, previous)) {
+    return { formError: 'No tenés permiso para editar este proyecto.' };
+  }
+  if (user.role !== 'admin' && projectData.leadCoordinatorId !== previous.leadCoordinatorId) {
+    return {
+      errors: {
+        leadCoordinatorId: ['Solo un administrador puede cambiar el coordinador responsable.'],
+      },
+    };
+  }
+  return null;
+}
+
+async function validateEndYear(
+  tx: Prisma.TransactionClient,
+  projectId: number,
+  { status, endYear }: ProjectData
+): Promise<ProjectFormState | null> {
+  if (status !== 'inactive' || endYear === null) return null;
+  const laterBeneficiary = await tx.projectBeneficiary.findFirst({
+    where: { projectId, year: { gt: endYear } },
+    orderBy: { year: 'desc' },
+    select: { year: true },
+  });
+  if (!laterBeneficiary) return null;
+  return {
+    errors: {
+      endYear: [
+        `El año de fin no puede ser anterior a ${laterBeneficiary.year}, que tiene beneficiarios registrados`,
+      ],
+    },
+  };
+}
+
+async function validateProjectUpdate(
+  tx: Prisma.TransactionClient,
+  previous: EditableProject,
+  { keys, projectData, topicIds, strategicLineIds, departmentIds }: ParsedProjectForm
+): Promise<ProjectFormState | null> {
+  const currentTopicIds = previous.topics.map(({ id }) => id);
+  const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
+  if (strategicLinesError) return strategicLinesError;
+  const departmentsError = await validateDepartments(tx, departmentIds);
+  if (departmentsError) return departmentsError;
+  await lockTopics(tx, [...currentTopicIds, ...topicIds]);
+  if (!(await lockBeneficiaryCategories(tx, keys))) {
+    return { formError: STALE_CATEGORIES_MESSAGE };
+  }
+  return (
+    (await validateRelations(
+      tx,
+      projectData.leadCoordinatorId,
+      topicIds,
+      previous.leadCoordinatorId,
+      currentTopicIds
+    )) ??
+    (await validateUniqueName(tx, projectData.name, projectData.startYear, previous.id)) ??
+    (await validateEndYear(tx, previous.id, projectData))
+  );
+}
+
+function buildCoverUpdates(
+  previous: EditableProject,
+  requestedCover: string | null,
+  formData: FormData
+): ProjectUpdate {
+  const update: ProjectUpdate = { fields: [], data: {} };
+  const coverChanged = requestedCover !== null && requestedCover !== previous.coverPhoto;
+  if (coverChanged) {
+    update.fields.push('coverPhoto');
+    update.data.coverPhoto = requestedCover;
+  }
+  const nextCrop = nextCoverCrop(formData, coverChanged);
+  if (nextCrop !== undefined && !sameCoverCrop(nextCrop, previous.coverCrop)) {
+    update.fields.push('coverCrop');
+    update.data.coverCrop = coverCropInput(nextCrop);
+  }
+  return update;
+}
+
+function relationSet(ids: number[], previous: { id: number }[]) {
+  const previousIds = previous.map(({ id }) => id);
+  return hasSameIds(ids, previousIds) ? undefined : { set: ids.map((id) => ({ id })) };
+}
+
+function buildRelationUpdates(
+  previous: EditableProject,
+  {
+    topicIds,
+    strategicLineIds,
+    departmentIds,
+    localities,
+  }: Pick<ParsedProjectForm, 'topicIds' | 'strategicLineIds' | 'departmentIds' | 'localities'>
+): ProjectUpdate {
+  const changes = Object.entries({
+    topics: relationSet(topicIds, previous.topics),
+    strategicLines: relationSet(strategicLineIds, previous.strategicLines),
+    departments: relationSet(departmentIds, previous.departments),
+    localities: hasSameLocalities(localities, previous.localities)
+      ? undefined
+      : { deleteMany: {}, create: localities },
+  }).filter(([, value]) => value !== undefined);
+  return { fields: changes.map(([key]) => key), data: Object.fromEntries(changes) };
+}
+
+async function saveProjectChanges(
+  tx: Prisma.TransactionClient,
+  authorId: number,
+  previous: EditableProject,
+  { fields, data }: ProjectUpdate
+) {
+  if (!fields.length) return;
+  const updated = await tx.project.update({
+    where: { id: previous.id },
+    data,
+    include: PROJECT_AUDIT_INCLUDE,
+  });
+  await logAudit(tx, {
+    authorId,
+    action: 'update',
+    entity: 'project',
+    entityId: previous.id,
+    details: {
+      changedFields: fields,
+      changes: getProjectAuditChanges(previous, updated, fields),
+    },
+  });
+}
+
+async function updateBeneficiaries(
+  tx: Prisma.TransactionClient,
+  projectId: number,
+  { authorId, keys, years }: { authorId: number; keys: string[]; years: BeneficiaryYear[] }
+) {
+  for (const { year, counts } of years) {
+    const where = { projectId_year: { projectId, year } };
+    const existing = await tx.projectBeneficiary.findUnique({
+      where,
+      select: BENEFICIARY_VALUES_SELECT,
+    });
+    const previousCounts = existing && toBeneficiaryCounts(existing.values);
+    const changes = keys
+      .map((key) => ({ field: key, from: previousCounts?.[key] ?? 0, to: counts[key] }))
+      .filter(({ from, to }) => from !== to);
+    if (existing && !changes.length) continue;
+    await tx.projectBeneficiaryValue.deleteMany({
+      where: formCategoryValuesWhere(projectId, year, keys),
+    });
+    const values = { create: toBeneficiaryValuesCreate(counts) };
+    const beneficiary = await tx.projectBeneficiary.upsert({
+      where,
+      create: { year, projectId, authorId, values },
+      update: { authorId, recordedAt: new Date(), values },
+    });
+    await logAudit(tx, {
+      authorId,
+      action: existing ? 'update' : 'creation',
+      entity: 'beneficiary',
+      entityId: beneficiary.id,
+      details: { year, changes },
+    });
+  }
+}
+
 export async function updateProject(
   projectId: number,
   _prevState: ProjectFormState,
@@ -358,86 +545,25 @@ export async function updateProject(
     await discardOwnedUnusedCover(uploadedPath, user.id);
     return { errors: parsed.errors };
   }
-  const {
-    keys,
-    projectData,
-    beneficiaryData,
-    beneficiaryDraftData,
-    topicIds,
-    strategicLineIds,
-    departmentIds,
-    localities,
-  } = parsed;
-  const beneficiaryYears = [beneficiaryData, ...beneficiaryDraftData];
+  const { keys, projectData } = parsed;
+  const beneficiaryYears = [parsed.beneficiaryData, ...parsed.beneficiaryDraftData];
   let previousCover: string | null = null;
   try {
     const requestedCover = await requestedCoverPath(uploadedPath, formData, user.id);
     const rejectedCoverPath = uploadedPath !== null && requestedCover === null;
     const error = await prisma.$transaction(
       async (tx): Promise<ProjectFormState | null> => {
-        await tx.$queryRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
-        const previous = await tx.project.findFirst({
-          where: { id: projectId, deletedAt: null },
-          include: PROJECT_AUDIT_INCLUDE,
-        });
+        const previous = await lockProject(tx, projectId);
         if (!previous) return { formError: 'El proyecto no existe o fue eliminado.' };
         previousCover = previous.coverPhoto;
-        if (!canEditProject(user, previous))
-          return { formError: 'No tenés permiso para editar este proyecto.' };
-        if (user.role !== 'admin' && projectData.leadCoordinatorId !== previous.leadCoordinatorId) {
-          return {
-            errors: {
-              leadCoordinatorId: [
-                'Solo un administrador puede cambiar el coordinador responsable.',
-              ],
-            },
-          };
-        }
+        const editError = checkProjectEditable(user, previous, projectData);
+        if (editError) return editError;
         if (rejectedCoverPath) return { formError: UNAVAILABLE_COVER_MESSAGE };
-        const currentTopicIds = previous.topics.map(({ id }) => id);
-        const currentStrategicLineIds = previous.strategicLines.map(({ id }) => id);
-        const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
-        if (strategicLinesError) return strategicLinesError;
-        const departmentsError = await validateDepartments(tx, departmentIds);
-        if (departmentsError) return departmentsError;
-        await lockTopics(tx, [...currentTopicIds, ...topicIds]);
-        if (!(await lockBeneficiaryCategories(tx, keys))) {
-          return { formError: STALE_CATEGORIES_MESSAGE };
-        }
-        const relationError = await validateRelations(
-          tx,
-          projectData.leadCoordinatorId,
-          topicIds,
-          previous.leadCoordinatorId,
-          currentTopicIds
-        );
-        if (relationError) return relationError;
-        const nameError = await validateUniqueName(
-          tx,
-          projectData.name,
-          projectData.startYear,
-          projectId
-        );
-        if (nameError) return nameError;
-        if (projectData.status === 'inactive' && projectData.endYear !== null) {
-          const laterBeneficiary = await tx.projectBeneficiary.findFirst({
-            where: { projectId, year: { gt: projectData.endYear } },
-            orderBy: { year: 'desc' },
-            select: { year: true },
-          });
-          if (laterBeneficiary) {
-            return {
-              errors: {
-                endYear: [
-                  `El año de fin no puede ser anterior a ${laterBeneficiary.year}, que tiene beneficiarios registrados`,
-                ],
-              },
-            };
-          }
-        }
+        const validationError = await validateProjectUpdate(tx, previous, parsed);
+        if (validationError) return validationError;
         const resolved = resolveIntensity(
           projectData.intensity,
-          beneficiaryYears.some(({ counts }) => counts[DIRECT_CHILDREN_KEY] > 0) ||
+          hasDirectChildren(beneficiaryYears) ||
             (await hasDirectChildrenInOtherYears(
               tx,
               projectId,
@@ -446,98 +572,21 @@ export async function updateProject(
         );
         if ('error' in resolved) return resolved.error;
         const nextProjectData = { ...projectData, intensity: resolved.intensity };
-        const coverChanged = requestedCover !== null && requestedCover !== previous.coverPhoto;
-        const nextCrop = nextCoverCrop(formData, coverChanged);
-        const cropChanged = nextCrop !== undefined && !sameCoverCrop(nextCrop, previous.coverCrop);
-        const topicsChanged = !hasSameIds(topicIds, currentTopicIds);
-        const strategicLinesChanged = !hasSameIds(strategicLineIds, currentStrategicLineIds);
-        const departmentsChanged = !hasSameIds(
-          departmentIds,
-          previous.departments.map(({ id }) => id)
-        );
-        const localitiesChanged = !hasSameLocalities(localities, previous.localities);
-        const fields = [
-          ...changedFields(nextProjectData, previous),
-          ...(coverChanged ? ['coverPhoto'] : []),
-          ...(cropChanged ? ['coverCrop'] : []),
-          ...(topicsChanged ? ['topics'] : []),
-          ...(strategicLinesChanged ? ['strategicLines'] : []),
-          ...(departmentsChanged ? ['departments'] : []),
-          ...(localitiesChanged ? ['localities'] : []),
-        ];
-        if (fields.length) {
-          const updated = await tx.project.update({
-            where: { id: projectId },
-            data: {
-              ...nextProjectData,
-              ...(coverChanged ? { coverPhoto: requestedCover } : {}),
-              ...(cropChanged && nextCrop !== undefined
-                ? { coverCrop: coverCropInput(nextCrop) }
-                : {}),
-              ...(topicsChanged ? { topics: { set: topicIds.map((id) => ({ id })) } } : {}),
-              ...(strategicLinesChanged
-                ? { strategicLines: { set: strategicLineIds.map((id) => ({ id })) } }
-                : {}),
-              ...(departmentsChanged
-                ? { departments: { set: departmentIds.map((id) => ({ id })) } }
-                : {}),
-              ...(localitiesChanged ? { localities: { deleteMany: {}, create: localities } } : {}),
-            },
-            include: PROJECT_AUDIT_INCLUDE,
-          });
-
-          await logAudit(tx, {
-            authorId: user.id,
-            action: 'update',
-            entity: 'project',
-            entityId: projectId,
-            details: {
-              changedFields: fields,
-              changes: getProjectAuditChanges(previous, updated, fields),
-            },
-          });
-        }
-        for (const { year, counts } of beneficiaryYears) {
-          const where = { projectId_year: { projectId, year } };
-          const existing = await tx.projectBeneficiary.findUnique({
-            where,
-            select: BENEFICIARY_VALUES_SELECT,
-          });
-          const previousCounts = existing && toBeneficiaryCounts(existing.values);
-          const changes = keys
-            .map((key) => ({
-              field: key,
-              from: previousCounts?.[key] ?? 0,
-              to: counts[key],
-            }))
-            .filter(({ from, to }) => from !== to);
-          if (!existing || changes.length) {
-            await tx.projectBeneficiaryValue.deleteMany({
-              where: formCategoryValuesWhere(projectId, year, keys),
-            });
-            const beneficiary = await tx.projectBeneficiary.upsert({
-              where,
-              create: {
-                year,
-                projectId,
-                authorId: user.id,
-                values: { create: toBeneficiaryValuesCreate(counts) },
-              },
-              update: {
-                authorId: user.id,
-                recordedAt: new Date(),
-                values: { create: toBeneficiaryValuesCreate(counts) },
-              },
-            });
-            await logAudit(tx, {
-              authorId: user.id,
-              action: existing ? 'update' : 'creation',
-              entity: 'beneficiary',
-              entityId: beneficiary.id,
-              details: { year, changes },
-            });
-          }
-        }
+        const cover = buildCoverUpdates(previous, requestedCover, formData);
+        const relations = buildRelationUpdates(previous, parsed);
+        await saveProjectChanges(tx, user.id, previous, {
+          fields: [
+            ...changedFields(nextProjectData, previous),
+            ...cover.fields,
+            ...relations.fields,
+          ],
+          data: { ...nextProjectData, ...cover.data, ...relations.data },
+        });
+        await updateBeneficiaries(tx, projectId, {
+          authorId: user.id,
+          keys,
+          years: beneficiaryYears,
+        });
         return null;
       },
       { maxWait: 10_000, timeout: 30_000 }
