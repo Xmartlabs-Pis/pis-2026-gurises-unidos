@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { loginSchema, type LoginFormState } from '@/lib/validation/auth';
 import { normalizeDocumentId } from '@/lib/utils';
 import InputVisibilityToggle from './ui/forms/input-visibility-toggle';
+import { formDataFromSubmit } from '@/lib/forms';
 
 type LoginFormValues = {
   documentId: string;
@@ -65,11 +66,10 @@ export function LoginForm({ sessionExpired = false }: { sessionExpired?: boolean
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isBlocked || pending) return;
-    const formElement = event.currentTarget;
-    const submitter = event.nativeEvent.submitter;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
       startTransition(() => {
-        formAction(submitter ? new FormData(formElement, submitter) : new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }

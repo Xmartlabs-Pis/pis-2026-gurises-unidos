@@ -38,6 +38,7 @@ import { UserStatusDialog } from '@/components/users/user-status-dialog';
 import { userEditFormSchema, type UserFormState } from '@/lib/validation/user';
 import { STATUS_CLASSNAMES, STATUS_LABELS } from '@/lib/users/constants';
 import { notify } from '@/lib/notify';
+import { formDataFromSubmit } from '@/lib/forms';
 
 const initialState: UserFormState = {};
 
@@ -119,10 +120,8 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const submitter = event.nativeEvent.submitter;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
-      const formData = submitter ? new FormData(formElement, submitter) : new FormData(formElement);
       lastSubmission.current = formData;
       startTransition(() => {
         formAction(formData);

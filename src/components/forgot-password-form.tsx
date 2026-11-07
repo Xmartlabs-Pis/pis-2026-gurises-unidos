@@ -7,6 +7,7 @@ import { requestPasswordReset } from '@/app/actions/password-recovery';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { Button } from '@/components/ui/button';
 import { forgotPasswordFormSchema, type ForgotPasswordFormValues } from '@/lib/validation/password';
+import { formDataFromSubmit } from '@/lib/forms';
 
 export function ForgotPasswordForm() {
   const [state, formAction, pending] = useActionState(requestPasswordReset, {});
@@ -30,10 +31,10 @@ export function ForgotPasswordForm() {
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
       startTransition(() => {
-        formAction(new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }

@@ -18,6 +18,7 @@ import InputVisibilityToggle from '@/components/ui/forms/input-visibility-toggle
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { notify } from '@/lib/notify';
 import { changePasswordSchema, type ChangePasswordFormValues } from '@/lib/validation/password';
+import { formDataFromSubmit } from '@/lib/forms';
 
 const INITIAL_STATE: PasswordFormState = {};
 
@@ -32,10 +33,10 @@ export function ChangePasswordForm() {
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
       startTransition(() => {
-        formAction(new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }
