@@ -640,7 +640,11 @@ test('asks for a year before exporting when listing all years', () => {
   startReportSelection();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
 
-  expect(screen.getByText('Elegí un año en los filtros para exportar el reporte.')).toBeTruthy();
+  expect(
+    screen.getByText(
+      'No se puede exportar un reporte con varios años. Elegí un año en los filtros.'
+    )
+  ).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
   expect(screen.queryByRole('combobox', { name: 'Año del reporte' })).toBeNull();
 });

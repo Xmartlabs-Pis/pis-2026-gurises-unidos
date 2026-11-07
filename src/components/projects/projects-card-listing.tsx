@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ListFilter, Loader2Icon } from 'lucide-react';
+import { Search, ListFilter, Loader2Icon, TriangleAlert } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -158,11 +158,20 @@ export function ProjectsCardList({
             ? '1 proyecto seleccionado'
             : `${selectedCount} proyectos seleccionados`}
         </p>
-        <p className="text-muted-foreground text-xs leading-4">
-          {reportYear === undefined
-            ? 'Elegí un año en los filtros para exportar el reporte.'
-            : `Elegí los proyectos a incluir en el reporte ${reportYear}. Podés usar los filtros para encontrarlos.`}
-        </p>
+        {reportYear === undefined ? (
+          <p
+            role="status"
+            className="text-status-warning flex items-center gap-1.5 text-xs leading-4"
+          >
+            <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+            No se puede exportar un reporte con varios años. Elegí un año en los filtros.
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-xs leading-4">
+            Elegí los proyectos a incluir en el reporte {reportYear}. Podés usar los filtros para
+            encontrarlos.
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button
