@@ -1,4 +1,4 @@
-import type { MetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 
 export const METRIC_DEFINITIONS: {
   key: keyof MetricValues;

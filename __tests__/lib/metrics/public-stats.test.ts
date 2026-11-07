@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getPublicStats } from '@/lib/metrics/public-stats';
-import type { MetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 
 it('formats only the publicly shown metrics, keeping their order', () => {
   const settings = METRIC_DEFINITIONS.map((metric) => ({

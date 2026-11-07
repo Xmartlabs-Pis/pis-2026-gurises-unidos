@@ -1,5 +1,6 @@
 import { formatNumber } from '@/lib/format';
-import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
+import type { MetricSetting } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 
 export function getPublicStats(settings: MetricSetting[], values: MetricValues) {
   return settings

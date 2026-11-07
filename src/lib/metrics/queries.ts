@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { getCurrentYear } from '@/lib/metrics/year';
+import type { MetricValues } from '@/lib/metrics/types';
 
 export async function getMetricSettings() {
   const savedMetrics = await prisma.metric.findMany({
@@ -41,7 +42,10 @@ export async function getMetricYears(currentYear: number) {
     .sort((a, b) => b - a);
 }
 
-export async function getMetricValues(year: number, projectWhere: Prisma.ProjectWhereInput = {}) {
+export async function getMetricValues(
+  year: number,
+  projectWhere: Prisma.ProjectWhereInput = {}
+): Promise<MetricValues> {
   const where = { year, project: { ...projectWhere, deletedAt: null } };
   const [totals, activeProjects] = await Promise.all([
     sumBeneficiaryCounts(where),
@@ -58,5 +62,3 @@ export async function getMetricValues(year: number, projectWhere: Prisma.Project
     active_projects: activeProjects,
   };
 }
-
-export type MetricValues = Awaited<ReturnType<typeof getMetricValues>>;

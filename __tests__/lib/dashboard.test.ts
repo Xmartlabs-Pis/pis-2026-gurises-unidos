@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
 import { getDashboardOverview } from '@/lib/dashboard/queries';
-import { getMetricValues, type MetricValues } from '@/lib/metrics/queries';
+import { getMetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 import { beneficiaryValueRows } from '../mocks/beneficiary-values';
 
 vi.mock('@/lib/prisma', () => ({
