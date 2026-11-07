@@ -1244,6 +1244,7 @@ describe('project review regressions', () => {
         coverPhoto: '/images/project-placeholders/1.webp',
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1280,6 +1281,7 @@ describe('project review regressions', () => {
         coverCrop: { x: 0, y: 0, width: 100, height: 100 },
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1384,6 +1386,7 @@ describe('project review regressions', () => {
       coverCrop: { x: 0, y: 0, width: 40, height: 40 },
       topics: [{ id: 1 }],
       strategicLines: [{ id: 1 }],
+      partners: [],
       departments: [{ id: 3 }],
       localities: LOCALITIES,
     });

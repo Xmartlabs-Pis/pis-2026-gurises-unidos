@@ -237,12 +237,13 @@ it('submits an already uploaded cover and its crop', async () => {
       mode="edit"
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         coverPhotoUrl: '/images/project-placeholders/2.webp',
         coverCrop: APPLIED_CROP,
       }}
@@ -411,12 +412,13 @@ it('reverts a crop on the current cover and can still remove the photo', async (
       mode="edit"
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         coverPhotoUrl: coverPath,
         coverCrop: savedCrop,
       }}

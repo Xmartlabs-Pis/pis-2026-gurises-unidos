@@ -15,7 +15,7 @@ export default async function PartnersPage() {
           className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
           eyebrow="Administración"
           title="Socios"
-          description="Contribuyentes que se asocian a los proyectos."
+          description="Socios que se asocian a los proyectos."
         />
 
         <Suspense fallback={<CatalogListSkeleton />}>
