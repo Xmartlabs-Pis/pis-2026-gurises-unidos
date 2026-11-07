@@ -6,6 +6,7 @@ const { getBeneficiaryCategoryLabels } = vi.hoisted(() => ({
 
 vi.mock('@/lib/beneficiary-categories', () => ({ getBeneficiaryCategoryLabels }));
 
+import { Prisma } from '@/generated/prisma/client';
 import { prismaMock } from '../../mocks/prisma';
 import { buildAuditLogWhere, listAuditLog } from '@/lib/audit-log/list';
 import { parseAuditLogFilters } from '@/lib/validation/audit-log-filters';
@@ -13,7 +14,18 @@ import { parseAuditLogFilters } from '@/lib/validation/audit-log-filters';
 const AUTHOR = { id: 1, firstName: 'Lucía', lastName: 'Fernández', role: 'admin' };
 const OCCURRED_AT = new Date('2026-10-21T15:00:00.000Z');
 const LISTED_ACTIONS = { in: ['creation', 'update', 'deletion', 'loginFailure'] };
-const LISTED_ENTITIES = { in: ['project', 'beneficiary', 'user', 'authentication'] };
+const LISTED_ENTITIES = {
+  in: [
+    'project',
+    'beneficiary',
+    'user',
+    'publicSettings',
+    'metric',
+    'topic',
+    'contributor',
+    'authentication',
+  ],
+};
 
 function row(id: number, entity: string, entityId: number, details: unknown = null) {
   return {
@@ -33,10 +45,13 @@ function mockEntityLookups() {
     { id: 5, year: 2026, project: { name: 'Merendero Las Acacias' } },
   ]);
   prismaMock.user.findMany.mockResolvedValue([{ id: 8, firstName: 'Ana', lastName: 'García' }]);
+  prismaMock.metric.findMany.mockResolvedValue([]);
+  prismaMock.topic.findMany.mockResolvedValue([]);
+  prismaMock.contributor.findMany.mockResolvedValue([]);
 }
 
 describe('buildAuditLogWhere', () => {
-  test('leaves password changes, metrics and topics out by default', () => {
+  test('leaves password changes out by default', () => {
     expect(buildAuditLogWhere(parseAuditLogFilters({}))).toMatchObject({
       action: LISTED_ACTIONS,
       entity: LISTED_ENTITIES,
@@ -48,6 +63,13 @@ describe('buildAuditLogWhere', () => {
       { NOT: { entity: 'user', action: 'update' } },
       { details: { path: ['changes'], array_contains: [{ field: 'status' }] } },
       { details: { path: ['changes'], array_contains: [{ field: 'role' }] } },
+    ]);
+  });
+
+  test('hides the outdated metric, topic and contributor entries', () => {
+    expect(buildAuditLogWhere(parseAuditLogFilters({})).NOT).toEqual([
+      { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
+      { entity: 'contributor', action: 'update', entityId: { not: null } },
     ]);
   });
 
@@ -172,6 +194,24 @@ describe('listAuditLog', () => {
       null,
     ]);
   });
+  test('names the metric, topic and contributor of each entry and leaves grouped ones unnamed', async () => {
+    prismaMock.auditLog.count.mockResolvedValue(5);
+    prismaMock.auditLog.findMany.mockResolvedValue([
+      { ...row(1, 'metric', 2), entityId: null },
+      { ...row(2, 'topic', 4), entityId: null },
+      row(3, 'topic', 7),
+      row(4, 'contributor', 9),
+      row(5, 'publicSettings', 1),
+    ]);
+    mockEntityLookups();
+    prismaMock.topic.findMany.mockResolvedValue([{ id: 7, name: 'Educación' }]);
+    prismaMock.contributor.findMany.mockResolvedValue([{ id: 9, name: 'UNICEF' }]);
+
+    const { items } = await listAuditLog(parseAuditLogFilters({}));
+
+    expect(items.map((item) => item.entityName)).toEqual([null, null, 'Educación', 'UNICEF', null]);
+  });
+
   test('summarizes the details and skips category labels when there are no beneficiaries', async () => {
     getBeneficiaryCategoryLabels.mockClear();
     prismaMock.auditLog.count.mockResolvedValue(1);

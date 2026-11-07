@@ -125,6 +125,86 @@ describe('describeAuditDetails', () => {
     ).toBe('Año de fin: 2026 → 2027');
   });
 
+  test('lists the published years before and after the change', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'publicSettings',
+          details: { changes: [{ field: 'publishedYears', from: [2025], to: [2026, 2025] }] },
+        },
+        {}
+      )
+    ).toBe('Años publicados: 2025 → 2026, 2025');
+  });
+
+  test('lists every grouped metric card and topic change by name', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'metric',
+          details: {
+            changes: [
+              { field: 'Familias acompañadas', from: false, to: true },
+              { field: 'Proyectos con actividad', from: true, to: false },
+            ],
+          },
+        },
+        {}
+      )
+    ).toBe('Familias acompañadas: No → Sí, Proyectos con actividad: Sí → No');
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'topic',
+          details: { changes: [{ field: 'Educación', from: false, to: true }] },
+        },
+        {}
+      )
+    ).toBe('Educación: No → Sí');
+  });
+
+  test('describes a renamed topic', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'topic',
+          details: { previousName: 'Salud', name: 'Bienestar' },
+        },
+        {}
+      )
+    ).toBe('Nombre: Salud → Bienestar');
+  });
+
+  test('shows the contributors as an ordered set before and after the new order', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'contributor',
+          details: { order: { from: ['A', 'B', 'C'], to: ['B', 'C', 'A'] } },
+        },
+        {}
+      )
+    ).toBe('{A, B, C} → {B, C, A}');
+  });
+
+  test('keeps describing project changes when the details carry a name', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'project',
+          details: { changes: [{ field: 'endYear', from: 2026, to: 2027 }], name: 'Huerta' },
+        },
+        {}
+      )
+    ).toBe('Año de fin: 2026 → 2027');
+  });
+
   test.each([
     ['no details', null],
     ['unexpected details', 'oops'],

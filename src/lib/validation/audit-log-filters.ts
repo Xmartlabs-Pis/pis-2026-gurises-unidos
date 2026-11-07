@@ -6,7 +6,16 @@ import { normalizeDocumentId } from '@/lib/utils';
 export const AUDIT_LOG_PAGE_SIZES = [20, 50, 100] as const;
 export const AUDIT_LOG_DEFAULT_PAGE_SIZE = AUDIT_LOG_PAGE_SIZES[0];
 export const LISTED_AUDIT_ACTIONS = ['creation', 'update', 'deletion', 'loginFailure'] as const;
-export const LISTED_AUDIT_ENTITIES = ['project', 'beneficiary', 'user', 'authentication'] as const;
+export const LISTED_AUDIT_ENTITIES = [
+  'project',
+  'beneficiary',
+  'user',
+  'publicSettings',
+  'metric',
+  'topic',
+  'contributor',
+  'authentication',
+] as const;
 
 export type ListedAuditAction = (typeof LISTED_AUDIT_ACTIONS)[number];
 export type ListedAuditEntity = (typeof LISTED_AUDIT_ENTITIES)[number];
