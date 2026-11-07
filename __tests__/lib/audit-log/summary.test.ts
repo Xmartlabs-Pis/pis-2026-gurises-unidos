@@ -189,7 +189,7 @@ describe('describeAuditDetails', () => {
         },
         {}
       )
-    ).toBe('{A, B, C} → {B, C, A}');
+    ).toBe('A, B, C → B, C, A');
   });
 
   test('keeps describing project changes when the details carry a name', () => {

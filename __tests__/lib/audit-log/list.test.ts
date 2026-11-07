@@ -69,7 +69,11 @@ describe('buildAuditLogWhere', () => {
   test('hides the outdated metric, topic and contributor entries', () => {
     expect(buildAuditLogWhere(parseAuditLogFilters({})).NOT).toEqual([
       { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
-      { entity: 'contributor', action: 'update', entityId: { not: null } },
+      {
+        entity: 'contributor',
+        action: 'update',
+        details: { path: ['sortOrder'], not: Prisma.AnyNull },
+      },
     ]);
   });
 
@@ -209,7 +213,13 @@ describe('listAuditLog', () => {
 
     const { items } = await listAuditLog(parseAuditLogFilters({}));
 
-    expect(items.map((item) => item.entityName)).toEqual([null, null, 'Educación', 'UNICEF', null]);
+    expect(items.map((item) => item.entityName)).toEqual([
+      null,
+      null,
+      'Educación',
+      'UNICEF',
+      'Años publicados',
+    ]);
   });
 
   test('summarizes the details and skips category labels when there are no beneficiaries', async () => {

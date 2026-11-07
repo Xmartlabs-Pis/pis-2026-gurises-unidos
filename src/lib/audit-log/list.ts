@@ -41,7 +41,11 @@ const LISTED_ENTITIES_WHERE = { in: [...LISTED_AUDIT_ENTITIES] };
 
 const OUTDATED_PUBLIC_VIEW_ENTRIES: Prisma.AuditLogWhereInput[] = [
   { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
-  { entity: 'contributor', action: 'update', entityId: { not: null } },
+  {
+    entity: 'contributor',
+    action: 'update',
+    details: { path: ['sortOrder'], not: Prisma.AnyNull },
+  },
 ];
 
 const ONLY_USER_STATUS_AND_ROLE_UPDATES: Prisma.AuditLogWhereInput[] = [

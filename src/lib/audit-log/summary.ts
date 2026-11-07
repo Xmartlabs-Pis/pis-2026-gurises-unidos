@@ -121,7 +121,7 @@ export function describeAuditDetails(
       return `Nombre: ${details.previousName} → ${details.name}`;
     }
     if (details.order) {
-      return `{${details.order.from.join(', ')}} → {${details.order.to.join(', ')}}`;
+      return `${details.order.from.join(', ')} → ${details.order.to.join(', ')}`;
     }
     return details.changes?.length
       ? formatChanges(details.changes, PUBLIC_VIEW_FIELD_LABELS)
