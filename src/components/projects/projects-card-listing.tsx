@@ -22,7 +22,7 @@ import { PROJECT_SEARCH_MAX_LENGTH } from '@/lib/validation/project-filters';
 import { ScrollToTopButton } from '@/components/scroll-to-top-button';
 import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { useUrlFilters } from '@/hooks/use-url-filters';
-import { loadProjectIds } from '@/app/actions/projects';
+import { loadProjectDataYears } from '@/app/actions/projects';
 import { notify } from '@/lib/notify';
 import type { ImpactReportRequest } from '@/lib/validation/impact-report';
 
@@ -104,17 +104,18 @@ export function ProjectsCardList({
 
   const filteredCountLabel = `${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
 
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<number> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<ReadonlyMap<number, number | null> | null>(null);
   const [isSelectingAll, setIsSelectingAll] = useState(false);
-  const reportYear = beneficiaryYear;
   const selectedCount = selectedIds?.size ?? 0;
+  const selectedYears = [...new Set([...(selectedIds?.values() ?? [])].filter((y) => y !== null))];
+  const reportYear = selectedYears.length === 1 ? selectedYears[0] : undefined;
 
-  function toggleSelection(id: number) {
+  function toggleSelection(id: number, dataYear: number | null) {
     setSelectedIds((current) => {
       if (!current) return current;
-      const next = new Set(current);
+      const next = new Map(current);
       if (next.has(id)) next.delete(id);
-      else next.add(id);
+      else next.set(id, dataYear);
       return next;
     });
   }
@@ -122,8 +123,12 @@ export function ProjectsCardList({
   async function selectAllFiltered() {
     setIsSelectingAll(true);
     try {
-      const ids = await loadProjectIds(query);
-      setSelectedIds((current) => (current ? new Set([...current, ...ids]) : current));
+      const projects = await loadProjectDataYears(query);
+      setSelectedIds((current) =>
+        current
+          ? new Map([...current, ...projects.map(({ id, year }) => [id, year] as const)])
+          : current
+      );
     } catch {
       notify.error({ title: 'No se pudieron seleccionar los proyectos. Probá de nuevo.' });
     } finally {
@@ -134,13 +139,20 @@ export function ProjectsCardList({
   const reportRequest: ImpactReportRequest | undefined =
     reportYear === undefined
       ? undefined
-      : { year: reportYear, projectIds: [...(selectedIds ?? [])] };
+      : { year: reportYear, projectIds: [...(selectedIds?.keys() ?? [])] };
+
+  const selectionWarning =
+    selectedYears.length > 1
+      ? 'Los proyectos seleccionados tienen datos de distintos años y no se puede exportar un reporte con varios años. Elegí un año en los filtros.'
+      : selectedCount > 0 && selectedYears.length === 0
+        ? 'Los proyectos seleccionados no tienen datos cargados.'
+        : null;
 
   const exportReportButton = (
     <Button
       variant="outline"
       className="h-8 gap-2.5 rounded-md px-3 shadow-xs/10"
-      onClick={() => setSelectedIds(new Set())}
+      onClick={() => setSelectedIds(new Map())}
     >
       <p className="text-primary text-sm leading-5 font-medium tracking-normal">Exportar reporte</p>
     </Button>
@@ -158,18 +170,19 @@ export function ProjectsCardList({
             ? '1 proyecto seleccionado'
             : `${selectedCount} proyectos seleccionados`}
         </p>
-        {reportYear === undefined ? (
+        {selectionWarning ? (
           <p
             role="status"
             className="text-status-warning flex items-center gap-1.5 text-xs leading-4"
           >
             <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
-            No se puede exportar un reporte con varios años. Elegí un año en los filtros.
+            {selectionWarning}
           </p>
         ) : (
           <p className="text-muted-foreground text-xs leading-4">
-            Elegí los proyectos a incluir en el reporte {reportYear}. Podés usar los filtros para
-            encontrarlos.
+            {reportYear === undefined
+              ? 'Elegí los proyectos a incluir en el reporte.'
+              : `Reporte ${reportYear}. Podés usar los filtros para encontrar más proyectos.`}
           </p>
         )}
       </div>
@@ -188,7 +201,7 @@ export function ProjectsCardList({
           variant="ghost"
           size="sm"
           disabled={selectedCount === 0}
-          onClick={() => setSelectedIds(new Set())}
+          onClick={() => setSelectedIds(new Map())}
         >
           Limpiar selección
         </Button>

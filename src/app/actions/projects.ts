@@ -41,7 +41,12 @@ import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { DUPLICATE_PROJECT_MESSAGE } from '@/lib/projects/map-project-db-error';
 import { PROJECT_LIST_PAGE_SIZE, parseProjectFilters } from '@/lib/validation/project-filters';
-import { listProjectIds, listProjects, type ProjectListPage } from '@/lib/projects/list';
+import {
+  listProjectDataYears,
+  listProjects,
+  type ProjectDataYear,
+  type ProjectListPage,
+} from '@/lib/projects/list';
 import { getProjectAuditChanges, PROJECT_AUDIT_INCLUDE } from '@/lib/projects/audit-changes';
 import type { ProjectLocality } from '@/lib/projects/location';
 
@@ -617,8 +622,10 @@ export async function loadProjectsPage(
   );
 }
 
-export async function loadProjectIds(filters: ProjectListQueryInput): Promise<number[]> {
+export async function loadProjectDataYears(
+  filters: ProjectListQueryInput
+): Promise<ProjectDataYear[]> {
   await requireUser();
 
-  return listProjectIds(parseProjectFilters(filters));
+  return listProjectDataYears(parseProjectFilters(filters));
 }

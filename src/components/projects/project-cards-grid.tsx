@@ -28,8 +28,8 @@ type ProjectCardsGridProps = {
   totalPages: number;
   query: ProjectListQuery;
   isPending: boolean;
-  selectedIds?: ReadonlySet<number> | null;
-  onToggleSelection?: (id: number) => void;
+  selectedIds?: ReadonlyMap<number, number | null> | null;
+  onToggleSelection?: (id: number, year: number | null) => void;
 };
 
 export function ProjectCardsGrid({
@@ -111,7 +111,10 @@ export function ProjectCardsGrid({
               totalReach={latestBeneficiaries?.total ?? null}
               selection={
                 selectedIds && onToggleSelection
-                  ? { selected: selectedIds.has(p.id), onToggle: () => onToggleSelection(p.id) }
+                  ? {
+                      selected: selectedIds.has(p.id),
+                      onToggle: () => onToggleSelection(p.id, latestBeneficiaries?.year ?? null),
+                    }
                   : undefined
               }
             />

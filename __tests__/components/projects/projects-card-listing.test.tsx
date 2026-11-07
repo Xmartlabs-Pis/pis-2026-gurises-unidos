@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   replace: vi.fn(),
   loadProjectsPage: vi.fn(),
-  loadProjectIds: vi.fn(),
+  loadProjectDataYears: vi.fn(),
   observers: [] as { callback: IntersectionObserverCallback; disconnected: boolean }[],
 }));
 
@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/actions/projects', () => ({
   loadProjectsPage: mocks.loadProjectsPage,
-  loadProjectIds: mocks.loadProjectIds,
+  loadProjectDataYears: mocks.loadProjectDataYears,
 }));
 
 class IntersectionObserverMock {
@@ -164,7 +164,7 @@ beforeEach(() => {
   mocks.searchParams = new URLSearchParams();
   mocks.replace.mockClear();
   mocks.loadProjectsPage.mockReset();
-  mocks.loadProjectIds.mockReset();
+  mocks.loadProjectDataYears.mockReset();
   mocks.observers.length = 0;
 });
 
@@ -543,8 +543,56 @@ function startReportSelection() {
   fireEvent.click(screen.getByRole('button', { name: 'Exportar reporte' }));
 }
 
+function withDataIn(year: number) {
+  return [{ ...BENEFICIARIES_2025, year }];
+}
+
+function buildAllYearsList(projects: ProjectListItem[]) {
+  return (
+    <ProjectsCardList
+      projects={projects}
+      total={projects.length}
+      page={1}
+      totalPages={1}
+      years={[2025, 2024]}
+      status="active"
+      beneficiaryYear={undefined}
+      search={undefined}
+    />
+  );
+}
+
+function stubPdfDownload() {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response('%PDF', {
+      headers: { 'Content-Type': 'application/pdf', 'X-Report-File-Name': 'Informe.pdf' },
+    })
+  );
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchMock;
+  URL.createObjectURL = vi.fn(() => 'blob:report');
+  URL.revokeObjectURL = vi.fn();
+  return { fetchMock, restore: () => (globalThis.fetch = originalFetch) };
+}
+
+async function exportReport() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar' }));
+  });
+}
+
+const MIXED_YEARS_WARNING =
+  'Los proyectos seleccionados tienen datos de distintos años y no se puede exportar un reporte con varios años. Elegí un año en los filtros.';
+
 test('turns the project cards into checkboxes when exporting a report', () => {
-  render(buildList({ projects: [buildProject(1, 'Alpha'), buildProject(2, 'Beta')] }));
+  render(
+    buildList({
+      projects: [
+        buildProject(1, 'Alpha', 'active', withDataIn(2025)),
+        buildProject(2, 'Beta', 'active', withDataIn(2025)),
+      ],
+    })
+  );
 
   startReportSelection();
 
@@ -567,7 +615,11 @@ test('turns the project cards into checkboxes when exporting a report', () => {
 });
 
 test('selects every project matching the current filters', async () => {
-  mocks.loadProjectIds.mockResolvedValue([1, 2, 3]);
+  mocks.loadProjectDataYears.mockResolvedValue([
+    { id: 1, year: 2025 },
+    { id: 2, year: 2025 },
+    { id: 3, year: 2025 },
+  ]);
   render(buildList({ projects: [buildProject(1, 'Alpha')], total: 3, topicId: 2 }));
 
   startReportSelection();
@@ -575,29 +627,24 @@ test('selects every project matching the current filters', async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Seleccionar filtrados (3)' }));
   });
 
-  expect(mocks.loadProjectIds).toHaveBeenCalledWith(
+  expect(mocks.loadProjectDataYears).toHaveBeenCalledWith(
     expect.objectContaining({ status: 'active', beneficiaryYear: '2025', topicId: '2' })
   );
   expect(screen.getByText('3 proyectos seleccionados')).toBeTruthy();
 });
 
 test('exports the report of the selected projects for the filtered year', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response('%PDF', {
-      headers: { 'Content-Type': 'application/pdf', 'X-Report-File-Name': 'Informe.pdf' },
+  const { fetchMock, restore } = stubPdfDownload();
+  render(
+    buildList({
+      projects: [buildProject(4, 'Alpha', 'active', withDataIn(2024))],
+      beneficiaryYear: 2024,
     })
   );
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = fetchMock;
-  URL.createObjectURL = vi.fn(() => 'blob:report');
-  URL.revokeObjectURL = vi.fn();
-  render(buildList({ projects: [buildProject(4, 'Alpha')], beneficiaryYear: 2024 }));
 
   startReportSelection();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
-  await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Exportar' }));
-  });
+  await exportReport();
 
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/reports/impact',
@@ -606,7 +653,7 @@ test('exports the report of the selected projects for the filtered year', async 
       body: JSON.stringify({ year: 2024, projectIds: [4] }),
     })
   );
-  globalThis.fetch = originalFetch;
+  restore();
 });
 
 test('restores the project links when the selection is cancelled', () => {
@@ -623,28 +670,58 @@ test('restores the project links when the selection is cancelled', () => {
   expect(screen.getByRole('button', { name: 'Exportar reporte' })).toBeTruthy();
 });
 
-test('asks for a year before exporting when listing all years', () => {
+test('exports the shared year of the selected projects when listing all years', async () => {
+  const { fetchMock, restore } = stubPdfDownload();
   render(
-    <ProjectsCardList
-      projects={[buildProject(1, 'Alpha')]}
-      total={1}
-      page={1}
-      totalPages={1}
-      years={[2025, 2024]}
-      status="active"
-      beneficiaryYear={undefined}
-      search={undefined}
-    />
+    buildAllYearsList([
+      buildProject(1, 'Alpha', 'active', withDataIn(2024)),
+      buildProject(2, 'Beta', 'active', withDataIn(2024)),
+      buildProject(3, 'Gamma'),
+    ])
+  );
+
+  startReportSelection();
+  for (const name of ['Alpha', 'Beta', 'Gamma']) {
+    fireEvent.click(screen.getByRole('checkbox', { name }));
+  }
+
+  expect(screen.queryByText(MIXED_YEARS_WARNING)).toBeNull();
+  await exportReport();
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/reports/impact',
+    expect.objectContaining({ body: JSON.stringify({ year: 2024, projectIds: [1, 2, 3] }) })
+  );
+  restore();
+});
+
+test('blocks the export when the selected projects have data from different years', () => {
+  render(
+    buildAllYearsList([
+      buildProject(1, 'Alpha', 'active', withDataIn(2025)),
+      buildProject(2, 'Beta', 'active', withDataIn(2024)),
+    ])
   );
 
   startReportSelection();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
 
-  expect(
-    screen.getByText(
-      'No se puede exportar un reporte con varios años. Elegí un año en los filtros.'
-    )
-  ).toBeTruthy();
+  expect(screen.getByText(MIXED_YEARS_WARNING)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
-  expect(screen.queryByRole('combobox', { name: 'Año del reporte' })).toBeNull();
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+
+  expect(screen.queryByText(MIXED_YEARS_WARNING)).toBeNull();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(false);
+});
+
+test('blocks the export when no selected project has data', () => {
+  render(buildAllYearsList([buildProject(1, 'Alpha')]));
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+
+  expect(screen.getByText('Los proyectos seleccionados no tienen datos cargados.')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
 });

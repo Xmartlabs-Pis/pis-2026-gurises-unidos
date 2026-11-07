@@ -128,13 +128,26 @@ export async function listProjects(filters: ProjectFilters): Promise<ProjectList
   };
 }
 
-export async function listProjectIds(filters: ProjectFilters): Promise<number[]> {
+export type ProjectDataYear = { id: number; year: number | null };
+
+export async function listProjectDataYears(filters: ProjectFilters): Promise<ProjectDataYear[]> {
   const rows = await prisma.project.findMany({
     where: buildProjectWhere(filters),
-    select: { id: true },
+    select: {
+      id: true,
+      projectBeneficiaries: {
+        where: { year: filters.beneficiaryYear },
+        orderBy: { year: 'desc' },
+        take: 1,
+        select: { year: true },
+      },
+    },
     orderBy: [{ name: 'asc' }, { id: 'asc' }],
   });
-  return rows.map(({ id }) => id);
+  return rows.map(({ id, projectBeneficiaries }) => ({
+    id,
+    year: projectBeneficiaries.at(0)?.year ?? null,
+  }));
 }
 
 export async function listBeneficiaryYears(): Promise<number[]> {
