@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
-import type { Prisma } from '@/generated/prisma/client';
+import { Prisma } from '@/generated/prisma/client';
+import { AUDIT_ENTITY_LABELS } from '@/lib/audit-log/constants';
 import { describeAuditDetails } from '@/lib/audit-log/summary';
 import { loginFailureDetailsSchema } from '@/lib/audit-log/login-failure';
 import { getBeneficiaryCategoryLabels } from '@/lib/beneficiary-categories';
@@ -38,6 +39,15 @@ export type AuditLogListItem = Omit<ListedAuditLogRow, 'details'> & {
 const LISTED_ACTIONS_WHERE = { in: [...LISTED_AUDIT_ACTIONS] };
 const LISTED_ENTITIES_WHERE = { in: [...LISTED_AUDIT_ENTITIES] };
 
+const OUTDATED_PUBLIC_VIEW_ENTRIES: Prisma.AuditLogWhereInput[] = [
+  { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
+  {
+    entity: 'contributor',
+    action: 'update',
+    details: { path: ['sortOrder'], not: Prisma.AnyNull },
+  },
+];
+
 const ONLY_USER_STATUS_AND_ROLE_UPDATES: Prisma.AuditLogWhereInput[] = [
   { NOT: { entity: 'user', action: 'update' } },
   { details: { path: ['changes'], array_contains: [{ field: 'status' }] } },
@@ -57,6 +67,7 @@ export function buildAuditLogWhere(filters: AuditLogFilters): Prisma.AuditLogWhe
     action: filters.action ?? LISTED_ACTIONS_WHERE,
     entity: filters.entity ?? LISTED_ENTITIES_WHERE,
     OR: ONLY_USER_STATUS_AND_ROLE_UPDATES,
+    NOT: OUTDATED_PUBLIC_VIEW_ENTRIES,
   };
 
   if (filters.authorId) {
@@ -88,7 +99,7 @@ function idsOf(rows: ListedAuditLogRow[], entity: ListedAuditEntity) {
 }
 
 async function resolveEntityNames(rows: ListedAuditLogRow[]) {
-  const [projects, beneficiaries, users] = await Promise.all([
+  const [projects, beneficiaries, users, metrics, topics, contributors] = await Promise.all([
     prisma.project.findMany({
       where: { id: { in: idsOf(rows, 'project') } },
       select: { id: true, name: true },
@@ -101,6 +112,18 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
       where: { id: { in: idsOf(rows, 'user') } },
       select: { id: true, firstName: true, lastName: true },
     }),
+    prisma.metric.findMany({
+      where: { id: { in: idsOf(rows, 'metric') } },
+      select: { id: true, name: true },
+    }),
+    prisma.topic.findMany({
+      where: { id: { in: idsOf(rows, 'topic') } },
+      select: { id: true, name: true },
+    }),
+    prisma.contributor.findMany({
+      where: { id: { in: idsOf(rows, 'contributor') } },
+      select: { id: true, name: true },
+    }),
   ]);
 
   const names: Record<ListedAuditEntity, Map<number, string>> = {
@@ -109,6 +132,10 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
       beneficiaries.map(({ id, year, project }) => [id, `${project.name} (${year})`])
     ),
     user: new Map(users.map(({ id, firstName, lastName }) => [id, `${firstName} ${lastName}`])),
+    publicSettings: new Map([[1, AUDIT_ENTITY_LABELS.publicSettings]]),
+    metric: new Map(metrics.map(({ id, name }) => [id, name])),
+    topic: new Map(topics.map(({ id, name }) => [id, name])),
+    contributor: new Map(contributors.map(({ id, name }) => [id, name])),
     authentication: new Map(),
   };
 
@@ -169,6 +196,7 @@ export async function listAuditLogAuthors() {
           action: LISTED_ACTIONS_WHERE,
           entity: LISTED_ENTITIES_WHERE,
           OR: ONLY_USER_STATUS_AND_ROLE_UPDATES,
+          NOT: OUTDATED_PUBLIC_VIEW_ENTRIES,
         },
       },
     },

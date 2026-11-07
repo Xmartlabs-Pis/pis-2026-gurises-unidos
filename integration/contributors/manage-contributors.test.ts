@@ -19,7 +19,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
   await prisma.auditLog.deleteMany({
-    where: { entity: 'contributor', entityId: { in: createdIds } },
+    where: { entity: 'contributor', OR: [{ entityId: { in: createdIds } }, { entityId: null }] },
   });
   await prisma.contributor.deleteMany({ where: { id: { in: createdIds } } });
   createdIds = [];
@@ -60,7 +60,7 @@ test.each([null, 'coordinator'] as const)('rejects mutations for %s', async (rol
 
 test('persists the public order and appends newly created contributors', async () => {
   signInAs(seed.adminId, 'admin');
-  const first = await createFixture();
+  await createFixture();
   const second = await prisma.contributor.create({ data: { name: 'Second contributor' } });
   createdIds.push(second.id);
   const ids = (await getContributors()).map(({ id }) => id);
@@ -71,11 +71,18 @@ test('persists the public order and appends newly created contributors', async (
   if (!result.success) throw new Error(result.message);
   createdIds.push(result.contributor.id);
   expect((await getContributors()).at(-1)).toEqual(result.contributor);
-  expect(
-    await prisma.auditLog.count({
-      where: { entity: 'contributor', entityId: first.id, action: 'update' },
-    })
-  ).toBe(1);
+  const logs = await prisma.auditLog.findMany({
+    where: { entity: 'contributor', entityId: null, action: 'update' },
+  });
+  expect(logs).toHaveLength(1);
+  expect(logs[0]).toMatchObject({ authorId: seed.adminId });
+  const names = new Map((await prisma.contributor.findMany()).map(({ id, name }) => [id, name]));
+  expect(logs[0].details).toEqual({
+    order: {
+      from: ids.map((id) => names.get(id)),
+      to: reordered.map((id) => names.get(id)),
+    },
+  });
 });
 
 test('rejects duplicate, incomplete, deleted and stale contributor lists without changing the order', async () => {
@@ -210,7 +217,7 @@ test('concurrent creations never commit the same position', async () => {
   expect(new Set(created.map(({ sortOrder }) => sortOrder)).size).toBe(created.length);
 });
 
-test('updates a large order and its audit entries together', async () => {
+test('updates a large order with a single audit entry', async () => {
   signInAs(seed.adminId, 'admin');
   const created = await prisma.contributor.createManyAndReturn({
     data: Array.from({ length: 100 }, (_, index) => ({
@@ -222,14 +229,9 @@ test('updates a large order and its audit entries together', async () => {
   const order = [...created].reverse().map(({ id }) => id);
   expect((await reorderContributors(order)).success).toBe(true);
   expect((await getContributors()).map(({ id }) => id)).toEqual(order);
-  const changed = created.filter(({ id, sortOrder }) => order.indexOf(id) !== sortOrder);
-  const logs = await prisma.auditLog.findMany({
-    where: { entity: 'contributor', entityId: { in: createdIds }, action: 'update' },
-  });
-  expect(logs).toHaveLength(changed.length);
-  for (const contributor of changed) {
-    expect(logs.find(({ entityId }) => entityId === contributor.id)?.details).toEqual({
-      sortOrder: { from: contributor.sortOrder, to: order.indexOf(contributor.id) },
-    });
-  }
+  expect(
+    await prisma.auditLog.count({
+      where: { entity: 'contributor', entityId: null, action: 'update' },
+    })
+  ).toBe(1);
 });

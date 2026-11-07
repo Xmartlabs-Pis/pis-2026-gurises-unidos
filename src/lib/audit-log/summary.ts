@@ -6,6 +6,7 @@ import {
   COVER_PHOTO_UPDATE_LABEL,
   PROJECT_FIELD_LABELS,
   PROJECT_TEXT_CHANGE_LABELS,
+  PUBLIC_VIEW_FIELD_LABELS,
 } from '@/lib/audit-log/constants';
 import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
 import {
@@ -24,10 +25,20 @@ const auditDetailsSchema = z
       .optional(),
     changedFields: z.array(z.string()).optional(),
     restored: z.boolean().optional(),
+    order: z.object({ from: z.array(z.string()), to: z.array(z.string()) }).optional(),
+    previousName: z.string().optional(),
+    name: z.string().optional(),
   })
   .catch({});
 
 type AuditChange = { field: string; from: unknown; to: unknown };
+
+const PUBLIC_VIEW_ENTITIES = new Set<ListedAuditEntity>([
+  'publicSettings',
+  'metric',
+  'topic',
+  'contributor',
+]);
 
 const USER_FIELD_LABELS: Record<string, string> = { status: 'Estado', role: 'Rol' };
 
@@ -103,6 +114,17 @@ export function describeAuditDetails(
     if (details.restored) return 'Usuario restaurado';
     return details.changes?.length
       ? formatChanges(details.changes, USER_FIELD_LABELS, USER_VALUE_LABELS)
+      : null;
+  }
+  if (PUBLIC_VIEW_ENTITIES.has(entry.entity)) {
+    if (details.previousName !== undefined && details.name !== undefined) {
+      return `Nombre: ${details.previousName} → ${details.name}`;
+    }
+    if (details.order) {
+      return `${details.order.from.join(', ')} → ${details.order.to.join(', ')}`;
+    }
+    return details.changes?.length
+      ? formatChanges(details.changes, PUBLIC_VIEW_FIELD_LABELS)
       : null;
   }
   if (details.changes?.length) {

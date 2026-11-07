@@ -31,6 +31,12 @@ const METRIC_SETTINGS_SCHEMA = z.object({
     ),
 });
 
+type AuditChange = { field: string; from: boolean; to: boolean };
+
+function sameYears(a: number[], b: number[]) {
+  return a.length === b.length && a.every((year, index) => year === b[index]);
+}
+
 export async function saveMetricSettings(input: unknown) {
   const session = await auth();
   if (!session?.user || session.user.role !== 'admin') {
@@ -58,50 +64,81 @@ export async function saveMetricSettings(input: unknown) {
       const selectedTopics = topics.length
         ? await tx.topic.findMany({
             where: { id: { in: topics.map(({ id }) => id) }, isActive: true },
-            select: { id: true },
+            select: { id: true, name: true, showPublicly: true },
           })
         : [];
       if (selectedTopics.length !== topics.length) throw new Error('Invalid topic selection');
+      const authorId = Number(session.user.id);
+      const previousSettings = await tx.publicSettings.findUnique({ where: { id: 1 } });
+      const previousYears = previousSettings?.publishedYears ?? availableYears;
       await tx.publicSettings.upsert({
         where: { id: 1 },
-        create: {
-          id: 1,
-          publishedYears: sortedYears,
-          updatedBy: Number(session.user.id),
-        },
-        update: { publishedYears: sortedYears, updatedBy: Number(session.user.id) },
+        create: { id: 1, publishedYears: sortedYears, updatedBy: authorId },
+        update: { publishedYears: sortedYears, updatedBy: authorId },
+      });
+      if (!sameYears(previousYears, sortedYears)) {
+        await logAudit(tx, {
+          authorId,
+          action: 'update',
+          entity: 'publicSettings',
+          entityId: 1,
+          details: {
+            changes: [{ field: 'publishedYears', from: previousYears, to: sortedYears }],
+          },
+        });
+      }
+      const metricChanges: AuditChange[] = [];
+      const previousMetrics = await tx.metric.findMany({
+        select: { key: true, showPublicly: true },
       });
       for (const [index, definition] of METRIC_DEFINITIONS.entries()) {
         const showPublicly = metrics.find((metric) => metric.key === definition.key)!.showPublicly;
-        const metric = await tx.metric.upsert({
+        const previousShowPublicly =
+          previousMetrics.find((metric) => metric.key === definition.key)?.showPublicly ??
+          definition.showPublicly;
+        await tx.metric.upsert({
           where: { key: definition.key },
           create: {
             key: definition.key,
             name: definition.name,
             sortOrder: index,
             showPublicly,
-            updatedBy: Number(session.user.id),
+            updatedBy: authorId,
           },
-          update: { showPublicly, updatedBy: Number(session.user.id) },
+          update: { showPublicly, updatedBy: authorId },
         });
+        if (previousShowPublicly !== showPublicly) {
+          metricChanges.push({
+            field: definition.name,
+            from: previousShowPublicly,
+            to: showPublicly,
+          });
+        }
+      }
+      if (metricChanges.length) {
         await logAudit(tx, {
-          authorId: Number(session.user.id),
+          authorId,
           action: 'update',
           entity: 'metric',
-          entityId: metric.id,
+          details: { changes: metricChanges },
         });
       }
+      const topicChanges: AuditChange[] = [];
       for (const topic of selectedTopics) {
         const showPublicly = topics.find(({ id }) => id === topic.id)!.showPublicly;
+        if (topic.showPublicly === showPublicly) continue;
         await tx.topic.update({
           where: { id: topic.id },
           data: { showPublicly },
         });
+        topicChanges.push({ field: topic.name, from: topic.showPublicly, to: showPublicly });
+      }
+      if (topicChanges.length) {
         await logAudit(tx, {
-          authorId: Number(session.user.id),
+          authorId,
           action: 'update',
           entity: 'topic',
-          entityId: topic.id,
+          details: { changes: topicChanges },
         });
       }
     });
