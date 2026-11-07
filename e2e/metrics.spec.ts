@@ -46,3 +46,21 @@ test('shows and hides metrics on the public site', async ({ page }) => {
   await expect(publicStats(page)).toContainText(HIDDEN_METRIC);
   await expect(publicStats(page)).not.toContainText(VISIBLE_METRIC);
 });
+
+test('records every public view change in the history as one entry per section', async ({
+  page,
+}) => {
+  await page.goto('/management/metrics');
+  await visibilitySwitch(page, HIDDEN_METRIC).click();
+  await visibilitySwitch(page, VISIBLE_METRIC).click();
+  await page.getByRole('button', { name: 'Guardar cambios' }).click();
+  await expect(page.getByText('Cambios guardados.')).toBeVisible();
+
+  await page.goto('/management/history?entity=metric');
+  const entry = page.getByText(`${HIDDEN_METRIC}: No → Sí`).filter({ visible: true });
+  await expect(entry).toHaveCount(1);
+  await expect(entry).toContainText(`${VISIBLE_METRIC}: Sí → No`);
+  await expect(
+    page.getByRole('table').getByRole('row').filter({ hasText: 'Cards de métricas' })
+  ).toHaveCount(1);
+});

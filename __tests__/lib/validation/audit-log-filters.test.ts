@@ -85,8 +85,12 @@ describe('parseAuditLogFilters', () => {
     });
   });
 
-  it.each(['metric', 'topic', 'beneficiaryCategory'])('drops the %s entity', (entity) => {
+  it.each(['beneficiaryCategory', 'strategicLine'])('drops the %s entity', (entity) => {
     expect(parseAuditLogFilters({ entity }).entity).toBeUndefined();
+  });
+
+  it.each(['publicSettings', 'metric', 'topic', 'contributor'])('keeps the %s entity', (entity) => {
+    expect(parseAuditLogFilters({ entity }).entity).toBe(entity);
   });
 
   it('drops an author id beyond the database integer range', () => {

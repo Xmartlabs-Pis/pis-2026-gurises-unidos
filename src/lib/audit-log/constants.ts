@@ -53,6 +53,10 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   project: 'Proyecto',
   beneficiary: 'Beneficiarios',
   user: 'Usuario',
+  publicSettings: 'Años publicados',
+  metric: 'Cards de métricas',
+  topic: 'Temáticas',
+  contributor: 'Acompañantes',
   authentication: 'Autenticación',
 };
 
@@ -65,4 +69,8 @@ export const PROJECT_TEXT_CHANGE_LABELS: Record<string, string> = {
   generalObjective: 'modificado',
   publicDescription: 'modificada',
   internalNotes: 'modificadas',
+};
+
+export const PUBLIC_VIEW_FIELD_LABELS: Record<string, string> = {
+  publishedYears: 'Años publicados',
 };

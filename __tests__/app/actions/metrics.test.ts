@@ -10,6 +10,8 @@ const {
   yearsMock,
   topicsMock,
   topicUpdateMock,
+  settingsFindMock,
+  metricsFindMock,
 } = vi.hoisted(() => ({
   authMock: vi.fn(),
   transactionMock: vi.fn(),
@@ -20,6 +22,8 @@ const {
   yearsMock: vi.fn(),
   topicsMock: vi.fn(),
   topicUpdateMock: vi.fn(),
+  settingsFindMock: vi.fn(),
+  metricsFindMock: vi.fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
@@ -42,11 +46,14 @@ describe('saveMetricSettings', () => {
     vi.resetAllMocks();
     authMock.mockResolvedValue({ user: { id: '1', role: 'admin' } });
     upsertMock.mockResolvedValue({ id: 1 });
+    settingsFindMock.mockResolvedValue(null);
+    metricsFindMock.mockResolvedValue([]);
+    topicsMock.mockResolvedValue([]);
     yearsMock.mockResolvedValue([2026, 2025, 2024]);
     transactionMock.mockImplementation(async (callback) =>
       callback({
-        metric: { upsert: upsertMock },
-        publicSettings: { upsert: settingsUpsertMock },
+        metric: { upsert: upsertMock, findMany: metricsFindMock },
+        publicSettings: { upsert: settingsUpsertMock, findUnique: settingsFindMock },
         topic: { findMany: topicsMock, update: topicUpdateMock },
       })
     );
@@ -114,7 +121,6 @@ describe('saveMetricSettings', () => {
         update: { showPublicly: false, updatedBy: 1 },
       })
     );
-    expect(auditMock).toHaveBeenCalledTimes(7);
     expect(revalidateMock).toHaveBeenCalledWith('/management/metrics');
     expect(revalidateMock).toHaveBeenCalledWith('/');
     expect(revalidateMock).toHaveBeenCalledTimes(2);
@@ -147,8 +153,8 @@ describe('saveMetricSettings', () => {
 
   it('persists both enabled and disabled topic statistics', async () => {
     topicsMock.mockResolvedValue([
-      { id: 1, name: 'Education' },
-      { id: 2, name: 'Health' },
+      { id: 1, name: 'Education', showPublicly: false },
+      { id: 2, name: 'Health', showPublicly: true },
     ]);
     const result = await saveMetricSettings({
       ...SETTINGS,
@@ -169,6 +175,66 @@ describe('saveMetricSettings', () => {
         })
       );
     }
+  });
+
+  it('audits the published years, metrics and topics in one entry each', async () => {
+    settingsFindMock.mockResolvedValue({ publishedYears: [2024] });
+    metricsFindMock.mockResolvedValue(
+      METRICS.map(({ key, showPublicly }) => ({
+        key,
+        showPublicly:
+          key === 'direct_children_reached' || key === 'families' ? !showPublicly : showPublicly,
+      }))
+    );
+    topicsMock.mockResolvedValue([
+      { id: 1, name: 'Education', showPublicly: false },
+      { id: 2, name: 'Health', showPublicly: true },
+    ]);
+
+    await saveMetricSettings({
+      ...SETTINGS,
+      topics: [
+        { id: 1, showPublicly: true },
+        { id: 2, showPublicly: true },
+      ],
+    });
+
+    expect(auditMock).toHaveBeenCalledTimes(3);
+    expect(auditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 1,
+      action: 'update',
+      entity: 'publicSettings',
+      entityId: 1,
+      details: { changes: [{ field: 'publishedYears', from: [2024], to: [2025] }] },
+    });
+    expect(auditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 1,
+      action: 'update',
+      entity: 'metric',
+      details: {
+        changes: [
+          { field: 'NNA directos', from: false, to: true },
+          { field: 'Familias acompañadas', from: true, to: false },
+        ],
+      },
+    });
+    expect(auditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 1,
+      action: 'update',
+      entity: 'topic',
+      details: { changes: [{ field: 'Education', from: false, to: true }] },
+    });
+  });
+
+  it('does not audit anything when nothing changed', async () => {
+    settingsFindMock.mockResolvedValue({ publishedYears: [2025] });
+    metricsFindMock.mockResolvedValue(
+      METRICS.map(({ key, showPublicly }) => ({ key, showPublicly }))
+    );
+
+    expect((await saveMetricSettings(SETTINGS)).success).toBe(true);
+
+    expect(auditMock).not.toHaveBeenCalled();
   });
 
   it('rejects unavailable topics before writing settings', async () => {

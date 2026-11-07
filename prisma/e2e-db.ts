@@ -114,7 +114,7 @@ async function lastAuditLogId() {
 async function resetMetricSettings(afterAuditLogId: number) {
   await prisma.$transaction([
     prisma.auditLog.deleteMany({
-      where: { id: { gt: afterAuditLogId }, entity: { in: ['metric', 'topic'] } },
+      where: { id: { gt: afterAuditLogId }, entity: { in: ['metric', 'topic', 'publicSettings'] } },
     }),
     prisma.metric.deleteMany(),
     prisma.publicSettings.deleteMany(),

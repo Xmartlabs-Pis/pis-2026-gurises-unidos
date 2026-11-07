@@ -117,25 +117,28 @@ export async function reorderContributors(input: unknown) {
         }
         const changes = result.data.flatMap((id, sortOrder) => {
           const contributor = contributorsById.get(id)!;
-          return contributor.sortOrder === sortOrder
-            ? []
-            : [{ id, sortOrder, previousOrder: contributor.sortOrder }];
+          return contributor.sortOrder === sortOrder ? [] : [{ id, sortOrder }];
         });
         if (!changes.length) return;
+        const previousOrder = [...contributors].sort(
+          (a, b) => a.sortOrder - b.sortOrder || a.id - b.id
+        );
         await tx.$executeRaw(Prisma.sql`
           UPDATE "Contributor" AS contributor
           SET "sortOrder" = ordering."sortOrder"
           FROM (VALUES ${Prisma.join(changes.map(({ id, sortOrder }) => Prisma.sql`(${id}::integer, ${sortOrder}::integer)`))}) AS ordering("id", "sortOrder")
           WHERE contributor."id" = ordering."id" AND contributor."deletedAt" IS NULL
         `);
-        await tx.auditLog.createMany({
-          data: changes.map(({ id, sortOrder, previousOrder }) => ({
-            authorId: user.id,
-            action: 'update',
-            entity: 'contributor',
-            entityId: id,
-            details: { sortOrder: { from: previousOrder, to: sortOrder } },
-          })),
+        await logAudit(tx, {
+          authorId: user.id,
+          action: 'update',
+          entity: 'contributor',
+          details: {
+            order: {
+              from: previousOrder.map(({ name }) => name),
+              to: result.data.map((id) => contributorsById.get(id)!.name),
+            },
+          },
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }

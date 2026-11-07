@@ -69,6 +69,7 @@ enum AuditEntity {
   topic
   strategicLine
   contributor
+  publicSettings
   authentication
 }
 
