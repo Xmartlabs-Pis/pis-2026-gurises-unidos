@@ -106,8 +106,7 @@ export function ProjectsCardList({
 
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<number> | null>(null);
   const [isSelectingAll, setIsSelectingAll] = useState(false);
-  const [chosenReportYear, setChosenReportYear] = useState<number | null>(null);
-  const reportYear = chosenReportYear ?? beneficiaryYear ?? years[0];
+  const reportYear = beneficiaryYear;
   const selectedCount = selectedIds?.size ?? 0;
 
   function toggleSelection(id: number) {
@@ -132,10 +131,10 @@ export function ProjectsCardList({
     }
   }
 
-  const reportRequest: ImpactReportRequest = {
-    year: reportYear,
-    projectIds: [...(selectedIds ?? [])],
-  };
+  const reportRequest: ImpactReportRequest | undefined =
+    reportYear === undefined
+      ? undefined
+      : { year: reportYear, projectIds: [...(selectedIds ?? [])] };
 
   const exportReportButton = (
     <Button
@@ -160,32 +159,12 @@ export function ProjectsCardList({
             : `${selectedCount} proyectos seleccionados`}
         </p>
         <p className="text-muted-foreground text-xs leading-4">
-          Elegí los proyectos a incluir en el reporte. Podés usar los filtros para encontrarlos.
+          {reportYear === undefined
+            ? 'Elegí un año en los filtros para exportar el reporte.'
+            : `Elegí los proyectos a incluir en el reporte ${reportYear}. Podés usar los filtros para encontrarlos.`}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {reportYear !== undefined && (
-          <Select<number>
-            items={years.map((y) => ({ value: y, label: String(y) }))}
-            value={reportYear}
-            onValueChange={(value) => value !== null && setChosenReportYear(value)}
-          >
-            <SelectTrigger aria-label="Año del reporte" className="h-8 w-auto gap-2">
-              <span className="text-muted-foreground text-sm">Año del reporte:</span>
-              <SelectValue className="text-primary text-sm" />
-            </SelectTrigger>
-            <SelectContent
-              alignItemWithTrigger={false}
-              className="max-h-[min(15rem,var(--available-height))]"
-            >
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
         <Button
           variant="ghost"
           size="sm"
@@ -204,21 +183,14 @@ export function ProjectsCardList({
         >
           Limpiar selección
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            setSelectedIds(null);
-            setChosenReportYear(null);
-          }}
-        >
+        <Button variant="outline" size="sm" onClick={() => setSelectedIds(null)}>
           Cancelar
         </Button>
         <ExportPdfButton
           href="/api/reports/impact"
           body={reportRequest}
           label="Exportar"
-          disabled={selectedCount === 0}
+          disabled={selectedCount === 0 || reportRequest === undefined}
           className="h-8 rounded-md px-3"
         />
       </div>

@@ -81,15 +81,15 @@ describe('report routes', () => {
     vi.mocked(getImpactReportData).mockResolvedValue(null);
 
     await impactRequest({ year: 1999, projectIds: [1] });
-    await impactRequest({ projectIds: [1] });
 
-    expect(vi.mocked(getImpactReportData).mock.calls.map(([, year]) => year)).toEqual([2026, 2026]);
+    expect(getImpactReportData).toHaveBeenCalledWith([1], 2026);
   });
 
   it.each([
     { year: 2026, projectIds: [] },
     { year: 2026, projectIds: [0] },
     { year: 2026 },
+    { projectIds: [1] },
     'nope',
   ])('rejects an invalid project selection %#', async (body) => {
     const response = await impactRequest(body);

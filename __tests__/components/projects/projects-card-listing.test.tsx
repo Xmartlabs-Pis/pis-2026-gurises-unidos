@@ -623,7 +623,7 @@ test('restores the project links when the selection is cancelled', () => {
   expect(screen.getByRole('button', { name: 'Exportar reporte' })).toBeTruthy();
 });
 
-test('uses the latest year for the report when listing all years', () => {
+test('asks for a year before exporting when listing all years', () => {
   render(
     <ProjectsCardList
       projects={[buildProject(1, 'Alpha')]}
@@ -638,7 +638,9 @@ test('uses the latest year for the report when listing all years', () => {
   );
 
   startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
 
-  expect(screen.getByRole('combobox', { name: 'Año del reporte' }).textContent).toContain('2025');
-  expect(screen.queryByText(/reporte 2025/)).toBeNull();
+  expect(screen.getByText('Elegí un año en los filtros para exportar el reporte.')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
+  expect(screen.queryByRole('combobox', { name: 'Año del reporte' })).toBeNull();
 });
