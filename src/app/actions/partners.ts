@@ -73,7 +73,7 @@ export async function createPartner(
         const partner = existing
           ? await tx.partner.update({
               where: { id: existing.id },
-              data: { isActive: true, showPublicly: true, counterpartyType, sortOrder },
+              data: { isActive: true, showPublicly: false, counterpartyType, sortOrder },
             })
           : await tx.partner.create({ data: { name, counterpartyType, sortOrder } });
 
@@ -273,7 +273,7 @@ export async function editPartner(
       if (duplicate) {
         return duplicate.isActive
           ? 'Ya existe un socio con ese nombre.'
-          : 'Ese nombre pertenece a un socio dado de baja. Elegí otro nombre.';
+          : 'Ya existe un socio dado de baja con ese nombre. Para recuperarlo, crealo de nuevo desde "Agregar".';
       }
 
       if (counterpartyType !== partner.counterpartyType) {

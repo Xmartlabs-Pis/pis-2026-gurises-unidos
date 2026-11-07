@@ -282,7 +282,7 @@ model Partner {
   counterpartyType CounterpartyType
   sortOrder        Int              @default(0)
   isActive         Boolean          @default(true)
-  showPublicly     Boolean          @default(true)
+  showPublicly     Boolean          @default(false)
 
   projects Project[]
 }

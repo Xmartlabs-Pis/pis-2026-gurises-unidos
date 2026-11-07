@@ -124,9 +124,10 @@ test('creates a trimmed partner with its type and deactivates it, recording both
     name: 'New partner',
     counterpartyType: 'publicSector',
     isActive: true,
-    showPublicly: true,
+    showPublicly: false,
   });
   expect((await getManagedPartners()).map(({ id }) => id)).toContain(partner!.id);
+  expect((await getPublicPartners()).map(({ id }) => id)).not.toContain(partner!.id);
   expect((await deletePartner(partner!.id)).success).toBe(true);
   expect((await getManagedPartners()).map(({ id }) => id)).not.toContain(partner!.id);
   const deleted = await prisma.partner.findUniqueOrThrow({ where: { id: partner!.id } });
@@ -138,10 +139,10 @@ test('creates a trimmed partner with its type and deactivates it, recording both
   expect(logs.map(({ action }) => action)).toEqual(['creation', 'deletion']);
 });
 
-test('reactivates a deleted partner with the new type, visible and at the end', async () => {
+test('reactivates a deleted partner with the new type, hidden and at the end', async () => {
   signInAs(seed.adminId, 'admin');
   const partner = await createFixture('Returning partner', false);
-  await prisma.partner.update({ where: { id: partner.id }, data: { showPublicly: false } });
+  await prisma.partner.update({ where: { id: partner.id }, data: { showPublicly: true } });
   await createFixture('Active partner');
   const { result } = await createThroughAction('RETURNING PARTNER', 'internationalCooperation');
   expect(result.success).toBe(true);
@@ -150,9 +151,10 @@ test('reactivates a deleted partner with the new type, visible and at the end', 
     name: 'Returning partner',
     counterpartyType: 'internationalCooperation',
     isActive: true,
-    showPublicly: true,
+    showPublicly: false,
   });
-  expect((await getPublicPartners()).at(-1)?.id).toBe(partner.id);
+  expect((await getPublicPartners()).map(({ id }) => id)).not.toContain(partner.id);
+  expect((await getMetricsPartners()).at(-1)?.id).toBe(partner.id);
 });
 
 test('does not delete or audit an already deleted partner again', async () => {

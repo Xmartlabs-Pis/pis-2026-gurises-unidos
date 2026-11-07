@@ -546,6 +546,7 @@ async function main() {
       await tx.partner.createMany({
         data: PARTNERS.map((partner, index) => ({
           ...partner,
+          showPublicly: true,
           sortOrder: (partnerOrder.sortOrder ?? 0) + index + 1,
         })),
         skipDuplicates: true,
