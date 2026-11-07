@@ -49,48 +49,39 @@ export async function getImpactReportData(
   const previousYear = year - 1;
   const isCurrentYear = year === getCurrentYear();
 
-  const [
-    current,
-    previous,
-    projects,
-    categories,
-    categoryTotals,
-    departmentTotal,
-    pending,
-    selectedProjects,
-  ] = await Promise.all([
-    getMetricValues(year, projectWhere),
-    getMetricValues(previousYear, projectWhere),
-    prisma.project.findMany({
-      where: { ...projectWhere, deletedAt: null, projectBeneficiaries: { some: { year } } },
-      select: {
-        geographicScope: true,
-        countries: true,
-        region: true,
-        topics: { select: { name: true } },
-        departments: { select: { name: true } },
-      },
-    }),
-    getActiveBeneficiaryCategories(),
-    sumBeneficiaryCounts({ year, project: { ...projectWhere, deletedAt: null } }),
-    prisma.department.count(),
-    isCurrentYear
-      ? prisma.project.count({
-          where: {
-            AND: [projectWhere, { OR: [{ endYear: null }, { endYear: { gte: year } }] }],
-            deletedAt: null,
-            status: 'active',
-            startYear: { lte: year },
-            projectBeneficiaries: { none: { year } },
-          },
-        })
-      : null,
-    prisma.project.findMany({
-      where: { ...projectWhere, deletedAt: null },
-      select: { name: true, publicDescription: true, generalObjective: true },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
-    }),
-  ]);
+  const [current, previous, projects, categories, categoryTotals, departmentTotal, pending] =
+    await Promise.all([
+      getMetricValues(year, projectWhere),
+      getMetricValues(previousYear, projectWhere),
+      prisma.project.findMany({
+        where: { ...projectWhere, deletedAt: null, projectBeneficiaries: { some: { year } } },
+        select: {
+          name: true,
+          publicDescription: true,
+          generalObjective: true,
+          geographicScope: true,
+          countries: true,
+          region: true,
+          topics: { select: { name: true } },
+          departments: { select: { name: true } },
+        },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      }),
+      getActiveBeneficiaryCategories(),
+      sumBeneficiaryCounts({ year, project: { ...projectWhere, deletedAt: null } }),
+      prisma.department.count(),
+      isCurrentYear
+        ? prisma.project.count({
+            where: {
+              AND: [projectWhere, { OR: [{ endYear: null }, { endYear: { gte: year } }] }],
+              deletedAt: null,
+              status: 'active',
+              startYear: { lte: year },
+              projectBeneficiaries: { none: { year } },
+            },
+          })
+        : null,
+    ]);
 
   if (current.active_projects === 0) return null;
 
@@ -162,7 +153,7 @@ export async function getImpactReportData(
           .flatMap((project) => getTerritoryNames(project))
       ),
     ].sort((a, b) => a.localeCompare(b, 'es')),
-    projects: selectedProjects.map(({ name, publicDescription, generalObjective }) => ({
+    projects: projects.map(({ name, publicDescription, generalObjective }) => ({
       name,
       description: publicDescription || generalObjective || null,
     })),

@@ -725,3 +725,37 @@ test('blocks the export when no selected project has data', () => {
   expect(screen.getByText('Los proyectos seleccionados no tienen datos cargados.')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
 });
+
+test('exports the filtered year once a year is chosen after mixing years', async () => {
+  const { fetchMock, restore } = stubPdfDownload();
+  const { rerender } = render(
+    buildAllYearsList([
+      buildProject(1, 'Alpha', 'active', withDataIn(2026)),
+      buildProject(2, 'Beta', 'active', withDataIn(2025)),
+    ])
+  );
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+  expect(screen.getByText(MIXED_YEARS_WARNING)).toBeTruthy();
+
+  rerender(
+    buildList({
+      projects: [
+        buildProject(1, 'Alpha', 'active', withDataIn(2025)),
+        buildProject(2, 'Beta', 'active', withDataIn(2025)),
+      ],
+      beneficiaryYear: 2025,
+    })
+  );
+
+  expect(screen.queryByText(MIXED_YEARS_WARNING)).toBeNull();
+  await exportReport();
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/reports/impact',
+    expect.objectContaining({ body: JSON.stringify({ year: 2025, projectIds: [1, 2] }) })
+  );
+  restore();
+});

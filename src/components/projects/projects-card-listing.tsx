@@ -108,7 +108,7 @@ export function ProjectsCardList({
   const [isSelectingAll, setIsSelectingAll] = useState(false);
   const selectedCount = selectedIds?.size ?? 0;
   const selectedYears = [...new Set([...(selectedIds?.values() ?? [])].filter((y) => y !== null))];
-  const reportYear = selectedYears.length === 1 ? selectedYears[0] : undefined;
+  const reportYear = beneficiaryYear ?? (selectedYears.length === 1 ? selectedYears[0] : undefined);
 
   function toggleSelection(id: number, dataYear: number | null) {
     setSelectedIds((current) => {
@@ -142,11 +142,13 @@ export function ProjectsCardList({
       : { year: reportYear, projectIds: [...(selectedIds?.keys() ?? [])] };
 
   const selectionWarning =
-    selectedYears.length > 1
-      ? 'Los proyectos seleccionados tienen datos de distintos años y no se puede exportar un reporte con varios años. Elegí un año en los filtros.'
-      : selectedCount > 0 && selectedYears.length === 0
-        ? 'Los proyectos seleccionados no tienen datos cargados.'
-        : null;
+    beneficiaryYear !== undefined
+      ? null
+      : selectedYears.length > 1
+        ? 'Los proyectos seleccionados tienen datos de distintos años y no se puede exportar un reporte con varios años. Elegí un año en los filtros.'
+        : selectedCount > 0 && selectedYears.length === 0
+          ? 'Los proyectos seleccionados no tienen datos cargados.'
+          : null;
 
   const exportReportButton = (
     <Button

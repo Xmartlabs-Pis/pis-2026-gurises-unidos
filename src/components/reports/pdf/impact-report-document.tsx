@@ -160,7 +160,7 @@ function ImpactProjectsPage({ data, logo }: ImpactPageProps) {
       <Section
         first
         title="4) Proyectos incluidos"
-        note={`${pluralize(data.projects.length, 'proyecto seleccionado', 'proyectos seleccionados')} para este informe.`}
+        note={`${pluralize(data.projects.length, 'proyecto', 'proyectos')} con datos cargados en ${data.year}.`}
       >
         <ProjectList projects={data.projects} />
       </Section>
