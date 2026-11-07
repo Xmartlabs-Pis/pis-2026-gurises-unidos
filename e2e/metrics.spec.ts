@@ -61,6 +61,6 @@ test('records every public view change in the history as one entry per section',
   await expect(entry).toHaveCount(1);
   await expect(entry).toContainText(`${VISIBLE_METRIC}: Sí → No`);
   await expect(
-    page.getByText('Cards de métricas', { exact: true }).filter({ visible: true })
+    page.getByRole('table').getByRole('row').filter({ hasText: 'Cards de métricas' })
   ).toHaveCount(1);
 });
