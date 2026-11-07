@@ -103,3 +103,15 @@ test('keeps hidden partners after the visible ones when saving the order', async
   fireEvent.keyDown(screen.getByRole('button', { name: 'Reordenar INAU' }), { key: 'ArrowRight' });
   await waitFor(() => expect(reorderPartners).toHaveBeenCalledWith([3, 1, 2]));
 });
+
+test('skips the drag handle of hidden partners when tabbing, leaving the eye reachable', () => {
+  render(<PartnersManager partners={[{ id: 1, name: 'BASF', showPublicly: false }]} />);
+  expect(screen.getByRole('button', { name: 'Arrastrar BASF' }).getAttribute('tabindex')).toBe(
+    '-1'
+  );
+  expect(
+    screen
+      .getByRole('button', { name: 'Mostrar BASF en el sitio público' })
+      .getAttribute('tabindex')
+  ).toBeNull();
+});

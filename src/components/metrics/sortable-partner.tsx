@@ -151,6 +151,7 @@ export function HiddenPartner({
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
+        tabIndex={-1}
         type="button"
         aria-label={`Arrastrar ${partner.name}`}
         disabled={dragDisabled}

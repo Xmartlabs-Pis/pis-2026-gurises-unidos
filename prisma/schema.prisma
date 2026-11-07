@@ -278,7 +278,7 @@ model PublicSettings {
 
 model Partner {
   id               Int              @id @default(autoincrement())
-  name             String           @unique @db.VarChar(100)
+  name             String           @db.VarChar(100)
   counterpartyType CounterpartyType
   sortOrder        Int              @default(0)
   isActive         Boolean          @default(true)
