@@ -20,15 +20,30 @@ import type { SectionProps } from './section-props';
 
 const VISIBLE_BENEFICIARY_FIELDS = 10;
 
-function BeneficiaryFields({ categories }: { categories: BeneficiaryCategoryOption[] }) {
-  return categories.map((field, index) => (
+function BeneficiaryField({
+  category,
+  className,
+}: {
+  category: BeneficiaryCategoryOption;
+  className?: string;
+}) {
+  return (
     <TextInputField
-      key={field.key}
-      id={field.key}
-      name={field.key}
-      label={field.name}
+      id={category.key}
+      name={category.key}
+      label={category.name}
       type="text"
       inputMode="numeric"
+      className={className}
+    />
+  );
+}
+
+function BeneficiaryFields({ categories }: { categories: BeneficiaryCategoryOption[] }) {
+  return categories.map((category, index) => (
+    <BeneficiaryField
+      key={category.key}
+      category={category}
       className={cn(
         'sm:row-span-2 sm:grid sm:grid-rows-subgrid sm:*:data-[slot=field-label]:self-end',
         index === categories.length - 1 && index % 2 === 0 && 'sm:col-span-2'
@@ -65,8 +80,12 @@ export function BeneficiariesSection({
         record[DIRECT_CHILDREN_KEY] > 0
     );
 
-  const visibleCategories = beneficiaryCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS);
-  const extraCategories = beneficiaryCategories.slice(VISIBLE_BENEFICIARY_FIELDS);
+  const directChildrenCategory = beneficiaryCategories.find(
+    ({ key }) => key === DIRECT_CHILDREN_KEY
+  );
+  const otherCategories = beneficiaryCategories.filter(({ key }) => key !== DIRECT_CHILDREN_KEY);
+  const visibleCategories = otherCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS - 1);
+  const extraCategories = otherCategories.slice(VISIBLE_BENEFICIARY_FIELDS - 1);
   const extraKeys = extraCategories.map(({ key }) => key);
   const formValues = useWatch<ProjectFormValues>();
   const { errors } = useFormState<ProjectFormValues>();
@@ -168,7 +187,8 @@ export function BeneficiariesSection({
           />
         ))}
       </div>
-      <div className="sm:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-4 sm:col-span-2 sm:grid-cols-2">
+        {directChildrenCategory && <BeneficiaryField category={directChildrenCategory} />}
         <SelectField
           id="intensity"
           name="intensity"
