@@ -6,6 +6,7 @@ export const PRESERVED_FIELDS = ['firstName', 'lastName', 'documentId', 'email',
 export type PreservedField = (typeof PRESERVED_FIELDS)[number];
 
 export type UserFormState = {
+  success?: boolean;
   errors?: Record<string, string[]>;
   formError?: string;
   values?: Partial<Record<PreservedField, string>>;
