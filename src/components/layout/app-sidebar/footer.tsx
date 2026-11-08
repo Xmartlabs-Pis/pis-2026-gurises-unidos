@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { startTransition, type ReactNode, type SubmitEvent } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { NavigationGuardLink as Link } from 'nextjs-nav-guard';
 import { usePendingChangesContext } from '@/components/ui/forms/pending-changes-provider';
 import { logout } from '@/app/actions/auth';
@@ -50,11 +50,16 @@ function SidebarUser({ user }: Props) {
 function LogoutForm({ children }: { children: ReactNode }) {
   const { confirmLeave } = usePendingChangesContext();
 
-  async function submit() {
-    if (await confirmLeave()) await logout();
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (await confirmLeave()) {
+      startTransition(async () => {
+        await logout();
+      });
+    }
   }
 
-  return <form action={submit}>{children}</form>;
+  return <form onSubmit={onSubmit}>{children}</form>;
 }
 
 function LogoutButton() {
@@ -74,6 +79,7 @@ function LogoutButton() {
 export function AppSidebarFooter({ user }: Props) {
   const { isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
 
   if (isMobile) {
     return (
@@ -127,7 +133,17 @@ export function AppSidebarFooter({ user }: Props) {
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem render={<Link href="/management/profile" />}>
+              <DropdownMenuItem
+                render={
+                  <Link
+                    href="/management/profile"
+                    onNavigate={(event) => {
+                      event.preventDefault();
+                      router.push('/management/profile');
+                    }}
+                  />
+                }
+              >
                 <UserRound />
                 <span>Mi perfil</span>
               </DropdownMenuItem>
