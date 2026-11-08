@@ -47,7 +47,7 @@ test('shows and hides metrics on the public report', async ({ page }) => {
   await expect(publicStats(page)).not.toContainText(VISIBLE_METRIC);
 });
 
-test('records every public view change in the history as one entry per section', async ({
+test('records every public report change in the history as one entry per section', async ({
   page,
 }) => {
   await page.goto('/management/metrics');

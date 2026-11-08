@@ -6,7 +6,7 @@ import {
   COVER_PHOTO_UPDATE_LABEL,
   PROJECT_FIELD_LABELS,
   PROJECT_TEXT_CHANGE_LABELS,
-  PUBLIC_VIEW_FIELD_LABELS,
+  PUBLIC_REPORT_FIELD_LABELS,
 } from '@/lib/audit-log/constants';
 import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
 import {
@@ -33,7 +33,7 @@ const auditDetailsSchema = z
 
 type AuditChange = { field: string; from: unknown; to: unknown };
 
-const PUBLIC_VIEW_ENTITIES = new Set<ListedAuditEntity>([
+const PUBLIC_REPORT_ENTITIES = new Set<ListedAuditEntity>([
   'publicSettings',
   'metric',
   'topic',
@@ -116,7 +116,7 @@ export function describeAuditDetails(
       ? formatChanges(details.changes, USER_FIELD_LABELS, USER_VALUE_LABELS)
       : null;
   }
-  if (PUBLIC_VIEW_ENTITIES.has(entry.entity)) {
+  if (PUBLIC_REPORT_ENTITIES.has(entry.entity)) {
     if (details.previousName !== undefined && details.name !== undefined) {
       return `Nombre: ${details.previousName} → ${details.name}`;
     }
@@ -124,7 +124,7 @@ export function describeAuditDetails(
       return `${details.order.from.join(', ')} → ${details.order.to.join(', ')}`;
     }
     return details.changes?.length
-      ? formatChanges(details.changes, PUBLIC_VIEW_FIELD_LABELS)
+      ? formatChanges(details.changes, PUBLIC_REPORT_FIELD_LABELS)
       : null;
   }
   if (details.changes?.length) {
