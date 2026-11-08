@@ -196,10 +196,13 @@ export function MetricsForm({
                 {topics.map((topic) => (
                   <div
                     key={topic.id}
-                    className="bg-card border-border-default flex items-center justify-between gap-4 rounded-xl border p-4"
+                    className="bg-card border-border-default flex min-w-0 items-center justify-between gap-4 rounded-xl border p-4"
                   >
-                    <label htmlFor={`topic-${topic.id}-visibility`} className="cursor-pointer">
-                      <span className="block font-medium">{topic.name}</span>
+                    <label
+                      htmlFor={`topic-${topic.id}-visibility`}
+                      className="min-w-0 flex-1 cursor-pointer"
+                    >
+                      <span className="block font-medium wrap-anywhere">{topic.name}</span>
                       <span className="text-muted-foreground text-sm">
                         {formatNumber(topic.projectCount)}{' '}
                         {topic.projectCount === 1 ? 'proyecto' : 'proyectos'}
