@@ -13,7 +13,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumber } from '@/lib/format';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
-import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
+import type { MetricSetting } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 import { notify } from '@/lib/notify';
 import type { TopicVisibilitySetting } from '@/lib/metrics/topic-visibility';
 import { PublishedYearsSelect } from '@/components/metrics/published-years-select';
@@ -311,7 +312,7 @@ export function MetricsForm({
             {hasUnsavedChanges && (
               <span className="flex items-center gap-2">
                 <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
-                Cambios sin guardar
+                <span>Cambios sin guardar</span>
               </span>
             )}
           </span>

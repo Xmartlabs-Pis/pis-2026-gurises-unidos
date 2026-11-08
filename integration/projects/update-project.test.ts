@@ -690,6 +690,149 @@ describe('updateProject (integration)', () => {
 
     expect((await loadProject(projectId)).leadCoordinatorId).toBe(seed.adminId);
   });
+
+  test('rejects a coordinator who tries to change the lead coordinator', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.coordinatorId);
+    const before = await loadProject(projectId);
+
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ name: 'Should not persist', leadCoordinatorId: String(seed.adminId) })
+    );
+
+    expect(result.errors?.leadCoordinatorId).toEqual([
+      'Solo un administrador puede cambiar el coordinador responsable.',
+    ]);
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
+  test('persists and audits a change of strategic lines', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({ strategicLineIds: [String(seed.strategicLineIds[1])] })
+      ),
+      projectId
+    );
+
+    expect((await loadProject(projectId)).strategicLines).toEqual([
+      { id: seed.strategicLineIds[1] },
+    ]);
+    expect(await auditLogsFor(projectId)).toEqual([
+      expect.objectContaining({
+        entity: 'project',
+        details: expect.objectContaining({ changedFields: ['strategicLines'] }),
+      }),
+    ]);
+  });
+
+  test('rejects an inactive strategic line without touching the project', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+    const unknownLineId = Math.max(0, ...seed.strategicLineIds) + 1000;
+
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ name: 'Should not persist', strategicLineIds: [String(unknownLineId)] })
+    );
+
+    expect(result.errors?.strategicLineIds).toEqual(['Elegí líneas estratégicas activas']);
+    expect(await loadProject(projectId)).toEqual(before);
+  });
+
+  test('rejects a name already used by another project in the same start year', async () => {
+    const otherId = await createProjectFixture();
+    await prisma.project.update({ where: { id: otherId }, data: { name: 'Taken name' } });
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    const result = await updateProject(projectId, {}, buildFormData({ name: 'taken name' }));
+
+    expect(result.errors?.name).toHaveLength(1);
+    expect(await loadProject(projectId)).toEqual(before);
+  });
+
+  test('replaces the cover with a placeholder and clears the crop when it is removed', async () => {
+    const projectId = await createProjectFixture();
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        coverPhoto: '/images/project-placeholders/1.webp',
+        coverCrop: { x: 0, y: 0, width: 50, height: 50 },
+      },
+    });
+    signInAs(seed.adminId);
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: '/images/project-placeholders/2.webp',
+        })
+      ),
+      projectId
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      coverPhoto: '/images/project-placeholders/2.webp',
+      coverCrop: null,
+    });
+    expect(await auditLogsFor(projectId)).toEqual([
+      expect.objectContaining({
+        details: expect.objectContaining({ changedFields: ['coverPhoto', 'coverCrop'] }),
+      }),
+    ]);
+  });
+
+  test('persists a new crop of the current cover', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const coverCrop = { x: 10, y: 20, width: 30, height: 40 };
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ coverCrop: JSON.stringify(coverCrop) })),
+      projectId
+    );
+
+    expect((await loadProject(projectId)).coverCrop).toEqual(coverCrop);
+    expect(await auditLogsFor(projectId)).toEqual([
+      expect.objectContaining({
+        details: expect.objectContaining({ changedFields: ['coverCrop'] }),
+      }),
+    ]);
+  });
+
+  test('rejects an uploaded cover that is no longer available', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({
+        name: 'Should not persist',
+        coverPhotoPath: '/uploads/covers/00000000-0000-4000-8000-000000000000.webp',
+      })
+    );
+
+    expect(result.formError).toBe(
+      'La imagen de portada que elegiste ya no está disponible. Elegí otra.'
+    );
+    expect(await loadProject(projectId)).toEqual(before);
+  });
 });
 
 describe('createProject counterparty (integration)', () => {

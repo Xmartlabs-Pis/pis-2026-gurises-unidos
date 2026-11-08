@@ -21,6 +21,7 @@ import {
   type ProfileFormState,
   type ProfileFormValues,
 } from '@/lib/validation/profile';
+import { formDataFromSubmit } from '@/lib/forms';
 
 const INITIAL_STATE: ProfileFormState = {};
 const PROFILE_FORM_ID = 'profile-form';
@@ -55,10 +56,10 @@ function ProfileFormFields({ profile, onCancel }: { profile: Profile; onCancel: 
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
       startTransition(() => {
-        formAction(new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }

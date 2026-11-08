@@ -145,7 +145,7 @@ export async function createUser(
   redirect('/management/users');
 }
 
-export type ResendInvitationResult = { error?: string; success?: boolean };
+type ResendInvitationResult = { error?: string; success?: boolean };
 
 export async function resendInvitation(userId: number): Promise<ResendInvitationResult> {
   const actor = await requireUser();
@@ -189,9 +189,9 @@ export async function resendInvitation(userId: number): Promise<ResendInvitation
   return { success: true };
 }
 
-export type ToggleableUserStatus = Extract<UserStatus, 'active' | 'disabled'>;
+type ToggleableUserStatus = Extract<UserStatus, 'active' | 'disabled'>;
 
-export type UpdateUserStatusResult = { error?: string; success?: boolean };
+type UpdateUserStatusResult = { error?: string; success?: boolean };
 
 export async function updateUserStatus(
   userId: number,
@@ -275,7 +275,7 @@ export async function updateUserStatus(
   return { success: true };
 }
 
-export type DeleteUserResult = { error?: string; success?: boolean };
+type DeleteUserResult = { error?: string; success?: boolean };
 
 export async function deleteUser(userId: number): Promise<DeleteUserResult> {
   const actor = await requireUser();

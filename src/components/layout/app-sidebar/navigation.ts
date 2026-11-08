@@ -132,7 +132,7 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
   },
 ];
 
-export function canAccessNavItem(item: NavigationItem, role: UserRole) {
+function canAccessNavItem(item: NavigationItem, role: UserRole) {
   return !item.roles || item.roles.includes(role);
 }
 
