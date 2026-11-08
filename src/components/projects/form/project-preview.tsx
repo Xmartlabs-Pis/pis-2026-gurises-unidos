@@ -27,7 +27,7 @@ export function ProjectPreview({
       </div>
 
       <div className="bg-muted flex flex-col items-center gap-3 px-6 py-8">
-        <Card className="theme-public bg-card text-card-foreground w-full max-w-[377px] gap-0 overflow-hidden rounded-xl border-0 py-0 shadow-none ring-0">
+        <Card className="theme-public text-card-foreground w-full max-w-[377px] gap-0 overflow-hidden rounded-xl border-0 bg-white py-0 shadow-none ring-0">
           <CoverFrame
             src={values.coverPhotoUrl}
             alt=""
