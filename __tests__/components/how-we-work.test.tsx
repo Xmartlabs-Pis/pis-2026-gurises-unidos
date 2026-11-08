@@ -41,6 +41,36 @@ function selectedTitle() {
     ?.textContent;
 }
 
+test.each([
+  { title: 'Individual', photos: [8] },
+  { title: 'Familiar', photos: [1, 5] },
+  { title: 'Institucional', photos: [2, 3, 7] },
+  { title: 'Comunitario', photos: [4, 6] },
+])('cycles only through assigned photos for $title', ({ title, photos }) => {
+  render(<HowWeWork />);
+
+  for (const number of [...photos, ...photos]) {
+    fireEvent.click(screen.getByRole('tab', { name: title }));
+    const image = screen.getByRole('img');
+    expect(decodeURIComponent(image.getAttribute('src')!)).toContain(
+      `/assets/how-we-work/how-we-work-${number}.webp`
+    );
+    expect(image.getAttribute('alt')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('tab', { selected: true }), { key: 'ArrowDown' });
+  }
+});
+
+test('automatically rotates categories and advances their assigned photos on each visit', () => {
+  render(<HowWeWork />);
+
+  for (const number of [8, 1, 2, 4, 8, 5, 3, 6, 8, 1, 7, 4]) {
+    expect(decodeURIComponent(screen.getByRole('img').getAttribute('src')!)).toContain(
+      `/assets/how-we-work/how-we-work-${number}.webp`
+    );
+    advance(12100);
+  }
+});
+
 test('automatically visits all four levels and loops to the first', () => {
   render(<HowWeWork />);
   expect(selectedTitle()).toContain('Individual');

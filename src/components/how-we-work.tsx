@@ -1,39 +1,79 @@
 'use client';
 
 import Image from 'next/image';
-import { useId, type CSSProperties } from 'react';
+import { useId, useState, type CSSProperties } from 'react';
 import { useTimedSelection } from '@/hooks/use-timed-selection';
 import { TimedSelectionControl } from '@/components/timed-selection-control';
+import workPhoto1 from '@/assets/how-we-work/how-we-work-1.webp';
+import workPhoto2 from '@/assets/how-we-work/how-we-work-2.webp';
+import workPhoto3 from '@/assets/how-we-work/how-we-work-3.webp';
+import workPhoto4 from '@/assets/how-we-work/how-we-work-4.webp';
+import workPhoto5 from '@/assets/how-we-work/how-we-work-5.webp';
+import workPhoto6 from '@/assets/how-we-work/how-we-work-6.webp';
+import workPhoto7 from '@/assets/how-we-work/how-we-work-7.webp';
+import workPhoto8 from '@/assets/how-we-work/how-we-work-8.webp';
 
 const LEVELS = [
   {
     title: 'Individual',
+    photoNumbers: [8],
     description: 'Niños, niñas, adolescentes y jóvenes: acompañamiento directo y personalizado.',
-    image: '/images/how-we-work/how-we-work-1.jpg',
-    imageAlt: 'Niños y niñas realizan una actividad grupal alrededor de una mesa.',
   },
   {
     title: 'Familiar',
+    photoNumbers: [1, 5],
     description: 'La familia como unidad: fortalecimiento de vínculos y entornos protectores.',
-    image: '/images/how-we-work/how-we-work-2.jpg',
-    imageAlt: 'Niños y niñas realizan una actividad grupal alrededor de una mesa.',
   },
   {
     title: 'Institucional',
+    photoNumbers: [2, 3, 7],
     description: 'Escuelas, centros de salud e instituciones que rodean a cada gurí.',
-    image: '/images/how-we-work/how-we-work-3.jpg',
-    imageAlt: 'Niños y niñas realizan una actividad grupal alrededor de una mesa.',
   },
   {
     title: 'Comunitario',
+    photoNumbers: [4, 6],
     description: 'Territorios y comunidades donde se teje la red de protección.',
-    image: '/images/how-we-work/how-we-work-4.jpg',
-    imageAlt: 'Niños y niñas realizan una actividad grupal alrededor de una mesa.',
+  },
+];
+
+const PHOTOS = [
+  { src: workPhoto1, alt: 'Jóvenes pintan un mural en grupo.' },
+  {
+    src: workPhoto2,
+    alt: 'Jóvenes participan en una actividad deportiva en una cancha cubierta.',
+  },
+  {
+    src: workPhoto3,
+    alt: 'Niños y niñas juegan al fútbol al aire libre.',
+  },
+  {
+    src: workPhoto4,
+    alt: 'Participantes de una jornada grupal se reúnen en un espacio verde.',
+  },
+  {
+    src: workPhoto5,
+    alt: 'Niños y niñas pintan juntos sobre una superficie compartida.',
+  },
+  {
+    src: workPhoto6,
+    alt: 'Un grupo posa en una estructura de madera entre los árboles.',
+  },
+  {
+    src: workPhoto7,
+    alt: 'Niños, niñas y adultos celebran una actividad al aire libre con papel picado.',
+  },
+  {
+    src: workPhoto8,
+    alt: 'Una niña dibuja con lápices de colores en una mesa.',
   },
 ];
 
 export function HowWeWork() {
   const imageClipId = useId();
+  const [selection, setSelection] = useState({
+    activeIndex: 0,
+    photoPositions: LEVELS.map(() => 0),
+  });
   const {
     activeIndex,
     sectionRef,
@@ -44,6 +84,19 @@ export function HowWeWork() {
     isPaused,
     togglePause,
   } = useTimedSelection(LEVELS.length);
+
+  if (selection.activeIndex !== activeIndex) {
+    setSelection({
+      activeIndex,
+      photoPositions: selection.photoPositions.map((position, index) =>
+        index === selection.activeIndex
+          ? (position + 1) % LEVELS[index].photoNumbers.length
+          : position
+      ),
+    });
+  }
+
+  const photoIndex = LEVELS[activeIndex].photoNumbers[selection.photoPositions[activeIndex]] - 1;
 
   return (
     <div
@@ -63,15 +116,15 @@ export function HowWeWork() {
           } as CSSProperties
         }
       >
-        {LEVELS.map((level, index) => (
+        {PHOTOS.map((photo, index) => (
           <Image
-            key={level.title}
-            src={level.image}
-            alt={index === activeIndex ? level.imageAlt : ''}
-            aria-hidden={index !== activeIndex}
+            key={index}
+            src={photo.src}
+            alt={index === photoIndex ? photo.alt : ''}
+            aria-hidden={index !== photoIndex}
             fill
             sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
-            className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === activeIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
+            className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === photoIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
           />
         ))}
         <div
