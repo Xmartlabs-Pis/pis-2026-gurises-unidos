@@ -6,7 +6,7 @@ describe('sidebar navigation', () => {
     const items = filterNavGroups(NAV_GROUPS, role).flatMap((group) => group.items);
 
     expect(items.find((item) => item.id === 'publicReport')).toMatchObject({
-      title: 'Reporte público',
+      title: 'Reporte Público',
       href: '/',
     });
   });
