@@ -125,9 +125,7 @@ test.each(['admin', 'coordinator'])(
     expect(
       screen.getByRole('button', { name: 'Publicar dashboard' }).hasAttribute('disabled')
     ).toBe(true);
-    expect(screen.getByRole('button', { name: 'Exportar reporte' }).hasAttribute('disabled')).toBe(
-      false
-    );
+    expect(screen.queryByRole('button', { name: 'Exportar reporte' })).toBeNull();
     expect(screen.queryByText('Cargar métricas')).toBeNull();
     expect(screen.getByText('Nuevo proyecto').closest('a')?.getAttribute('href')).toBe(
       '/dashboard/projects/new'

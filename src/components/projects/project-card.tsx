@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import type { KeyboardEvent } from 'react';
+import { CheckIcon } from 'lucide-react';
+import { cn } from 'cn';
 import { CoverFrame } from '@/components/projects/cover/cover-frame';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader } from '@/components/ui/card';
@@ -19,7 +22,10 @@ type InternalProjectCardProps = {
   intensity: ProjectListItem['intensity'];
   year: number;
   totalReach: number | null;
+  selection?: ProjectCardSelection;
 };
+
+export type ProjectCardSelection = { selected: boolean; onToggle: () => void };
 
 type PublicProjectCardProps = {
   variant: 'public-dark' | 'public-light';
@@ -124,57 +130,105 @@ function InternalProjectCard({
   intensity,
   year,
   totalReach,
+  selection,
 }: InternalProjectCardProps) {
-  return (
-    <Link href={`/dashboard/projects/${id}`} className="block h-full">
-      <Card className="bg-card flex h-full flex-col gap-3.5 rounded-lg px-5 py-4.5 hover:shadow-sm/10">
-        <CardHeader className="text-primary flex flex-row justify-between gap-3 p-0! text-base font-semibold">
+  const card = (
+    <Card
+      className={cn(
+        'bg-card flex h-full flex-col gap-3.5 rounded-lg px-5 py-4.5 transition-[background-color,opacity,box-shadow] hover:shadow-sm/10',
+        selection && !selection.selected && 'bg-muted opacity-60 hover:opacity-80',
+        selection?.selected && 'ring-primary ring-2'
+      )}
+    >
+      <CardHeader className="text-primary flex flex-row justify-between gap-3 p-0! text-base font-semibold">
+        <div className="flex min-w-0 items-start gap-2.5">
+          {selection && (
+            <span
+              aria-hidden="true"
+              className={cn(
+                'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                selection.selected
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-muted-foreground bg-card'
+              )}
+            >
+              {selection.selected && <CheckIcon className="size-3.5" strokeWidth={3} />}
+            </span>
+          )}
           <h2 className="line-clamp-2 min-w-0" title={name}>
             {name}
           </h2>
-          <Badge
-            variant={STATUS_BADGE_VARIANT[status]}
-            className="h-5.5 shrink-0 gap-2.5 rounded-lg px-5.5 py-0.5 text-xs leading-4 font-medium tracking-normal"
-          >
-            {STATUS_LABEL[status]}
-          </Badge>
-        </CardHeader>
-        <div className="flex flex-col gap-1.5">
-          <CardDescription className="flex flex-row justify-between">
-            <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
-              Territorio
-            </p>
-            <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
-              {territory}
-            </p>
-          </CardDescription>
-          <CardDescription className="flex flex-row justify-between">
-            <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
-              Coordinador/a
-            </p>
-            <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
-              {coordinator}
-            </p>
-          </CardDescription>
-          <CardDescription className="flex flex-row justify-between">
-            <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
-              Intensidad
-            </p>
-            <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
-              {getIntensityLabel(intensity)}
-            </p>
-          </CardDescription>
         </div>
-        <Separator className="mt-auto" />
-        <CardDescription className="flex flex-row items-center justify-between">
+        <Badge
+          variant={STATUS_BADGE_VARIANT[status]}
+          className="h-5.5 shrink-0 gap-2.5 rounded-lg px-5.5 py-0.5 text-xs leading-4 font-medium tracking-normal"
+        >
+          {STATUS_LABEL[status]}
+        </Badge>
+      </CardHeader>
+      <div className="flex flex-col gap-1.5">
+        <CardDescription className="flex flex-row justify-between">
           <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
-            {totalReach !== null ? `Beneficiarios ${year}` : 'Sin beneficiarios'}
+            Territorio
           </p>
-          <p className="text-primary text-xl leading-7 font-bold tracking-normal">
-            {totalReach !== null ? formatNumber(totalReach) : '—'}
+          <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
+            {territory}
           </p>
         </CardDescription>
-      </Card>
-    </Link>
+        <CardDescription className="flex flex-row justify-between">
+          <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
+            Coordinador/a
+          </p>
+          <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
+            {coordinator}
+          </p>
+        </CardDescription>
+        <CardDescription className="flex flex-row justify-between">
+          <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
+            Intensidad
+          </p>
+          <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
+            {getIntensityLabel(intensity)}
+          </p>
+        </CardDescription>
+      </div>
+      <Separator className="mt-auto" />
+      <CardDescription className="flex flex-row items-center justify-between">
+        <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
+          {totalReach !== null ? `Beneficiarios ${year}` : 'Sin beneficiarios'}
+        </p>
+        <p className="text-primary text-xl leading-7 font-bold tracking-normal">
+          {totalReach !== null ? formatNumber(totalReach) : '—'}
+        </p>
+      </CardDescription>
+    </Card>
+  );
+
+  if (!selection) {
+    return (
+      <Link href={`/dashboard/projects/${id}`} className="block h-full">
+        {card}
+      </Link>
+    );
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== ' ' && event.key !== 'Enter') return;
+    event.preventDefault();
+    selection?.onToggle();
+  }
+
+  return (
+    <div
+      role="checkbox"
+      aria-checked={selection.selected}
+      aria-label={name}
+      tabIndex={0}
+      onClick={selection.onToggle}
+      onKeyDown={handleKeyDown}
+      className="focus-visible:ring-ring/50 block h-full cursor-pointer rounded-lg outline-none focus-visible:ring-3"
+    >
+      {card}
+    </div>
   );
 }

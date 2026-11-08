@@ -41,7 +41,12 @@ import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { DUPLICATE_PROJECT_MESSAGE } from '@/lib/projects/map-project-db-error';
 import { PROJECT_LIST_PAGE_SIZE, parseProjectFilters } from '@/lib/validation/project-filters';
-import { listProjects, type ProjectListPage } from '@/lib/projects/list';
+import {
+  listProjectDataYears,
+  listProjects,
+  type ProjectDataYear,
+  type ProjectListPage,
+} from '@/lib/projects/list';
 import { getProjectAuditChanges, PROJECT_AUDIT_INCLUDE } from '@/lib/projects/audit-changes';
 import type { ProjectLocality } from '@/lib/projects/location';
 
@@ -592,16 +597,18 @@ export async function deleteProject(projectId: number): Promise<{ error?: string
   return {};
 }
 
+type ProjectListQueryInput = {
+  status: string;
+  beneficiaryYear: string;
+  search?: string;
+  departmentId?: string;
+  topicId?: string;
+  strategicLineId?: string;
+  beneficiaryCategoryId?: string;
+};
+
 export async function loadProjectsPage(
-  filters: {
-    status: string;
-    beneficiaryYear: string;
-    search?: string;
-    departmentId?: string;
-    topicId?: string;
-    strategicLineId?: string;
-    beneficiaryCategoryId?: string;
-  },
+  filters: ProjectListQueryInput,
   page: number
 ): Promise<ProjectListPage> {
   await requireUser();
@@ -613,4 +620,12 @@ export async function loadProjectsPage(
       pageSize: String(PROJECT_LIST_PAGE_SIZE),
     })
   );
+}
+
+export async function loadProjectDataYears(
+  filters: ProjectListQueryInput
+): Promise<ProjectDataYear[]> {
+  await requireUser();
+
+  return listProjectDataYears(parseProjectFilters(filters));
 }

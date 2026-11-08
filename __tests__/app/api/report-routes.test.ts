@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET as getImpactReport } from '@/app/api/reports/impact/route';
+import { POST as postImpactReport } from '@/app/api/reports/impact/route';
 import { GET as getProjectSheet } from '@/app/api/reports/projects/[id]/route';
 import { getActiveUser } from '@/lib/auth/require-user';
 import { getImpactReportData } from '@/lib/reports/impact-report';
@@ -27,8 +27,13 @@ vi.mock('@/lib/reports/project-sheet', async (importOriginal) => ({
 
 const ADMIN = { id: 1, role: 'admin', status: 'active', deletedAt: null } as const;
 
-function impactRequest(query = '') {
-  return getImpactReport(new NextRequest(`http://localhost/api/reports/impact${query}`));
+function impactRequest(body: unknown = { year: 2026, projectIds: [1] }) {
+  return postImpactReport(
+    new NextRequest('http://localhost/api/reports/impact', {
+      method: 'POST',
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    })
+  );
 }
 
 function sheetRequest(id: string, headers?: HeadersInit, query = '') {
@@ -51,25 +56,59 @@ describe('report routes', () => {
     expect((await sheetRequest('1')).status).toBe(401);
   });
 
-  it('downloads the impact report of the requested year', async () => {
+  it('downloads the impact report of the selected projects for the requested year', async () => {
     vi.mocked(getImpactReportData).mockResolvedValue({ year: 2025 } as never);
 
-    const response = await impactRequest('?year=2025&topicId=3');
+    const response = await impactRequest({ year: 2025, projectIds: [3, 8, 3] });
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/pdf');
     expect(response.headers.get('Content-Disposition')).toContain('Informe-de-impacto-2025.pdf');
-    expect(getImpactReportData).toHaveBeenCalledWith(ADMIN, 2025);
+    expect(getImpactReportData).toHaveBeenCalledWith([3, 8], 2025);
+  });
+
+  it('lets a coordinator export projects they do not lead', async () => {
+    vi.mocked(getActiveUser).mockResolvedValue({ ...ADMIN, id: 7, role: 'coordinator' });
+    vi.mocked(getImpactReportData).mockResolvedValue({ year: 2026 } as never);
+
+    const response = await impactRequest({ year: 2026, projectIds: [42] });
+
+    expect(response.status).toBe(200);
+    expect(getImpactReportData).toHaveBeenCalledWith([42], 2026);
+  });
+
+  it('falls back to the current year when the requested one has no data', async () => {
+    vi.mocked(getImpactReportData).mockResolvedValue(null);
+
+    await impactRequest({ year: 1999, projectIds: [1] });
+
+    expect(getImpactReportData).toHaveBeenCalledWith([1], 2026);
+  });
+
+  it.each([
+    { year: 2026, projectIds: [] },
+    { year: 2026, projectIds: [0] },
+    { year: 2026 },
+    { projectIds: [1] },
+    'nope',
+  ])('rejects an invalid project selection %#', async (body) => {
+    const response = await impactRequest(body);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      message: 'Seleccioná al menos un proyecto para exportar el reporte.',
+    });
+    expect(getImpactReportData).not.toHaveBeenCalled();
   });
 
   it('warns instead of generating an empty impact report', async () => {
     vi.mocked(getImpactReportData).mockResolvedValue(null);
 
-    const response = await impactRequest('?year=2026');
+    const response = await impactRequest();
 
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
-      message: 'No hay datos cargados en el año elegido para exportar.',
+      message: 'Los proyectos seleccionados no tienen datos cargados en el año elegido.',
     });
   });
 
