@@ -27,7 +27,7 @@ const SHEET: ProjectSheetData = {
     { label: 'Zona', value: 'Montevideo' },
     { label: 'Ciudades', value: 'Montevideo' },
     { label: 'Barrios', value: 'Cerro' },
-    { label: 'Visible en la web', value: 'Sí' },
+    { label: 'Visible en el reporte público', value: 'Sí' },
   ],
   longFields: [],
   kpis: [

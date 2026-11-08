@@ -80,7 +80,7 @@ test('links the collaborate button to the Gurises Unidos collaboration page in a
   expect(link.getAttribute('rel')).toBe('noopener noreferrer');
 });
 
-test('shows separate child totals and year-over-year changes on the public page', async () => {
+test('shows separate child totals and year-over-year changes on the public report', async () => {
   render(await Home({ searchParams: Promise.resolve({}) }));
 
   const stats = within(screen.getByRole('group', { name: 'Impacto 2025' }));

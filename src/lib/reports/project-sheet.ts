@@ -164,7 +164,7 @@ export async function getProjectSheetData(
             ? REGION_LABEL[project.region]
             : EMPTY_VALUE,
       },
-      { label: 'Visible en la web', value: project.showOnLanding ? 'Sí' : 'No' },
+      { label: 'Visible en el reporte público', value: project.showOnLanding ? 'Sí' : 'No' },
     ],
     longFields: [{ label: 'Descripción pública', value: project.publicDescription ?? '' }].filter(
       ({ value }) => value.trim() !== ''
