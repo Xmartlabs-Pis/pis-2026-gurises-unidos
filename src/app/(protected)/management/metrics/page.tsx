@@ -26,7 +26,7 @@ export default async function MetricsPage({
         className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
         eyebrow="Gestión de métricas"
         title="Indicadores institucionales"
-        description="Estas cifras se publican automáticamente en el sitio público de Gurises Unidos."
+        description="Estas cifras se publican automáticamente en el reporte público de Gurises Unidos."
       />
       <div className="flex w-full flex-1 flex-col gap-4 pt-1.5">
         <Suspense fallback={<MetricsFormSkeleton />}>

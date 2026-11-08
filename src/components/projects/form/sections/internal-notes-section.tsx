@@ -6,7 +6,7 @@ export function InternalNotesSection({ isEditing }: Pick<SectionProps, 'isEditin
   return (
     <FormSection
       title="Notas internas"
-      description="Comentarios para el equipo. No se muestran en la vista pública."
+      description="Comentarios para el equipo. No se muestran en el reporte público."
       separator={!isEditing}
       descriptionClassName={isEditing ? 'text-muted-foreground text-sm leading-5' : undefined}
       contentClassName={isEditing ? 'pt-4' : 'pt-3'}

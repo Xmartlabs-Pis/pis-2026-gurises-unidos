@@ -59,11 +59,11 @@ async function createProjectWithBeneficiaryYear(year: number) {
   createdProjectIds.push(project.id);
 }
 
-const PUBLIC_VIEW_ENTITIES = ['metric', 'topic', 'publicSettings'] as const;
+const PUBLIC_REPORT_ENTITIES = ['metric', 'topic', 'publicSettings'] as const;
 
 function metricAuditLogs() {
   return prisma.auditLog.findMany({
-    where: { entity: { in: [...PUBLIC_VIEW_ENTITIES] }, id: { gt: lastAuditLogId } },
+    where: { entity: { in: [...PUBLIC_REPORT_ENTITIES] }, id: { gt: lastAuditLogId } },
     orderBy: { id: 'asc' },
   });
 }
@@ -108,7 +108,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   await prisma.$transaction([
     prisma.auditLog.deleteMany({
-      where: { entity: { in: [...PUBLIC_VIEW_ENTITIES] }, id: { gt: lastAuditLogId } },
+      where: { entity: { in: [...PUBLIC_REPORT_ENTITIES] }, id: { gt: lastAuditLogId } },
     }),
     ...initialTopics.map(({ id, showPublicly }) =>
       prisma.topic.update({ where: { id }, data: { showPublicly } })

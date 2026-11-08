@@ -39,7 +39,7 @@ export type AuditLogListItem = Omit<ListedAuditLogRow, 'details'> & {
 const LISTED_ACTIONS_WHERE = { in: [...LISTED_AUDIT_ACTIONS] };
 const LISTED_ENTITIES_WHERE = { in: [...LISTED_AUDIT_ENTITIES] };
 
-const OUTDATED_PUBLIC_VIEW_ENTRIES: Prisma.AuditLogWhereInput[] = [
+const OUTDATED_PUBLIC_REPORT_ENTRIES: Prisma.AuditLogWhereInput[] = [
   { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
   {
     entity: 'contributor',
@@ -67,7 +67,7 @@ export function buildAuditLogWhere(filters: AuditLogFilters): Prisma.AuditLogWhe
     action: filters.action ?? LISTED_ACTIONS_WHERE,
     entity: filters.entity ?? LISTED_ENTITIES_WHERE,
     OR: ONLY_USER_STATUS_AND_ROLE_UPDATES,
-    NOT: OUTDATED_PUBLIC_VIEW_ENTRIES,
+    NOT: OUTDATED_PUBLIC_REPORT_ENTRIES,
   };
 
   if (filters.authorId) {
@@ -196,7 +196,7 @@ export async function listAuditLogAuthors() {
           action: LISTED_ACTIONS_WHERE,
           entity: LISTED_ENTITIES_WHERE,
           OR: ONLY_USER_STATUS_AND_ROLE_UPDATES,
-          NOT: OUTDATED_PUBLIC_VIEW_ENTRIES,
+          NOT: OUTDATED_PUBLIC_REPORT_ENTRIES,
         },
       },
     },

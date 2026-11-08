@@ -44,7 +44,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   coverPhoto: 'Foto de portada',
   coverCrop: 'Encuadre de portada',
   internalNotes: 'Notas internas',
-  showOnLanding: 'Visibilidad en la página pública',
+  showOnLanding: 'Visibilidad en el reporte público',
   topics: 'Temáticas',
   strategicLines: 'Líneas estratégicas',
 };
@@ -71,6 +71,6 @@ export const PROJECT_TEXT_CHANGE_LABELS: Record<string, string> = {
   internalNotes: 'modificadas',
 };
 
-export const PUBLIC_VIEW_FIELD_LABELS: Record<string, string> = {
+export const PUBLIC_REPORT_FIELD_LABELS: Record<string, string> = {
   publishedYears: 'Años publicados',
 };

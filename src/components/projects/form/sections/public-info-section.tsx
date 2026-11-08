@@ -28,14 +28,14 @@ export function PublicInfoSection({
   return (
     <FormSection
       title="Información pública"
-      description="Aparece en la vista pública para donantes y aliados."
+      description="Aparece en el reporte público para donantes y aliados."
     >
       <TextareaField
         id="generalObjective"
         name="generalObjective"
         label="Objetivo general"
         placeholder="Ej: Acompañando a jóvenes en situación de vulnerabilidad"
-        description="Aparece como subtítulo en la vista pública"
+        description="Aparece como subtítulo en el reporte público"
         className="min-h-9"
       />
       <TextareaField

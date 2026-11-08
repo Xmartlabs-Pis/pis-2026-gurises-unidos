@@ -15,7 +15,7 @@ export default async function TopicsPage() {
           className="mx-auto w-full max-w-[1185px] px-6 pt-6 pb-2.5"
           eyebrow="Administración"
           title="Temáticas"
-          description="Etiquetas para clasificar los proyectos. Se usan en los filtros del dashboard y la vista pública."
+          description="Etiquetas para clasificar los proyectos. Se usan en los filtros del dashboard y el reporte público."
         />
 
         <Suspense fallback={<CatalogListSkeleton />}>
