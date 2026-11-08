@@ -58,7 +58,7 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   publicSettings: 'Años publicados',
   metric: 'Cards de métricas',
   topic: 'Temáticas',
-  partner: 'Acompañantes',
+  partner: 'Socios',
   authentication: 'Autenticación',
 };
 
