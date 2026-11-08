@@ -4,7 +4,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
 import { flattenError } from 'zod';
-import { auth, signIn, signOut } from '@/auth';
+import { signIn, signOut } from '@/auth';
+import prisma from '@/lib/prisma';
 import {
   getSessionExpirationTimestamp,
   SESSION_EXPIRATION_COOKIE,
@@ -59,13 +60,18 @@ export async function login(
     SESSION_EXPIRATION_COOKIE_OPTIONS
   );
 
-  const session = await auth();
-
-  if (session?.user?.mustChangePassword) {
-    redirect('/password-reset');
+  let mustChangePassword = false;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { documentId },
+      select: { mustChangePassword: true },
+    });
+    mustChangePassword = Boolean(user?.mustChangePassword);
+  } catch (error) {
+    console.error('Failed to read mustChangePassword after login', error);
   }
 
-  redirect('/dashboard');
+  redirect(mustChangePassword ? '/password-reset' : '/dashboard');
 }
 
 export async function logout() {
