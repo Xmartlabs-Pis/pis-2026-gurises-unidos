@@ -102,6 +102,20 @@ describe('login', () => {
     expect(redirect).toHaveBeenCalledWith('/password-reset');
   });
 
+  test('redirects to the dashboard when reading mustChangePassword fails', async () => {
+    vi.mocked(signIn).mockResolvedValue(undefined);
+    findUniqueMock.mockRejectedValue(new Error('database down'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(login({}, makeFormData('1.111.111-1', 'password'))).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   test('passes remember: "true" when the checkbox is checked', async () => {
     vi.mocked(signIn).mockResolvedValue(undefined);
 
