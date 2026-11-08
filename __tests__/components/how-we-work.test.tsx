@@ -30,7 +30,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
 
 function advance(milliseconds: number) {
@@ -54,7 +53,7 @@ test.each([
     fireEvent.click(screen.getByRole('tab', { name: title }));
     const image = screen.getByRole('img');
     expect(decodeURIComponent(image.getAttribute('src')!)).toContain(
-      `/images/how-we-work/how-we-work-${number}.webp`
+      `/assets/how-we-work/how-we-work-${number}.webp`
     );
     expect(image.getAttribute('alt')).toBeTruthy();
     fireEvent.keyDown(screen.getByRole('tab', { selected: true }), { key: 'ArrowDown' });
@@ -66,7 +65,7 @@ test('automatically rotates categories and advances their assigned photos on eac
 
   for (const number of [8, 1, 2, 4, 8, 5, 3, 6, 8, 1, 7, 4]) {
     expect(decodeURIComponent(screen.getByRole('img').getAttribute('src')!)).toContain(
-      `/images/how-we-work/how-we-work-${number}.webp`
+      `/assets/how-we-work/how-we-work-${number}.webp`
     );
     advance(12100);
   }

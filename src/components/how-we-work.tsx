@@ -4,14 +4,14 @@ import Image from 'next/image';
 import { useId, useState, type CSSProperties } from 'react';
 import { useTimedSelection } from '@/hooks/use-timed-selection';
 import { TimedSelectionControl } from '@/components/timed-selection-control';
-import workPhoto1 from '../../public/images/how-we-work/how-we-work-1.webp';
-import workPhoto2 from '../../public/images/how-we-work/how-we-work-2.webp';
-import workPhoto3 from '../../public/images/how-we-work/how-we-work-3.webp';
-import workPhoto4 from '../../public/images/how-we-work/how-we-work-4.webp';
-import workPhoto5 from '../../public/images/how-we-work/how-we-work-5.webp';
-import workPhoto6 from '../../public/images/how-we-work/how-we-work-6.webp';
-import workPhoto7 from '../../public/images/how-we-work/how-we-work-7.webp';
-import workPhoto8 from '../../public/images/how-we-work/how-we-work-8.webp';
+import workPhoto1 from '@/assets/how-we-work/how-we-work-1.webp';
+import workPhoto2 from '@/assets/how-we-work/how-we-work-2.webp';
+import workPhoto3 from '@/assets/how-we-work/how-we-work-3.webp';
+import workPhoto4 from '@/assets/how-we-work/how-we-work-4.webp';
+import workPhoto5 from '@/assets/how-we-work/how-we-work-5.webp';
+import workPhoto6 from '@/assets/how-we-work/how-we-work-6.webp';
+import workPhoto7 from '@/assets/how-we-work/how-we-work-7.webp';
+import workPhoto8 from '@/assets/how-we-work/how-we-work-8.webp';
 
 const LEVELS = [
   {
