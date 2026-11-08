@@ -63,7 +63,7 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
       },
       {
         id: 'publicReport',
-        title: 'Reporte público',
+        title: 'Reporte Público',
         href: '/',
         icon: Globe,
         match: 'exact',
@@ -123,7 +123,7 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
       },
       {
         id: 'history',
-        title: 'Historial de cambios',
+        title: 'Historial de Cambios',
         href: '/management/history',
         icon: History,
         roles: ['admin'],

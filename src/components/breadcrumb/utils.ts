@@ -27,7 +27,7 @@ export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   'report-error': 'Error al exportar',
   'beneficiary-categories': 'Categorías de Beneficiarios',
   'strategic-lines': 'Líneas Estratégicas',
-  history: 'Historial de cambios',
+  history: 'Historial de Cambios',
   new: 'Nuevo',
   edit: 'Editar',
 };
