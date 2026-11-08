@@ -59,7 +59,7 @@ export function ProjectPreview({
           </div>
         </Card>
         <p className="text-muted-foreground text-center text-xs leading-4">
-          Así se verá en el listado público
+          Así se verá en el reporte público
         </p>
       </div>
     </aside>
