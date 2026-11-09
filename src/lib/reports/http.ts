@@ -21,7 +21,12 @@ export const REPORT_ERRORS = {
   emptyReport: {
     status: 404,
     title: 'Sin datos para exportar',
-    message: 'No hay datos cargados en el año elegido para exportar.',
+    message: 'Los proyectos seleccionados no tienen datos cargados en el año elegido.',
+  },
+  invalidSelection: {
+    status: 400,
+    title: 'Selección inválida',
+    message: 'Seleccioná al menos un proyecto para exportar el reporte.',
   },
 } as const;
 

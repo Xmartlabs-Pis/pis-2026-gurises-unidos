@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
-import { getMetricValues, type MetricValues } from '@/lib/metrics/queries';
+import { getMetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 import { getImpactReportData } from '@/lib/reports/impact-report';
 
 vi.mock('@/lib/prisma', () => ({
@@ -21,8 +22,7 @@ vi.mock('@/lib/projects/beneficiary-values', () => ({
   sumBeneficiaryCounts: async () => ({ directChildrenAdolescents: 40, coordinatedInstitutions: 3 }),
 }));
 
-const ADMIN = { id: 1, role: 'admin' as const };
-const COORDINATOR = { id: 7, role: 'coordinator' as const };
+const PROJECT_IDS = [4, 9];
 
 function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
   return {
@@ -41,37 +41,59 @@ function mockMetricsByYear(values: Record<number, MetricValues>) {
   vi.mocked(getMetricValues).mockImplementation(async (year) => values[year] ?? metricValues());
 }
 
+const PROJECTS = [
+  {
+    name: 'Aldea',
+    publicDescription: 'Acompañamiento a familias.',
+    generalObjective: 'Objetivo',
+    geographicScope: 'national',
+    countries: [],
+    topics: [{ name: 'Salud' }, { name: 'Educación' }],
+    departments: [{ name: 'Montevideo' }],
+  },
+  {
+    name: 'El Resorte',
+    publicDescription: null,
+    generalObjective: 'Trabajo en territorio.',
+    geographicScope: 'national',
+    countries: [],
+    topics: [{ name: 'Educación' }],
+    departments: [{ name: 'Montevideo' }, { name: 'Salto' }],
+  },
+  {
+    name: 'Faro',
+    publicDescription: '',
+    generalObjective: null,
+    geographicScope: 'international',
+    countries: ['Brasil'],
+    region: 'southAmerica',
+    topics: [],
+    departments: [],
+  },
+  {
+    name: 'Hornero',
+    publicDescription: 'Talleres en escuelas.',
+    generalObjective: null,
+    geographicScope: 'international',
+    countries: [],
+    region: 'centralAmerica',
+    topics: [],
+    departments: [],
+  },
+];
+
 describe('getImpactReportData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.department.count).mockResolvedValue(19);
     vi.mocked(prisma.project.count).mockResolvedValue(3);
-    vi.mocked(prisma.project.findMany).mockResolvedValue([
-      {
-        geographicScope: 'national',
-        countries: [],
-        topics: [{ name: 'Salud' }, { name: 'Educación' }],
-        departments: [{ name: 'Montevideo' }],
-      },
-      {
-        geographicScope: 'national',
-        countries: [],
-        topics: [{ name: 'Educación' }],
-        departments: [{ name: 'Montevideo' }, { name: 'Salto' }],
-      },
-      {
-        geographicScope: 'international',
-        countries: ['Brasil'],
-        topics: [],
-        departments: [],
-      },
-    ] as never);
+    vi.mocked(prisma.project.findMany).mockResolvedValue(PROJECTS as never);
   });
 
   it('returns nothing when the year has no data', async () => {
     mockMetricsByYear({});
 
-    expect(await getImpactReportData(ADMIN, 2026)).toBeNull();
+    expect(await getImpactReportData(PROJECT_IDS, 2026)).toBeNull();
   });
 
   it('builds the indicators with the NNA total and deltas', async () => {
@@ -80,7 +102,7 @@ describe('getImpactReportData', () => {
       2025: metricValues({ children_reached: 100, families: 40, teachers: 45, active_projects: 4 }),
     });
 
-    const data = await getImpactReportData(ADMIN, 2026);
+    const data = await getImpactReportData(PROJECT_IDS, 2026);
 
     expect(data?.kpis).toEqual([
       expect.objectContaining({ value: 110, delta: '+10,0 % frente a 2025 (100)' }),
@@ -96,7 +118,7 @@ describe('getImpactReportData', () => {
       { label: 'Montevideo', value: 2 },
       { label: 'Salto', value: 1 },
     ]);
-    expect(data?.internationalCountries).toEqual(['Brasil']);
+    expect(data?.internationalCountries).toEqual(['Brasil', 'Centroamérica']);
     expect(data?.categories).toEqual([
       { label: 'NNA directos', value: 40 },
       { label: 'Instituciones coordinadas', value: 3 },
@@ -107,25 +129,37 @@ describe('getImpactReportData', () => {
   it('hides the deltas without data from the previous year', async () => {
     mockMetricsByYear({ 2024: metricValues({ children_reached: 5, active_projects: 1 }) });
 
-    const data = await getImpactReportData(ADMIN, 2024);
+    const data = await getImpactReportData(PROJECT_IDS, 2024);
 
     expect(data?.kpis.every(({ delta }) => delta === null)).toBe(true);
     expect(data?.pendingProjects).toBeNull();
   });
 
-  it('limits a coordinator to the projects they lead', async () => {
+  it('limits the report to the selected projects for any role', async () => {
     mockMetricsByYear({ 2026: metricValues({ active_projects: 1 }) });
 
-    await getImpactReportData(COORDINATOR, 2026);
+    await getImpactReportData(PROJECT_IDS, 2026);
 
-    expect(getMetricValues).toHaveBeenCalledWith(2026, { leadCoordinatorId: COORDINATOR.id });
+    expect(getMetricValues).toHaveBeenCalledWith(2026, { id: { in: PROJECT_IDS } });
+    expect(getMetricValues).toHaveBeenCalledWith(2025, { id: { in: PROJECT_IDS } });
   });
 
-  it('includes every project for an admin', async () => {
-    mockMetricsByYear({ 2026: metricValues({ active_projects: 1 }) });
+  it('lists only the selected projects with data in the year, matching the indicators', async () => {
+    mockMetricsByYear({ 2026: metricValues({ active_projects: 4 }) });
 
-    await getImpactReportData(ADMIN, 2026);
+    const data = await getImpactReportData(PROJECT_IDS, 2026);
 
-    expect(getMetricValues).toHaveBeenCalledWith(2026, {});
+    expect(prisma.project.findMany).toHaveBeenCalledOnce();
+    expect(prisma.project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ projectBeneficiaries: { some: { year: 2026 } } }),
+      })
+    );
+    expect(data?.projects).toEqual([
+      { name: 'Aldea', description: 'Acompañamiento a familias.' },
+      { name: 'El Resorte', description: 'Trabajo en territorio.' },
+      { name: 'Faro', description: null },
+      { name: 'Hornero', description: 'Talleres en escuelas.' },
+    ]);
   });
 });

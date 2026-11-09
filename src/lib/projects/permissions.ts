@@ -8,7 +8,3 @@ export function canEditProject(
     user.role === 'admin' || (user.role === 'coordinator' && user.id === project.leadCoordinatorId)
   );
 }
-
-export function getReportProjectScope(user: { id: number; role: UserRole }) {
-  return user.role === 'admin' ? {} : { leadCoordinatorId: user.id };
-}

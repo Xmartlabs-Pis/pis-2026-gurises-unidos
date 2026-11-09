@@ -7,23 +7,27 @@ export function getDefaultValues(
 ): ProjectFormValues {
   return {
     year: String(currentYear),
+    beneficiaryDrafts: [],
     name: '',
     status: 'active',
     topicIds: [],
     intensity: '',
-    counterpartyType: '',
+    counterpartyTypes: [],
     startYear: String(currentYear),
     endYear: '',
     leadCoordinatorId: '',
     strategicLineIds: [],
+    partnerIds: [],
     geographicScope: 'national',
     countries: [],
+    region: '',
     locations: [],
     generalObjective: '',
     publicDescription: '',
     internalNotes: '',
     showOnLanding: 'true',
     coverPhotoUrl: null,
+    coverCrop: null,
     ...Object.fromEntries(categories.map(({ key }) => [key, '0'])),
   };
 }

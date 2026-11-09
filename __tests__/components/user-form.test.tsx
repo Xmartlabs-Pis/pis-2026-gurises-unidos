@@ -1,10 +1,16 @@
-import { render, screen } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { createUser, updateUser } from '@/app/actions/users';
 import { UserForm } from '@/components/user-form';
+import { notify } from '@/lib/notify';
+
+const { routerMock } = vi.hoisted(() => ({ routerMock: { push: vi.fn() } }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => routerMock,
 }));
+
+vi.mock('@/lib/notify', () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 
 vi.mock('@/app/actions/users', () => ({
   createUser: vi.fn(async () => ({})),
@@ -83,4 +89,149 @@ test('replaces the temporary password with an invitation notice when creating a 
   expect(screen.queryByLabelText('Contraseña temporal')).toBeNull();
   expect(screen.getByText(/se enviará una invitación al correo ingresado/)).toBeDefined();
   expect(screen.getByRole('button', { name: 'Guardar y enviar invitación' })).toBeDefined();
+});
+
+describe('submitting the form', () => {
+  const CREATE_LABEL = 'Guardar y enviar invitación';
+
+  function fillNewUser() {
+    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Ana' } });
+    fireEvent.change(screen.getByLabelText('Apellido'), { target: { value: 'García' } });
+    fireEvent.change(screen.getByLabelText('Documento (Cédula)'), {
+      target: { value: '77777777' },
+    });
+    fireEvent.change(screen.getByLabelText('Correo electrónico'), {
+      target: { value: 'ana@example.com' },
+    });
+  }
+
+  async function clickButton(name: string) {
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name }));
+    });
+  }
+
+  beforeEach(() => {
+    routerMock.push.mockReset();
+    vi.mocked(notify.success).mockReset();
+    vi.mocked(notify.error).mockReset();
+    vi.mocked(createUser).mockReset().mockResolvedValue({});
+    vi.mocked(updateUser).mockReset().mockResolvedValue({});
+  });
+
+  test('blocks submission and displays the validation errors', async () => {
+    render(<UserForm />);
+
+    await clickButton(CREATE_LABEL);
+
+    expect(await screen.findByText('El nombre es obligatorio.')).toBeDefined();
+    expect(screen.getByText('El apellido es obligatorio.')).toBeDefined();
+    expect(screen.getByText('El documento es obligatorio.')).toBeDefined();
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  test('creates a user with the entered values', async () => {
+    render(<UserForm />);
+
+    fillNewUser();
+    await clickButton(CREATE_LABEL);
+
+    await waitFor(() => expect(createUser).toHaveBeenCalledOnce());
+    const formData = vi.mocked(createUser).mock.calls[0][1];
+    expect(formData.get('firstName')).toBe('Ana');
+    expect(formData.get('lastName')).toBe('García');
+    expect(formData.get('documentId')).toBe('77777777');
+    expect(formData.get('email')).toBe('ana@example.com');
+    expect(formData.get('role')).toBe('coordinator');
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  test('updates the edited user', async () => {
+    render(<UserForm mode="edit" initialValues={EDITED_USER} />);
+
+    await clickButton('Guardar usuario');
+
+    await waitFor(() => expect(updateUser).toHaveBeenCalledOnce());
+    const [id, , formData] = vi.mocked(updateUser).mock.calls[0];
+    expect(id).toBe(7);
+    expect(formData.get('firstName')).toBe('Ana');
+    expect(formData.get('lastName')).toBe('García');
+    expect(formData.get('documentId')).toBe('77777777');
+    expect(formData.get('email')).toBe('ana@example.com');
+    expect(formData.get('role')).toBe('admin');
+    expect(createUser).not.toHaveBeenCalled();
+  });
+
+  test('notifies a form error returned by the action', async () => {
+    vi.mocked(createUser).mockResolvedValue({ formError: 'No se pudo guardar' });
+    render(<UserForm />);
+
+    fillNewUser();
+    await clickButton(CREATE_LABEL);
+
+    await waitFor(() =>
+      expect(notify.error).toHaveBeenCalledExactlyOnceWith({ title: 'No se pudo guardar' })
+    );
+    expect(routerMock.push).not.toHaveBeenCalled();
+  });
+
+  test('returns to the users list after restoring an account', async () => {
+    vi.mocked(createUser).mockResolvedValue({ restored: true });
+    render(<UserForm />);
+
+    fillNewUser();
+    await clickButton(CREATE_LABEL);
+
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith('/management/users'));
+    expect(notify.success).toHaveBeenCalledOnce();
+  });
+
+  test('resubmits with the restore confirmation when continuing', async () => {
+    vi.mocked(createUser).mockResolvedValueOnce({ restoreConfirmationRequired: true });
+    render(<UserForm />);
+
+    fillNewUser();
+    await clickButton(CREATE_LABEL);
+    expect(await screen.findByRole('alertdialog')).toBeDefined();
+
+    await clickButton('Continuar');
+
+    await waitFor(() => expect(createUser).toHaveBeenCalledTimes(2));
+    const formData = vi.mocked(createUser).mock.calls[1][1];
+    expect(formData.get('confirmRestore')).toBe('true');
+    expect(formData.get('documentId')).toBe('77777777');
+  });
+
+  test('does not resubmit when cancelling the restore', async () => {
+    vi.mocked(createUser).mockResolvedValueOnce({ restoreConfirmationRequired: true });
+    render(<UserForm />);
+
+    fillNewUser();
+    await clickButton(CREATE_LABEL);
+    const dialog = within(await screen.findByRole('alertdialog'));
+
+    await act(async () => {
+      fireEvent.click(dialog.getByRole('button', { name: 'Cancelar' }));
+    });
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(createUser).toHaveBeenCalledOnce();
+  });
+
+  test('returns to the users list when cancelling the form', async () => {
+    render(<UserForm />);
+
+    await clickButton('Cancelar');
+
+    expect(routerMock.push).toHaveBeenCalledExactlyOnceWith('/management/users');
+  });
+
+  test('opens the status dialog of the edited user', async () => {
+    render(<UserForm mode="edit" initialValues={{ ...EDITED_USER, status: 'active' }} />);
+
+    await clickButton('Deshabilitar usuario');
+
+    const dialog = within(await screen.findByRole('alertdialog'));
+    expect(dialog.getByText('¿Deshabilitar a Ana García?')).toBeDefined();
+  });
 });

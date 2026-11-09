@@ -1,6 +1,8 @@
 import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
+import { parseCoverCrop, type CoverCrop } from '@/lib/projects/cover-crop';
 import { getTerritoryLabel } from '@/lib/projects/location';
+import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 
 export const PUBLIC_PROJECTS_PAGE_SIZE = 12;
 
@@ -15,6 +17,7 @@ export type PublicProject = {
   territory: string;
   description: string;
   coverPhoto: string | null;
+  coverCrop: CoverCrop | null;
   reach: number;
 };
 
@@ -31,6 +34,64 @@ export type PublicTopic = {
   initialPage: PublicProjectsPage;
 };
 
+export type PublicDepartment = {
+  id: number;
+  name: string;
+  projects: PublicProject[];
+};
+
+export type PublicRegion = (typeof GEOGRAPHIC_REGIONS)[number] & { projects: PublicProject[] };
+
+export async function getPublishedTopics(year: number) {
+  return prisma.topic.findMany({
+    where: { isActive: true, showPublicly: true, projects: { some: publicProjectWhere(year) } },
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true },
+  });
+}
+
+export async function getPublicDepartments(year: number): Promise<PublicDepartment[]> {
+  const departments = await prisma.department.findMany({
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      projects: {
+        where: {
+          ...publicProjectWhere(year),
+          topics: { some: { isActive: true, showPublicly: true } },
+        },
+        orderBy: PUBLIC_PROJECT_ORDER,
+        select: publicProjectSelect(year),
+      },
+    },
+  });
+
+  return departments.map(({ id, name, projects }) => ({
+    id,
+    name,
+    projects: projects.map(toPublicProject),
+  }));
+}
+
+export async function getPublicRegions(year: number): Promise<PublicRegion[]> {
+  const projects = await prisma.project.findMany({
+    where: {
+      ...publicProjectWhere(year),
+      geographicScope: 'international',
+      region: { in: GEOGRAPHIC_REGIONS.map(({ region }) => region) },
+      topics: { some: { isActive: true, showPublicly: true } },
+    },
+    orderBy: PUBLIC_PROJECT_ORDER,
+    select: publicProjectSelect(year),
+  });
+
+  return GEOGRAPHIC_REGIONS.map((region) => ({
+    ...region,
+    projects: projects.filter((project) => project.region === region.region).map(toPublicProject),
+  }));
+}
+
 function publicProjectWhere(year: number) {
   return {
     deletedAt: null,
@@ -45,8 +106,10 @@ function publicProjectSelect(year: number) {
     name: true,
     publicDescription: true,
     coverPhoto: true,
+    coverCrop: true,
     geographicScope: true,
     countries: true,
+    region: true,
     departments: { select: { name: true }, orderBy: { name: 'asc' } },
     projectBeneficiaries: {
       where: { year },
@@ -69,6 +132,7 @@ function toPublicProject(row: PublicProjectRow): PublicProject {
     territory: getTerritoryLabel(row),
     description: row.publicDescription ?? '',
     coverPhoto: row.coverPhoto,
+    coverCrop: parseCoverCrop(row.coverCrop),
     reach: values.reduce((sum, { value }) => sum + value, 0),
   };
 }

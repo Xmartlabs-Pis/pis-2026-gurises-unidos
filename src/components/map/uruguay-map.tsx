@@ -3,76 +3,35 @@
 import 'leaflet/dist/leaflet.css';
 import type { Feature } from 'geojson';
 import {
-  Browser,
   geoJSON,
   type GeoJSON as LeafletGeoJSON,
   type LatLngBounds,
-  type LeafletMouseEvent,
   type Path,
   type PathOptions,
   point,
+  svg,
 } from 'leaflet';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, type RefObject } from 'react';
 import { GeoJSON, MapContainer, useMap } from 'react-leaflet';
-import type { DepartmentProjectCounts } from '@/lib/projects/department-project-counts';
 import { getUruguayMapData } from '@/lib/map/uruguay-map';
 
-const MAX_ZOOM_LEVELS_IN = 3;
-const BOUNDS_PADDING_RATIO = 0.4;
-const HINT_DURATION_MS = 500;
-const FIT_PADDING_PX = 12;
+const FIT_PADDING_PX = 8;
+const RENDER_PADDING_RATIO = 1;
 
-const DEPARTMENT_STYLE: PathOptions = {
-  color: 'var(--surface-brand-deep)',
-  weight: 1,
-  fillColor: 'var(--surface-page)',
-  fillOpacity: 1,
+export type UruguayMapProps = {
+  projectCounts: { department: string; total: number }[];
+  selectedDepartment: string;
+  onSelectDepartment: (department: string) => void;
 };
 
-const HIGHLIGHT_STYLE: PathOptions = {
-  weight: 2,
-  fillColor: 'var(--surface-brand-deep)',
-  fillOpacity: 0.4,
-};
-
-type UruguayMapProps = {
-  projectCounts: DepartmentProjectCounts[];
-};
-
-function buildTooltip(name: string, counts?: DepartmentProjectCounts) {
-  const total = counts?.total ?? 0;
-  const active = counts?.active ?? 0;
-  const tooltip = document.createElement('div');
-  const title = document.createElement('strong');
-  title.textContent = name;
-  tooltip.append(title);
-  for (const line of [
-    `${total} ${total === 1 ? 'proyecto' : 'proyectos'} en total`,
-    `${active} ${active === 1 ? 'activo' : 'activos'}`,
-  ]) {
-    const row = document.createElement('div');
-    row.textContent = line;
-    tooltip.append(row);
-  }
-  return tooltip;
-}
-
-function bindDepartmentHover(
-  feature: Feature,
-  layer: Path,
-  countsByDepartment: Map<string, DepartmentProjectCounts>
-) {
-  const name: string = feature.properties?.name;
-  layer.bindTooltip(buildTooltip(name, countsByDepartment.get(name)), { sticky: true });
-  if (!Browser.mobile) layer.off('click');
-  layer.on({
-    mouseover: () => layer.setStyle(HIGHLIGHT_STYLE),
-    mouseout: () => layer.setStyle(DEPARTMENT_STYLE),
-    mousedown: (event: LeafletMouseEvent) => event.originalEvent.preventDefault(),
-    ...(!Browser.mobile && {
-      click: (event: LeafletMouseEvent) => layer.openTooltip(event.latlng),
-    }),
-  });
+function getDepartmentStyle(name: string, total: number, selectedDepartment: string): PathOptions {
+  const selected = name === selectedDepartment;
+  return {
+    color: 'var(--background)',
+    weight: selected ? 2.5 : 2,
+    fillColor: selected || total > 0 ? 'var(--primary)' : '#e8e9e5',
+    fillOpacity: selected || total === 0 ? 1 : 0.3,
+  };
 }
 
 function FitToDepartments({ bounds }: { bounds: LatLngBounds }) {
@@ -82,7 +41,7 @@ function FitToDepartments({ bounds }: { bounds: LatLngBounds }) {
     const fit = () => {
       const zoom = map.getBoundsZoom(bounds, false, point(FIT_PADDING_PX, FIT_PADDING_PX));
       map.setMinZoom(zoom);
-      map.setMaxZoom(zoom + MAX_ZOOM_LEVELS_IN);
+      map.setMaxZoom(zoom);
       map.setView(bounds.getCenter(), zoom, { animate: false });
     };
     fit();
@@ -95,77 +54,115 @@ function FitToDepartments({ bounds }: { bounds: LatLngBounds }) {
   return null;
 }
 
-function TwoFingerHint() {
-  const map = useMap();
-  const [visible, setVisible] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
+function DepartmentInteractions({
+  geoJsonRef,
+  countsByDepartment,
+  selectedDepartment,
+  onSelectDepartment,
+}: {
+  geoJsonRef: RefObject<LeafletGeoJSON | null>;
+  countsByDepartment: Map<string, number>;
+  selectedDepartment: string;
+  onSelectDepartment: (department: string) => void;
+}) {
   useEffect(() => {
-    if (!Browser.mobile) return;
-    const container = map.getContainer();
-    const showHint = (event: TouchEvent) => {
-      if (event.touches.length !== 1) return;
-      setVisible(true);
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => setVisible(false), HINT_DURATION_MS);
-    };
-    container.addEventListener('touchmove', showHint, { passive: true });
-    return () => {
-      container.removeEventListener('touchmove', showHint);
-      clearTimeout(timeoutRef.current);
-    };
-  }, [map]);
-
-  return (
-    <div
-      aria-hidden
-      className={`bg-surface-brand-deep/40 pointer-events-none absolute inset-0 z-1000 flex items-center justify-center rounded-xl px-6 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
-    >
-      <span className="bg-surface-brand-deep rounded-lg px-4 py-2 text-center text-sm font-medium text-white">
-        Usá dos dedos para mover el mapa
-      </span>
-    </div>
-  );
+    const cleanups: (() => void)[] = [];
+    geoJsonRef.current?.eachLayer((layer) => {
+      const departmentLayer = layer as Path & { feature?: Feature };
+      const name: string | undefined = departmentLayer.feature?.properties?.name;
+      if (!name) return;
+      const total = countsByDepartment.get(name) ?? 0;
+      const style = getDepartmentStyle(name, total, selectedDepartment);
+      departmentLayer.setStyle(style);
+      const tooltip = document.createElement('span');
+      tooltip.textContent = `${name}: ${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
+      departmentLayer.unbindTooltip();
+      departmentLayer.bindTooltip(tooltip, { sticky: true });
+      const select = () => onSelectDepartment(name);
+      const highlight = () =>
+        departmentLayer.setStyle({ fillColor: 'var(--primary)', fillOpacity: 0.7 });
+      const reset = () => departmentLayer.setStyle(style);
+      departmentLayer.on('click', select).on('mouseover', highlight).on('mouseout', reset);
+      const element = departmentLayer.getElement();
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          select();
+        }
+      };
+      if (element) {
+        element.setAttribute('tabindex', '0');
+        element.setAttribute('role', 'button');
+        element.setAttribute(
+          'aria-label',
+          `${name}: ${total} ${total === 1 ? 'proyecto' : 'proyectos'}`
+        );
+        element.setAttribute('aria-pressed', String(name === selectedDepartment));
+        element.setAttribute('aria-controls', 'department-projects');
+        element.addEventListener('keydown', onKeyDown as EventListener);
+        element.addEventListener('focus', highlight);
+        element.addEventListener('blur', reset);
+      }
+      cleanups.push(() => {
+        departmentLayer.off('click', select).off('mouseover', highlight).off('mouseout', reset);
+        element?.removeEventListener('keydown', onKeyDown as EventListener);
+        element?.removeEventListener('focus', highlight);
+        element?.removeEventListener('blur', reset);
+      });
+    });
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [geoJsonRef, countsByDepartment, selectedDepartment, onSelectDepartment]);
+  return null;
 }
 
-export default function UruguayMap({ projectCounts }: UruguayMapProps) {
+export default function UruguayMap({
+  projectCounts,
+  selectedDepartment,
+  onSelectDepartment,
+}: UruguayMapProps) {
   const { center, zoom, departments } = getUruguayMapData();
   const countsByDepartment = useMemo(
-    () => new Map(projectCounts.map((counts) => [counts.department, counts])),
+    () => new Map(projectCounts.map(({ department, total }) => [department, total])),
     [projectCounts]
   );
   const geoJsonRef = useRef<LeafletGeoJSON>(null);
   const bounds = useMemo(() => geoJSON(departments).getBounds(), [departments]);
-  const maxBounds = useMemo(() => bounds.pad(BOUNDS_PADDING_RATIO), [bounds]);
-
-  useEffect(() => {
-    geoJsonRef.current?.eachLayer((layer) => {
-      const name: string | undefined = (layer as Path & { feature?: Feature }).feature?.properties
-        ?.name;
-      if (name) layer.setTooltipContent(buildTooltip(name, countsByDepartment.get(name)));
-    });
-  }, [countsByDepartment]);
+  const renderer = useMemo(() => svg({ padding: RENDER_PADDING_RATIO }), []);
 
   return (
     <MapContainer
       center={center}
       zoom={zoom}
-      zoomSnap={0.25}
-      dragging={!Browser.mobile}
-      maxBounds={maxBounds}
-      maxBoundsViscosity={0.5}
-      className="bg-surface-page h-full w-full rounded-xl"
+      zoomSnap={0.1}
+      renderer={renderer}
+      zoomControl={false}
+      attributionControl={false}
+      dragging={false}
+      scrollWheelZoom={false}
+      doubleClickZoom={false}
+      touchZoom={false}
+      boxZoom={false}
+      keyboard={false}
+      className="department-map h-full w-full"
     >
       <GeoJSON
         ref={geoJsonRef}
         data={departments}
-        style={DEPARTMENT_STYLE}
-        onEachFeature={(feature, layer) =>
-          bindDepartmentHover(feature, layer as Path, countsByDepartment)
+        style={(feature) =>
+          getDepartmentStyle(
+            feature?.properties?.name ?? '',
+            countsByDepartment.get(feature?.properties?.name ?? '') ?? 0,
+            selectedDepartment
+          )
         }
       />
+      <DepartmentInteractions
+        geoJsonRef={geoJsonRef}
+        countsByDepartment={countsByDepartment}
+        selectedDepartment={selectedDepartment}
+        onSelectDepartment={onSelectDepartment}
+      />
       <FitToDepartments bounds={bounds} />
-      <TwoFingerHint />
     </MapContainer>
   );
 }

@@ -56,7 +56,7 @@ test.describe('mobile', () => {
   test.use({ viewport: MOBILE });
 
   test('shows the full user card on small screens', async ({ page }) => {
-    const card = page.locator('[data-slot="card"]').filter({ hasText: E2E_ADMIN.email });
+    const card = page.locator('[data-slot="card"]:visible').filter({ hasText: E2E_ADMIN.email });
 
     await expect(card).toBeVisible();
     await expect(card.getByText(ADMIN_NAME)).toBeVisible();

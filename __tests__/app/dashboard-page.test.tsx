@@ -27,9 +27,13 @@ vi.mock('@/components/metrics/metrics-year-select', () => ({
 }));
 
 import DashboardPage from '@/app/(protected)/dashboard/page';
+import { resolveSuspenseChild } from '../helpers/suspense-page';
 
-function renderPage(year?: string | string[]) {
-  return DashboardPage({ searchParams: Promise.resolve(year === undefined ? {} : { year }) });
+async function renderPage(year?: string | string[]) {
+  const page = await DashboardPage({
+    searchParams: Promise.resolve(year === undefined ? {} : { year }),
+  });
+  return resolveSuspenseChild(page);
 }
 
 beforeEach(() => {
@@ -121,9 +125,7 @@ test.each(['admin', 'coordinator'])(
     expect(
       screen.getByRole('button', { name: 'Publicar dashboard' }).hasAttribute('disabled')
     ).toBe(true);
-    expect(screen.getByRole('button', { name: 'Exportar reporte' }).hasAttribute('disabled')).toBe(
-      false
-    );
+    expect(screen.queryByRole('button', { name: 'Exportar reporte' })).toBeNull();
     expect(screen.queryByText('Cargar métricas')).toBeNull();
     expect(screen.getByText('Nuevo proyecto').closest('a')?.getAttribute('href')).toBe(
       '/dashboard/projects/new'

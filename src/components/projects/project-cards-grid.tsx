@@ -19,6 +19,7 @@ export type ProjectListQuery = {
   departmentId?: string;
   topicId?: string;
   strategicLineId?: string;
+  partnerId?: string;
   beneficiaryCategoryId?: string;
 };
 
@@ -28,6 +29,8 @@ type ProjectCardsGridProps = {
   totalPages: number;
   query: ProjectListQuery;
   isPending: boolean;
+  selectedIds?: ReadonlyMap<number, number | null> | null;
+  onToggleSelection?: (id: number, year: number | null) => void;
 };
 
 export function ProjectCardsGrid({
@@ -36,6 +39,8 @@ export function ProjectCardsGrid({
   totalPages,
   query,
   isPending,
+  selectedIds = null,
+  onToggleSelection,
 }: ProjectCardsGridProps) {
   const [items, setItems] = useState(projects);
   const [pagination, setPagination] = useState({ page, totalPages });
@@ -105,6 +110,14 @@ export function ProjectCardsGrid({
               intensity={p.intensity}
               year={latestBeneficiaries?.year ?? p.startYear}
               totalReach={latestBeneficiaries?.total ?? null}
+              selection={
+                selectedIds && onToggleSelection
+                  ? {
+                      selected: selectedIds.has(p.id),
+                      onToggle: () => onToggleSelection(p.id, latestBeneficiaries?.year ?? null),
+                    }
+                  : undefined
+              }
             />
           );
         })}

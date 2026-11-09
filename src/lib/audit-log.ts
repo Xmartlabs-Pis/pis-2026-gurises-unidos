@@ -5,7 +5,7 @@ type AuditLogEntry = {
   authorId: number;
   action: Exclude<AuditAction, 'loginFailure'>;
   entity: Exclude<AuditEntity, 'authentication'>;
-  entityId: number;
+  entityId?: number;
   details?: Prisma.InputJsonValue;
 };
 

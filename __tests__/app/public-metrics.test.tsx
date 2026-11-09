@@ -1,28 +1,27 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import Home from '@/app/(public)/page';
-import { getContributors } from '@/lib/contributors';
+import { getPublicPartners } from '@/lib/partners';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
-import { getTopicStatistics } from '@/lib/metrics/topic-statistics';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
-vi.mock('@/lib/contributors', () => ({ getContributors: vi.fn(async () => []) }));
+vi.mock('@/lib/partners', () => ({ getPublicPartners: vi.fn(async () => []) }));
+vi.mock('@/lib/projects/public-projects', () => ({
+  getPublishedTopics: vi.fn(async () => []),
+  getPublicDepartments: vi.fn(async () => []),
+  getPublicRegions: vi.fn(async () => []),
+}));
 
 vi.mock('@/lib/metrics/queries', () => ({
   getPublishedYears: vi.fn(),
   getMetricSettings: vi.fn(),
   getMetricValues: vi.fn(),
 }));
-vi.mock('@/lib/projects/department-project-counts', () => ({
-  getDepartmentProjectCounts: vi.fn(async () => []),
-}));
-vi.mock('@/lib/metrics/topic-statistics', () => ({
-  getTopicStatistics: vi.fn(async () => []),
-}));
 vi.mock('@/components/projects/projects-by-topic', () => ({ ProjectsByTopic: vi.fn(() => null) }));
+vi.mock('@/components/how-we-work', () => ({ HowWeWork: () => null }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
   usePathname: () => '/',
@@ -31,7 +30,7 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getContributors).mockResolvedValue([]);
+  vi.mocked(getPublicPartners).mockResolvedValue([]);
   vi.mocked(getPublishedYears).mockResolvedValue([2025]);
   vi.mocked(getMetricSettings).mockResolvedValue(METRIC_DEFINITIONS);
   vi.mocked(getMetricValues).mockImplementation(async (year) => ({
@@ -45,16 +44,32 @@ beforeEach(() => {
   }));
 });
 
-test('renders published contributors from the database', async () => {
-  vi.mocked(getContributors).mockResolvedValue([{ id: 42, name: 'Published contributor' }]);
+test('renders published partners from the database', async () => {
+  vi.mocked(getPublicPartners).mockResolvedValue([{ id: 42, name: 'Published partner' }]);
   render(await Home({ searchParams: Promise.resolve({}) }));
-  expect(screen.getByText('Published contributor')).toBeDefined();
+  expect(screen.getByText('Published partner')).toBeDefined();
   expect(screen.queryByText('INAU')).toBeNull();
 });
 
-test('hides the contributors section when none are published', async () => {
+test('hides the partners section when none are published', async () => {
   render(await Home({ searchParams: Promise.resolve({}) }));
-  expect(screen.queryByRole('heading', { name: 'Quienes nos acompañan' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'CON EL APOYO DE' })).toBeNull();
+});
+
+test('renders every partner in the order returned by the database', async () => {
+  vi.mocked(getPublicPartners).mockResolvedValue([
+    { id: 42, name: 'Second alphabetically' },
+    { id: 7, name: 'First alphabetically' },
+    { id: 9, name: 'Third alphabetically' },
+  ]);
+  render(await Home({ searchParams: Promise.resolve({}) }));
+
+  const partners = within(screen.getByRole('region', { name: 'CON EL APOYO DE' }));
+  expect(partners.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+    'Second alphabetically',
+    'First alphabetically',
+    'Third alphabetically',
+  ]);
 });
 
 test('links the collaborate button to the Gurises Unidos collaboration page in a new tab', async () => {
@@ -65,7 +80,7 @@ test('links the collaborate button to the Gurises Unidos collaboration page in a
   expect(link.getAttribute('rel')).toBe('noopener noreferrer');
 });
 
-test('shows separate child totals and year-over-year changes on the public page', async () => {
+test('shows separate child totals and year-over-year changes on the public report', async () => {
   render(await Home({ searchParams: Promise.resolve({}) }));
 
   const stats = within(screen.getByRole('group', { name: 'Impacto 2025' }));
@@ -76,7 +91,7 @@ test('shows separate child totals and year-over-year changes on the public page'
   expect(direct.getByText('+100% vs. 2024')).toBeDefined();
   expect(indirect.getByText('40')).toBeDefined();
   expect(indirect.getByText('-20% vs. 2024')).toBeDefined();
-  const total = within(stats.getByText('Total de NNA').parentElement!);
+  const total = within(stats.getByText('NNA alcanzados').parentElement!);
   expect(total.getByText('140')).toBeDefined();
   expect(total.getByText('+40% vs. 2024')).toBeDefined();
 });
@@ -90,7 +105,7 @@ test('hides the combined child metric independently of direct and indirect total
   );
   render(await Home({ searchParams: Promise.resolve({}) }));
   const stats = within(screen.getByRole('group', { name: 'Impacto 2025' }));
-  expect(stats.queryByText('Total de NNA')).toBeNull();
+  expect(stats.queryByText('NNA alcanzados')).toBeNull();
   expect(stats.getByText('NNA directos')).toBeDefined();
   expect(stats.getByText('NNA indirectos')).toBeDefined();
 });
@@ -143,8 +158,7 @@ test('uses the requested published year for all annual data', async () => {
   expect(screen.getByRole('group', { name: 'Impacto 2024' })).toBeDefined();
   expect(getMetricValues).toHaveBeenNthCalledWith(1, 2024);
   expect(getMetricValues).toHaveBeenNthCalledWith(2, 2023);
-  expect(getTopicStatistics).toHaveBeenCalledWith(2024);
-  expect(ProjectsByTopic).toHaveBeenCalledWith(expect.objectContaining({ year: 2024 }), undefined);
+  expect(ProjectsByTopic).not.toHaveBeenCalled();
 });
 
 test.each(['2025', '2030', 'invalid', ['2024', '2026']])(

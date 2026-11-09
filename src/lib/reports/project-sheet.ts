@@ -5,6 +5,7 @@ import { getCurrentYear } from '@/lib/metrics/year';
 import {
   COUNTERPARTY_LABEL,
   GEOGRAPHIC_SCOPE_OPTIONS,
+  REGION_LABEL,
   STATUS_LABEL,
   getIntensityLabel,
   sumBeneficiaries,
@@ -64,7 +65,7 @@ export async function getProjectSheetData(
       name: true,
       status: true,
       intensity: true,
-      counterpartyType: true,
+      counterpartyTypes: true,
       startYear: true,
       endYear: true,
       leadCoordinatorId: true,
@@ -75,6 +76,7 @@ export async function getProjectSheetData(
       leadCoordinator: { select: { firstName: true, lastName: true } },
       topics: { orderBy: { name: 'asc' }, select: { name: true } },
       strategicLines: { orderBy: { name: 'asc' }, select: { name: true } },
+      partners: { orderBy: { name: 'asc' }, select: { name: true } },
       projectBeneficiaries: {
         where: { year: { in: [year, previousYear] } },
         select: { year: true, ...BENEFICIARY_VALUES_SELECT },
@@ -147,7 +149,14 @@ export async function getProjectSheetData(
       { label: 'Período', value: `${project.startYear} a ${project.endYear ?? 'la actualidad'}` },
     ],
     extraFields: [
-      { label: 'Contraparte', value: COUNTERPARTY_LABEL[project.counterpartyType] },
+      {
+        label: 'Contrapartes',
+        value: joinList(project.counterpartyTypes.map((type) => COUNTERPARTY_LABEL[type])),
+      },
+      {
+        label: 'Socios',
+        value: joinList(project.partners.map(({ name }) => name)),
+      },
       {
         label: 'Líneas estratégicas',
         value: joinList(project.strategicLines.map(({ name }) => name)),
@@ -156,7 +165,14 @@ export async function getProjectSheetData(
         label: 'Ubicaciones',
         value: project.geographicScope === 'national' ? getLocationLabel(project) : EMPTY_VALUE,
       },
-      { label: 'Visible en la web', value: project.showOnLanding ? 'Sí' : 'No' },
+      {
+        label: 'Región',
+        value:
+          project.geographicScope === 'international' && project.region
+            ? REGION_LABEL[project.region]
+            : EMPTY_VALUE,
+      },
+      { label: 'Visible en el reporte público', value: project.showOnLanding ? 'Sí' : 'No' },
     ],
     longFields: [{ label: 'Descripción pública', value: project.publicDescription ?? '' }].filter(
       ({ value }) => value.trim() !== ''

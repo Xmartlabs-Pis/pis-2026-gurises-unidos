@@ -27,7 +27,7 @@ const SHEET: ProjectSheetData = {
     { label: 'Zona', value: 'Montevideo' },
     { label: 'Ciudades', value: 'Montevideo' },
     { label: 'Barrios', value: 'Cerro' },
-    { label: 'Visible en la web', value: 'Sí' },
+    { label: 'Visible en el reporte público', value: 'Sí' },
   ],
   longFields: [],
   kpis: [
@@ -57,6 +57,10 @@ const REPORT: ImpactReportData = {
   departments: [{ label: 'Montevideo', value: 9 }],
   departmentTotal: 19,
   internationalCountries: [],
+  projects: [
+    { name: 'El Resorte', description: 'Proyecto de acompañamiento territorial.' },
+    { name: 'Faro', description: null },
+  ],
 };
 
 describe('report rendering', () => {
@@ -74,7 +78,18 @@ describe('report rendering', () => {
     expect(countPages(pdf)).toBe(1);
   }, 30_000);
 
-  it('keeps the impact report on two pages with many topics, categories and departments', async () => {
+  it('lists every selected project after the indicators, spanning pages as needed', async () => {
+    const projects = Array.from({ length: 40 }, (_, index) => ({
+      name: `Proyecto ${index + 1}`,
+      description: LONG_TEXT.slice(0, 300),
+    }));
+
+    const pdf = await renderImpactReport({ ...REPORT, projects });
+
+    expect(countPages(pdf)).toBeGreaterThan(3);
+  }, 30_000);
+
+  it('keeps the indicators on two pages with many topics, categories and departments', async () => {
     const pdf = await renderImpactReport({
       ...REPORT,
       topics: Array.from({ length: 25 }, (_, index) => ({
@@ -88,11 +103,11 @@ describe('report rendering', () => {
       departments: DEPARTMENTS.map((label, index) => ({ label, value: 19 - index })),
     });
 
-    expect(countPages(pdf)).toBe(2);
+    expect(countPages(pdf)).toBe(3);
   }, 30_000);
 
   it('renders typical content at the designed page count', async () => {
     expect(countPages(await renderProjectSheet(SHEET))).toBe(1);
-    expect(countPages(await renderImpactReport(REPORT))).toBe(2);
+    expect(countPages(await renderImpactReport(REPORT))).toBe(3);
   }, 30_000);
 });

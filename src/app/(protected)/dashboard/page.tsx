@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import type { UserRole } from '@/generated/prisma/enums';
+import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
 import { DashboardQuickActions } from '@/components/dashboard/quick-actions';
 import { HeroKpiCard } from '@/components/dashboard/hero-kpi-card';
 import { KpiCard } from '@/components/dashboard/kpi-card';
@@ -21,6 +23,18 @@ export default async function DashboardPage({
   if (!session?.user) redirect('/login');
   if (!ALLOWED_ROLES.includes(session.user.role)) redirect('/dashboard/projects');
 
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardOverview searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function DashboardOverview({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string | string[] }>;
+}) {
   const currentYear = getCurrentYear();
   const years = await getMetricYears(currentYear);
   const year = resolveYearParam((await searchParams).year, years, currentYear);
@@ -29,7 +43,7 @@ export default async function DashboardPage({
   return (
     <div className="bg-surface-page flex flex-1 flex-col gap-4 p-4 lg:px-6 lg:py-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <DashboardQuickActions reportHref={`/api/reports/impact?year=${year}`} />
+        <DashboardQuickActions />
         <MetricsYearSelect year={year} years={years} label="Año" />
       </div>
 

@@ -23,12 +23,18 @@ vi.mock('@/lib/audit-log', async (importOriginal) => {
 let seed: SeedData;
 let initialMetrics: Metric[];
 let initialSettings: PublicSettings | null;
+let initialTopics: { id: number; showPublicly: boolean }[];
 let lastAuditLogId: number;
 let createdProjectIds: number[] = [];
 
-function buildInput(publishedYears = [CURRENT_YEAR - 1], publicKeys: string[] = []) {
+function buildInput(
+  publishedYears = [CURRENT_YEAR - 1],
+  publicKeys: string[] = [],
+  topics: { id: number; showPublicly: boolean }[] = []
+) {
   return {
     publishedYears,
+    topics,
     metrics: METRIC_DEFINITIONS.map(({ key }) => ({ key, showPublicly: publicKeys.includes(key) })),
   };
 }
@@ -44,7 +50,7 @@ async function createProjectWithBeneficiaryYear(year: number) {
       leadCoordinatorId: seed.coordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       createdBy: seed.adminId,
       topics: { connect: { id: seed.topicIds[0] } },
       projectBeneficiaries: { create: { year, authorId: seed.coordinatorId } },
@@ -53,9 +59,11 @@ async function createProjectWithBeneficiaryYear(year: number) {
   createdProjectIds.push(project.id);
 }
 
+const PUBLIC_REPORT_ENTITIES = ['metric', 'topic', 'publicSettings'] as const;
+
 function metricAuditLogs() {
   return prisma.auditLog.findMany({
-    where: { entity: 'metric', id: { gt: lastAuditLogId } },
+    where: { entity: { in: [...PUBLIC_REPORT_ENTITIES] }, id: { gt: lastAuditLogId } },
     orderBy: { id: 'asc' },
   });
 }
@@ -79,21 +87,32 @@ async function expectRejected(input: unknown, expected: object) {
 
 beforeAll(async () => {
   seed = await loadSeedData();
-  [initialMetrics, initialSettings] = await Promise.all([
+  [initialMetrics, initialSettings, initialTopics] = await Promise.all([
     prisma.metric.findMany(),
     prisma.publicSettings.findUnique({ where: { id: 1 } }),
+    prisma.topic.findMany({ select: { id: true, showPublicly: true } }),
   ]);
 });
 
 beforeEach(async () => {
   const lastAuditLog = await prisma.auditLog.findFirst({ orderBy: { id: 'desc' } });
   lastAuditLogId = lastAuditLog?.id ?? 0;
+  await prisma.$transaction([
+    prisma.metric.deleteMany(),
+    prisma.publicSettings.deleteMany(),
+    prisma.topic.updateMany({ data: { showPublicly: false } }),
+  ]);
 });
 
 afterEach(async () => {
   vi.restoreAllMocks();
   await prisma.$transaction([
-    prisma.auditLog.deleteMany({ where: { entity: 'metric', id: { gt: lastAuditLogId } } }),
+    prisma.auditLog.deleteMany({
+      where: { entity: { in: [...PUBLIC_REPORT_ENTITIES] }, id: { gt: lastAuditLogId } },
+    }),
+    ...initialTopics.map(({ id, showPublicly }) =>
+      prisma.topic.update({ where: { id }, data: { showPublicly } })
+    ),
     prisma.metric.deleteMany({
       where: { key: { notIn: initialMetrics.map(({ key }) => key) } },
     }),
@@ -110,7 +129,7 @@ afterEach(async () => {
 });
 
 describe('saveMetricSettings (integration)', () => {
-  test('stores the published years newest first and every metric visibility, and audits each metric', async () => {
+  test('stores the published years newest first and every metric visibility', async () => {
     signInAs(seed.adminId, 'admin');
 
     expect(
@@ -119,7 +138,7 @@ describe('saveMetricSettings (integration)', () => {
       )
     ).toEqual({ success: true, message: 'Cambios guardados.' });
 
-    const { settings, metrics, auditLogs } = await loadMetricState();
+    const { settings, metrics } = await loadMetricState();
     expect(settings).toMatchObject({
       publishedYears: [CURRENT_YEAR, CURRENT_YEAR - 1],
       updatedBy: seed.adminId,
@@ -135,11 +154,104 @@ describe('saveMetricSettings (integration)', () => {
         })
       )
     );
-    expect(auditLogs).toEqual(
-      metrics.map(({ id }) =>
-        expect.objectContaining({ action: 'update', entityId: id, authorId: seed.adminId })
-      )
+  });
+
+  test('audits the published years in a single entry with the previous and new values', async () => {
+    signInAs(seed.adminId, 'admin');
+    await saveMetricSettings(buildInput([CURRENT_YEAR - 1]));
+
+    await saveMetricSettings(buildInput([CURRENT_YEAR - 1, CURRENT_YEAR]));
+
+    const logs = (await metricAuditLogs()).filter(({ entity }) => entity === 'publicSettings');
+    expect(logs).toHaveLength(2);
+    expect(logs[1]).toMatchObject({
+      action: 'update',
+      entityId: 1,
+      authorId: seed.adminId,
+      details: {
+        changes: [
+          {
+            field: 'publishedYears',
+            from: [CURRENT_YEAR - 1],
+            to: [CURRENT_YEAR, CURRENT_YEAR - 1],
+          },
+        ],
+      },
+    });
+  });
+
+  test('audits every changed metric card in one grouped entry', async () => {
+    signInAs(seed.adminId, 'admin');
+    const names = Object.fromEntries(METRIC_DEFINITIONS.map(({ key, name }) => [key, name]));
+    await saveMetricSettings(buildInput());
+    const baselineLogs = (await metricAuditLogs()).length;
+
+    await saveMetricSettings(buildInput([CURRENT_YEAR - 1], ['families', 'active_projects']));
+
+    const logs = (await metricAuditLogs())
+      .slice(baselineLogs)
+      .filter(({ entity }) => entity === 'metric');
+    expect(logs).toEqual([
+      expect.objectContaining({
+        action: 'update',
+        entityId: null,
+        authorId: seed.adminId,
+        details: {
+          changes: [
+            { field: names.families, from: false, to: true },
+            { field: names.active_projects, from: false, to: true },
+          ],
+        },
+      }),
+    ]);
+  });
+
+  test('audits every changed topic in one grouped entry and skips unchanged ones', async () => {
+    signInAs(seed.adminId, 'admin');
+    const [first, second, third] = await prisma.topic.findMany({
+      where: { id: { in: seed.topicIds } },
+      orderBy: { id: 'asc' },
+    });
+    const topics = [
+      { id: first.id, showPublicly: true },
+      { id: second.id, showPublicly: true },
+      { id: third.id, showPublicly: false },
+    ];
+
+    await saveMetricSettings(buildInput([CURRENT_YEAR - 1], [], topics));
+
+    const logs = (await metricAuditLogs()).filter(({ entity }) => entity === 'topic');
+    expect(logs).toEqual([
+      expect.objectContaining({
+        action: 'update',
+        entityId: null,
+        authorId: seed.adminId,
+        details: {
+          changes: [
+            { field: first.name, from: false, to: true },
+            { field: second.name, from: false, to: true },
+          ],
+        },
+      }),
+    ]);
+    const saved = await prisma.topic.findMany({
+      where: { id: { in: topics.map(({ id }) => id) } },
+    });
+    expect(saved.map(({ id, showPublicly }) => ({ id, showPublicly }))).toEqual(
+      expect.arrayContaining(topics)
     );
+  });
+
+  test('does not audit anything when nothing changed', async () => {
+    signInAs(seed.adminId, 'admin');
+    await saveMetricSettings(buildInput([CURRENT_YEAR - 1], ['families']));
+    const before = (await metricAuditLogs()).length;
+
+    expect(await saveMetricSettings(buildInput([CURRENT_YEAR - 1], ['families']))).toMatchObject({
+      success: true,
+    });
+
+    expect(await metricAuditLogs()).toHaveLength(before);
   });
 
   test('updates the saved metrics in place when saving again', async () => {
@@ -151,13 +263,12 @@ describe('saveMetricSettings (integration)', () => {
       success: true,
     });
 
-    const { settings, metrics, auditLogs } = await loadMetricState();
+    const { settings, metrics } = await loadMetricState();
     expect(settings?.publishedYears).toEqual([CURRENT_YEAR]);
     expect(metrics.map(({ id }) => id)).toEqual(firstMetrics.map(({ id }) => id));
     expect(metrics.filter(({ showPublicly }) => showPublicly).map(({ key }) => key)).toEqual([
       'teachers',
     ]);
-    expect(auditLogs).toHaveLength(METRIC_DEFINITIONS.length * 2);
   });
 
   test('accepts a past year that has beneficiaries loaded', async () => {
@@ -202,19 +313,15 @@ describe('saveMetricSettings (integration)', () => {
     );
   });
 
-  test('rolls back every change when a later metric fails', async () => {
+  test('rolls back every change when the audit entry fails', async () => {
     signInAs(seed.adminId, 'admin');
-    const realLogAudit = vi.mocked(logAudit).getMockImplementation()!;
-    vi.mocked(logAudit)
-      .mockClear()
-      .mockImplementationOnce(realLogAudit)
-      .mockRejectedValueOnce(new Error('Audit failure'));
+    vi.mocked(logAudit).mockClear().mockRejectedValue(new Error('Audit failure'));
 
     await expectRejected(buildInput([CURRENT_YEAR - 1], ['families']), {
       success: false,
       message: 'No se pudieron guardar los cambios. Intentá de nuevo.',
     });
-    expect(vi.mocked(logAudit)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(logAudit)).toHaveBeenCalled();
   });
 
   test('rejects a coordinator', async () => {

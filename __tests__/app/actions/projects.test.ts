@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -105,7 +105,7 @@ const VALID_DATA = {
   topicIds: '1',
   status: 'active',
   intensity: 'medium',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2019',
   leadCoordinatorId: '2',
   geographicScope: 'national',
@@ -168,6 +168,7 @@ beforeEach(() => {
     leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
+    partners: [],
     departments: [{ id: 3, name: 'Department 3' }],
     localities: AUDIT_LOCALITIES,
   });
@@ -199,6 +200,7 @@ beforeEach(() => {
         id,
         name: `Line ${id}`,
       })),
+      partners: [],
       departments: (departments?.set ?? [{ id: 3 }]).map(({ id }: { id: number }) => ({
         id,
         name: `Department ${id}`,
@@ -221,14 +223,20 @@ describe.each([
   ['createProject', (data: FormData) => createProject({}, data)],
   ['updateProject', (data: FormData) => updateProject(10, {}, data)],
 ] as const)('%s', (_name, submit) => {
-  it.each([undefined, '', 'invalid'])(
-    'rejects a missing or invalid counterparty before accessing the database: %s',
-    async (counterpartyType) => {
-      const result = await submit(formData({ counterpartyType }));
-      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+  it.each(['', 'invalid'])(
+    'rejects an invalid counterparty before accessing the database: %s',
+    async (counterpartyTypes) => {
+      const result = await submit(formData({ counterpartyTypes }));
+      expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná una contraparte válida']);
       expect(mocks.transaction).not.toHaveBeenCalled();
     }
   );
+
+  it('rejects a project without counterparties before accessing the database', async () => {
+    const result = await submit(formData({ counterpartyTypes: undefined }));
+    expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná al menos una contraparte']);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
 
   it('requires intensity when direct children or adolescents are submitted', async () => {
     const result = await submit(formData({ intensity: '' }));
@@ -533,12 +541,13 @@ describe('updateProject persistence', () => {
           name: 'Updated project',
           status: 'active',
           intensity: 'medium',
-          counterpartyType: 'publicSector',
+          counterpartyTypes: ['publicSector'],
           startYear: 2019,
           endYear: null,
           leadCoordinatorId: 2,
           geographicScope: 'national',
           countries: [],
+          region: null,
           generalObjective: 'Objective',
           publicDescription: 'Description',
           internalNotes: 'Team notes',
@@ -677,7 +686,7 @@ describe('updateProject persistence', () => {
     ).rejects.toThrow('Redirect: /dashboard/projects/10');
     expect(mocks.findDirectChildrenValue).toHaveBeenCalledWith({
       where: {
-        beneficiary: { projectId: 10, year: { not: 2024 } },
+        beneficiary: { projectId: 10, year: { notIn: [2024] } },
         category: { key: 'directChildrenAdolescents' },
         value: { gt: 0 },
       },
@@ -777,6 +786,7 @@ function unchangedRecords() {
     leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
+    partners: [],
     departments: [{ id: 3, name: 'Department 3' }],
     localities: AUDIT_LOCALITIES,
   });
@@ -1062,7 +1072,11 @@ describe('project review regressions', () => {
       updateProject(
         10,
         {},
-        formData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+        formData({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
+        })
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject).toHaveBeenCalledWith(
@@ -1070,13 +1084,20 @@ describe('project review regressions', () => {
         data: expect.objectContaining({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
           departments: { set: [] },
           localities: { deleteMany: {}, create: [] },
         }),
       })
     );
     expect(mocks.audit.mock.calls[0][0].data.details.changedFields).toEqual(
-      expect.arrayContaining(['geographicScope', 'countries', 'departments', 'localities'])
+      expect.arrayContaining([
+        'geographicScope',
+        'countries',
+        'region',
+        'departments',
+        'localities',
+      ])
     );
   });
 
@@ -1168,6 +1189,7 @@ describe('project review regressions', () => {
       ...projectData,
       topics: [{ id: 3 }, { id: 2 }],
       strategicLines: [{ id: 1 }],
+      partners: [],
       departments: [{ id: 3 }],
       localities: LOCALITIES,
     });
@@ -1195,6 +1217,90 @@ describe('project review regressions', () => {
     expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
   });
 
+  it('rejects an uploaded path that no live project uses', async () => {
+    const unusedPath = '/uploads/covers/55555555-5555-4555-8555-555555555555.webp';
+    const crop = { x: 10, y: 5, width: 80, height: 70 };
+    expect(
+      await updateProject(
+        10,
+        {},
+        formData({ coverPhotoPath: unusedPath, coverCrop: JSON.stringify(crop) })
+      )
+    ).toEqual({
+      formError: 'La imagen de portada que elegiste ya no está disponible. Elegí otra.',
+    });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it('reuses an in-use cover and stores the crop without copying the file', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const sharedPath = '/uploads/covers/44444444-4444-4444-8444-444444444444.webp';
+    const crop = { x: 10, y: 5, width: 80, height: 70 };
+    try {
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: '/images/project-placeholders/1.webp',
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        partners: [],
+        departments: [{ id: 3 }],
+        localities: LOCALITIES,
+      });
+      mocks.findLiveCover.mockResolvedValue({ id: 4 });
+      await expect(
+        updateProject(
+          10,
+          {},
+          formData({ coverPhotoPath: sharedPath, coverCrop: JSON.stringify(crop) })
+        )
+      ).rejects.toThrow('Redirect:');
+      expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+      expect(mocks.updateProject.mock.calls[0][0].where).toEqual({ id: 10 });
+      expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(sharedPath);
+      expect(mocks.updateProject.mock.calls[0][0].data.coverCrop).toEqual(crop);
+      await expect(readdir(path.join(directory, 'covers'))).rejects.toThrow();
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('stores a new crop without rewriting the shared file or the other project', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const sharedPath = '/uploads/covers/44444444-4444-4444-8444-444444444444.webp';
+    const crop = { x: 12, y: 8, width: 70, height: 60 };
+    try {
+      await writeOwnedCover(directory, sharedPath, 3, 'shared');
+      mocks.findProject.mockResolvedValue({
+        id: 10,
+        leadCoordinatorId: 2,
+        coverPhoto: sharedPath,
+        coverCrop: { x: 0, y: 0, width: 100, height: 100 },
+        topics: [{ id: 1 }],
+        strategicLines: [{ id: 1 }],
+        partners: [],
+        departments: [{ id: 3 }],
+        localities: LOCALITIES,
+      });
+      await expect(
+        updateProject(10, {}, formData({ coverCrop: JSON.stringify(crop) }))
+      ).rejects.toThrow('Redirect:');
+      expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+      expect(mocks.updateProject.mock.calls[0][0].where).toEqual({ id: 10 });
+      expect(mocks.updateProject.mock.calls[0][0].data).not.toHaveProperty('coverPhoto');
+      expect(mocks.updateProject.mock.calls[0][0].data.coverCrop).toEqual(crop);
+      expect(
+        await readFile(path.join(directory, 'covers', path.basename(sharedPath)), 'utf8')
+      ).toBe('shared');
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('replaces an uploaded cover and deletes the previous file', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
     process.env.COVER_UPLOAD_DIR = directory;
@@ -1209,6 +1315,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1238,6 +1345,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1270,6 +1378,34 @@ describe('project review regressions', () => {
     );
   });
 
+  it('clears the crop when the cover is removed', async () => {
+    mocks.findProject.mockResolvedValue({
+      id: 10,
+      leadCoordinatorId: 2,
+      coverPhoto: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+      coverCrop: { x: 0, y: 0, width: 40, height: 40 },
+      topics: [{ id: 1 }],
+      strategicLines: [{ id: 1 }],
+      partners: [],
+      departments: [{ id: 3 }],
+      localities: LOCALITIES,
+    });
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          removeCoverPhoto: 'true',
+          projectPlaceholder: '/images/project-placeholders/3.webp',
+        })
+      )
+    ).rejects.toThrow('Redirect:');
+    expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toBe(
+      '/images/project-placeholders/3.webp'
+    );
+    expect(mocks.updateProject.mock.calls[0][0].data.coverCrop).toBe(Prisma.DbNull);
+  });
+
   it('ignores a forged placeholder when the cover is removed', async () => {
     await expect(
       updateProject(
@@ -1282,7 +1418,7 @@ describe('project review regressions', () => {
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.updateProject.mock.calls[0][0].data.coverPhoto).toMatch(
-      /^\/images\/project-placeholders\/[1-6]\.webp$/
+      /^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/
     );
   });
 
@@ -1300,6 +1436,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
       });
       mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -1354,6 +1491,7 @@ describe('project review regressions', () => {
         coverPhoto: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
       });
       expect(await updateProject(10, {}, formData({ coverPhotoPath: existingCover }))).toEqual({
@@ -1547,7 +1685,7 @@ describe('project audit details', () => {
   it.each([
     ['name', 'Renamed project', 'Updated project', 'Renamed project'],
     ['startYear', '2020', 2019, 2020],
-    ['counterpartyType', 'privateSector', 'publicSector', 'privateSector'],
+    ['counterpartyTypes', ['privateSector'], ['publicSector'], ['privateSector']],
     ['intensity', 'high', 'medium', 'high'],
     ['generalObjective', '', 'Objective', null],
     ['publicDescription', 'New description', 'Description', 'New description'],
@@ -1639,13 +1777,18 @@ describe('project audit details', () => {
       updateProject(
         10,
         {},
-        formData({ geographicScope: 'international', countries: ['Argentina'] })
+        formData({
+          geographicScope: 'international',
+          countries: ['Argentina'],
+          region: 'southAmerica',
+        })
       )
     ).rejects.toThrow('Redirect:');
     expect(mocks.audit.mock.calls[0][0].data.details.changes).toEqual(
       expect.arrayContaining([
         { field: 'geographicScope', from: 'national', to: 'international' },
         { field: 'countries', from: [], to: ['Argentina'] },
+        { field: 'region', from: null, to: 'southAmerica' },
         { field: 'departments', from: [{ id: 3, name: 'Department 3' }], to: [] },
         { field: 'localities', from: [{ name: 'Department 3, City, Neighborhood' }], to: [] },
       ])

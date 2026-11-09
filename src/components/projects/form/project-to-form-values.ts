@@ -1,5 +1,6 @@
 import type { Project } from '@/generated/prisma/client';
 import type { BeneficiaryCategoryOption, BeneficiaryCounts } from '@/lib/project-display';
+import { parseCoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectLocality } from '@/lib/projects/location';
 import { getDefaultValues } from './get-default-values';
 import type { ProjectLocationFormValue, ProjectFormValues } from './project-form-values';
@@ -25,6 +26,7 @@ export function projectToFormValues(
     projectBeneficiaries: (BeneficiaryCounts & { year: number })[];
     topics: { id: number }[];
     strategicLines?: { id: number }[];
+    partners?: { id: number }[];
     departments?: { id: number }[];
     localities?: ProjectLocality[];
   },
@@ -38,20 +40,23 @@ export function projectToFormValues(
     name: project.name,
     status: project.status,
     intensity: project.intensity ?? '',
-    counterpartyType: project.counterpartyType,
+    counterpartyTypes: project.counterpartyTypes,
     startYear: String(project.startYear),
     endYear: project.endYear === null ? '' : String(project.endYear),
     leadCoordinatorId: String(project.leadCoordinatorId),
     geographicScope: project.geographicScope,
     countries: project.countries,
+    region: project.region ?? '',
     locations: toLocationFormValues(project.departments ?? [], project.localities ?? []),
     generalObjective: project.generalObjective ?? '',
     publicDescription: project.publicDescription ?? '',
     internalNotes: project.internalNotes ?? '',
     showOnLanding: String(project.showOnLanding),
     coverPhotoUrl: project.coverPhoto,
+    coverCrop: parseCoverCrop(project.coverCrop),
     topicIds: project.topics.map(({ id }) => String(id)),
     strategicLineIds: project.strategicLines?.map(({ id }) => String(id)) ?? [],
+    partnerIds: project.partners?.map(({ id }) => String(id)) ?? [],
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),
   };
 }

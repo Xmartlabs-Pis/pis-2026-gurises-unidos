@@ -1,11 +1,13 @@
 'use client';
 
-import { ContributorsManager } from '@/components/metrics/contributors-manager';
-import type { Contributor } from '@/lib/contributors';
+import { PartnersManager } from '@/components/metrics/partners-manager';
+import type { MetricsPartner } from '@/lib/partners';
 
 import Link from 'next/link';
 import { Info } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useRef, useState } from 'react';
+import { usePendingChanges } from '@/components/ui/forms/pending-changes-provider';
+import { UnsavedChangesIndicator } from '@/components/ui/forms/unsaved-changes-indicator';
 import { saveMetricSettings } from '@/app/actions/metrics';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,17 +15,17 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumber } from '@/lib/format';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
-import type { MetricSetting, MetricValues } from '@/lib/metrics/queries';
+import type { MetricSetting } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 import { notify } from '@/lib/notify';
-import type { TopicStatistic } from '@/lib/metrics/topic-statistics';
-import { getVisibleTopics } from '@/lib/metrics/visible-topics';
+import type { TopicVisibilitySetting } from '@/lib/metrics/topic-visibility';
 import { PublishedYearsSelect } from '@/components/metrics/published-years-select';
 import { MetricsYearSelect } from '@/components/metrics/metrics-year-select';
 
 function getSettingsSignature(
   years: number[],
   metrics: Pick<MetricSetting, 'key' | 'showPublicly'>[],
-  topics: Pick<TopicStatistic, 'id' | 'showPublicly'>[]
+  topics: Pick<TopicVisibilitySetting, 'id' | 'showPublicly'>[]
 ) {
   return JSON.stringify({
     years: [...years].sort((a, b) => a - b),
@@ -43,13 +45,13 @@ export function MetricsForm({
   initialTopics,
   years,
   initialPublishedYears,
-  contributors = [],
+  partners = [],
 }: {
-  contributors?: Contributor[];
+  partners?: MetricsPartner[];
   year: string;
   values: MetricValues;
   initialMetrics: MetricSetting[];
-  initialTopics: TopicStatistic[];
+  initialTopics: TopicVisibilitySetting[];
   years: number[];
   initialPublishedYears: number[];
 }) {
@@ -59,34 +61,43 @@ export function MetricsForm({
   const [savedSignature, setSavedSignature] = useState(() =>
     getSettingsSignature(initialPublishedYears, initialMetrics, initialTopics)
   );
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
+  const savingRef = useRef(false);
   const topics = initialTopics.map((topic) => ({
     ...topic,
     showPublicly: topicVisibility[topic.id] ?? topic.showPublicly,
   }));
   const visibleMetrics = metrics.filter((metric) => metric.showPublicly);
-  const visibleTopics = getVisibleTopics(topics);
+  const visibleTopics = topics.filter((topic) => topic.showPublicly && topic.projectCount > 0);
   const settingsSignature = getSettingsSignature(publishedYears, metrics, topics);
   const hasUnsavedChanges = settingsSignature !== savedSignature;
 
-  function saveChanges() {
-    startTransition(async () => {
-      try {
-        const result = await saveMetricSettings({
-          publishedYears,
-          metrics: metrics.map(({ key, showPublicly }) => ({ key, showPublicly })),
-          topics: topics.map(({ id, showPublicly }) => ({ id, showPublicly })),
-        });
-        if (!result.success) {
-          notify.error({ title: result.message });
-          return;
-        }
-        setSavedSignature(settingsSignature);
-        notify.success({ title: result.message });
-      } catch {
-        notify.error({ title: 'No se pudieron guardar los cambios. Intentá de nuevo.' });
+  usePendingChanges({ hasUnsavedChanges, isSaving: isPending, onSave: saveChanges });
+
+  async function saveChanges(): Promise<boolean> {
+    if (savingRef.current) return false;
+    savingRef.current = true;
+    setIsPending(true);
+    try {
+      const result = await saveMetricSettings({
+        publishedYears,
+        metrics: metrics.map(({ key, showPublicly }) => ({ key, showPublicly })),
+        topics: topics.map(({ id, showPublicly }) => ({ id, showPublicly })),
+      });
+      if (!result.success) {
+        notify.error({ title: result.message });
+        return false;
       }
-    });
+      setSavedSignature(settingsSignature);
+      notify.success({ title: result.message });
+      return true;
+    } catch {
+      notify.error({ title: 'No se pudieron guardar los cambios. Intentá de nuevo.' });
+      return false;
+    } finally {
+      savingRef.current = false;
+      setIsPending(false);
+    }
   }
 
   function setVisibility(key: string, showPublicly: boolean) {
@@ -103,6 +114,7 @@ export function MetricsForm({
     <div className="flex flex-1 flex-col">
       <div className="mx-auto grid w-full max-w-[1185px] items-start gap-y-6 xl:grid-cols-[minmax(0,760fr)_minmax(0,425fr)]">
         <section
+          inert={isPending}
           aria-label="Selección de métricas"
           className="bg-surface-page flex min-w-0 flex-col gap-5 px-6 pt-6 pb-8"
         >
@@ -143,19 +155,19 @@ export function MetricsForm({
                     checked={metric.showPublicly}
                     disabled={isPending}
                     onCheckedChange={(checked) => setVisibility(metric.key, checked)}
-                    aria-label={`Mostrar ${metric.name} en el sitio público`}
+                    aria-label={`Mostrar ${metric.name} en el reporte público`}
                   />
                   <label htmlFor={`${metric.key}-visibility`} className="cursor-pointer text-sm">
-                    Mostrar en el sitio público
+                    Mostrar en el reporte público
                   </label>
                 </div>
               </article>
             ))}
           </div>
-          <section aria-labelledby="topic-statistics-heading" className="flex flex-col gap-4">
+          <section aria-labelledby="topic-visibility-heading" className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <h2 id="topic-statistics-heading" className="text-lg font-semibold">
+                <h2 id="topic-visibility-heading" className="text-lg font-semibold">
                   Proyectos por temática
                 </h2>
                 <Tooltip>
@@ -168,28 +180,27 @@ export function MetricsForm({
                   </TooltipTrigger>
                   <TooltipContent className="leading-relaxed">
                     Al guardar los cambios, activar o desactivar una temática mostrará u ocultará su
-                    barra y su carrusel en la vista pública. Los proyectos ocultos individualmente
-                    siguen contando en la barra. Esta configuración no modifica los proyectos del
+                    carrusel en el reporte público. Los proyectos ocultos individualmente no se
+                    muestran ni se cuentan. Esta configuración no modifica los proyectos del
                     dashboard.
                   </TooltipContent>
                 </Tooltip>
               </div>
               <div className="flex items-center gap-3">
                 <Switch
-                  id="topic-statistics-visibility"
+                  id="topic-visibility-all"
                   checked={topics.length > 0 && topics.every((topic) => topic.showPublicly)}
                   disabled={isPending || topics.length === 0}
                   onCheckedChange={setAllTopicsVisibility}
                 />
-                <label htmlFor="topic-statistics-visibility" className="cursor-pointer text-sm">
+                <label htmlFor="topic-visibility-all" className="cursor-pointer text-sm">
                   Mostrar todas las temáticas
                 </label>
               </div>
             </div>
             <p className="text-muted-foreground text-sm">
-              Seleccioná las temáticas que querés mostrar en el sitio público. Se cuentan los
-              proyectos con actividad registrada en {year}, incluidos los ocultos en el sitio
-              público.
+              Seleccioná las temáticas cuyos carruseles querés mostrar en el reporte público. Se
+              cuentan solo los proyectos publicados con actividad registrada en {year}.
             </p>
             {topics.length === 0 ? (
               <p className="text-muted-foreground text-sm">No hay temáticas activas.</p>
@@ -198,10 +209,13 @@ export function MetricsForm({
                 {topics.map((topic) => (
                   <div
                     key={topic.id}
-                    className="bg-card border-border-default flex items-center justify-between gap-4 rounded-xl border p-4"
+                    className="bg-card border-border-default flex min-w-0 items-center justify-between gap-4 rounded-xl border p-4"
                   >
-                    <label htmlFor={`topic-${topic.id}-visibility`} className="cursor-pointer">
-                      <span className="block font-medium">{topic.name}</span>
+                    <label
+                      htmlFor={`topic-${topic.id}-visibility`}
+                      className="min-w-0 flex-1 cursor-pointer"
+                    >
+                      <span className="block font-medium wrap-anywhere">{topic.name}</span>
                       <span className="text-muted-foreground text-sm">
                         {formatNumber(topic.projectCount)}{' '}
                         {topic.projectCount === 1 ? 'proyecto' : 'proyectos'}
@@ -211,7 +225,7 @@ export function MetricsForm({
                       id={`topic-${topic.id}-visibility`}
                       checked={topic.showPublicly}
                       disabled={isPending}
-                      aria-label={`Mostrar proyectos de ${topic.name} en el sitio público`}
+                      aria-label={`Mostrar proyectos de ${topic.name} en el reporte público`}
                       onCheckedChange={(showPublicly) =>
                         setTopicVisibility((current) => ({ ...current, [topic.id]: showPublicly }))
                       }
@@ -221,10 +235,10 @@ export function MetricsForm({
               </div>
             )}
           </section>
-          <ContributorsManager contributors={contributors} />
+          <PartnersManager partners={partners} />
         </section>
         <aside
-          aria-label="Vista previa del sitio público"
+          aria-label="Vista previa del reporte público"
           className="bg-card border-border-default flex w-full flex-col overflow-hidden border xl:sticky xl:top-6 xl:mt-6 xl:max-h-[calc(100dvh-8rem)] xl:overflow-y-auto"
         >
           <div className="bg-surface-page border-border-default flex h-12 w-full shrink-0 items-center justify-between gap-2 border-b px-5 py-3 text-sm">
@@ -262,7 +276,9 @@ export function MetricsForm({
                   <dl className="flex flex-col gap-3">
                     {visibleTopics.map((topic) => (
                       <div key={topic.id} className="flex items-center gap-2.5">
-                        <dt className="order-2 text-sm text-white/70">{topic.name}</dt>
+                        <dt className="order-2 min-w-0 text-sm wrap-anywhere text-white/70">
+                          {topic.name}
+                        </dt>
                         <dd className="text-text-accent order-1 text-3xl font-bold tabular-nums">
                           {formatNumber(topic.projectCount)}
                         </dd>
@@ -273,11 +289,11 @@ export function MetricsForm({
               )}
             </div>
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
-              Estas cifras se actualizan automáticamente en el sitio público.
+              Estas cifras se actualizan automáticamente en el reporte público.
             </p>
             <div className="text-center">
               <Button render={<Link href="/" />} nativeButton={false} variant="link" size="lg">
-                Ver sitio público →
+                Ver reporte público →
               </Button>
             </div>
           </div>
@@ -304,17 +320,10 @@ export function MetricsForm({
           <span className="flex w-fit items-center gap-2.5 leading-5">Restablecer valores</span>
         </Button>
         <div className="flex flex-wrap items-center gap-3">
-          <span role="status" aria-live="polite" className="text-muted-foreground text-sm">
-            {hasUnsavedChanges && (
-              <span className="flex items-center gap-2">
-                <span aria-hidden="true" className="size-2 rounded-full bg-amber-500" />
-                Cambios sin guardar
-              </span>
-            )}
-          </span>
+          <UnsavedChangesIndicator visible={hasUnsavedChanges} />
           <Button
             disabled={isPending || !hasUnsavedChanges}
-            onClick={saveChanges}
+            onClick={() => void saveChanges()}
             className="h-9 w-fit flex-col gap-2.5 rounded-lg px-4 py-2 shadow-[0_1px_2px_0_rgb(0_0_0/10%)]"
           >
             {isPending ? 'Guardando…' : 'Guardar cambios'}

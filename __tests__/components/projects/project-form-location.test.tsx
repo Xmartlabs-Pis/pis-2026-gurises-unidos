@@ -20,6 +20,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
@@ -29,7 +30,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
         { id: 4, name: 'Canelones' },
       ]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         topicIds: ['1'],
@@ -58,6 +59,11 @@ async function selectDepartment(name: string) {
   fireEvent.keyDown(await screen.findByRole('option', { name }), { key: 'Enter' });
 }
 
+async function selectRegion(name: string) {
+  fireEvent.click(screen.getByLabelText('Región'));
+  fireEvent.keyDown(await screen.findByRole('option', { name }), { key: 'Enter' });
+}
+
 function type(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
@@ -72,6 +78,17 @@ function addLocation() {
 
 function isAddDisabled() {
   return (screen.getByRole('button', { name: 'Agregar' }) as HTMLButtonElement).disabled;
+}
+
+function invalidControls() {
+  return [
+    screen.getByLabelText('Departamento'),
+    screen.getByLabelText('Ciudad'),
+    screen.getByLabelText('Barrio (opcional)'),
+    screen.getByRole('button', { name: 'Agregar' }),
+  ]
+    .filter((control) => control.getAttribute('aria-invalid') === 'true')
+    .map((control) => control.id || control.textContent);
 }
 
 function addedLocations() {
@@ -153,7 +170,18 @@ it('rejects a repeated location ignoring case', async () => {
   addTag('Barrio (opcional)', 'CENTRO');
 
   expect(screen.getByText('Esa ubicación ya está agregada')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationNeighborhood']);
   expect(addedLocations()).toEqual(['Montevideo, Montevideo, Centro']);
+});
+
+it('marks the city when a repeated location has no neighborhood', async () => {
+  renderForm({ locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }] });
+
+  await selectDepartment('Montevideo');
+  addTag('Ciudad', 'montevideo');
+
+  expect(screen.getByText('Esa ubicación ya está agregada')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationCity']);
 });
 
 it('removes a single location', async () => {
@@ -180,6 +208,18 @@ it('requires at least one location for a national project', async () => {
   await submit();
 
   expect(await screen.findByText('Agregá al menos una ubicación')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationDepartment']);
+  expect(submitAction).not.toHaveBeenCalled();
+});
+
+it('marks the city instead of the department when a department is selected without a city', async () => {
+  const { submitAction, submit } = renderForm();
+
+  await selectDepartment('Canelones');
+  await submit();
+
+  expect(await screen.findByText('Agregá al menos una ubicación')).toBeTruthy();
+  expect(invalidControls()).toEqual(['locationCity']);
   expect(submitAction).not.toHaveBeenCalled();
 });
 
@@ -197,6 +237,7 @@ it('asks to add a typed location that was not added before saving', async () => 
   expect(
     await screen.findByText('Presioná "Agregar" para sumar la ubicación que escribiste')
   ).toBeTruthy();
+  expect(invalidControls()).toEqual(['Agregar']);
   expect(submitAction).not.toHaveBeenCalled();
 });
 
@@ -211,26 +252,84 @@ it('requires a city for a stored department without one', async () => {
   expect(submitAction).not.toHaveBeenCalled();
 });
 
-it('loads several countries for an international project', async () => {
+it('requires a region but not a country for an international project', async () => {
   const { submitAction, submit } = renderForm({
     locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
   });
 
   fireEvent.click(screen.getByLabelText('Internacional', { selector: '[role=radio]' }));
-  expect(await screen.findByLabelText('Países')).toBeTruthy();
+  expect(await screen.findByLabelText('Países (opcional)')).toBeTruthy();
   expect(screen.queryByLabelText('Departamento')).toBeNull();
 
   await submit();
-  expect(await screen.findByText('Ingresá al menos un país')).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByLabelText('Región').getAttribute('aria-invalid')).toBe('true')
+  );
   expect(submitAction).not.toHaveBeenCalled();
 
-  addTag('Países', 'Argentina');
-  addTag('Países', 'Brasil');
+  await selectRegion('Otras regiones');
   await submit();
 
   await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
   const submitted = submitAction.mock.calls[0][1] as FormData;
   expect(submitted.get('geographicScope')).toBe('international');
-  expect(submitted.getAll('countries')).toEqual(['Argentina', 'Brasil']);
+  expect(submitted.getAll('region')).toEqual(['otherRegions']);
+  expect(submitted.getAll('countries')).toEqual([]);
   expect(submitted.getAll('locations')).toEqual([]);
+});
+
+it('loads several countries for an international project', async () => {
+  const { submitAction, submit } = renderForm({
+    geographicScope: 'international',
+    region: 'southAmerica',
+  });
+
+  addTag('Países (opcional)', 'Argentina');
+  addTag('Países (opcional)', 'Brasil');
+  await submit();
+
+  await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
+  expect((submitAction.mock.calls[0][1] as FormData).getAll('countries')).toEqual([
+    'Argentina',
+    'Brasil',
+  ]);
+});
+
+it('shows the region dropdown next to the countries only for an international project', async () => {
+  renderForm();
+
+  expect(screen.queryByLabelText('Región')).toBeNull();
+
+  fireEvent.click(screen.getByLabelText('Internacional', { selector: '[role=radio]' }));
+  fireEvent.click(await screen.findByLabelText('Región'));
+  expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual([
+    'Sudamérica',
+    'Norteamérica',
+    'Centroamérica',
+    'Otras regiones',
+  ]);
+  fireEvent.keyDown(screen.getByRole('option', { name: 'Sudamérica' }), { key: 'Escape' });
+  expect(screen.getByLabelText('Países (opcional)')).toBeTruthy();
+
+  fireEvent.click(screen.getByLabelText('Nacional', { selector: '[role=radio]' }));
+  await waitFor(() => expect(screen.queryByLabelText('Región')).toBeNull());
+});
+
+it('loads the stored region and submits the one selected instead', async () => {
+  const { submitAction, submit } = renderForm({
+    geographicScope: 'international',
+    countries: ['Argentina'],
+    region: 'southAmerica',
+  });
+
+  expect(screen.getByLabelText('Región').textContent).toContain('Sudamérica');
+
+  await selectRegion('Norteamérica');
+  addTag('Países (opcional)', 'México');
+  await submit();
+
+  await waitFor(() => expect(submitAction).toHaveBeenCalledTimes(1));
+  const submitted = submitAction.mock.calls[0][1] as FormData;
+  expect(submitted.getAll('region')).toEqual(['northAmerica']);
+  expect(submitted.getAll('countries')).toEqual(['Argentina', 'México']);
 });

@@ -3,6 +3,7 @@ import {
   // FileChartColumnIncreasing,
   FolderKanban,
   Globe,
+  Handshake,
   History,
   HomeIcon,
   Tags,
@@ -62,8 +63,8 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         icon: FolderKanban,
       },
       {
-        id: 'publicView',
-        title: 'Vista pública',
+        id: 'publicReport',
+        title: 'Reporte Público',
         href: '/',
         icon: Globe,
         match: 'exact',
@@ -115,6 +116,13 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         roles: ['admin'],
       },
       {
+        id: 'partners',
+        title: 'Socios',
+        href: '/management/partners',
+        icon: Handshake,
+        roles: ['admin'],
+      },
+      {
         id: 'metrics',
         title: 'Gestión de Métricas',
         href: '/management/metrics',
@@ -123,7 +131,7 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
       },
       {
         id: 'history',
-        title: 'Historial de cambios',
+        title: 'Historial de Cambios',
         href: '/management/history',
         icon: History,
         roles: ['admin'],
@@ -132,7 +140,7 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
   },
 ];
 
-export function canAccessNavItem(item: NavigationItem, role: UserRole) {
+function canAccessNavItem(item: NavigationItem, role: UserRole) {
   return !item.roles || item.roles.includes(role);
 }
 

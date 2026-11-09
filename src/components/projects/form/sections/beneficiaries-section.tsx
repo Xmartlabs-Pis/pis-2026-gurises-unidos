@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFormContext, useFormState, useWatch } from 'react-hook-form';
 import { ChevronDown } from 'lucide-react';
 import { cn } from 'cn';
@@ -16,19 +16,35 @@ import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
 import { IntensityInfo } from '../intensity-info';
 import type { ProjectFormValues } from '../project-form-values';
+import { hasBeneficiaryDraftChanges } from '../project-form-signature';
 import type { SectionProps } from './section-props';
 
 const VISIBLE_BENEFICIARY_FIELDS = 10;
 
-function BeneficiaryFields({ categories }: { categories: BeneficiaryCategoryOption[] }) {
-  return categories.map((field, index) => (
+function BeneficiaryField({
+  category,
+  className,
+}: {
+  category: BeneficiaryCategoryOption;
+  className?: string;
+}) {
+  return (
     <TextInputField
-      key={field.key}
-      id={field.key}
-      name={field.key}
-      label={field.name}
+      id={category.key}
+      name={category.key}
+      label={category.name}
       type="text"
       inputMode="numeric"
+      className={className}
+    />
+  );
+}
+
+function BeneficiaryFields({ categories }: { categories: BeneficiaryCategoryOption[] }) {
+  return categories.map((category, index) => (
+    <BeneficiaryField
+      key={category.key}
+      category={category}
       className={cn(
         'sm:row-span-2 sm:grid sm:grid-rows-subgrid sm:*:data-[slot=field-label]:self-end',
         index === categories.length - 1 && index % 2 === 0 && 'sm:col-span-2'
@@ -42,27 +58,36 @@ export function BeneficiariesSection({
   yearOptions,
   beneficiaryRecords,
   beneficiaryCategories,
+  onUnsavedChangesChange,
 }: Pick<
   SectionProps,
   'isEditing' | 'yearOptions' | 'beneficiaryRecords' | 'beneficiaryCategories'
->) {
+> & { onUnsavedChangesChange?: (changed: boolean) => void }) {
   const { getValues, setValue } = useFormContext<ProjectFormValues>();
-  const beneficiaryDrafts = useRef<Record<string, Partial<Record<string, string>>>>({});
 
   const startYear = useWatch({ name: 'startYear' });
   const status = useWatch({ name: 'status' });
   const endYear = useWatch({ name: 'endYear' });
   const year = useWatch({ name: 'year' });
+  const drafts = useWatch<ProjectFormValues, 'beneficiaryDrafts'>({ name: 'beneficiaryDrafts' });
   const intensity = useWatch<ProjectFormValues, 'intensity'>({ name: 'intensity' });
   const directChildren = useWatch({ name: DIRECT_CHILDREN_KEY });
   const hasDirectChildren =
     Number(directChildren) > 0 ||
+    drafts.some((draft) => Number(draft[DIRECT_CHILDREN_KEY]) > 0) ||
     beneficiaryRecords.some(
-      (record) => String(record.year) !== year && record[DIRECT_CHILDREN_KEY] > 0
+      (record) =>
+        String(record.year) !== year &&
+        !drafts.some((draft) => draft.year === String(record.year)) &&
+        record[DIRECT_CHILDREN_KEY] > 0
     );
 
-  const visibleCategories = beneficiaryCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS);
-  const extraCategories = beneficiaryCategories.slice(VISIBLE_BENEFICIARY_FIELDS);
+  const directChildrenCategory = beneficiaryCategories.find(
+    ({ key }) => key === DIRECT_CHILDREN_KEY
+  );
+  const otherCategories = beneficiaryCategories.filter(({ key }) => key !== DIRECT_CHILDREN_KEY);
+  const visibleCategories = otherCategories.slice(0, VISIBLE_BENEFICIARY_FIELDS - 1);
+  const extraCategories = otherCategories.slice(VISIBLE_BENEFICIARY_FIELDS - 1);
   const extraKeys = extraCategories.map(({ key }) => key);
   const formValues = useWatch<ProjectFormValues>();
   const { errors } = useFormState<ProjectFormValues>();
@@ -70,27 +95,38 @@ export function BeneficiariesSection({
   const hasExtraValues = extraKeys.some((key) => Number(formValues[key]) > 0);
   const hasExtraErrors = extraKeys.some((key) => errors[key]);
   const open = hasExtraErrors || (userOpen ?? hasExtraValues);
+  const invalidDraftYears = drafts
+    .filter((_, index) => errors.beneficiaryDrafts?.[index])
+    .map((draft) => draft.year);
+  const draftsError =
+    errors.beneficiaryDrafts?.message ??
+    (invalidDraftYears.length > 0
+      ? `Revisá los beneficiarios de ${invalidDraftYears.join(', ')}`
+      : undefined);
 
-  // TODO: Implement multiple years support on the backend
-  // right now we only support one year
   const selectYear = useCallback(
     (beneficiaryYear: string) => {
       const current = getValues();
-      beneficiaryDrafts.current[current.year] = Object.fromEntries(
-        beneficiaryCategories.map(({ key }) => [key, current[key]])
-      );
+      if (beneficiaryYear === current.year) return;
+      const currentRecord = beneficiaryRecords.find((item) => String(item.year) === current.year);
       const record = beneficiaryRecords.find((item) => String(item.year) === beneficiaryYear);
-      const counts = Object.fromEntries(
-        beneficiaryCategories.map(({ key }) => [key, String(record?.[key] ?? 0)])
-      );
-      const nextCounts = {
-        ...counts,
-        ...beneficiaryDrafts.current[beneficiaryYear],
-      };
+      const draft = current.beneficiaryDrafts.find((item) => item.year === beneficiaryYear);
+      const nextDrafts = current.beneficiaryDrafts.filter((item) => item !== draft);
+      if (
+        beneficiaryCategories.some(
+          ({ key }) => Number(current[key]) !== (currentRecord?.[key] ?? 0)
+        )
+      ) {
+        nextDrafts.push({
+          year: current.year,
+          ...Object.fromEntries(beneficiaryCategories.map(({ key }) => [key, current[key]])),
+        });
+      }
       for (const { key } of beneficiaryCategories) {
-        setValue(key, String(nextCounts[key] ?? '0'), { shouldValidate: true });
+        setValue(key, String(draft?.[key] ?? record?.[key] ?? 0), { shouldValidate: true });
       }
       setValue('year', beneficiaryYear);
+      setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
     },
     [getValues, setValue, beneficiaryRecords, beneficiaryCategories]
   );
@@ -117,6 +153,29 @@ export function BeneficiariesSection({
     }
   }, [startYear, status, endYear, year, selectYear]);
 
+  useEffect(() => {
+    const currentDrafts = getValues('beneficiaryDrafts');
+    const nextDrafts = currentDrafts.filter((draft) =>
+      yearOptions.some(({ value }) => value === draft.year)
+    );
+    if (nextDrafts.length < currentDrafts.length) {
+      setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
+    }
+  }, [drafts, yearOptions, getValues, setValue]);
+
+  useEffect(() => {
+    if (!onUnsavedChangesChange) return;
+    const draftsByYear = {
+      ...Object.fromEntries(drafts.map((draft) => [draft.year, draft])),
+      [String(year)]: Object.fromEntries(
+        beneficiaryCategories.map(({ key }) => [key, String(formValues[key] ?? '0')])
+      ),
+    };
+    onUnsavedChangesChange(
+      hasBeneficiaryDraftChanges(draftsByYear, beneficiaryRecords, beneficiaryCategories)
+    );
+  }, [year, drafts, formValues, beneficiaryRecords, beneficiaryCategories, onUnsavedChangesChange]);
+
   return (
     <FormSection
       title="Beneficiarios principales"
@@ -131,13 +190,20 @@ export function BeneficiariesSection({
           label="Año de beneficiarios"
           options={yearOptions}
           onValueChange={selectYear}
+          description="Al guardar se aplican los cambios de todos los años."
+          messages={draftsError ? [draftsError] : undefined}
         />
-        <p className="text-muted-foreground mt-2 text-xs">
-          Se guardan únicamente los beneficiarios del año seleccionado. Los cambios de otros años no
-          se guardarán al salir.
-        </p>
+        {drafts.map((draft) => (
+          <input
+            key={draft.year}
+            type="hidden"
+            name="beneficiaryDrafts"
+            value={JSON.stringify(draft)}
+          />
+        ))}
       </div>
-      <div className="sm:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-4 sm:col-span-2 sm:grid-cols-2">
+        {directChildrenCategory && <BeneficiaryField category={directChildrenCategory} />}
         <SelectField
           id="intensity"
           name="intensity"

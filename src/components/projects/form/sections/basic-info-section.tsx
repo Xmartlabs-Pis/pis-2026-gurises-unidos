@@ -17,15 +17,27 @@ export function BasicInfoSection({
   canSelectCoordinator,
   topics,
   strategicLines,
+  partners,
 }: Pick<
   SectionProps,
-  'yearOptions' | 'coordinatorOptions' | 'canSelectCoordinator' | 'topics' | 'strategicLines'
+  | 'yearOptions'
+  | 'coordinatorOptions'
+  | 'canSelectCoordinator'
+  | 'topics'
+  | 'strategicLines'
+  | 'partners'
 >) {
-  const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
+  const { clearErrors, getValues, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
     label: name,
   }));
+  const counterpartyTypes = useWatch<ProjectFormValues, 'counterpartyTypes'>({
+    name: 'counterpartyTypes',
+  });
+  const partnerOptions = partners
+    .filter(({ counterpartyType }) => counterpartyTypes.includes(counterpartyType))
+    .map(({ id, name }) => ({ value: String(id), label: name }));
   const status = useWatch<ProjectFormValues, 'status'>({ name: 'status' });
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
@@ -38,6 +50,16 @@ export function BasicInfoSection({
   const endYearOptions = yearOptions.filter(
     ({ value }) => !startYear || Number(value) >= Number(startYear)
   );
+
+  function removePartnersOutside(selectedTypes: string[]) {
+    const allowedIds = partners
+      .filter(({ counterpartyType }) => selectedTypes.includes(counterpartyType))
+      .map(({ id }) => String(id));
+    setValue(
+      'partnerIds',
+      getValues('partnerIds').filter((id) => allowedIds.includes(id))
+    );
+  }
 
   useEffect(() => {
     if (status === 'inactive' && startYear && endYear && Number(endYear) < Number(startYear)) {
@@ -100,13 +122,26 @@ export function BasicInfoSection({
           required={status === 'inactive'}
         />
       </div>
-      <SelectField
-        id="counterpartyType"
-        name="counterpartyType"
-        label="Contraparte"
-        placeholder="Seleccionar contraparte..."
+      <MultiSelectField
+        id="counterpartyTypes"
+        name="counterpartyTypes"
+        label="Contrapartes"
+        placeholder="Seleccionar contrapartes..."
         options={COUNTERPARTY_OPTIONS}
+        onValueChange={removePartnersOutside}
         required
+      />
+      <MultiSelectField
+        id="partnerIds"
+        name="partnerIds"
+        label="Socios"
+        placeholder="Seleccionar socios..."
+        options={partnerOptions}
+        emptyMessage={
+          counterpartyTypes.length
+            ? 'No hay socios de las contrapartes seleccionadas.'
+            : 'Seleccioná una contraparte para ver sus socios.'
+        }
       />
       <SelectField
         id="leadCoordinatorId"

@@ -17,9 +17,30 @@ import { getLocationKey, MAX_PLACE_NAME_LENGTH } from '@/lib/validation/project-
 import type { ProjectFormValues, ProjectLocationFormValue } from './project-form-values';
 
 const INPUT_CLASS_NAME =
-  'border-input bg-background h-9 min-w-0 rounded-lg px-3 text-base md:text-sm';
+  'border-input bg-background aria-invalid:text-destructive h-9 min-w-0 rounded-lg px-3 text-base md:text-sm';
 const LABEL_CLASS_NAME = 'text-foreground text-xs leading-4 font-medium';
 const PENDING_LOCATION_MESSAGE = 'Presioná "Agregar" para sumar la ubicación que escribiste';
+
+type InvalidControl = 'department' | 'city' | 'neighborhood' | 'add';
+
+function getInvalidControl({
+  hasDraftError,
+  hasFieldError,
+  hasDepartment,
+  hasNeighborhood,
+  hasPendingLocation,
+}: {
+  hasDraftError: boolean;
+  hasFieldError: boolean;
+  hasDepartment: boolean;
+  hasNeighborhood: boolean;
+  hasPendingLocation: boolean;
+}): InvalidControl | null {
+  if (hasDraftError) return hasNeighborhood ? 'neighborhood' : 'city';
+  if (!hasFieldError) return null;
+  if (hasPendingLocation) return 'add';
+  return hasDepartment ? 'city' : 'department';
+}
 
 function insertLocation(
   locations: ProjectLocationFormValue[],
@@ -51,6 +72,13 @@ export function LocationListField({
   const errorMessage =
     draftError ??
     (fieldState.error && hasPendingLocation ? PENDING_LOCATION_MESSAGE : fieldState.error?.message);
+  const invalidControl = getInvalidControl({
+    hasDraftError: draftError !== null,
+    hasFieldError: Boolean(fieldState.error),
+    hasDepartment: Boolean(departmentId),
+    hasNeighborhood: neighborhood.trim() !== '',
+    hasPendingLocation,
+  });
 
   function addLocation() {
     if (!departmentId || !hasCity) return;
@@ -85,7 +113,7 @@ export function LocationListField({
   }
 
   return (
-    <Field className="min-w-0 gap-2" data-invalid={Boolean(errorMessage)}>
+    <Field className="min-w-0 gap-2">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
         <div className="flex min-w-0 flex-col gap-1.5">
           <FieldLabel htmlFor="locationDepartment" className={LABEL_CLASS_NAME}>
@@ -102,8 +130,8 @@ export function LocationListField({
           >
             <SelectTrigger
               id="locationDepartment"
-              aria-invalid={Boolean(errorMessage)}
-              className="border-input bg-background w-full min-w-0 rounded-lg px-3 text-sm data-[size=default]:h-9"
+              aria-invalid={invalidControl === 'department'}
+              className="border-input bg-background aria-invalid:text-destructive w-full min-w-0 rounded-lg px-3 text-sm data-[size=default]:h-9"
             >
               <SelectValue placeholder="Seleccionar..." className="min-w-0 truncate" />
             </SelectTrigger>
@@ -127,6 +155,7 @@ export function LocationListField({
             placeholder="Ej: Las Piedras"
             disabled={!departmentId}
             aria-required
+            aria-invalid={invalidControl === 'city'}
             maxLength={MAX_PLACE_NAME_LENGTH}
             onChange={(event) => {
               setCity(event.target.value);
@@ -147,6 +176,7 @@ export function LocationListField({
             value={neighborhood}
             placeholder="Ej: Malvín Norte"
             disabled={!hasCity}
+            aria-invalid={invalidControl === 'neighborhood'}
             maxLength={MAX_PLACE_NAME_LENGTH}
             onChange={(event) => {
               setNeighborhood(event.target.value);
@@ -161,8 +191,9 @@ export function LocationListField({
           variant="outline"
           size="lg"
           disabled={!departmentId || !hasCity}
+          aria-invalid={invalidControl === 'add'}
           onClick={addLocation}
-          className="h-9"
+          className="aria-invalid:text-destructive h-9"
         >
           <PlusIcon aria-hidden="true" />
           Agregar

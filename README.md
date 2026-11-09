@@ -407,7 +407,7 @@ Para verificar que quedó bien, en desktop y en el celular:
 - Se ven el título y todas las cifras publicadas, sin scroll dentro del iframe ni espacio vacío
   abajo.
 - Después de recargar la página, el código del bloque sigue teniendo el `<script>`.
-- "Ver informe completo" abre la vista pública en una pestaña nueva.
+- "Ver informe completo" abre el reporte público en una pestaña nueva.
 
 ## Deploy
 
@@ -807,6 +807,107 @@ _Require status checks to pass_ entera (GitHub no acepta la lista vacía), y con
 ramas actualizadas. `main` solo recibe la PR de promoción desde `staging` y la de release-please, y
 sigue exigiendo 2 approvals, conversaciones resueltas y merge commit. En `development` y `staging`
 no cambia nada: ahí se validan los títulos que arman el CHANGELOG.
+
+## Dependencias (Dependabot)
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot) mantiene las dependencias al día
+abriendo PRs contra `development`. La config vive en `.github/dependabot.yml` y GitHub solo la lee
+desde la rama por defecto (`development`).
+
+Abre dos tipos de PR:
+
+- **Security updates**: aparecen apenas GitHub publica una vulnerabilidad que afecta al
+  `package-lock.json`, sin esperar al calendario. Se activan en _Settings → Code security_ (alertas
+  y security updates, las dos prendidas). Las alertas abiertas se ven en _Security → Dependabot_.
+- **Version updates**: una vez por semana revisa tres ecosistemas:
+  - `npm`: una PR agrupada para `dependencies` y otra para `devDependencies`, solo minor y patch.
+  - `github-actions`: todas las actions de `.github/workflows` en una sola PR, majors incluidos.
+  - `docker`: la imagen base del `Dockerfile`.
+
+En `npm` y `docker` los majors están ignorados (`ignore` con `version-update:semver-major`): suelen
+traer breaking changes y una migración (Prisma, Node), así que se hacen a mano en una PR propia,
+leyendo el changelog antes. Para ver qué majors hay disponibles: `npm outdated`.
+
+Las actions y la imagen de Docker usan tags de solo major (`@v4`, `node:24-alpine`), así que lo
+único que Dependabot puede proponerles es un major. Por eso en `github-actions` no se ignoran (si
+no, el bloque no abriría ninguna PR), y el bloque `docker` en la práctica no abre PRs: el salto de
+Node se hace a mano.
+
+El `ignore` no frena las security updates: Dependabot saltea los `ignore` por `update-types` para
+esas PRs, así que si el arreglo de una vulnerabilidad está en un major, la PR llega igual.
+
+Los títulos ya cumplen Conventional Commits, así que pasan el check y entran al CHANGELOG:
+`fix(deps): ...` para dependencias de producción (bump de patch en el release) y
+`chore(deps-dev): ...` / `chore(deps): ...` para dev, actions y Docker (no generan release).
+
+Las PRs de Dependabot se tratan como cualquier otra: 2 approvals, CI en verde y rama actualizada.
+El CI no corre `npm run build` ni los workflows de deploy, así que en las PRs de dependencias de
+producción o de actions conviene correr el build a mano y mirar el próximo deploy.
+
+### Comandos de Dependabot
+
+Se comentan en la PR de Dependabot, solos en el comentario:
+
+| Comando                                        | Qué hace                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| `@dependabot rebase`                           | Rebasea la PR sobre `development`. Usalo en vez de rebasear a mano. |
+| `@dependabot recreate`                         | Rehace la PR desde cero, pisando cambios manuales.                  |
+| `@dependabot ignore this major version`        | Cierra la PR y deja de proponer ese major del paquete.              |
+| `@dependabot ignore this minor version`        | Cierra la PR y deja de proponer ese minor del paquete.              |
+| `@dependabot ignore this patch version`        | Cierra la PR y deja de proponer esa versión puntual.                |
+| `@dependabot ignore this dependency`           | Cierra la PR y deja de actualizar el paquete.                       |
+| `@dependabot show <paquete> ignore conditions` | Muestra qué está ignorando para ese paquete.                        |
+
+Para cerrar o reabrir una PR de Dependabot se usa el botón de GitHub: `@dependabot close` y
+`@dependabot reopen` se dieron de baja.
+
+En las PRs agrupadas, los comandos apuntan a un paquete del grupo:
+
+- `@dependabot ignore <paquete>`: deja de actualizar el paquete.
+- `@dependabot ignore <paquete> major version` (o `minor version`, o `patch version`).
+- `@dependabot unignore <paquete>` (o `unignore *` para todo el grupo): borra los ignores puestos
+  con comandos (no toca los de `dependabot.yml`), cierra la PR y abre una nueva.
+
+No rebasees ni pushees a mano a una rama de Dependabot: deja de actualizar las PRs que tocó otra
+persona. Si un comando no responde a los pocos minutos (pasa con algunas security updates), cerrá
+la PR a mano.
+
+Una PR que quedó obsoleta (por ejemplo, porque otra PR ya actualizó el paquete) Dependabot la
+cierra sola recién la próxima vez que la revisa, no en el momento del merge. Para no esperar:
+`@dependabot recreate` (si ya está al día la cierra) o cerrala a mano.
+
+### Vulnerabilidades sin PR
+
+Dependabot no puede arreglar todo solo. Cuando la versión vulnerable entra como dependencia
+transitiva y el paquete que la trae no publicó un arreglo, la alerta queda abierta sin PR. En ese
+caso:
+
+1. `npm audit` muestra por qué paquete entra (`npm ls <paquete> --all` muestra el árbol completo).
+2. Si existe una versión arreglada compatible, se fuerza con `overrides` en `package.json`,
+   idealmente con alcance limitado al paquete que la trae (`"<padre>": { "<paquete>": "^x.y.z" }`).
+   Después de `npm install`, correr `lint`, `typecheck`, `test` y `build`.
+3. Si no hay arreglo, o forzarlo rompe algo, se deja la alerta abierta con el motivo (o se descarta
+   en GitHub con _Dismiss_ y un comentario).
+
+Los `overrides` actuales y por qué existen:
+
+- `glob` y `minimatch` (bajo `@typescript-eslint/typescript-estree` y `@ts-morph/common`):
+  vulnerabilidades de ReDoS y de `AbortSignal` sin arreglo en las versiones que pedían sus padres.
+- `deepmerge-ts` (bajo `@prisma/config`): arregla una vulnerabilidad sin tener que pasar a
+  Prisma 7.
+- `next` (bajo `@react-email/ui`): el preview de mails fija `next` en una versión exacta; con
+  `$next` usa la misma que el proyecto y no queda instalada una copia vulnerable.
+
+Revisalos cada tanto: cuando el paquete padre ya pida una versión arreglada, el override sobra y
+se borra.
+
+Riesgos aceptados al momento de escribir esto, todos de herramientas de desarrollo:
+
+- `minimatch@3` bajo `eslint` y sus plugins: no hay 3.x arreglada y la v11 rompe el lint. Se va
+  cuando los plugins actualicen.
+- `deepmerge` bajo el CLI de `shadcn`: no existe versión arreglada.
+
+`npm audit --omit=dev` (lo que corre en producción) tiene que dar 0.
 
 ## Reviews
 

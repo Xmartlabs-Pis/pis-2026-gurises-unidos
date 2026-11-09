@@ -7,20 +7,15 @@ import { BeneficiariesSection } from './sections/beneficiaries-section';
 import { TerritorySection } from './sections/territory-section';
 import { BasicInfoSection } from './sections/basic-info-section';
 
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type SubmitEvent,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
+import { useSaveAction } from '@/hooks/use-save-action';
+import { usePendingChanges } from '@/components/ui/forms/pending-changes-provider';
+import { getProjectDetailsSignature } from './project-form-signature';
 import { useRouter } from 'next/navigation';
 import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
+import type { ProjectPartnerOption } from '@/lib/partners';
 import type { ProjectFormState } from '@/lib/validation/project';
 import {
   FIRST_PROJECT_YEAR,
@@ -48,6 +43,7 @@ type ProjectFormProps = {
   departments: { id: number; name: string }[];
   topics: { id: number; name: string }[];
   strategicLines: { id: number; name: string }[];
+  partners: ProjectPartnerOption[];
   beneficiaryRecords?: (BeneficiaryCounts & { year: number })[];
   beneficiaryCategories: BeneficiaryCategoryOption[];
   currentYear: number;
@@ -79,6 +75,7 @@ export function ProjectForm({
   departments,
   topics,
   strategicLines,
+  partners,
   beneficiaryRecords = [],
   beneficiaryCategories,
   currentYear,
@@ -118,14 +115,19 @@ export function ProjectForm({
     () => buildProjectFormSchema(beneficiaryCategories.map(({ key }) => key)),
     [beneficiaryCategories]
   );
-  const defaultValues = {
+  const [defaultValues] = useState(() => ({
     ...getDefaultValues(currentYear, beneficiaryCategories),
     ...initialValues,
-  };
-  const cover = useProjectCover(defaultValues.coverPhotoUrl ?? null);
+  }));
+  const cover = useProjectCover(defaultValues.coverPhotoUrl ?? null, defaultValues.coverCrop);
   const [uploading, setUploading] = useState(false);
-  const [state, formAction, pending] = useActionState(submitAction, INITIAL_STATE);
-  const busy = pending || uploading;
+  const [state, submit, pending] = useSaveAction(
+    submitAction,
+    INITIAL_STATE,
+    'No se pudo guardar el proyecto. Intentá de nuevo.'
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+  const [hasBeneficiaryChanges, setHasBeneficiaryChanges] = useState(false);
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(schema) as unknown as Resolver<ProjectFormValues>,
     defaultValues,
@@ -133,11 +135,13 @@ export function ProjectForm({
   });
   const { control, handleSubmit } = form;
   const submissionRef = useRef(false);
+  const busy = pending || uploading || form.formState.isSubmitting;
   const watchedValues = useWatch({ control });
   const values = {
     ...defaultValues,
     ...watchedValues,
     coverPhotoUrl: cover.previewUrl,
+    coverCrop: cover.crop,
   } as ProjectFormValues;
 
   const { locationLabel, coverageLabel, beneficiaryTotal } = getPreviewLabels(
@@ -153,13 +157,23 @@ export function ProjectForm({
       (values.status !== 'inactive' || !values.endYear || Number(value) <= Number(values.endYear))
   );
 
-  useEffect(() => {
-    if (!pending) submissionRef.current = false;
-  }, [pending, state]);
+  const hasUnsavedChanges =
+    isEditing &&
+    (getProjectDetailsSignature(values, beneficiaryCategories) !==
+      getProjectDetailsSignature(defaultValues, beneficiaryCategories) ||
+      hasBeneficiaryChanges ||
+      cover.hasUnsavedSelection ||
+      cover.hasUnsavedCrop ||
+      cover.removedPlaceholder !== null);
 
-  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (submissionRef.current) return;
+  const { runWithoutConfirmation } = usePendingChanges({
+    hasUnsavedChanges,
+    isSaving: isEditing && busy,
+    onSave: saveChanges,
+  });
+
+  async function saveChanges(): Promise<boolean> {
+    if (!formRef.current || submissionRef.current) return false;
 
     if (mode === 'create' && topics.length === 0) {
       form.setError('topicIds', {
@@ -167,45 +181,53 @@ export function ProjectForm({
         message:
           'No hay temáticas disponibles. Un administrador debe crear o activar una antes de crear proyectos.',
       });
-      return;
+      return false;
     }
 
     submissionRef.current = true;
-    const formElement = event.currentTarget;
-    return handleSubmit(
-      async () => {
+    const formElement = formRef.current;
+    let saved = false;
+    try {
+      await handleSubmit(async () => {
         const data = new FormData(formElement);
+        if (isEditing) data.set('returnResult', 'true');
         if (cover.file) {
           setUploading(true);
           try {
             const uploaded = await uploadProjectCover(cover.file, projectId);
             if (!uploaded.ok) {
               notify.error({ title: uploaded.error });
-              submissionRef.current = false;
               return;
             }
             data.set('coverPhotoPath', uploaded.path);
           } catch {
             notify.error({ title: 'No se pudo subir la imagen.' });
-            submissionRef.current = false;
             return;
           } finally {
             setUploading(false);
           }
         }
-        startTransition(() => {
-          formAction(data);
-        });
-      },
-      () => {
-        submissionRef.current = false;
-      }
-    )(event);
+        saved = await submit(data);
+      })();
+      return saved;
+    } finally {
+      submissionRef.current = false;
+    }
+  }
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    void saveChanges().then((saved) => {
+      if (saved && isEditing) runWithoutConfirmation(() => router.push(cancelHref));
+    });
   }
 
   useEffect(() => {
-    if (state.errors?.topicIds || state.errors?.strategicLineIds) router.refresh();
-  }, [router, state.errors?.topicIds, state.errors?.strategicLineIds]);
+    if (state.errors?.topicIds || state.errors?.strategicLineIds || state.errors?.partnerIds) {
+      router.refresh();
+    }
+  }, [router, state.errors?.topicIds, state.errors?.strategicLineIds, state.errors?.partnerIds]);
 
   useEffect(() => {
     if (state.formError) {
@@ -221,17 +243,14 @@ export function ProjectForm({
   return (
     <FormProvider {...form}>
       <form
+        ref={formRef}
         noValidate
         className={cn(
           'text-foreground flex min-h-0 w-full min-w-0 flex-1 flex-col',
           isEditing ? 'bg-surface-page' : 'bg-muted/30'
         )}
         aria-busy={busy}
-        onSubmit={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          onSubmit(event);
-        }}
+        onSubmit={onSubmit}
       >
         {!isEditing && defaultValues.coverPhotoUrl && (
           <input type="hidden" name="projectPlaceholder" value={defaultValues.coverPhotoUrl} />
@@ -242,7 +261,14 @@ export function ProjectForm({
             <input type="hidden" name="projectPlaceholder" value={cover.removedPlaceholder} />
           </>
         )}
+        {cover.existingPath && (
+          <input type="hidden" name="coverPhotoPath" value={cover.existingPath} />
+        )}
+        {cover.cropDirty && cover.crop && (
+          <input type="hidden" name="coverCrop" value={JSON.stringify(cover.crop)} />
+        )}
         <div
+          inert={busy}
           className={cn(
             'mx-auto grid w-full max-w-[1185px] flex-1 content-start items-start',
             isEditing
@@ -261,6 +287,7 @@ export function ProjectForm({
               coordinatorOptions={coordinatorOptions}
               topics={topics}
               strategicLines={strategicLines}
+              partners={partners}
               canSelectCoordinator={canSelectCoordinator}
             />
 
@@ -275,13 +302,19 @@ export function ProjectForm({
               yearOptions={beneficiaryYearOptions}
               beneficiaryRecords={beneficiaryRecords}
               beneficiaryCategories={beneficiaryCategories}
+              onUnsavedChangesChange={setHasBeneficiaryChanges}
             />
 
             <PublicInfoSection
-              coverFile={cover.file}
-              imageUrl={cover.fieldImageUrl}
-              onCoverFileChange={cover.changeFile}
-              onRemoveSavedCover={cover.canRemove ? cover.remove : undefined}
+              previewUrl={cover.previewUrl}
+              crop={cover.crop}
+              file={cover.file}
+              canRemoveSaved={cover.canRemoveSaved}
+              hasUnsavedSelection={cover.hasUnsavedSelection}
+              hasUnsavedCrop={cover.hasUnsavedCrop}
+              onApplyCover={cover.apply}
+              onClearUnsavedCover={cover.clearUnsaved}
+              onRemoveSavedCover={cover.canRemoveSaved ? cover.remove : undefined}
             />
 
             <VisibilitySection />
@@ -301,6 +334,7 @@ export function ProjectForm({
           onCancel={() => router.push(cancelHref)}
           submitLabel="Guardar cambios"
           pending={busy}
+          hasUnsavedChanges={hasUnsavedChanges}
         />
       </form>
     </FormProvider>

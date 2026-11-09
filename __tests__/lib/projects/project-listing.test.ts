@@ -378,12 +378,14 @@ describe('listProjectFilterOptions', () => {
     prismaMock.department.findMany.mockResolvedValue([MONTEVIDEO]);
     prismaMock.topic.findMany.mockResolvedValue([{ id: 1, name: 'Education' }]);
     prismaMock.strategicLine.findMany.mockResolvedValue([{ id: 5, name: 'Formación' }]);
+    prismaMock.partner.findMany.mockResolvedValue([{ id: 8, name: 'INAU' }]);
     prismaMock.beneficiaryCategory.findMany.mockResolvedValue([{ id: 3, name: 'Familias' }]);
 
     expect(await listProjectFilterOptions()).toEqual({
       departments: [MONTEVIDEO],
       topics: [{ id: 1, name: 'Education' }],
       strategicLines: [{ id: 5, name: 'Formación' }],
+      partners: [{ id: 8, name: 'INAU' }],
       beneficiaryCategories: [{ id: 3, name: 'Familias' }],
     });
     expect(prismaMock.department.findMany).toHaveBeenCalledWith({
@@ -413,6 +415,7 @@ test('combines topic, department and strategic line with the other project filte
     topicId: '2',
     departmentId: '3',
     strategicLineId: '5',
+    partnerId: '8',
     beneficiaryYear: '2025',
     status: 'active',
     intensity: 'high',
@@ -423,6 +426,7 @@ test('combines topic, department and strategic line with the other project filte
     topics: { some: { id: 2 } },
     departments: { some: { id: 3 } },
     strategicLines: { some: { id: 5 } },
+    partners: { some: { id: 8 } },
     projectBeneficiaries: { some: { year: 2025 } },
     status: 'active',
     intensity: 'high',
@@ -450,12 +454,14 @@ test('ignores invalid topic, department, strategic line and beneficiary category
       topicId: '-1',
       departmentId: 'invalid',
       strategicLineId: '2.5',
+      partnerId: '2.5',
       beneficiaryCategoryId: '0',
     })
   ).toMatchObject({
     topicId: undefined,
     departmentId: undefined,
     strategicLineId: undefined,
+    partnerId: undefined,
     beneficiaryCategoryId: undefined,
   });
 });

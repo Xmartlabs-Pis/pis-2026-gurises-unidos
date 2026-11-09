@@ -1,7 +1,7 @@
 import { Document, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { formatNumber } from '@/lib/format';
 import { formatLongDate } from '@/lib/reports/format';
-import type { ImpactReportData, ReportBar } from '@/lib/reports/impact-report';
+import type { ImpactReportData, ReportBar, ReportProject } from '@/lib/reports/impact-report';
 import {
   BarChart,
   DESIGN_FIT,
@@ -14,6 +14,7 @@ import {
   RULE,
   Section,
   styles,
+  TEXT,
 } from './report-primitives';
 
 const tableStyles = StyleSheet.create({
@@ -27,7 +28,28 @@ const tableStyles = StyleSheet.create({
   },
   value: { color: INK },
   international: { color: MUTED },
+  project: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: RULE },
+  projectName: { fontSize: 9.5, fontWeight: 600, color: INK },
+  projectDescription: { marginTop: 3, fontSize: 8, lineHeight: 1.45, color: TEXT },
+  projectNoDescription: { marginTop: 3, fontSize: 8, color: MUTED },
 });
+
+function ProjectList({ projects }: { projects: ReportProject[] }) {
+  return (
+    <View>
+      {projects.map(({ name, description }, index) => (
+        <View key={index} style={tableStyles.project} wrap={false}>
+          <Text style={tableStyles.projectName}>{name}</Text>
+          {description ? (
+            <Text style={tableStyles.projectDescription}>{description}</Text>
+          ) : (
+            <Text style={tableStyles.projectNoDescription}>Sin descripción.</Text>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 function DepartmentTable({ departments, fit }: { departments: ReportBar[]; fit: number }) {
   const half = Math.ceil(departments.length / 2);
@@ -132,15 +154,29 @@ function ImpactDetailsPage({ data, logo, fit = DESIGN_FIT }: ImpactPageProps) {
   );
 }
 
+function ImpactProjectsPage({ data, logo }: ImpactPageProps) {
+  return (
+    <ReportPage {...getPageProps({ data, logo })}>
+      <Section
+        first
+        title="4) Proyectos incluidos"
+        note={`${pluralize(data.projects.length, 'proyecto', 'proyectos')} con datos cargados en ${data.year}.`}
+      >
+        <ProjectList projects={data.projects} />
+      </Section>
+    </ReportPage>
+  );
+}
+
 export function ImpactReportDocument({
   data,
   logo,
   fits = { overview: DESIGN_FIT, details: DESIGN_FIT },
-  pages = ['overview', 'details'],
+  pages = ['overview', 'details', 'projects'],
 }: {
   data: ImpactReportData;
   logo: Buffer;
-  fits?: Record<ImpactPage, number>;
+  fits?: Record<FittedImpactPage, number>;
   pages?: ImpactPage[];
 }) {
   return (
@@ -151,8 +187,11 @@ export function ImpactReportDocument({
       {pages.includes('details') && (
         <ImpactDetailsPage data={data} logo={logo} fit={fits.details} />
       )}
+      {pages.includes('projects') && <ImpactProjectsPage data={data} logo={logo} />}
     </Document>
   );
 }
 
-export type ImpactPage = 'overview' | 'details';
+export type FittedImpactPage = 'overview' | 'details';
+
+export type ImpactPage = FittedImpactPage | 'projects';

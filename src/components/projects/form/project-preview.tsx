@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { cn } from 'cn';
 import { Card } from '@/components/ui/card';
+import { CoverFrame } from '@/components/projects/cover/cover-frame';
 import type { ProjectFormValues } from './project-form-values';
 
 export function ProjectPreview({
@@ -27,24 +27,14 @@ export function ProjectPreview({
       </div>
 
       <div className="bg-muted flex flex-col items-center gap-3 px-6 py-8">
-        <Card className="theme-public bg-card text-card-foreground w-full max-w-[377px] gap-0 overflow-hidden rounded-xl border-0 py-0 shadow-none ring-0">
-          <div
-            className={cn(
-              'relative aspect-video w-full overflow-hidden',
-              values.coverPhotoUrl
-                ? values.coverPhotoUrl.startsWith('blob:') && 'bg-cover bg-center'
-                : 'bg-project-cover'
-            )}
-            style={
-              values.coverPhotoUrl?.startsWith('blob:')
-                ? { backgroundImage: `url("${values.coverPhotoUrl}")` }
-                : undefined
-            }
-          >
-            {values.coverPhotoUrl && !values.coverPhotoUrl.startsWith('blob:') && (
-              <Image src={values.coverPhotoUrl} alt="" fill className="object-cover" />
-            )}
-          </div>
+        <Card className="theme-public text-card-foreground border-border-default w-full max-w-[377px] gap-0 overflow-hidden rounded-[10px] border bg-white py-0 shadow-none ring-0">
+          <CoverFrame
+            src={values.coverPhotoUrl}
+            alt=""
+            crop={values.coverCrop}
+            sizes="377px"
+            className={cn(!values.coverPhotoUrl && 'bg-project-cover')}
+          />
 
           <div className="flex flex-col gap-3 p-5">
             <div className="text-muted-foreground flex items-center gap-2 text-xs leading-4">
@@ -69,7 +59,7 @@ export function ProjectPreview({
           </div>
         </Card>
         <p className="text-muted-foreground text-center text-xs leading-4">
-          Así se verá en el listado público
+          Así se verá en el reporte público
         </p>
       </div>
     </aside>

@@ -11,6 +11,7 @@ import {
   type ForcedPasswordChangeFormValues,
 } from '@/lib/validation/password';
 import InputVisibilityToggle from './ui/forms/input-visibility-toggle';
+import { formDataFromSubmit } from '@/lib/forms';
 
 type PasswordResetFormProps = {
   action?: (state: PasswordFormState, formData: FormData) => Promise<PasswordFormState>;
@@ -55,11 +56,10 @@ export function PasswordResetForm({
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const submitter = event.nativeEvent.submitter;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
       startTransition(() => {
-        formAction(submitter ? new FormData(formElement, submitter) : new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }
@@ -80,7 +80,8 @@ export function PasswordResetForm({
             label="Nueva contraseña"
             type={showNewPassword ? 'text' : 'password'}
             autoComplete="new-password"
-            placeholder="Mínimo 8 caracteres"
+            placeholder="Tu nueva contraseña"
+            description="Al menos 8 caracteres, con mayúscula, minúscula y número."
             onChange={() => clearServerError('newPassword')}
             trailingAction={
               <InputVisibilityToggle

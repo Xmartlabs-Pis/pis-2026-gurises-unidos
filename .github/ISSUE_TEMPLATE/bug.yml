@@ -48,7 +48,7 @@ body:
       options:
         - Administrador
         - Coordinador
-        - Sin sesión (vista pública)
+        - Sin sesión (reporte público)
     validations:
       required: true
   - type: textarea

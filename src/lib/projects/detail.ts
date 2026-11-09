@@ -39,7 +39,7 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
       name: true,
       status: true,
       intensity: true,
-      counterpartyType: true,
+      counterpartyTypes: true,
       startYear: true,
       endYear: true,
       strategicLines: {
@@ -48,11 +48,16 @@ export async function getProjectDetail(rawProjectId: unknown, rawYear?: unknown)
           name: true,
         },
       },
+      partners: {
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true },
+      },
       leadCoordinatorId: true,
       generalObjective: true,
       publicDescription: true,
       internalNotes: true,
       coverPhoto: true,
+      coverCrop: true,
       zone: true,
       ...PROJECT_LOCATION_SELECT,
       leadCoordinator: {

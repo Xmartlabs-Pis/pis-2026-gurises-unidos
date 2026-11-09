@@ -23,7 +23,7 @@ test('sends the home link to the dashboard by default', () => {
   expect(homeLink().getAttribute('href')).toBe('/dashboard');
 });
 
-test('sends public errors home to the public site', () => {
+test('sends public errors home to the public report', () => {
   render(<PublicError error={new Error('failed')} retry={() => {}} />);
 
   expect(homeLink().getAttribute('href')).toBe('/');

@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { COUNTERPARTY_LABEL, INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
+import {
+  COUNTERPARTY_LABEL,
+  INTENSITY_LABEL,
+  REGION_LABEL,
+  STATUS_LABEL,
+} from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectDetail } from '@/lib/projects/detail';
 import { getLocationLabel } from '@/lib/projects/location';
@@ -30,14 +35,21 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   const territory = getLocationLabel(project);
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
-  const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
+  const counterparties = project.counterpartyTypes
+    .map((type) => COUNTERPARTY_LABEL[type])
+    .join(', ');
+  const partners = project.partners.map(({ name }) => name).join(', ');
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
   const topics = project.topics.map(({ name }) => name).join(', ');
   const rows = [
-    { label: 'Territorio:', value: territory },
+    ...(territory ? [{ label: 'Territorio:', value: territory }] : []),
+    ...(project.geographicScope === 'international' && project.region
+      ? [{ label: 'Región:', value: REGION_LABEL[project.region] }]
+      : []),
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
-    { label: 'Contraparte:', value: counterparty },
+    { label: 'Contrapartes:', value: counterparties },
+    ...(partners ? [{ label: 'Socios:', value: partners }] : []),
   ];
   const classifications = [
     { label: 'Líneas Estratégicas:', value: strategicLines },

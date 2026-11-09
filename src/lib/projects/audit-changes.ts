@@ -4,6 +4,7 @@ export const PROJECT_AUDIT_INCLUDE = {
   leadCoordinator: { select: { firstName: true, lastName: true } },
   topics: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
   strategicLines: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
+  partners: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
   departments: { select: { id: true, name: true }, orderBy: { id: 'asc' } },
   localities: {
     select: {
@@ -28,7 +29,12 @@ function getAuditValue(project: AuditProject, field: string): Prisma.InputJsonVa
     };
   }
 
-  if (field === 'topics' || field === 'strategicLines' || field === 'departments') {
+  if (
+    field === 'topics' ||
+    field === 'strategicLines' ||
+    field === 'partners' ||
+    field === 'departments'
+  ) {
     return project[field].map(({ id, name }) => ({ id, name }));
   }
 

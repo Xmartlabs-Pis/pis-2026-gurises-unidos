@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { TopbarProvider } from '@/components/layout/topbar-context';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Topbar } from '@/components/topbar';
+import { InvitationAcceptedToast } from '@/components/users/invitation-accepted-toast';
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   const session = await auth();
@@ -32,6 +33,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
           </div>
         </SidebarInset>
       </TopbarProvider>
+      <InvitationAcceptedToast />
     </SidebarProvider>
   );
 }

@@ -8,9 +8,9 @@ import {
 
 export const PROJECT_LIST_PAGE_SIZE = 20;
 export const PROJECT_LIST_MAX_PAGE_SIZE = 100;
-export const PROJECT_MIN_START_YEAR = 1989;
+const PROJECT_MIN_START_YEAR = 1989;
 export const PROJECT_SEARCH_MAX_LENGTH = 100;
-export const DEFAULT_PROJECT_STATUS = 'active';
+const DEFAULT_PROJECT_STATUS = 'active';
 
 const optionalYear = z.coerce
   .number()
@@ -22,7 +22,7 @@ const optionalYear = z.coerce
 
 const optionalPositiveInt = z.coerce.number().int().positive().optional().catch(undefined);
 
-export const projectFiltersSchema = z
+const projectFiltersSchema = z
   .object({
     search: z
       .string()
@@ -36,6 +36,7 @@ export const projectFiltersSchema = z
     departmentId: optionalPositiveInt,
     topicId: optionalPositiveInt,
     strategicLineId: optionalPositiveInt,
+    partnerId: optionalPositiveInt,
     beneficiaryCategoryId: optionalPositiveInt,
     startYearFrom: optionalYear,
     startYearTo: optionalYear,
@@ -73,12 +74,20 @@ type ProjectFilterOptions = {
   departments: { id: number }[];
   topics: { id: number }[];
   strategicLines: { id: number }[];
+  partners: { id: number }[];
   beneficiaryCategories: { id: number }[];
 };
 
 export function resolveProjectListFilters(
   raw: RawProjectFilters,
-  { years, departments, topics, strategicLines, beneficiaryCategories }: ProjectFilterOptions
+  {
+    years,
+    departments,
+    topics,
+    strategicLines,
+    partners,
+    beneficiaryCategories,
+  }: ProjectFilterOptions
 ): { canonical: CanonicalQuery; filters: ProjectFilters } {
   const parsed = parseProjectFilters(raw);
 
@@ -90,6 +99,7 @@ export function resolveProjectListFilters(
   const departmentId = departments.find(({ id }) => id === parsed.departmentId)?.id;
   const topicId = topics.find(({ id }) => id === parsed.topicId)?.id;
   const strategicLineId = strategicLines.find(({ id }) => id === parsed.strategicLineId)?.id;
+  const partnerId = partners.find(({ id }) => id === parsed.partnerId)?.id;
   const beneficiaryCategoryId = beneficiaryCategories.find(
     ({ id }) => id === parsed.beneficiaryCategoryId
   )?.id;
@@ -102,6 +112,7 @@ export function resolveProjectListFilters(
       departmentId,
       topicId,
       strategicLineId,
+      partnerId,
       beneficiaryCategoryId,
     },
     filters: parseProjectFilters({
@@ -111,6 +122,7 @@ export function resolveProjectListFilters(
       departmentId: departmentId?.toString(),
       topicId: topicId?.toString(),
       strategicLineId: strategicLineId?.toString(),
+      partnerId: partnerId?.toString(),
       beneficiaryCategoryId: beneficiaryCategoryId?.toString(),
       pageSize: String(PROJECT_LIST_PAGE_SIZE),
     }),

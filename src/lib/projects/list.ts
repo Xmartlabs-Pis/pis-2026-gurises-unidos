@@ -81,6 +81,9 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
   if (filters.strategicLineId) {
     where.strategicLines = { some: { id: filters.strategicLineId } };
   }
+  if (filters.partnerId) {
+    where.partners = { some: { id: filters.partnerId } };
+  }
 
   return where;
 }
@@ -128,6 +131,28 @@ export async function listProjects(filters: ProjectFilters): Promise<ProjectList
   };
 }
 
+export type ProjectDataYear = { id: number; year: number | null };
+
+export async function listProjectDataYears(filters: ProjectFilters): Promise<ProjectDataYear[]> {
+  const rows = await prisma.project.findMany({
+    where: buildProjectWhere(filters),
+    select: {
+      id: true,
+      projectBeneficiaries: {
+        where: { year: filters.beneficiaryYear },
+        orderBy: { year: 'desc' },
+        take: 1,
+        select: { year: true },
+      },
+    },
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map(({ id, projectBeneficiaries }) => ({
+    id,
+    year: projectBeneficiaries.at(0)?.year ?? null,
+  }));
+}
+
 export async function listBeneficiaryYears(): Promise<number[]> {
   const rows = await prisma.projectBeneficiary.findMany({
     where: { project: { deletedAt: null } },
@@ -140,7 +165,7 @@ export async function listBeneficiaryYears(): Promise<number[]> {
 }
 
 export async function listProjectFilterOptions() {
-  const [departments, topics, strategicLines, beneficiaryCategories] = await Promise.all([
+  const [departments, topics, strategicLines, partners, beneficiaryCategories] = await Promise.all([
     prisma.department.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
@@ -155,6 +180,11 @@ export async function listProjectFilterOptions() {
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     }),
+    prisma.partner.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
     prisma.beneficiaryCategory.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
@@ -162,5 +192,5 @@ export async function listProjectFilterOptions() {
     }),
   ]);
 
-  return { departments, topics, strategicLines, beneficiaryCategories };
+  return { departments, topics, strategicLines, partners, beneficiaryCategories };
 }

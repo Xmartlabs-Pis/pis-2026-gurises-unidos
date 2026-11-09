@@ -125,6 +125,140 @@ describe('describeAuditDetails', () => {
     ).toBe('Año de fin: 2026 → 2027');
   });
 
+  test('lists the published years before and after the change', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'publicSettings',
+          details: { changes: [{ field: 'publishedYears', from: [2025], to: [2026, 2025] }] },
+        },
+        {}
+      )
+    ).toBe('Años publicados: 2025 → 2026, 2025');
+  });
+
+  test('lists every grouped metric card and topic change by name', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'metric',
+          details: {
+            changes: [
+              { field: 'Familias acompañadas', from: false, to: true },
+              { field: 'Proyectos con actividad', from: true, to: false },
+            ],
+          },
+        },
+        {}
+      )
+    ).toBe('Familias acompañadas: No → Sí, Proyectos con actividad: Sí → No');
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'topic',
+          details: { changes: [{ field: 'Educación', from: false, to: true }] },
+        },
+        {}
+      )
+    ).toBe('Educación: No → Sí');
+  });
+
+  test('describes a renamed topic', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'topic',
+          details: { previousName: 'Salud', name: 'Bienestar' },
+        },
+        {}
+      )
+    ).toBe('Nombre: Salud → Bienestar');
+  });
+
+  test('describes a partner with a new name and counterparty type', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: {
+            previousName: 'Socio Prueba',
+            name: 'Socio Editado',
+            previousCounterpartyType: 'publicSector',
+            counterpartyType: 'privateSector',
+          },
+        },
+        {}
+      )
+    ).toBe(
+      'Nombre: Socio Prueba → Socio Editado, Tipo de contraparte: Sector Público → Sector Privado'
+    );
+  });
+
+  test('describes only the counterparty type when the partner name stays the same', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: {
+            previousName: 'INAU',
+            name: 'INAU',
+            previousCounterpartyType: 'publicSector',
+            counterpartyType: 'internationalCooperation',
+          },
+        },
+        {}
+      )
+    ).toBe('Tipo de contraparte: Sector Público → Cooperación Internacional');
+  });
+
+  test.each([
+    [true, 'Visible en el sitio público'],
+    [false, 'Oculto en el sitio público'],
+  ])('describes a partner visibility set to %s', (showPublicly, summary) => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: { name: 'INAU', showPublicly },
+        },
+        {}
+      )
+    ).toBe(summary);
+  });
+
+  test('shows the partners as an ordered set before and after the new order', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: { order: { from: ['A', 'B', 'C'], to: ['B', 'C', 'A'] } },
+        },
+        {}
+      )
+    ).toBe('A, B, C → B, C, A');
+  });
+
+  test('keeps describing project changes when the details carry a name', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'project',
+          details: { changes: [{ field: 'endYear', from: 2026, to: 2027 }], name: 'Huerta' },
+        },
+        {}
+      )
+    ).toBe('Año de fin: 2026 → 2027');
+  });
+
   test.each([
     ['no details', null],
     ['unexpected details', 'oops'],
@@ -207,4 +341,49 @@ test('describes locality snapshots without ids alongside other project changes',
     'Nombre: Original project → Updated project, ' +
       'Ubicaciones: Montevideo, Montevideo, Centro → Canelones, Las Piedras, Centro'
   );
+});
+
+test('summarizes a cover photo and crop as one sentence', () => {
+  expect(
+    describeAuditDetails(
+      {
+        action: 'update',
+        entity: 'project',
+        details: {
+          changes: [
+            {
+              field: 'coverPhoto',
+              from: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+              to: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
+            },
+            {
+              field: 'coverCrop',
+              from: null,
+              to: { x: 0, y: 25, width: 100, height: 50 },
+            },
+          ],
+        },
+      },
+      {}
+    )
+  ).toBe('actualizó la imagen de portada');
+});
+
+test('mentions the cover once when other fields change too', () => {
+  expect(
+    describeAuditDetails(
+      {
+        action: 'update',
+        entity: 'project',
+        details: {
+          changes: [
+            { field: 'name', from: 'Original project', to: 'Updated project' },
+            { field: 'coverPhoto', from: '/old.webp', to: '/new.webp' },
+            { field: 'coverCrop', from: null, to: { x: 0, y: 0, width: 100, height: 100 } },
+          ],
+        },
+      },
+      {}
+    )
+  ).toBe('Nombre: Original project → Updated project, Imagen de portada actualizada');
 });

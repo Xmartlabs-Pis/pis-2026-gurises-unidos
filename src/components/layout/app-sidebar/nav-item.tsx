@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { NavigationGuardLink as Link } from 'nextjs-nav-guard';
 import { SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { type NavigationItem, isItemActive } from './navigation';
 
@@ -21,7 +21,14 @@ export function SidebarNavItem({ item, pathname }: SidebarNavItem) {
         tooltip={item.title}
         isActive={isItemActive(pathname, item)}
         className={NAV_ITEM_CLASS}
-        render={<Link href={item.href} onClick={() => setOpenMobile(false)} />}
+        render={
+          <Link
+            href={item.href}
+            onClick={() => {
+              if (pathname === item.href) setOpenMobile(false);
+            }}
+          />
+        }
       >
         <Icon />
         <span>{item.title}</span>

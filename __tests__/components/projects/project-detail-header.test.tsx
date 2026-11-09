@@ -13,22 +13,25 @@ const PROJECT: ProjectDetail['project'] = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: 2020,
   endYear: null,
   strategicLines: [
     { id: 1, name: 'Formación' },
     { id: 2, name: 'Participación' },
   ],
+  partners: [],
   leadCoordinatorId: 7,
   zone: 'city',
   geographicScope: 'national',
   countries: [],
+  region: null,
   localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
   generalObjective: 'Support adolescents and families.',
   publicDescription: 'Community support project.',
   internalNotes: null,
   coverPhoto: null,
+  coverCrop: null,
   leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
   departments: [{ id: 1, name: 'Montevideo' }],
   topics: [{ id: 1, name: 'Educación' }],
@@ -98,10 +101,58 @@ test('shows the countries as the territory of an international project', () => {
   expect(screen.getAllByText('Argentina, Brasil')).not.toHaveLength(0);
 });
 
+test('shows the region of an international project', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: ['México'],
+        region: 'northAmerica',
+        localities: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.getByText('Región:')).toBeDefined();
+  expect(screen.getByText('Norteamérica')).toBeDefined();
+});
+
+test('shows only the region of an international project without countries', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: [],
+        region: 'otherRegions',
+        localities: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.queryByText('Territorio:')).toBeNull();
+  expect(screen.getByText('Otras regiones')).toBeDefined();
+});
+
+test('does not show a region for a national project', () => {
+  renderHeader(null);
+
+  expect(screen.queryByText('Región:')).toBeNull();
+});
+
 test('shows the project counterparty', () => {
   renderHeader(null);
 
-  expect(screen.getByText('Contraparte:')).toBeDefined();
+  expect(screen.getByText('Contrapartes:')).toBeDefined();
   expect(screen.getByText('Sector Público')).toBeDefined();
 });
 
@@ -157,4 +208,27 @@ test('shows the export button only to users who can edit the project', () => {
 
   rerender(<ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit />);
   expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+});
+
+test('shows the project partners only when it has some', () => {
+  const { rerender } = render(
+    <ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit={false} />
+  );
+  expect(screen.queryByText('Socios:')).toBeNull();
+  rerender(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        partners: [
+          { id: 1, name: 'ANEP' },
+          { id: 2, name: 'INAU' },
+        ],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+  expect(screen.getByText('Socios:')).toBeDefined();
+  expect(screen.getByText('ANEP, INAU')).toBeDefined();
 });

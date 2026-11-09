@@ -1,7 +1,9 @@
 import type { BeneficiaryFieldName } from '@/lib/project-display';
+import type { CoverCrop } from '@/lib/projects/cover-crop';
 import type { ProjectFormData } from '@/lib/validation/project-form';
 
-type ProjectFormListField = 'topicIds' | 'strategicLineIds' | 'countries';
+type ProjectFormListField =
+  'topicIds' | 'counterpartyTypes' | 'strategicLineIds' | 'partnerIds' | 'countries';
 
 export type ProjectLocationFormValue = {
   departmentId: string;
@@ -9,12 +11,16 @@ export type ProjectLocationFormValue = {
   neighborhood: string;
 };
 
+export type BeneficiaryYearDraft = { year: string } & { [K in BeneficiaryFieldName]?: string };
+
 export type ProjectFormValues = Omit<
   { [K in keyof ProjectFormData]: string },
-  ProjectFormListField | 'locations'
+  ProjectFormListField | 'locations' | 'beneficiaryDrafts'
 > & {
   coverPhotoUrl: string | null;
+  coverCrop: CoverCrop | null;
   locations: ProjectLocationFormValue[];
+  beneficiaryDrafts: BeneficiaryYearDraft[];
 } & { [K in ProjectFormListField]: string[] } & {
   [K in BeneficiaryFieldName]?: string;
 };

@@ -26,7 +26,7 @@ function buildFormData(overrides: Record<string, string | string[]> = {}): FormD
     name: 'Project under creation',
     status: 'active',
     intensity: 'high',
-    counterpartyType: 'publicSector',
+    counterpartyTypes: ['publicSector'],
     startYear: '2020',
     endYear: '',
     leadCoordinatorId: String(seed.coordinatorId),
@@ -61,7 +61,7 @@ async function createProjectFixture(name: string, startYear = 2020) {
       name,
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear,
       leadCoordinatorId: seed.coordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
@@ -108,6 +108,25 @@ afterEach(async () => {
 });
 
 describe('createProject (integration)', () => {
+  test('persists the beneficiaries loaded in every year', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({
+          beneficiaryDrafts: [JSON.stringify({ year: '2022', families: '7' })],
+        })
+      )
+    );
+
+    const { projectBeneficiaries } = await loadProject(projectId);
+    expect(projectBeneficiaries.map(({ year, families }) => [year, families])).toEqual([
+      [2022, 7],
+      [BENEFICIARY_YEAR, 2],
+    ]);
+  });
+
   test('persists the project with its first beneficiaries and audits both', async () => {
     signInAs(seed.adminId);
 
@@ -118,7 +137,7 @@ describe('createProject (integration)', () => {
       name: 'Project under creation',
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear: 2020,
       endYear: null,
       leadCoordinatorId: seed.coordinatorId,
@@ -383,15 +402,81 @@ describe('createProject (integration)', () => {
     const projectId = await expectRedirectToNewProject(
       createProject(
         {},
-        buildFormData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
+        })
       )
     );
 
     expect(await loadProject(projectId)).toMatchObject({
       geographicScope: 'international',
       countries: ['Argentina', 'Brasil'],
+      region: 'southAmerica',
       departments: [],
       localities: [],
+    });
+  });
+
+  test('persists an international project with a region and no countries', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ geographicScope: 'international', region: 'otherRegions' }))
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: [],
+      region: 'otherRegions',
+    });
+  });
+
+  test('rejects an international project without a region and creates nothing', async () => {
+    signInAs(seed.adminId);
+    const before = await countRows();
+
+    const result = await createProject(
+      {},
+      buildFormData({ geographicScope: 'international', countries: ['Argentina'] })
+    );
+
+    expect(result.errors?.region).toEqual(['Seleccioná una región']);
+    expect(await countRows()).toEqual(before);
+  });
+
+  test('persists the selected region of an international project', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Guatemala'],
+          region: 'centralAmerica',
+        })
+      )
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: ['Guatemala'],
+      region: 'centralAmerica',
+    });
+  });
+
+  test('drops a submitted region for a national project', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ region: 'southAmerica' }))
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'national',
+      region: null,
     });
   });
 

@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { ProjectTopbarRegistration } from '@/components/layout/topbar-context';
+import { ProjectDetailSkeleton } from '@/components/projects/project-detail-skeleton';
 import { ProjectHistory } from '@/components/projects/form/project-history';
 import { BeneficiaryDistribution } from '@/components/projects/detail/beneficiary-distribution';
 import { InstitutionalContribution } from '@/components/projects/detail/institutional-contribution';
@@ -18,7 +20,15 @@ type ProjectDetailPageProps = {
   searchParams: Promise<{ year?: string | string[] }>;
 };
 
-export default async function ProjectDetailPage({ params, searchParams }: ProjectDetailPageProps) {
+export default function ProjectDetailPage(props: ProjectDetailPageProps) {
+  return (
+    <Suspense fallback={<ProjectDetailSkeleton />}>
+      <ProjectDetail {...props} />
+    </Suspense>
+  );
+}
+
+async function ProjectDetail({ params, searchParams }: ProjectDetailPageProps) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const result = await getProjectDetail(id, query.year);
 
@@ -68,7 +78,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
             <div className="grid items-stretch gap-4 lg:grid-cols-2">
               <div className="flex min-w-0 flex-col gap-4">
                 <BeneficiaryDistribution data={distribution} year={selectedYear} />
-                <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
+                <ProjectPublicCard
+                  name={project.name}
+                  coverPhoto={project.coverPhoto}
+                  coverCrop={project.coverCrop}
+                />
               </div>
               <InstitutionalContribution data={institutionalContribution} />
             </div>
@@ -76,7 +90,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
         ) : (
           <>
             <ProjectYearEmptyState year={selectedYear} />
-            <ProjectPublicCard name={project.name} coverPhoto={project.coverPhoto} />
+            <ProjectPublicCard
+              name={project.name}
+              coverPhoto={project.coverPhoto}
+              coverCrop={project.coverCrop}
+            />
           </>
         )}
         {history && fieldLabels && <ProjectHistory entries={history} fieldLabels={fieldLabels} />}

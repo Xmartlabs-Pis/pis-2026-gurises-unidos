@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   replace: vi.fn(),
   loadProjectsPage: vi.fn(),
+  loadProjectDataYears: vi.fn(),
   observers: [] as { callback: IntersectionObserverCallback; disconnected: boolean }[],
 }));
 
@@ -17,7 +18,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mocks.replace }),
 }));
 
-vi.mock('@/app/actions/projects', () => ({ loadProjectsPage: mocks.loadProjectsPage }));
+vi.mock('@/app/actions/projects', () => ({
+  loadProjectsPage: mocks.loadProjectsPage,
+  loadProjectDataYears: mocks.loadProjectDataYears,
+}));
 
 class IntersectionObserverMock {
   private readonly entry: { callback: IntersectionObserverCallback; disconnected: boolean };
@@ -72,6 +76,7 @@ function buildProject(
     zone: 'city',
     geographicScope: 'national',
     countries: [],
+    region: null,
     publicDescription: null,
     coverPhoto: null,
     leadCoordinator: { id: 1, firstName: 'Carlos', lastName: 'Coordinator' },
@@ -95,6 +100,7 @@ type ListProps = {
   departmentId?: number;
   topicId?: number;
   strategicLineId?: number;
+  partnerId?: number;
   beneficiaryCategoryId?: number;
 };
 
@@ -109,6 +115,7 @@ function buildList({
   departmentId,
   topicId,
   strategicLineId,
+  partnerId,
   beneficiaryCategoryId,
 }: ListProps = {}) {
   return (
@@ -133,6 +140,7 @@ function buildList({
         { id: 5, name: 'Formación' },
         { id: 6, name: 'Incidencia en Políticas Públicas' },
       ]}
+      partners={[{ id: 8, name: 'INAU' }]}
       beneficiaryCategories={[
         { id: 3, name: 'Familias' },
         { id: 4, name: 'Jóvenes (18 a 29)' },
@@ -140,6 +148,7 @@ function buildList({
       departmentId={departmentId}
       topicId={topicId}
       strategicLineId={strategicLineId}
+      partnerId={partnerId}
       beneficiaryCategoryId={beneficiaryCategoryId}
     />
   );
@@ -159,6 +168,7 @@ beforeEach(() => {
   mocks.searchParams = new URLSearchParams();
   mocks.replace.mockClear();
   mocks.loadProjectsPage.mockReset();
+  mocks.loadProjectDataYears.mockReset();
   mocks.observers.length = 0;
 });
 
@@ -531,4 +541,240 @@ test('counts a year different from the default as an applied filter', () => {
   for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
     expect(button.textContent).toBe('1');
   }
+});
+
+function startReportSelection() {
+  fireEvent.click(screen.getByRole('button', { name: 'Exportar reporte' }));
+}
+
+function withDataIn(year: number) {
+  return [{ ...BENEFICIARIES_2025, year }];
+}
+
+function buildAllYearsList(projects: ProjectListItem[]) {
+  return (
+    <ProjectsCardList
+      projects={projects}
+      total={projects.length}
+      page={1}
+      totalPages={1}
+      years={[2025, 2024]}
+      status="active"
+      beneficiaryYear={undefined}
+      search={undefined}
+    />
+  );
+}
+
+function stubPdfDownload() {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response('%PDF', {
+      headers: { 'Content-Type': 'application/pdf', 'X-Report-File-Name': 'Informe.pdf' },
+    })
+  );
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchMock;
+  URL.createObjectURL = vi.fn(() => 'blob:report');
+  URL.revokeObjectURL = vi.fn();
+  return { fetchMock, restore: () => (globalThis.fetch = originalFetch) };
+}
+
+async function exportReport() {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar' }));
+  });
+}
+
+const MIXED_YEARS_WARNING =
+  'Los proyectos seleccionados tienen datos de distintos años y no se puede exportar un reporte con varios años. Elegí un año en los filtros.';
+
+test('turns the project cards into checkboxes when exporting a report', () => {
+  render(
+    buildList({
+      projects: [
+        buildProject(1, 'Alpha', 'active', withDataIn(2025)),
+        buildProject(2, 'Beta', 'active', withDataIn(2025)),
+      ],
+    })
+  );
+
+  startReportSelection();
+
+  expect(screen.queryByRole('link', { name: /Alpha/ })).toBeNull();
+  const alpha = screen.getByRole('checkbox', { name: 'Alpha' });
+  expect(alpha.getAttribute('aria-checked')).toBe('false');
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
+
+  fireEvent.click(alpha);
+  fireEvent.keyDown(screen.getByRole('checkbox', { name: 'Beta' }), { key: ' ' });
+
+  expect(alpha.getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByRole('checkbox', { name: 'Beta' }).getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByText('2 proyectos seleccionados')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(false);
+
+  fireEvent.click(alpha);
+
+  expect(screen.getByText('1 proyecto seleccionado')).toBeTruthy();
+});
+
+test('selects every project matching the current filters', async () => {
+  mocks.loadProjectDataYears.mockResolvedValue([
+    { id: 1, year: 2025 },
+    { id: 2, year: 2025 },
+    { id: 3, year: 2025 },
+  ]);
+  render(buildList({ projects: [buildProject(1, 'Alpha')], total: 3, topicId: 2 }));
+
+  startReportSelection();
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar filtrados (3)' }));
+  });
+
+  expect(mocks.loadProjectDataYears).toHaveBeenCalledWith(
+    expect.objectContaining({ status: 'active', beneficiaryYear: '2025', topicId: '2' })
+  );
+  expect(screen.getByText('3 proyectos seleccionados')).toBeTruthy();
+});
+
+test('exports the report of the selected projects for the filtered year', async () => {
+  const { fetchMock, restore } = stubPdfDownload();
+  render(
+    buildList({
+      projects: [buildProject(4, 'Alpha', 'active', withDataIn(2024))],
+      beneficiaryYear: 2024,
+    })
+  );
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  await exportReport();
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/reports/impact',
+    expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ year: 2024, projectIds: [4] }),
+    })
+  );
+  restore();
+});
+
+test('restores the project links when the selection is cancelled', () => {
+  render(buildList({ projects: [buildProject(1, 'Alpha')] }));
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+  expect(screen.queryByRole('checkbox', { name: 'Alpha' })).toBeNull();
+  expect(screen.getByRole('link', { name: /Alpha/ }).getAttribute('href')).toBe(
+    '/dashboard/projects/1'
+  );
+  expect(screen.getByRole('button', { name: 'Exportar reporte' })).toBeTruthy();
+});
+
+test('exports the shared year of the selected projects when listing all years', async () => {
+  const { fetchMock, restore } = stubPdfDownload();
+  render(
+    buildAllYearsList([
+      buildProject(1, 'Alpha', 'active', withDataIn(2024)),
+      buildProject(2, 'Beta', 'active', withDataIn(2024)),
+      buildProject(3, 'Gamma'),
+    ])
+  );
+
+  startReportSelection();
+  for (const name of ['Alpha', 'Beta', 'Gamma']) {
+    fireEvent.click(screen.getByRole('checkbox', { name }));
+  }
+
+  expect(screen.queryByText(MIXED_YEARS_WARNING)).toBeNull();
+  await exportReport();
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/reports/impact',
+    expect.objectContaining({ body: JSON.stringify({ year: 2024, projectIds: [1, 2, 3] }) })
+  );
+  restore();
+});
+
+test('blocks the export when the selected projects have data from different years', () => {
+  render(
+    buildAllYearsList([
+      buildProject(1, 'Alpha', 'active', withDataIn(2025)),
+      buildProject(2, 'Beta', 'active', withDataIn(2024)),
+    ])
+  );
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+
+  expect(screen.getByText(MIXED_YEARS_WARNING)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+
+  expect(screen.queryByText(MIXED_YEARS_WARNING)).toBeNull();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(false);
+});
+
+test('blocks the export when no selected project has data', () => {
+  render(buildAllYearsList([buildProject(1, 'Alpha')]));
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+
+  expect(screen.getByText('Los proyectos seleccionados no tienen datos cargados.')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Exportar' }).hasAttribute('disabled')).toBe(true);
+});
+
+test('exports the filtered year once a year is chosen after mixing years', async () => {
+  const { fetchMock, restore } = stubPdfDownload();
+  const { rerender } = render(
+    buildAllYearsList([
+      buildProject(1, 'Alpha', 'active', withDataIn(2026)),
+      buildProject(2, 'Beta', 'active', withDataIn(2025)),
+    ])
+  );
+
+  startReportSelection();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Beta' }));
+  expect(screen.getByText(MIXED_YEARS_WARNING)).toBeTruthy();
+
+  rerender(
+    buildList({
+      projects: [
+        buildProject(1, 'Alpha', 'active', withDataIn(2025)),
+        buildProject(2, 'Beta', 'active', withDataIn(2025)),
+      ],
+      beneficiaryYear: 2025,
+    })
+  );
+
+  expect(screen.queryByText(MIXED_YEARS_WARNING)).toBeNull();
+  await exportReport();
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/reports/impact',
+    expect.objectContaining({ body: JSON.stringify({ year: 2025, projectIds: [1, 2] }) })
+  );
+  restore();
+});
+
+test('counts and clears the partner filter', async () => {
+  mocks.searchParams = new URLSearchParams('partnerId=8&status=inactive');
+  renderList({ partnerId: 8, status: 'inactive' });
+  const [button] = screen.getAllByRole('button', { name: 'Filtros de proyectos' });
+  expect(button.textContent).toBe('1');
+  fireEvent.click(button);
+  expect(
+    (await screen.findByRole('combobox', { name: 'Filtrar por socio' })).textContent
+  ).toContain('INAU');
+  fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
+  expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=inactive', {
+    scroll: false,
+  });
 });

@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getPublicStats } from '@/lib/metrics/public-stats';
-import type { MetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 
 it('formats only the publicly shown metrics, keeping their order', () => {
   const settings = METRIC_DEFINITIONS.map((metric) => ({
@@ -11,7 +11,7 @@ it('formats only the publicly shown metrics, keeping their order', () => {
   const values = { children_reached: 6315, families: 800 } as MetricValues;
 
   expect(getPublicStats(settings, values)).toEqual([
-    { key: 'children_reached', value: '6.315', description: 'Total de NNA' },
+    { key: 'children_reached', value: '6.315', description: 'NNA alcanzados' },
     { key: 'families', value: '800', description: 'Familias acompañadas' },
   ]);
 });

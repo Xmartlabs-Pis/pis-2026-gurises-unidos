@@ -5,12 +5,14 @@ import type { PublicProjectsPage } from '@/lib/projects/public-projects';
 import { ProjectCard } from '@/components/projects/project-card';
 import { CarouselCardSkeleton } from '@/components/projects/topic-carousel-skeleton';
 import { Button } from '@/components/ui/button';
+import { formatNumber } from '@/lib/format';
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
+  useCarousel,
   type CarouselApi,
 } from '@/components/ui/carousel';
 
@@ -20,10 +22,24 @@ type TopicCarouselProps = {
   year: number;
   topicId: number;
   topic: string;
+  total: number;
   initialPage: PublicProjectsPage;
 };
 
-export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarouselProps) {
+function TopicCarouselControls() {
+  const { canScrollPrev, canScrollNext } = useCarousel();
+
+  if (!canScrollPrev && !canScrollNext) return null;
+
+  return (
+    <div className="flex shrink-0 gap-2">
+      <CarouselPrevious className="static size-9 rounded-lg bg-white" />
+      <CarouselNext className="static size-9 rounded-lg bg-white" />
+    </div>
+  );
+}
+
+export function TopicCarousel({ year, topicId, topic, total, initialPage }: TopicCarouselProps) {
   const [projects, setProjects] = useState(initialPage.items);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
   const [failed, setFailed] = useState(false);
@@ -38,7 +54,10 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
     try {
       const next = await loadPublicProjectsPage(year, topicId, pageRef.current + 1);
       pageRef.current = next.page;
-      setProjects((current) => [...current, ...next.items]);
+      setProjects((current) => {
+        const loadedIds = new Set(current.map((p) => p.id));
+        return [...current, ...next.items.filter((p) => !loadedIds.has(p.id))];
+      });
       setHasMore(next.hasMore);
     } catch {
       setFailed(true);
@@ -51,7 +70,7 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
     if (!api || failed) return;
     const onScroll = () => {
       const lastVisible = Math.max(...api.slidesInView());
-      if (lastVisible >= api.slideNodes().length - LOAD_MORE_THRESHOLD) loadMore();
+      if (lastVisible >= api.slideNodes().length - LOAD_MORE_THRESHOLD) void loadMore();
     };
     onScroll();
     api.on('select', onScroll).on('slidesInView', onScroll);
@@ -61,40 +80,41 @@ export function TopicCarousel({ year, topicId, topic, initialPage }: TopicCarous
   }, [api, failed, loadMore]);
 
   return (
-    <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-4">
-      <div className="flex flex-row justify-between">
-        <div className="flex flex-row items-center gap-3">
-          <p className="text-foreground text-xl leading-7 font-semibold">{topic}</p>
+    <Carousel setApi={setApi} aria-label={topic} className="flex flex-col gap-5">
+      <div className="flex min-h-9 items-center justify-between gap-4">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 className="text-foreground text-xl leading-7 font-semibold">{topic}</h3>
+          <span className="text-primary text-sm font-medium">
+            {formatNumber(total)} {total === 1 ? 'proyecto' : 'proyectos'}
+          </span>
         </div>
-        <div className="flex flex-row gap-2">
-          <CarouselPrevious className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
-          <CarouselNext className="static hidden h-9 w-9 gap-2.5 rounded-lg border bg-white shadow-xs/10 md:flex" />
-        </div>
+        <TopicCarouselControls />
       </div>
       <CarouselContent>
         {projects.map((project) => (
-          <CarouselItem key={project.id} className="basis-75 lg:basis-100">
+          <CarouselItem key={project.id} className="basis-77">
             <ProjectCard
-              variant="public-dark"
+              variant="public-light"
               territory={project.territory}
               name={project.name}
               description={project.description}
               coverPhoto={project.coverPhoto}
+              coverCrop={project.coverCrop}
               reach={project.reach}
             />
           </CarouselItem>
         ))}
         {hasMore && (
-          <CarouselItem className="basis-75 lg:basis-100">
+          <CarouselItem className="basis-77">
             {failed ? (
-              <div className="bg-card flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border-2 px-6 text-center">
+              <div className="border-border flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border bg-white px-6 text-center">
                 <p role="alert" className="text-muted-foreground text-sm">
                   No se pudieron cargar más proyectos.
                 </p>
                 <Button
                   variant="outline"
-                  className="h-9 border bg-white px-4 shadow-xs/10"
-                  onClick={loadMore}
+                  className="h-9 border bg-white px-4"
+                  onClick={() => void loadMore()}
                 >
                   Reintentar
                 </Button>

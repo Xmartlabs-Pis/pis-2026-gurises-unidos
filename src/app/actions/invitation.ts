@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { signIn } from '@/auth';
+import { auth, signIn } from '@/auth';
 import { hashPassword } from '@/lib/credentials';
 import { logAudit } from '@/lib/audit-log';
 import { INVITATION_TOKEN_ERROR_MESSAGES } from '@/lib/auth/invitation';
@@ -94,6 +94,10 @@ export async function acceptInvitation(
   if (!accepted) {
     const current = await findValidUserToken(token, 'invitation');
     return { formError: INVITATION_TOKEN_ERROR_MESSAGES[current.valid ? 'used' : current.reason] };
+  }
+
+  if (await auth()) {
+    redirect('/dashboard?invitationAccepted=1');
   }
 
   try {

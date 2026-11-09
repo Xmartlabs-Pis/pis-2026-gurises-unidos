@@ -1,12 +1,13 @@
 import { AUDIT_ENTITY_LABELS } from '@/lib/audit-log/constants';
-import type { AuditLogListItem } from '@/lib/audit-log/list';
 import {
   COUNTERPARTY_LABEL,
   GEOGRAPHIC_SCOPE_OPTIONS,
   INTENSITY_LABEL,
+  REGION_LABEL,
   STATUS_LABEL,
   ZONE_OPTIONS,
 } from '@/lib/project-display';
+import type { ListedAuditEntity } from '@/lib/validation/audit-log-filters';
 
 export function formatAuditTime(date: Date) {
   return new Date(date).toLocaleTimeString('es-UY', {
@@ -22,7 +23,11 @@ export function auditEntityName({
   entity,
   entityId,
   entityName,
-}: Pick<AuditLogListItem, 'entity' | 'entityId' | 'entityName'>) {
+}: {
+  entity: ListedAuditEntity;
+  entityId: number | null;
+  entityName: string | null;
+}) {
   return (
     entityName ??
     (entityId === null
@@ -53,9 +58,11 @@ export const PROJECT_VALUE_LABELS: Record<string, Record<string, string>> = {
   status: STATUS_LABEL,
   intensity: INTENSITY_LABEL,
   counterpartyType: COUNTERPARTY_LABEL,
+  counterpartyTypes: COUNTERPARTY_LABEL,
   geographicScope: Object.fromEntries(
     GEOGRAPHIC_SCOPE_OPTIONS.map(({ value, label }) => [value, label])
   ),
+  region: REGION_LABEL,
   zone: Object.fromEntries(ZONE_OPTIONS.map(({ value, label }) => [value, label])),
 };
 

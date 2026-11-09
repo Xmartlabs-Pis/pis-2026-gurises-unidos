@@ -95,7 +95,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
             updateFilters({ action: value === ALL_FILTER_VALUE ? null : String(value) })
           }
         >
-          <div className="bg-secondary flex h-9 max-w-full flex-row items-center overflow-x-auto rounded-lg px-0.5 py-0.75">
+          <div className="bg-secondary flex h-9 max-w-full [scrollbar-width:none] flex-row items-center overflow-x-auto overflow-y-hidden rounded-lg px-0.5 py-0.75">
             <TabsList aria-label="Filtrar por acción">
               {AUDIT_ACTION_TABS.map((tab) => (
                 <TabsTrigger

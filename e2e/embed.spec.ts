@@ -93,7 +93,7 @@ test.describe('without a session', () => {
     );
   });
 
-  test('shows the same metric values as the public site', async ({ page }) => {
+  test('shows the same metric values as the public report', async ({ page }) => {
     await page.goto('/');
     const publicValues = await stats(page)
       .locator(':scope > div > span:first-child')

@@ -95,7 +95,7 @@ it.each([
   ['intensity', 'Intensidad', 'medium', null, 'Media', 'Sin datos'],
   ['startYear', 'Año de inicio', 2019, 2020, '2019', '2020'],
   ['endYear', 'Año de fin', null, 2024, 'Sin datos', '2024'],
-  ['showOnLanding', 'Visibilidad en la página pública', true, false, 'Sí', 'No'],
+  ['showOnLanding', 'Visibilidad en el reporte público', true, false, 'Sí', 'No'],
   [
     'counterpartyType',
     'Contraparte',
@@ -103,6 +103,14 @@ it.each([
     'privateSector',
     'Sector Público',
     'Sector Privado',
+  ],
+  [
+    'counterpartyTypes',
+    'Contrapartes',
+    ['publicSector'],
+    ['publicSector', 'privateSector'],
+    'Sector Público',
+    'Sector Público, Sector Privado',
   ],
   [
     'geographicScope',
@@ -275,3 +283,45 @@ it.each([
     expect(screen.queryByText(/^Ubicaciones:/)).toBeNull();
   }
 );
+
+it('says the user updated the cover when that is the only change', () => {
+  render(
+    <ProjectHistory
+      fieldLabels={FIELD_LABELS}
+      entries={[
+        entry(1, 'update', 'project', {
+          changes: [
+            {
+              field: 'coverPhoto',
+              from: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
+              to: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
+            },
+            { field: 'coverCrop', from: null, to: { x: 0, y: 25, width: 100, height: 50 } },
+          ],
+        }),
+      ]}
+    />
+  );
+  expect(screen.getByText('Test User actualizó la imagen de portada')).toBeDefined();
+  expect(screen.queryByText('Imagen de portada actualizada')).toBeNull();
+  expect(screen.queryByText(/uploads\/covers/)).toBeNull();
+});
+
+it('keeps other project changes and mentions the cover once', () => {
+  render(
+    <ProjectHistory
+      fieldLabels={FIELD_LABELS}
+      entries={[
+        entry(1, 'update', 'project', {
+          changes: [
+            { field: 'name', from: 'Original project', to: 'Updated project' },
+            { field: 'coverCrop', from: { x: 0, y: 0, width: 40, height: 40 }, to: null },
+          ],
+        }),
+      ]}
+    />
+  );
+  expect(screen.getByText('Test User actualizó el proyecto')).toBeDefined();
+  expect(screen.getByText('Nombre: Original project → Updated project')).toBeDefined();
+  expect(screen.getByText('Imagen de portada actualizada')).toBeDefined();
+});

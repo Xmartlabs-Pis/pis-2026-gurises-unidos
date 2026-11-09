@@ -1,8 +1,29 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { listProjectCovers } from '@/app/actions/project-covers';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { BENEFICIARY_CATEGORY_OPTIONS } from '../../mocks/beneficiary-values';
 import { notify } from '@/lib/notify';
+
+vi.mock('react-easy-crop', async () => {
+  const React = await import('react');
+  return {
+    default: function MockCropper({
+      onCropComplete,
+    }: {
+      onCropComplete?: (area: { x: number; y: number; width: number; height: number }) => void;
+    }) {
+      React.useEffect(() => {
+        onCropComplete?.({ x: 0, y: 12.5, width: 100, height: 75 });
+      }, [onCropComplete]);
+      return <div data-testid="cover-cropper" />;
+    },
+  };
+});
+
+vi.mock('@/app/actions/project-covers', () => ({
+  listProjectCovers: vi.fn().mockResolvedValue([]),
+}));
 
 const { routerPushMock, routerRefreshMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
@@ -27,6 +48,18 @@ function getCoverPhotoInput(container: HTMLElement) {
   return container.querySelector('input[type="file"]') as HTMLInputElement;
 }
 
+const APPLIED_CROP = { x: 0, y: 12.5, width: 100, height: 75 };
+
+async function chooseCoverFile(container: HTMLElement, file: File) {
+  fireEvent.click(screen.getByLabelText('Foto de portada'));
+  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
+  const apply = await screen.findByRole('button', { name: 'Aplicar' });
+  await waitFor(() => {
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+  fireEvent.click(apply);
+}
+
 it('submits prefilled values and the recorded year, preserves edits on failure, and allows retry', async () => {
   routerPushMock.mockClear();
   vi.mocked(notify.error).mockClear();
@@ -35,13 +68,14 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Existing project',
         strategicLineIds: ['1'],
         topicIds: ['1'],
@@ -80,9 +114,10 @@ it('submits prefilled values and the recorded year, preserves edits on failure, 
   expect((screen.getByLabelText('Nombre del proyecto') as HTMLInputElement).value).toBe(
     'Edited project'
   );
-  expect(Object.fromEntries(new FormData(container.querySelector('form')!))).toEqual(
-    Object.fromEntries(submitted)
-  );
+  expect(Object.fromEntries(submitted)).toEqual({
+    ...Object.fromEntries(new FormData(container.querySelector('form')!)),
+    returnResult: 'true',
+  });
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
@@ -97,6 +132,7 @@ it('keeps the original creation appearance separate from edit styling', () => {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -106,7 +142,7 @@ it('keeps the original creation appearance separate from edit styling', () => {
   );
   expect(container.querySelector('form')?.classList.contains('bg-muted/30')).toBe(true);
   expect(screen.queryByText('Cobertura')).toBeNull();
-  expect(screen.queryByText('Ver vista pública →')).toBeNull();
+  expect(screen.queryByText('Ver reporte público →')).toBeNull();
   expect(screen.getByLabelText('Nombre del proyecto').classList.contains('md:text-sm')).toBe(true);
   expect(screen.getByLabelText('Foto de portada').tagName).toBe('BUTTON');
   expect((screen.getByLabelText('Foto de portada') as HTMLButtonElement).disabled).toBe(false);
@@ -124,12 +160,13 @@ it('shows and submits the selected project placeholder during creation', () => {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         coverPhotoUrl: '/images/project-placeholders/2.webp',
       }}
       submitAction={vi.fn()}
@@ -144,26 +181,27 @@ it('shows and submits the selected project placeholder during creation', () => {
   );
 });
 
-it('previews a selected cover without putting the file on the form', () => {
+it('previews a selected cover without putting the file on the form', async () => {
   const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview');
   const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   const { container } = render(
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         coverPhotoUrl: '/images/project-placeholders/2.webp',
       }}
       submitAction={vi.fn()}
     />
   );
   const file = new File(['image'], 'portada.png', { type: 'image/png' });
-  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
+  await chooseCoverFile(container, file);
 
   const input = getCoverPhotoInput(container);
   const picker = screen.getByLabelText('Foto de portada');
@@ -172,14 +210,63 @@ it('previews a selected cover without putting the file on the form', () => {
   expect(input).not.toBe(picker);
   expect(input.closest('.overflow-hidden')).not.toBeNull();
   expect(input.getAttribute('form')).toBe('cover-photo-detached');
-  expect(container.querySelector('.aspect-video')?.getAttribute('style')).toContain('blob:preview');
+  expect(container.querySelector('img')?.getAttribute('src')).toBe('blob:preview');
+  expect(container.querySelector('img')?.getAttribute('style')).toContain('width:');
   expect(input.name).toBe('');
-  expect(new FormData(container.querySelector('form')!).get('coverPhoto')).toBeNull();
+  const submitted = new FormData(container.querySelector('form')!);
+  expect(submitted.get('coverPhoto')).toBeNull();
+  expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
+  const filename = screen.getByText('portada.png');
+  expect(filename.className).toContain('truncate');
+  expect(filename.className).toContain('min-w-0');
+  expect(picker.className).toContain('overflow-hidden');
   expect(
     screen.getByRole('button', { name: 'Foto de portada', description: /portada\.png/ })
   ).toBeTruthy();
   createObjectURL.mockRestore();
   revokeObjectURL.mockRestore();
+});
+
+it('submits an already uploaded cover and its crop', async () => {
+  const coverPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+  vi.mocked(listProjectCovers).mockResolvedValue([
+    { path: coverPath, projectName: 'Comedor', usedBy: 1 },
+  ]);
+  const { container } = render(
+    <ProjectForm
+      mode="edit"
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      initialValues={{
+        counterpartyTypes: ['publicSector'],
+        coverPhotoUrl: '/images/project-placeholders/2.webp',
+        coverCrop: APPLIED_CROP,
+      }}
+      submitAction={vi.fn()}
+    />
+  );
+
+  expect(screen.queryByText('Cambios sin guardar')).toBeNull();
+  fireEvent.click(screen.getByLabelText('Foto de portada'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Comedor' }));
+  const apply = await screen.findByRole('button', { name: 'Aplicar' });
+  await waitFor(() => {
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+  fireEvent.click(apply);
+
+  const submitted = new FormData(container.querySelector('form')!);
+  expect(submitted.get('coverPhotoPath')).toBe(coverPath);
+  expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
+  expect(screen.getByText('Cambios sin guardar')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
+  expect(screen.queryByText('Cambios sin guardar')).toBeNull();
+  vi.mocked(listProjectCovers).mockResolvedValue([]);
 });
 
 it('uploads the selected cover and submits the returned path', async () => {
@@ -197,12 +284,13 @@ it('uploads the selected cover and submits the returned path', async () => {
       projectId={10}
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Existing project',
         strategicLineIds: ['1'],
         topicIds: ['1'],
@@ -218,7 +306,7 @@ it('uploads the selected cover and submits the returned path', async () => {
     />
   );
   const file = new File(['image'], 'portada.png', { type: 'image/png' });
-  fireEvent.change(getCoverPhotoInput(container), { target: { files: [file] } });
+  await chooseCoverFile(container, file);
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
@@ -236,6 +324,7 @@ it('uploads the selected cover and submits the returned path', async () => {
   expect(submitted.get('coverPhotoPath')).toBe(
     '/uploads/covers/11111111-1111-4111-8111-111111111111.webp'
   );
+  expect(submitted.get('coverCrop')).toBe(JSON.stringify(APPLIED_CROP));
   expect(submitted.get('coverPhoto')).toBeNull();
   vi.unstubAllGlobals();
 });
@@ -256,12 +345,13 @@ it('does not submit when the cover upload fails', async () => {
       projectId={10}
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Existing project',
         strategicLineIds: ['1'],
         topicIds: ['1'],
@@ -275,9 +365,7 @@ it('does not submit when the cover upload fails', async () => {
       submitAction={submitAction}
     />
   );
-  fireEvent.change(getCoverPhotoInput(container), {
-    target: { files: [new File(['image'], 'portada.png', { type: 'image/png' })] },
-  });
+  await chooseCoverFile(container, new File(['image'], 'portada.png', { type: 'image/png' }));
   await act(async () => {
     fireEvent.submit(container.querySelector('form')!);
   });
@@ -294,12 +382,13 @@ it('submits a placeholder when an uploaded cover is removed', () => {
       mode="edit"
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         coverPhotoUrl: '/uploads/covers/11111111-1111-4111-8111-111111111111.webp',
       }}
       submitAction={vi.fn()}
@@ -309,8 +398,51 @@ it('submits a placeholder when an uploaded cover is removed', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
   const data = new FormData(container.querySelector('form')!);
   expect(data.get('removeCoverPhoto')).toBe('true');
-  expect(data.get('projectPlaceholder')).toMatch(/^\/images\/project-placeholders\/[1-6]\.webp$/);
+  expect(data.get('projectPlaceholder')).toMatch(
+    /^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/
+  );
   expect(container.querySelector('img')?.getAttribute('src')).toContain('project-placeholders');
+});
+
+it('reverts a crop on the current cover and can still remove the photo', async () => {
+  const coverPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+  const savedCrop = { x: 0, y: 10, width: 100, height: 80 };
+  const { container } = render(
+    <ProjectForm
+      mode="edit"
+      beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+      strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
+      topics={[]}
+      currentYear={2026}
+      coordinators={[]}
+      departments={[]}
+      initialValues={{
+        counterpartyTypes: ['publicSector'],
+        coverPhotoUrl: coverPath,
+        coverCrop: savedCrop,
+      }}
+      submitAction={vi.fn()}
+    />
+  );
+
+  fireEvent.click(screen.getByLabelText('Foto de portada'));
+  const apply = await screen.findByRole('button', { name: 'Aplicar' });
+  await waitFor(() => {
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+  fireEvent.click(apply);
+
+  const form = () => new FormData(container.querySelector('form')!);
+  expect(form().get('coverCrop')).toBe(JSON.stringify(savedCrop));
+  expect(form().get('removeCoverPhoto')).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Deshacer encuadre' }));
+  expect(form().get('coverCrop')).toBeNull();
+  expect(form().get('removeCoverPhoto')).toBeNull();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Quitar foto' }));
+  expect(form().get('removeCoverPhoto')).toBe('true');
 });
 
 it('sends multiple selected topics and preserves them after a failed save', async () => {
@@ -319,6 +451,7 @@ it('sends multiple selected topics and preserves them after a failed save', asyn
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       currentYear={2026}
       topics={[
         { id: 1, name: 'Education' },
@@ -327,7 +460,7 @@ it('sends multiple selected topics and preserves them after a failed save', asyn
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
@@ -356,6 +489,7 @@ it('disables the topics field and explains why when there are no topics', () => 
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
@@ -376,12 +510,13 @@ function renderFormWith(initialValues: Record<string, string>) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
@@ -409,12 +544,13 @@ it('submits the end year of an inactive project', async () => {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
@@ -441,12 +577,13 @@ it('refreshes the topic list after a selected topic becomes invalid', async () =
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       currentYear={2026}
       topics={[{ id: 1, name: 'Education' }]}
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         leadCoordinatorId: '2',
@@ -490,12 +627,13 @@ it('clears an invalid end year and advances beneficiaries to the start year', as
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[]}
+      partners={[]}
       topics={[]}
       currentYear={2026}
       coordinators={[]}
       departments={[]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         status: 'inactive',
         startYear: '2024',
         endYear: '2022',
@@ -550,13 +688,14 @@ function renderWithManyCategories(
     <ProjectForm
       beneficiaryCategories={MANY_CATEGORIES}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
       coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
       departments={[{ id: 3, name: 'Montevideo' }]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Existing project',
         strategicLineIds: ['1'],
         topicIds: ['1'],
@@ -623,6 +762,7 @@ it.each(['create', 'edit'] as const)(
       <ProjectForm
         beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
         strategicLines={[{ id: 1, name: 'Community Support' }]}
+        partners={[]}
         mode={mode}
         currentYear={2026}
         topics={[{ id: 1, name: 'Education' }]}
@@ -633,22 +773,22 @@ it.each(['create', 'edit'] as const)(
           topicIds: ['1'],
           leadCoordinatorId: '2',
           locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
-          counterpartyType: mode === 'edit' ? 'publicSector' : '',
+          counterpartyTypes: mode === 'edit' ? ['publicSector'] : [],
           strategicLineIds: ['1'],
         }}
         submitAction={submitAction}
       />
     );
-    const field = screen.getByLabelText('Contraparte');
+    const field = screen.getByLabelText('Contrapartes');
     expect(field.textContent).toContain(
-      mode === 'edit' ? 'Sector Público' : 'Seleccionar contraparte...'
+      mode === 'edit' ? 'Sector Público' : 'Seleccionar contrapartes...'
     );
     if (mode === 'create') {
       await act(async () => {
         fireEvent.submit(container.querySelector('form')!);
       });
       expect(submitAction).not.toHaveBeenCalled();
-      expect(await screen.findByText('Seleccioná una contraparte válida')).toBeTruthy();
+      expect(await screen.findByText('Seleccioná al menos una contraparte')).toBeTruthy();
     }
     fireEvent.click(field);
     const options = await screen.findAllByRole('option');
@@ -662,9 +802,12 @@ it.each(['create', 'edit'] as const)(
       fireEvent.submit(container.querySelector('form')!);
     });
     expect(submitAction).toHaveBeenCalledTimes(1);
-    expect(submitAction.mock.calls[0][1].get('counterpartyType')).toBe('privateSector');
+    const initialTypes = mode === 'edit' ? ['publicSector'] : [];
+    expect(submitAction.mock.calls[0][1].getAll('counterpartyTypes')).toEqual([
+      ...initialTypes,
+      'privateSector',
+    ]);
     expect(field.textContent).toContain('Sector Privado');
-    fireEvent.click(field);
     fireEvent.keyDown(await screen.findByRole('option', { name: 'Cooperación Internacional' }), {
       key: 'Enter',
     });
@@ -672,7 +815,11 @@ it.each(['create', 'edit'] as const)(
       fireEvent.submit(container.querySelector('form')!);
     });
     expect(submitAction).toHaveBeenCalledTimes(2);
-    expect(submitAction.mock.calls[1][1].get('counterpartyType')).toBe('internationalCooperation');
+    expect(submitAction.mock.calls[1][1].getAll('counterpartyTypes')).toEqual([
+      ...initialTypes,
+      'privateSector',
+      'internationalCooperation',
+    ]);
     expect(field.textContent).toContain('Cooperación Internacional');
   }
 );
@@ -685,6 +832,7 @@ it.each([false, true])(
         canSelectCoordinator={canSelectCoordinator}
         beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
         strategicLines={[{ id: 1, name: 'Community Support' }]}
+        partners={[]}
         topics={[{ id: 1, name: 'Education' }]}
         currentYear={2026}
         coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
@@ -702,3 +850,66 @@ it.each([false, true])(
     ]);
   }
 );
+
+describe('partners selection', () => {
+  const PARTNERS = [
+    { id: 1, name: 'INAU', counterpartyType: 'publicSector' as const },
+    { id: 2, name: 'ANEP', counterpartyType: 'publicSector' as const },
+    { id: 3, name: 'BASF', counterpartyType: 'privateSector' as const },
+  ];
+
+  function renderForm(initialValues: Parameters<typeof ProjectForm>[0]['initialValues']) {
+    return render(
+      <ProjectForm
+        beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
+        strategicLines={[{ id: 1, name: 'Community Support' }]}
+        partners={PARTNERS}
+        topics={[{ id: 1, name: 'Education' }]}
+        currentYear={2026}
+        mode="edit"
+        coordinators={[{ id: 2, firstName: 'Test', lastName: 'Coordinator' }]}
+        departments={[{ id: 3, name: 'Montevideo' }]}
+        initialValues={{
+          name: 'Project',
+          topicIds: ['1'],
+          strategicLineIds: ['1'],
+          leadCoordinatorId: '2',
+          locations: [{ departmentId: '3', city: 'Montevideo', neighborhood: '' }],
+          ...initialValues,
+        }}
+        submitAction={vi.fn().mockResolvedValue({})}
+      />
+    );
+  }
+
+  function submittedPartners(container: HTMLElement) {
+    return Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="partnerIds"]')
+    ).map(({ value }) => value);
+  }
+
+  it('asks for a counterparty before offering partners', () => {
+    renderForm({ counterpartyTypes: [] });
+    expect(screen.getByText('Seleccioná una contraparte para ver sus socios.')).toBeTruthy();
+  });
+
+  it('offers only the partners of the selected counterparties', async () => {
+    renderForm({ counterpartyTypes: ['publicSector'] });
+    fireEvent.click(screen.getByLabelText('Socios'));
+    const options = await screen.findAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual(['INAU', 'ANEP']);
+  });
+
+  it('removes only the partners of a counterparty when it is deselected', async () => {
+    const { container } = renderForm({
+      counterpartyTypes: ['publicSector', 'privateSector'],
+      partnerIds: ['1', '3'],
+    });
+    expect(submittedPartners(container)).toEqual(['1', '3']);
+    fireEvent.click(screen.getByLabelText('Contrapartes'));
+    fireEvent.keyDown(await screen.findByRole('option', { name: 'Sector Privado' }), {
+      key: 'Enter',
+    });
+    await waitFor(() => expect(submittedPartners(container)).toEqual(['1']));
+  });
+});

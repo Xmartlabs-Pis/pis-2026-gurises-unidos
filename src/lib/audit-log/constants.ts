@@ -28,11 +28,13 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   status: 'Estado',
   intensity: 'Intensidad',
   counterpartyType: 'Contraparte',
+  counterpartyTypes: 'Contrapartes',
   startYear: 'Año de inicio',
   endYear: 'Año de fin',
   leadCoordinatorId: 'Coordinador responsable',
   geographicScope: 'Alcance geográfico',
   countries: 'Países',
+  region: 'Región',
   departments: 'Departamentos',
   cities: 'Ciudades',
   neighborhoods: 'Barrios',
@@ -41,21 +43,36 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   generalObjective: 'Objetivo general',
   publicDescription: 'Descripción pública',
   coverPhoto: 'Foto de portada',
+  coverCrop: 'Encuadre de portada',
   internalNotes: 'Notas internas',
-  showOnLanding: 'Visibilidad en la página pública',
+  showOnLanding: 'Visibilidad en el reporte público',
   topics: 'Temáticas',
   strategicLines: 'Líneas estratégicas',
+  partners: 'Socios',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   project: 'Proyecto',
   beneficiary: 'Beneficiarios',
   user: 'Usuario',
+  publicSettings: 'Años publicados',
+  metric: 'Cards de métricas',
+  topic: 'Temáticas',
+  partner: 'Socios',
   authentication: 'Autenticación',
 };
+
+export const COVER_CHANGE_FIELDS = new Set(['coverPhoto', 'coverCrop']);
+
+export const COVER_PHOTO_UPDATE_LABEL = 'actualizó la imagen de portada';
+export const COVER_PHOTO_UPDATE_DETAIL = 'Imagen de portada actualizada';
 
 export const PROJECT_TEXT_CHANGE_LABELS: Record<string, string> = {
   generalObjective: 'modificado',
   publicDescription: 'modificada',
   internalNotes: 'modificadas',
+};
+
+export const PUBLIC_REPORT_FIELD_LABELS: Record<string, string> = {
+  publishedYears: 'Años publicados',
 };
