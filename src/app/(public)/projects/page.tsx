@@ -15,8 +15,9 @@ export default async function ProjectsPage({
 }: {
   searchParams: Promise<{ year?: string | string[] }>;
 }) {
-  const [years, params] = await Promise.all([getPublishedYears(), searchParams]);
-  const year = resolveYearParam(params.year, years, years[0]);
+  const { year: yearParam } = await searchParams;
+  const years = await getPublishedYears();
+  const year = resolveYearParam(yearParam, years, years[0]);
   const [topics, carousels] = await Promise.all([
     getPublishedTopics(year),
     ProjectsByTopic({ year }),

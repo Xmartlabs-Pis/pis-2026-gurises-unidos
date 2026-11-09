@@ -25,8 +25,9 @@ export default async function Home({
 }: {
   searchParams: Promise<{ year?: string | string[] }>;
 }) {
+  const { year: yearParam } = await searchParams;
   const publishedYears = await getPublishedYears();
-  const year = resolveYearParam((await searchParams).year, publishedYears, publishedYears[0]);
+  const year = resolveYearParam(yearParam, publishedYears, publishedYears[0]);
   const [values, previousValues, settings, partners, topics] = await Promise.all([
     getMetricValues(year),
     getMetricValues(year - 1),
