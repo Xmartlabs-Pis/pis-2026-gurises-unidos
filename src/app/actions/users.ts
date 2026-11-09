@@ -63,10 +63,10 @@ export async function createUser(
 
   const userData = result.data;
   const withPassword = userData.creationMethod === 'password';
-  // Invited users have no password until they accept the invitation; this hash matches nothing
-  const passwordHash = await hashPassword(
-    withPassword ? (userData.password ?? '') : randomBytes(32).toString('base64url')
-  );
+  const initialPassword = withPassword
+    ? (userData.password ?? '')
+    : randomBytes(32).toString('base64url');
+  const passwordHash = await hashPassword(initialPassword);
 
   const restoreConfirmed = formData.get('confirmRestore') === 'true';
   let outcome:

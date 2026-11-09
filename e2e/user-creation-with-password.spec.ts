@@ -112,11 +112,11 @@ test('blocks the submission until the temporary password is valid', async ({ pag
   await chooseTemporaryPassword(page);
 
   await page.getByRole('button', { name: 'Guardar usuario' }).click();
-  await expect(page.getByText('La contraseña es obligatoria.')).toBeVisible();
+  await expect(page.getByText('La contraseña debe tener al menos 8 caracteres')).toBeVisible();
   await expect(page).toHaveURL('/management/users/new');
 
   await page.getByLabel('Contraseña temporal').fill('weakpass');
-  await expect(page.getByText('La contraseña debe tener al menos una mayúscula.')).toBeVisible();
+  await expect(page.getByText('La contraseña debe tener al menos una mayúscula')).toBeVisible();
   await expect(page).toHaveURL('/management/users/new');
 });
 

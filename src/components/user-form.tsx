@@ -4,7 +4,7 @@ import { useSaveAction } from '@/hooks/use-save-action';
 import { usePendingChanges } from '@/components/ui/forms/pending-changes-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
-import { FormProvider, useForm, type Resolver } from 'react-hook-form';
+import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { Copy } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
@@ -103,20 +103,6 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   const router = useRouter();
   const isEditing = mode === 'edit';
   const isPendingInvitation = initialValues?.status === 'pendingInvitation';
-  const [creationMethod, setCreationMethod] =
-    useState<UserFormValues['creationMethod']>('invitation');
-  const withPassword = !isEditing && creationMethod === 'password';
-  let createDescription =
-    'Al guardar, se enviará una invitación al correo ingresado para que la persona elija su contraseña. El ingreso al sistema es por cédula.';
-  if (withPassword) {
-    createDescription =
-      'El administrador comparte esta contraseña con la persona, que deberá cambiarla al ingresar. El ingreso al sistema es por cédula.';
-  }
-  const securityDescription = !isEditing
-    ? createDescription
-    : isPendingInvitation
-      ? 'La persona elegirá su contraseña al aceptar la invitación. Podés reenviarla desde la lista de usuarios.'
-      : 'Se generará una contraseña temporal que la persona deberá cambiar al ingresar.';
   const action = isEditing && initialValues ? updateUser.bind(null, initialValues.id) : createUser;
   const [state, submit, pending] = useSaveAction(
     action,
@@ -144,6 +130,19 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
     },
     mode: 'onChange',
   });
+  const creationMethod = useWatch({ control: form.control, name: 'creationMethod' });
+  const withPassword = !isEditing && creationMethod === 'password';
+  let createDescription =
+    'Al guardar, se enviará una invitación al correo ingresado para que la persona elija su contraseña. El ingreso al sistema es por cédula.';
+  if (withPassword) {
+    createDescription =
+      'El administrador comparte esta contraseña con la persona, que deberá cambiarla al ingresar. El ingreso al sistema es por cédula.';
+  }
+  const securityDescription = !isEditing
+    ? createDescription
+    : isPendingInvitation
+      ? 'La persona elegirá su contraseña al aceptar la invitación. Podés reenviarla desde la lista de usuarios.'
+      : 'Se generará una contraseña temporal que la persona deberá cambiar al ingresar.';
   const {
     handleSubmit,
     setValue,
@@ -218,7 +217,12 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
   useEffect(() => {
     if (state.restored) {
-      notify.success({ title: 'La cuenta se restauró con los nuevos datos.' });
+      const invitationSent = form.getValues('creationMethod') === 'invitation';
+      notify.success({
+        title: invitationSent
+          ? 'La cuenta se restauró con los nuevos datos y se envió la invitación.'
+          : 'La cuenta se restauró con los nuevos datos.',
+      });
       router.push('/management/users');
       return;
     }
@@ -360,10 +364,7 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
                         name="creationMethod"
                         label="Método de creación"
                         options={CREATION_METHOD_OPTIONS}
-                        onValueChange={(value) => {
-                          setCreationMethod(value as UserFormValues['creationMethod']);
-                          setValue('password', '', { shouldValidate: false });
-                        }}
+                        onValueChange={() => setValue('password', '', { shouldValidate: false })}
                       />
                     )}
                     {withPassword && (

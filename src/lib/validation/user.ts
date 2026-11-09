@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { normalizeDocumentId } from '@/lib/utils';
+import { emailSchema } from '@/lib/validation/email';
+import { passwordSchema } from '@/lib/validation/password';
 
 export const PRESERVED_FIELDS = ['firstName', 'lastName', 'documentId', 'email', 'role'] as const;
 
@@ -33,14 +35,6 @@ export function isValidUruguayanDocumentId(rawValue: string) {
   return checkDigit === Number(paddedDigits[7]);
 }
 
-export const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(1, 'El correo es obligatorio.')
-  .max(254, 'El correo no puede superar los 254 caracteres.')
-  .pipe(z.email({ error: 'Ingresá un correo electrónico válido.' }));
-
 export const userEditFormSchema = z.object({
   firstName: z
     .string()
@@ -62,15 +56,6 @@ export const userEditFormSchema = z.object({
   role: z.enum(['admin', 'coordinator']),
 });
 
-const temporaryPasswordSchema = z
-  .string()
-  .min(1, 'La contraseña es obligatoria.')
-  .min(8, 'La contraseña debe tener al menos 8 caracteres.')
-  .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula.')
-  .regex(/[a-z]/, 'La contraseña debe tener al menos una minúscula.')
-  .regex(/[0-9]/, 'La contraseña debe tener al menos un número.')
-  .max(72, 'La contraseña no puede superar los 72 caracteres.');
-
 export const userFormSchema = userEditFormSchema
   .extend({
     creationMethod: z.enum(CREATION_METHODS).default('invitation'),
@@ -78,7 +63,7 @@ export const userFormSchema = userEditFormSchema
   })
   .superRefine((data, ctx) => {
     if (data.creationMethod !== 'password') return;
-    const result = temporaryPasswordSchema.safeParse(data.password ?? '');
+    const result = passwordSchema.safeParse(data.password ?? '');
     if (result.success) return;
     ctx.addIssue({ code: 'custom', path: ['password'], message: result.error.issues[0].message });
   });
