@@ -10,7 +10,6 @@ vi.mock('@/lib/projects/public-projects', () => ({ getPublishedTopics: vi.fn() }
 vi.mock('@/components/projects/projects-by-topic', () => ({
   ProjectsByTopic: vi.fn(({ year }: { year: number }) => <div>Projects for {year}</div>),
 }));
-vi.mock('next/server', () => ({ connection: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/projects',

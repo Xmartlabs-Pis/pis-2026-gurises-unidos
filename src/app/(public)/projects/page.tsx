@@ -5,7 +5,6 @@ import { getPublishedYears } from '@/lib/metrics/queries';
 import { resolveYearParam } from '@/lib/metrics/year';
 import { getPublishedTopics } from '@/lib/projects/public-projects';
 import Link from 'next/link';
-import { connection } from 'next/server';
 import { ArrowLeft } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 
@@ -16,10 +15,8 @@ export default async function ProjectsPage({
 }: {
   searchParams: Promise<{ year?: string | string[] }>;
 }) {
-  await connection();
-  const { year: yearParam } = await searchParams;
-  const years = await getPublishedYears();
-  const year = resolveYearParam(yearParam, years, years[0]);
+  const [years, params] = await Promise.all([getPublishedYears(), searchParams]);
+  const year = resolveYearParam(params.year, years, years[0]);
   const [topics, carousels] = await Promise.all([
     getPublishedTopics(year),
     ProjectsByTopic({ year }),

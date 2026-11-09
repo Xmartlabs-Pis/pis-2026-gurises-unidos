@@ -22,7 +22,6 @@ vi.mock('@/lib/metrics/queries', () => ({
 }));
 vi.mock('@/components/projects/projects-by-topic', () => ({ ProjectsByTopic: vi.fn(() => null) }));
 vi.mock('@/components/how-we-work', () => ({ HowWeWork: () => null }));
-vi.mock('next/server', () => ({ connection: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
   usePathname: () => '/',
