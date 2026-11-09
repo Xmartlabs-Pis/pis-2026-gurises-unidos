@@ -136,6 +136,12 @@ describe('proxy', () => {
     expect(response.headers.get('location')).toBe('https://example.com/password-reset');
   });
 
+  test('redirects authenticated users from login to the dashboard', () => {
+    const response = runProxy(makeRequest('/login', { authenticated: true }));
+
+    expect(response.headers.get('location')).toBe('https://example.com/dashboard');
+  });
+
   test('allows the password reset route when the user must change password', () => {
     const response = runProxy(
       makeRequest('/password-reset', { authenticated: true, mustChangePassword: true })

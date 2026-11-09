@@ -9,10 +9,11 @@ import {
   SESSION_EXPIRATION_REASON,
 } from '@/lib/auth/session-expiration';
 
+const LOGIN_ROUTE = '/login';
 const PUBLIC_ROUTES = [
   '/',
   '/projects',
-  '/login',
+  LOGIN_ROUTE,
   '/forgot-password',
   '/reset-password',
   '/accept-invitation',
@@ -42,7 +43,11 @@ export const proxy = auth((request) => {
     return NextResponse.redirect(new URL(PASSWORD_RESET_ROUTE, request.nextUrl));
   }
 
-  if (request.auth && !mustChangePassword && pathname === PASSWORD_RESET_ROUTE) {
+  if (
+    request.auth &&
+    !mustChangePassword &&
+    (pathname === PASSWORD_RESET_ROUTE || pathname === LOGIN_ROUTE)
+  ) {
     return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
   }
 
@@ -62,7 +67,7 @@ export const proxy = auth((request) => {
     return NextResponse.next();
   }
 
-  const loginUrl = new URL('/login', request.nextUrl);
+  const loginUrl = new URL(LOGIN_ROUTE, request.nextUrl);
   const expirationCookie = request.cookies.get(SESSION_EXPIRATION_COOKIE)?.value;
 
   if (hasSessionExpired(expirationCookie)) {
