@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useTransition } from 'react';
+import { useEffect, useRef, useTransition } from 'react';
 import { GEOGRAPHIC_REGIONS } from '@/lib/projects/geographic-regions';
 import { usePublicGeography } from '@/components/public-geography';
 
@@ -34,11 +34,52 @@ export function PublicFooter({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const yearObserverRef = useRef<IntersectionObserver | null>(null);
+  const yearHighlightRef = useRef<Animation | null>(null);
   const geographies = [{ id: 'uruguay', name: 'Uruguay' }, ...GEOGRAPHIC_REGIONS];
   const hasMoreTopics = topics.length > MAX_FOOTER_ITEMS;
   const hasMoreYears = years.length > MAX_FOOTER_ITEMS;
   const visibleTopics = hasMoreTopics ? topics.slice(0, MAX_FOOTER_ITEMS - 1) : topics;
   const visibleYears = hasMoreYears ? years.slice(0, MAX_FOOTER_ITEMS - 1) : years;
+
+  useEffect(
+    () => () => {
+      yearObserverRef.current?.disconnect();
+      yearHighlightRef.current?.cancel();
+    },
+    []
+  );
+
+  function showAllYears() {
+    yearObserverRef.current?.disconnect();
+    yearHighlightRef.current?.cancel();
+    const selector = document.getElementById('metrics-year');
+    if (selector) {
+      const glow =
+        '0 0 0 2px color-mix(in srgb, var(--primary) 60%, transparent), 0 0 18px color-mix(in srgb, var(--primary) 45%, transparent)';
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      yearObserverRef.current = new IntersectionObserver(
+        ([entry], observer) => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 1) return;
+          observer.disconnect();
+          selector.focus({ preventScroll: true });
+          yearHighlightRef.current = selector.animate(
+            reducedMotion
+              ? [{ boxShadow: glow }, { boxShadow: glow }]
+              : [{ boxShadow: 'none' }, { boxShadow: glow }, { boxShadow: 'none' }],
+            {
+              duration: reducedMotion ? 2100 : 1600,
+              iterations: reducedMotion ? 1 : 2,
+              easing: 'ease-in-out',
+            }
+          );
+        },
+        { threshold: 1, rootMargin: '-64px 0px 0px' }
+      );
+      yearObserverRef.current.observe(selector);
+    }
+    scrollToTop();
+  }
 
   function yearHref(value: number) {
     const params = new URLSearchParams(searchParams.toString());
@@ -47,7 +88,7 @@ export function PublicFooter({
   }
 
   return (
-    <footer className={`bg-surface-brand-deep relative text-white ${curved ? 'pt-16' : ''}`}>
+    <footer className={`bg-surface-brand-deep relative grow text-white ${curved ? 'pt-16' : ''}`}>
       {curved && (
         <svg
           aria-hidden="true"
@@ -127,7 +168,7 @@ export function PublicFooter({
             ))}
             {hasMoreYears && (
               <li>
-                <button type="button" className={FOOTER_LINK_CLASS} onClick={scrollToTop}>
+                <button type="button" className={FOOTER_LINK_CLASS} onClick={showAllYears}>
                   Ver todos
                 </button>
               </li>

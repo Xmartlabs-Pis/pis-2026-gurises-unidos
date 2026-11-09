@@ -124,7 +124,7 @@ test('supports keyboard selection and moves focus to the chosen level', () => {
   expect(selectedTitle()).toContain('Individual');
 });
 
-test('only the image and individual cards pause changes on hover, not the section background', () => {
+test('hovering the image keeps progress running while active work-level cards pause it', () => {
   render(<HowWeWork />);
   const image = screen.getByRole('tabpanel');
   const section = image.parentElement!;
@@ -132,16 +132,21 @@ test('only the image and individual cards pause changes on hover, not the sectio
   advance(12100);
   expect(selectedTitle()).toContain('Familiar');
   fireEvent.pointerEnter(image, { pointerType: 'mouse' });
-  advance(30000);
+  const progress = section.querySelector<HTMLSpanElement>('span[style]')!;
+  const before = progress.style.transform;
+  advance(6000);
   expect(selectedTitle()).toContain('Familiar');
+  expect(progress.style.transform).not.toBe(before);
+  advance(6100);
+  expect(selectedTitle()).toContain('Institucional');
   fireEvent.pointerLeave(image, { pointerType: 'mouse' });
-  const card = screen.getByRole('tab', { name: 'Familiar' });
+  const card = screen.getByRole('tab', { name: 'Institucional' });
   fireEvent.pointerEnter(card, { pointerType: 'mouse' });
   advance(30000);
-  expect(selectedTitle()).toContain('Familiar');
+  expect(selectedTitle()).toContain('Institucional');
   fireEvent.pointerLeave(card, { pointerType: 'mouse' });
   advance(12100);
-  expect(selectedTitle()).toContain('Institucional');
+  expect(selectedTitle()).toContain('Comunitario');
 });
 
 test('hovering a collapsed work-level card does not pause or change the playback button', () => {

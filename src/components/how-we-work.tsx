@@ -104,7 +104,6 @@ export function HowWeWork() {
       className="relative mx-auto grid w-full max-w-360 lg:min-h-150 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]"
     >
       <figure
-        {...hoverPauseProps}
         id="work-level-panel"
         role="tabpanel"
         aria-labelledby={`work-level-${activeIndex}`}
