@@ -65,6 +65,7 @@ function renderForm(props: Partial<ComponentProps<typeof ProjectForm>> = {}) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[]}
+      partners={[]}
       currentYear={2026}
       topics={[]}
       coordinators={[]}
@@ -198,7 +199,7 @@ it('shows errors that apply to the whole list of drafts', async () => {
     initialValues: {
       name: 'Project',
       startYear: '2020',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       leadCoordinatorId: '1',
       topicIds: ['1'],
       strategicLineIds: ['1'],

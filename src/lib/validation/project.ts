@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { MAX_INT32 } from './ids';
 
+const COUNTERPARTY_TYPES = ['publicSector', 'privateSector', 'internationalCooperation'] as const;
+
 export const projectSchema = z
   .object({
     name: z.string().trim().max(100, 'Máx. 100 caracteres').min(1, 'El nombre es obligatorio'),
@@ -50,9 +52,12 @@ export const projectSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((value) => value === 'true'),
-    counterpartyType: z.enum(['publicSector', 'privateSector', 'internationalCooperation'], {
-      error: 'Seleccioná una contraparte válida',
-    }),
+    counterpartyTypes: z
+      .array(z.enum(COUNTERPARTY_TYPES, { error: 'Seleccioná una contraparte válida' }), {
+        error: 'Seleccioná al menos una contraparte',
+      })
+      .min(1, 'Seleccioná al menos una contraparte')
+      .transform((types) => COUNTERPARTY_TYPES.filter((type) => types.includes(type))),
   })
   .superRefine((data, ctx) => {
     if (data.status !== 'inactive') {

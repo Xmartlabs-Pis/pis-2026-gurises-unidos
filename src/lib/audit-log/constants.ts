@@ -28,6 +28,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   status: 'Estado',
   intensity: 'Intensidad',
   counterpartyType: 'Contraparte',
+  counterpartyTypes: 'Contrapartes',
   startYear: 'Año de inicio',
   endYear: 'Año de fin',
   leadCoordinatorId: 'Coordinador responsable',
@@ -47,6 +48,7 @@ export const PROJECT_FIELD_LABELS: Record<string, string> = {
   showOnLanding: 'Visibilidad en el reporte público',
   topics: 'Temáticas',
   strategicLines: 'Líneas estratégicas',
+  partners: 'Socios',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
@@ -56,7 +58,7 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   publicSettings: 'Años publicados',
   metric: 'Cards de métricas',
   topic: 'Temáticas',
-  contributor: 'Acompañantes',
+  partner: 'Socios',
   authentication: 'Autenticación',
 };
 

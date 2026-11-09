@@ -36,6 +36,7 @@ const projectFiltersSchema = z
     departmentId: optionalPositiveInt,
     topicId: optionalPositiveInt,
     strategicLineId: optionalPositiveInt,
+    partnerId: optionalPositiveInt,
     beneficiaryCategoryId: optionalPositiveInt,
     startYearFrom: optionalYear,
     startYearTo: optionalYear,
@@ -73,12 +74,20 @@ type ProjectFilterOptions = {
   departments: { id: number }[];
   topics: { id: number }[];
   strategicLines: { id: number }[];
+  partners: { id: number }[];
   beneficiaryCategories: { id: number }[];
 };
 
 export function resolveProjectListFilters(
   raw: RawProjectFilters,
-  { years, departments, topics, strategicLines, beneficiaryCategories }: ProjectFilterOptions
+  {
+    years,
+    departments,
+    topics,
+    strategicLines,
+    partners,
+    beneficiaryCategories,
+  }: ProjectFilterOptions
 ): { canonical: CanonicalQuery; filters: ProjectFilters } {
   const parsed = parseProjectFilters(raw);
 
@@ -90,6 +99,7 @@ export function resolveProjectListFilters(
   const departmentId = departments.find(({ id }) => id === parsed.departmentId)?.id;
   const topicId = topics.find(({ id }) => id === parsed.topicId)?.id;
   const strategicLineId = strategicLines.find(({ id }) => id === parsed.strategicLineId)?.id;
+  const partnerId = partners.find(({ id }) => id === parsed.partnerId)?.id;
   const beneficiaryCategoryId = beneficiaryCategories.find(
     ({ id }) => id === parsed.beneficiaryCategoryId
   )?.id;
@@ -102,6 +112,7 @@ export function resolveProjectListFilters(
       departmentId,
       topicId,
       strategicLineId,
+      partnerId,
       beneficiaryCategoryId,
     },
     filters: parseProjectFilters({
@@ -111,6 +122,7 @@ export function resolveProjectListFilters(
       departmentId: departmentId?.toString(),
       topicId: topicId?.toString(),
       strategicLineId: strategicLineId?.toString(),
+      partnerId: partnerId?.toString(),
       beneficiaryCategoryId: beneficiaryCategoryId?.toString(),
       pageSize: String(PROJECT_LIST_PAGE_SIZE),
     }),

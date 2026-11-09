@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import Home from '@/app/(public)/page';
-import { getContributors } from '@/lib/contributors';
+import { getPublicPartners } from '@/lib/partners';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { getMetricSettings, getMetricValues, getPublishedYears } from '@/lib/metrics/queries';
 import { ProjectsByTopic } from '@/components/projects/projects-by-topic';
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
-vi.mock('@/lib/contributors', () => ({ getContributors: vi.fn(async () => []) }));
+vi.mock('@/lib/partners', () => ({ getPublicPartners: vi.fn(async () => []) }));
 vi.mock('@/lib/projects/public-projects', () => ({
   getPublishedTopics: vi.fn(async () => []),
   getPublicDepartments: vi.fn(async () => []),
@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getContributors).mockResolvedValue([]);
+  vi.mocked(getPublicPartners).mockResolvedValue([]);
   vi.mocked(getPublishedYears).mockResolvedValue([2025]);
   vi.mocked(getMetricSettings).mockResolvedValue(METRIC_DEFINITIONS);
   vi.mocked(getMetricValues).mockImplementation(async (year) => ({
@@ -44,28 +44,28 @@ beforeEach(() => {
   }));
 });
 
-test('renders published contributors from the database', async () => {
-  vi.mocked(getContributors).mockResolvedValue([{ id: 42, name: 'Published contributor' }]);
+test('renders published partners from the database', async () => {
+  vi.mocked(getPublicPartners).mockResolvedValue([{ id: 42, name: 'Published partner' }]);
   render(await Home({ searchParams: Promise.resolve({}) }));
-  expect(screen.getByText('Published contributor')).toBeDefined();
+  expect(screen.getByText('Published partner')).toBeDefined();
   expect(screen.queryByText('INAU')).toBeNull();
 });
 
-test('hides the contributors section when none are published', async () => {
+test('hides the partners section when none are published', async () => {
   render(await Home({ searchParams: Promise.resolve({}) }));
   expect(screen.queryByRole('heading', { name: 'CON EL APOYO DE' })).toBeNull();
 });
 
-test('renders every contributor in the order returned by the database', async () => {
-  vi.mocked(getContributors).mockResolvedValue([
+test('renders every partner in the order returned by the database', async () => {
+  vi.mocked(getPublicPartners).mockResolvedValue([
     { id: 42, name: 'Second alphabetically' },
     { id: 7, name: 'First alphabetically' },
     { id: 9, name: 'Third alphabetically' },
   ]);
   render(await Home({ searchParams: Promise.resolve({}) }));
 
-  const contributors = within(screen.getByRole('region', { name: 'CON EL APOYO DE' }));
-  expect(contributors.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+  const partners = within(screen.getByRole('region', { name: 'CON EL APOYO DE' }));
+  expect(partners.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
     'Second alphabetically',
     'First alphabetically',
     'Third alphabetically',

@@ -9,7 +9,7 @@ import {
   toBeneficiaryValuesCreate,
   type BeneficiaryCounts,
 } from '../src/lib/project-display';
-import { ADMIN, BENEFICIARY_CATEGORIES, CONTRIBUTORS, STRATEGIC_LINES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, PARTNERS, STRATEGIC_LINES } from './fixtures';
 import { CounterpartyType } from '../src/generated/prisma/enums';
 
 const prisma = new PrismaClient();
@@ -376,6 +376,7 @@ type ProjectFixture = Required<
     | 'projectBeneficiaries'
     | 'topics'
     | 'strategicLines'
+    | 'partners'
     | 'departments'
     | 'localities'
   >
@@ -472,7 +473,7 @@ async function main() {
           project;
         const fixture: ProjectFixture = {
           ...fields,
-          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
+          counterpartyTypes: [COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length]],
           endYear: endYear ?? null,
           showOnLanding: showOnLanding ?? true,
           leadCoordinatorId: coordinator.id,
@@ -538,14 +539,15 @@ async function main() {
         }
       }
 
-      const { _max: contributorOrder } = await tx.contributor.aggregate({
-        where: { deletedAt: null },
+      const { _max: partnerOrder } = await tx.partner.aggregate({
+        where: { isActive: true },
         _max: { sortOrder: true },
       });
-      await tx.contributor.createMany({
-        data: CONTRIBUTORS.map((name, index) => ({
-          name,
-          sortOrder: (contributorOrder.sortOrder ?? 0) + index + 1,
+      await tx.partner.createMany({
+        data: PARTNERS.map((partner, index) => ({
+          ...partner,
+          showPublicly: true,
+          sortOrder: (partnerOrder.sortOrder ?? 0) + index + 1,
         })),
         skipDuplicates: true,
       });

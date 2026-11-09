@@ -105,7 +105,7 @@ const VALID_DATA = {
   topicIds: '1',
   status: 'active',
   intensity: 'medium',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2019',
   leadCoordinatorId: '2',
   geographicScope: 'national',
@@ -168,6 +168,7 @@ beforeEach(() => {
     leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
+    partners: [],
     departments: [{ id: 3, name: 'Department 3' }],
     localities: AUDIT_LOCALITIES,
   });
@@ -199,6 +200,7 @@ beforeEach(() => {
         id,
         name: `Line ${id}`,
       })),
+      partners: [],
       departments: (departments?.set ?? [{ id: 3 }]).map(({ id }: { id: number }) => ({
         id,
         name: `Department ${id}`,
@@ -221,14 +223,20 @@ describe.each([
   ['createProject', (data: FormData) => createProject({}, data)],
   ['updateProject', (data: FormData) => updateProject(10, {}, data)],
 ] as const)('%s', (_name, submit) => {
-  it.each([undefined, '', 'invalid'])(
-    'rejects a missing or invalid counterparty before accessing the database: %s',
-    async (counterpartyType) => {
-      const result = await submit(formData({ counterpartyType }));
-      expect(result.errors?.counterpartyType).toEqual(['Seleccioná una contraparte válida']);
+  it.each(['', 'invalid'])(
+    'rejects an invalid counterparty before accessing the database: %s',
+    async (counterpartyTypes) => {
+      const result = await submit(formData({ counterpartyTypes }));
+      expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná una contraparte válida']);
       expect(mocks.transaction).not.toHaveBeenCalled();
     }
   );
+
+  it('rejects a project without counterparties before accessing the database', async () => {
+    const result = await submit(formData({ counterpartyTypes: undefined }));
+    expect(result.errors?.counterpartyTypes).toEqual(['Seleccioná al menos una contraparte']);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
 
   it('requires intensity when direct children or adolescents are submitted', async () => {
     const result = await submit(formData({ intensity: '' }));
@@ -533,7 +541,7 @@ describe('updateProject persistence', () => {
           name: 'Updated project',
           status: 'active',
           intensity: 'medium',
-          counterpartyType: 'publicSector',
+          counterpartyTypes: ['publicSector'],
           startYear: 2019,
           endYear: null,
           leadCoordinatorId: 2,
@@ -778,6 +786,7 @@ function unchangedRecords() {
     leadCoordinator: { firstName: 'Coordinator 2', lastName: 'User' },
     topics: [{ id: 1, name: 'Topic 1' }],
     strategicLines: [{ id: 1, name: 'Line 1' }],
+    partners: [],
     departments: [{ id: 3, name: 'Department 3' }],
     localities: AUDIT_LOCALITIES,
   });
@@ -1180,6 +1189,7 @@ describe('project review regressions', () => {
       ...projectData,
       topics: [{ id: 3 }, { id: 2 }],
       strategicLines: [{ id: 1 }],
+      partners: [],
       departments: [{ id: 3 }],
       localities: LOCALITIES,
     });
@@ -1234,6 +1244,7 @@ describe('project review regressions', () => {
         coverPhoto: '/images/project-placeholders/1.webp',
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1270,6 +1281,7 @@ describe('project review regressions', () => {
         coverCrop: { x: 0, y: 0, width: 100, height: 100 },
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1303,6 +1315,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1332,6 +1345,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
         localities: LOCALITIES,
       });
@@ -1372,6 +1386,7 @@ describe('project review regressions', () => {
       coverCrop: { x: 0, y: 0, width: 40, height: 40 },
       topics: [{ id: 1 }],
       strategicLines: [{ id: 1 }],
+      partners: [],
       departments: [{ id: 3 }],
       localities: LOCALITIES,
     });
@@ -1421,6 +1436,7 @@ describe('project review regressions', () => {
         coverPhoto: previousPath,
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
       });
       mocks.queryRaw.mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -1475,6 +1491,7 @@ describe('project review regressions', () => {
         coverPhoto: '/uploads/covers/22222222-2222-4222-8222-222222222222.webp',
         topics: [{ id: 1 }],
         strategicLines: [{ id: 1 }],
+        partners: [],
         departments: [{ id: 3 }],
       });
       expect(await updateProject(10, {}, formData({ coverPhotoPath: existingCover }))).toEqual({
@@ -1668,7 +1685,7 @@ describe('project audit details', () => {
   it.each([
     ['name', 'Renamed project', 'Updated project', 'Renamed project'],
     ['startYear', '2020', 2019, 2020],
-    ['counterpartyType', 'privateSector', 'publicSector', 'privateSector'],
+    ['counterpartyTypes', ['privateSector'], ['publicSector'], ['privateSector']],
     ['intensity', 'high', 'medium', 'high'],
     ['generalObjective', '', 'Objective', null],
     ['publicDescription', 'New description', 'Description', 'New description'],

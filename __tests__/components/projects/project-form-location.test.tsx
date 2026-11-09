@@ -20,6 +20,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
     <ProjectForm
       beneficiaryCategories={BENEFICIARY_CATEGORY_OPTIONS}
       strategicLines={[{ id: 1, name: 'Community Support' }]}
+      partners={[]}
       topics={[{ id: 1, name: 'Education' }]}
       currentYear={2026}
       mode="edit"
@@ -29,7 +30,7 @@ function renderForm(initialValues: Partial<ProjectFormValues> = {}) {
         { id: 4, name: 'Canelones' },
       ]}
       initialValues={{
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         name: 'Project',
         strategicLineIds: ['1'],
         topicIds: ['1'],

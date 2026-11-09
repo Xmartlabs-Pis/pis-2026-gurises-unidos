@@ -3,6 +3,7 @@ import { createProject } from '@/app/actions/projects';
 import prisma from '@/lib/prisma';
 import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
+import { getProjectPartnerOptions } from '@/lib/partners';
 import { requireUser } from '@/lib/auth/require-user';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { ProjectFormSkeleton } from '@/components/projects/form/project-form-skeleton';
@@ -20,7 +21,7 @@ export default async function NewProjectPage() {
 }
 
 async function NewProjectForm({ user }: { user: { id: number; role: UserRole } }) {
-  const [coordinators, departments, topics, strategicLines, beneficiaryCategories] =
+  const [coordinators, departments, topics, strategicLines, partners, beneficiaryCategories] =
     await Promise.all([
       prisma.user.findMany({
         where: {
@@ -44,12 +45,14 @@ async function NewProjectForm({ user }: { user: { id: number; role: UserRole } }
         orderBy: { name: 'asc' },
         select: { id: true, name: true },
       }),
+      getProjectPartnerOptions(),
       getActiveBeneficiaryCategories(),
     ]);
 
   return (
     <ProjectForm
       strategicLines={strategicLines}
+      partners={partners}
       topics={topics}
       beneficiaryCategories={beneficiaryCategories}
       currentYear={new Date().getFullYear()}

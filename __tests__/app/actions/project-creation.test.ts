@@ -49,7 +49,7 @@ const VALID_FIELDS: FormDataInput = {
   topicIds: '1',
   status: 'active',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2020',
   leadCoordinatorId: '1',
   geographicScope: 'national',
@@ -144,11 +144,11 @@ describe('createProject', () => {
     'creates a project with counterparty %s',
     async (counterpartyType) => {
       const { projectCreate } = setupTransaction();
-      await expect(createProject(EMPTY_STATE, buildFormData({ counterpartyType }))).rejects.toThrow(
-        'NEXT_REDIRECT:/dashboard/projects/42'
-      );
+      await expect(
+        createProject(EMPTY_STATE, buildFormData({ counterpartyTypes: [counterpartyType] }))
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
       expect(projectCreate).toHaveBeenCalledWith({
-        data: expect.objectContaining({ counterpartyType }),
+        data: expect.objectContaining({ counterpartyTypes: [counterpartyType] }),
       });
     }
   );
@@ -214,7 +214,7 @@ describe('createProject', () => {
         name: 'Community Center',
         status: 'active',
         intensity: 'high',
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         startYear: 2020,
         endYear: null,
         leadCoordinatorId: 1,
@@ -230,6 +230,7 @@ describe('createProject', () => {
         createdBy: 7,
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
+        partners: { connect: [] },
         departments: { connect: [{ id: 2 }] },
         localities: { create: [{ departmentId: 2, city: 'Las Piedras', neighborhood: null }] },
       },

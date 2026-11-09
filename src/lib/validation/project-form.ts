@@ -6,6 +6,7 @@ import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-benefici
 
 export const MAX_STRATEGIC_LINES = 3;
 export const TOPICS_ERROR_MESSAGE = 'Elegí temáticas válidas';
+export const PARTNERS_ERROR_MESSAGE = 'Elegí socios válidos';
 export const MAX_PLACE_NAME_LENGTH = 50;
 export const LOCATIONS_ERROR_MESSAGE = 'Elegí departamentos válidos';
 export const CITIES_REQUIRED_MESSAGE = 'Ingresá al menos una ciudad';
@@ -68,6 +69,16 @@ const baseProjectFormSchema = projectSchema.safeExtend({
     .min(1, 'Seleccioná al menos una línea estratégica')
     .max(MAX_STRATEGIC_LINES, `Podés seleccionar hasta ${MAX_STRATEGIC_LINES} líneas estratégicas`)
     .refine((ids) => new Set(ids).size === ids.length, 'No repitas líneas estratégicas'),
+  partnerIds: z
+    .array(
+      z.coerce
+        .number({ error: PARTNERS_ERROR_MESSAGE })
+        .int(PARTNERS_ERROR_MESSAGE)
+        .positive(PARTNERS_ERROR_MESSAGE)
+        .max(MAX_INT32, PARTNERS_ERROR_MESSAGE)
+    )
+    .default([])
+    .refine((ids) => new Set(ids).size === ids.length, 'No repitas socios'),
   geographicScope: z.enum(['national', 'international'], {
     error: 'Seleccioná un alcance geográfico',
   }),
@@ -160,8 +171,16 @@ export function buildProjectFormSchema(keys: readonly string[]) {
 export type ProjectFormData = z.infer<typeof baseProjectFormSchema>;
 
 export function splitProjectFormData(data: ProjectFormData, keys: readonly string[]) {
-  const { year, beneficiaryDrafts, topicIds, strategicLineIds, countries, locations, ...rest } =
-    data;
+  const {
+    year,
+    beneficiaryDrafts,
+    topicIds,
+    strategicLineIds,
+    partnerIds,
+    countries,
+    locations,
+    ...rest
+  } = data;
   const fields: Record<string, unknown> = rest;
   const counts = Object.fromEntries(keys.map((key) => [key, fields[key] as number]));
   for (const key of keys) delete fields[key];
@@ -181,6 +200,7 @@ export function splitProjectFormData(data: ProjectFormData, keys: readonly strin
     })),
     topicIds,
     strategicLineIds,
+    partnerIds,
     departmentIds: [...new Set(nationalLocations.map(({ departmentId }) => departmentId))],
     localities: nationalLocations.map(({ departmentId, city, neighborhood }) => ({
       departmentId,
@@ -194,7 +214,9 @@ export function readProjectFormData(formData: FormData) {
   return {
     ...Object.fromEntries(formData),
     topicIds: formData.getAll('topicIds'),
+    counterpartyTypes: formData.getAll('counterpartyTypes'),
     strategicLineIds: formData.getAll('strategicLineIds'),
+    partnerIds: formData.getAll('partnerIds'),
     countries: formData.getAll('countries'),
     beneficiaryDrafts: formData.getAll('beneficiaryDrafts').map(parseJsonField),
     locations: formData.getAll('locations').map(parseJsonField),

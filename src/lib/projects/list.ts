@@ -81,6 +81,9 @@ export function buildProjectWhere(filters: ProjectFilters): Prisma.ProjectWhereI
   if (filters.strategicLineId) {
     where.strategicLines = { some: { id: filters.strategicLineId } };
   }
+  if (filters.partnerId) {
+    where.partners = { some: { id: filters.partnerId } };
+  }
 
   return where;
 }
@@ -162,7 +165,7 @@ export async function listBeneficiaryYears(): Promise<number[]> {
 }
 
 export async function listProjectFilterOptions() {
-  const [departments, topics, strategicLines, beneficiaryCategories] = await Promise.all([
+  const [departments, topics, strategicLines, partners, beneficiaryCategories] = await Promise.all([
     prisma.department.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
@@ -177,6 +180,11 @@ export async function listProjectFilterOptions() {
       select: { id: true, name: true },
       orderBy: { name: 'asc' },
     }),
+    prisma.partner.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
     prisma.beneficiaryCategory.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
@@ -184,5 +192,5 @@ export async function listProjectFilterOptions() {
     }),
   ]);
 
-  return { departments, topics, strategicLines, beneficiaryCategories };
+  return { departments, topics, strategicLines, partners, beneficiaryCategories };
 }

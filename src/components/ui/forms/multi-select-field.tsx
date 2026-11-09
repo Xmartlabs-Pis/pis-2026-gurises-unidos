@@ -26,6 +26,7 @@ export function MultiSelectField({
   maxSelected,
   maxSelectedMessage,
   emptyMessage,
+  onValueChange,
 }: {
   id: string;
   name: string;
@@ -36,6 +37,7 @@ export function MultiSelectField({
   maxSelected?: number;
   maxSelectedMessage?: string;
   emptyMessage?: string;
+  onValueChange?: (value: string[]) => void;
 }) {
   const { control } = useFormContext();
   const { field, fieldState } = useController({ name, control });
@@ -59,6 +61,7 @@ export function MultiSelectField({
         value={selectedValues}
         onValueChange={(value) => {
           field.onChange(value);
+          onValueChange?.(value);
           if (maxSelected !== undefined && value.length === maxSelected) {
             setIsOpen(false);
           }

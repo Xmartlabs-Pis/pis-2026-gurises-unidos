@@ -22,7 +22,7 @@ const LISTED_ENTITIES = {
     'publicSettings',
     'metric',
     'topic',
-    'contributor',
+    'partner',
     'authentication',
   ],
 };
@@ -47,7 +47,7 @@ function mockEntityLookups() {
   prismaMock.user.findMany.mockResolvedValue([{ id: 8, firstName: 'Ana', lastName: 'García' }]);
   prismaMock.metric.findMany.mockResolvedValue([]);
   prismaMock.topic.findMany.mockResolvedValue([]);
-  prismaMock.contributor.findMany.mockResolvedValue([]);
+  prismaMock.partner.findMany.mockResolvedValue([]);
 }
 
 describe('buildAuditLogWhere', () => {
@@ -66,11 +66,11 @@ describe('buildAuditLogWhere', () => {
     ]);
   });
 
-  test('hides the outdated metric, topic and contributor entries', () => {
+  test('hides the outdated metric, topic and partner entries', () => {
     expect(buildAuditLogWhere(parseAuditLogFilters({})).NOT).toEqual([
       { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
       {
-        entity: 'contributor',
+        entity: 'partner',
         action: 'update',
         details: { path: ['sortOrder'], not: Prisma.AnyNull },
       },
@@ -198,18 +198,18 @@ describe('listAuditLog', () => {
       null,
     ]);
   });
-  test('names the metric, topic and contributor of each entry and leaves grouped ones unnamed', async () => {
+  test('names the metric, topic and partner of each entry and leaves grouped ones unnamed', async () => {
     prismaMock.auditLog.count.mockResolvedValue(5);
     prismaMock.auditLog.findMany.mockResolvedValue([
       { ...row(1, 'metric', 2), entityId: null },
       { ...row(2, 'topic', 4), entityId: null },
       row(3, 'topic', 7),
-      row(4, 'contributor', 9),
+      row(4, 'partner', 9),
       row(5, 'publicSettings', 1),
     ]);
     mockEntityLookups();
     prismaMock.topic.findMany.mockResolvedValue([{ id: 7, name: 'Educación' }]);
-    prismaMock.contributor.findMany.mockResolvedValue([{ id: 9, name: 'UNICEF' }]);
+    prismaMock.partner.findMany.mockResolvedValue([{ id: 9, name: 'UNICEF' }]);
 
     const { items } = await listAuditLog(parseAuditLogFilters({}));
 

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
-import { ADMIN, BENEFICIARY_CATEGORIES, CONTRIBUTORS, STRATEGIC_LINES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, PARTNERS, STRATEGIC_LINES } from './fixtures';
 import {
   formCategoryValuesWhere,
   SYSTEM_BENEFICIARY_KEYS,
@@ -180,7 +180,7 @@ async function main() {
           name,
           status,
           intensity: INTENSITIES[index % INTENSITIES.length],
-          counterpartyType: COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length],
+          counterpartyTypes: [COUNTERPARTY_TYPES[index % COUNTERPARTY_TYPES.length]],
           startYear,
           endYear:
             status === 'inactive'
@@ -258,14 +258,15 @@ async function main() {
         }
       }
 
-      const { _max: contributorOrder } = await tx.contributor.aggregate({
-        where: { deletedAt: null },
+      const { _max: partnerOrder } = await tx.partner.aggregate({
+        where: { isActive: true },
         _max: { sortOrder: true },
       });
-      await tx.contributor.createMany({
-        data: CONTRIBUTORS.map((name, index) => ({
-          name,
-          sortOrder: (contributorOrder.sortOrder ?? 0) + index + 1,
+      await tx.partner.createMany({
+        data: PARTNERS.map((partner, index) => ({
+          ...partner,
+          showPublicly: true,
+          sortOrder: (partnerOrder.sortOrder ?? 0) + index + 1,
         })),
         skipDuplicates: true,
       });

@@ -1,10 +1,10 @@
 import { arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
 
-export type ContributorSortingStrategy = SortingStrategy & {
+export type PartnerSortingStrategy = SortingStrategy & {
   getHeight: (activeIndex: number, overIndex: number) => number | undefined;
 };
 
-export function createContributorSortingStrategy({
+export function createPartnerSortingStrategy({
   left,
   top,
   width,
@@ -14,7 +14,7 @@ export function createContributorSortingStrategy({
   top: number;
   width: number;
   gap: number;
-}): ContributorSortingStrategy {
+}): PartnerSortingStrategy {
   let measuredRects: { left: number; top: number; width: number; height: number }[] | null = null;
   const positionsByTarget = new Map<string, ReturnType<SortingStrategy>[]>();
   const heightsByTarget = new Map<string, number>();
@@ -58,4 +58,44 @@ export function createContributorSortingStrategy({
       return heightsByTarget.get(`${activeIndex}:${overIndex}`);
     },
   });
+}
+
+export const VISIBLE_ZONE_ID = 'visible-partners';
+export const HIDDEN_ZONE_ID = 'hidden-partners';
+
+export function getPartnerPlacement<T extends { id: number; showPublicly: boolean }>(
+  visible: T[],
+  hidden: T[],
+  activeId: number,
+  overId: number | string
+) {
+  const visibleIndex = visible.findIndex(({ id }) => id === activeId);
+  const hiddenPartner = hidden.find(({ id }) => id === activeId);
+
+  if (overId === HIDDEN_ZONE_ID) {
+    if (visibleIndex < 0) return null;
+    return {
+      visibilityChanged: true,
+      visible: visible.filter(({ id }) => id !== activeId),
+      hidden: [...hidden, { ...visible[visibleIndex], showPublicly: false }],
+    };
+  }
+
+  const targetIndex =
+    overId === VISIBLE_ZONE_ID ? visible.length : visible.findIndex(({ id }) => id === overId);
+  if (targetIndex < 0) return null;
+
+  if (hiddenPartner) {
+    const next = [...visible];
+    next.splice(targetIndex, 0, { ...hiddenPartner, showPublicly: true });
+    return {
+      visibilityChanged: true,
+      visible: next,
+      hidden: hidden.filter(({ id }) => id !== activeId),
+    };
+  }
+
+  const lastIndex = Math.min(targetIndex, visible.length - 1);
+  if (visibleIndex < 0 || visibleIndex === lastIndex) return null;
+  return { visibilityChanged: false, visible: arrayMove(visible, visibleIndex, lastIndex), hidden };
 }

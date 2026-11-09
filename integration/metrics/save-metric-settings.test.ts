@@ -50,7 +50,7 @@ async function createProjectWithBeneficiaryYear(year: number) {
       leadCoordinatorId: seed.coordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
       zone: 'rural',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       createdBy: seed.adminId,
       topics: { connect: { id: seed.topicIds[0] } },
       projectBeneficiaries: { create: { year, authorId: seed.coordinatorId } },

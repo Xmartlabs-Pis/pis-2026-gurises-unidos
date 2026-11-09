@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { FormProvider, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
+import type { ProjectPartnerOption } from '@/lib/partners';
 import type { ProjectFormState } from '@/lib/validation/project';
 import {
   FIRST_PROJECT_YEAR,
@@ -42,6 +43,7 @@ type ProjectFormProps = {
   departments: { id: number; name: string }[];
   topics: { id: number; name: string }[];
   strategicLines: { id: number; name: string }[];
+  partners: ProjectPartnerOption[];
   beneficiaryRecords?: (BeneficiaryCounts & { year: number })[];
   beneficiaryCategories: BeneficiaryCategoryOption[];
   currentYear: number;
@@ -73,6 +75,7 @@ export function ProjectForm({
   departments,
   topics,
   strategicLines,
+  partners,
   beneficiaryRecords = [],
   beneficiaryCategories,
   currentYear,
@@ -221,8 +224,10 @@ export function ProjectForm({
   }
 
   useEffect(() => {
-    if (state.errors?.topicIds || state.errors?.strategicLineIds) router.refresh();
-  }, [router, state.errors?.topicIds, state.errors?.strategicLineIds]);
+    if (state.errors?.topicIds || state.errors?.strategicLineIds || state.errors?.partnerIds) {
+      router.refresh();
+    }
+  }, [router, state.errors?.topicIds, state.errors?.strategicLineIds, state.errors?.partnerIds]);
 
   useEffect(() => {
     if (state.formError) {
@@ -282,6 +287,7 @@ export function ProjectForm({
               coordinatorOptions={coordinatorOptions}
               topics={topics}
               strategicLines={strategicLines}
+              partners={partners}
               canSelectCoordinator={canSelectCoordinator}
             />
 

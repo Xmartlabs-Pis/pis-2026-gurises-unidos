@@ -3,6 +3,7 @@ import {
   // FileChartColumnIncreasing,
   FolderKanban,
   Globe,
+  Handshake,
   History,
   HomeIcon,
   Tags,
@@ -112,6 +113,13 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         title: 'Líneas Estratégicas',
         href: '/management/strategic-lines',
         icon: Waypoints,
+        roles: ['admin'],
+      },
+      {
+        id: 'partners',
+        title: 'Socios',
+        href: '/management/partners',
+        icon: Handshake,
         roles: ['admin'],
       },
       {

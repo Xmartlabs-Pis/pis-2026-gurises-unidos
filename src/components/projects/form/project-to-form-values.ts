@@ -26,6 +26,7 @@ export function projectToFormValues(
     projectBeneficiaries: (BeneficiaryCounts & { year: number })[];
     topics: { id: number }[];
     strategicLines?: { id: number }[];
+    partners?: { id: number }[];
     departments?: { id: number }[];
     localities?: ProjectLocality[];
   },
@@ -39,7 +40,7 @@ export function projectToFormValues(
     name: project.name,
     status: project.status,
     intensity: project.intensity ?? '',
-    counterpartyType: project.counterpartyType,
+    counterpartyTypes: project.counterpartyTypes,
     startYear: String(project.startYear),
     endYear: project.endYear === null ? '' : String(project.endYear),
     leadCoordinatorId: String(project.leadCoordinatorId),
@@ -55,6 +56,7 @@ export function projectToFormValues(
     coverCrop: parseCoverCrop(project.coverCrop),
     topicIds: project.topics.map(({ id }) => String(id)),
     strategicLineIds: project.strategicLines?.map(({ id }) => String(id)) ?? [],
+    partnerIds: project.partners?.map(({ id }) => String(id)) ?? [],
     ...Object.fromEntries(categories.map(({ key }) => [key, String(beneficiary?.[key] ?? 0)])),
   };
 }

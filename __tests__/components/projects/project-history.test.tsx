@@ -105,6 +105,14 @@ it.each([
     'Sector Privado',
   ],
   [
+    'counterpartyTypes',
+    'Contrapartes',
+    ['publicSector'],
+    ['publicSector', 'privateSector'],
+    'Sector Público',
+    'Sector Público, Sector Privado',
+  ],
+  [
     'geographicScope',
     'Alcance geográfico',
     'national',

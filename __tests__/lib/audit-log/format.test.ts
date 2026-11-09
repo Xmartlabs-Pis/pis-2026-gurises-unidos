@@ -60,6 +60,7 @@ describe('formatAuditValue', () => {
     ['zone', 'rural', 'Rural'],
     ['intensity', 'high', 'Alta'],
     ['counterpartyType', 'privateSector', 'Sector Privado'],
+    ['counterpartyTypes', ['publicSector', 'privateSector'], 'Sector Público, Sector Privado'],
     ['geographicScope', 'international', 'Internacional'],
     ['region', 'centralAmerica', 'Centroamérica'],
     ['region', null, 'Sin datos'],

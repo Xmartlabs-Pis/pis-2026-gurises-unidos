@@ -42,7 +42,7 @@ const LISTED_ENTITIES_WHERE = { in: [...LISTED_AUDIT_ENTITIES] };
 const OUTDATED_PUBLIC_REPORT_ENTRIES: Prisma.AuditLogWhereInput[] = [
   { entity: { in: ['metric', 'topic'] }, details: { equals: Prisma.DbNull } },
   {
-    entity: 'contributor',
+    entity: 'partner',
     action: 'update',
     details: { path: ['sortOrder'], not: Prisma.AnyNull },
   },
@@ -99,7 +99,7 @@ function idsOf(rows: ListedAuditLogRow[], entity: ListedAuditEntity) {
 }
 
 async function resolveEntityNames(rows: ListedAuditLogRow[]) {
-  const [projects, beneficiaries, users, metrics, topics, contributors] = await Promise.all([
+  const [projects, beneficiaries, users, metrics, topics, partners] = await Promise.all([
     prisma.project.findMany({
       where: { id: { in: idsOf(rows, 'project') } },
       select: { id: true, name: true },
@@ -120,8 +120,8 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
       where: { id: { in: idsOf(rows, 'topic') } },
       select: { id: true, name: true },
     }),
-    prisma.contributor.findMany({
-      where: { id: { in: idsOf(rows, 'contributor') } },
+    prisma.partner.findMany({
+      where: { id: { in: idsOf(rows, 'partner') } },
       select: { id: true, name: true },
     }),
   ]);
@@ -135,7 +135,7 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
     publicSettings: new Map([[1, AUDIT_ENTITY_LABELS.publicSettings]]),
     metric: new Map(metrics.map(({ id, name }) => [id, name])),
     topic: new Map(topics.map(({ id, name }) => [id, name])),
-    contributor: new Map(contributors.map(({ id, name }) => [id, name])),
+    partner: new Map(partners.map(({ id, name }) => [id, name])),
     authentication: new Map(),
   };
 
