@@ -7,6 +7,7 @@ import { resolveYearParam } from '@/lib/metrics/year';
 import { FIRST_PROJECT_YEAR } from '@/lib/project-display';
 import { getStatsColumnsClass } from '@/lib/metrics/stats-layout';
 import { Suspense } from 'react';
+import { connection } from 'next/server';
 import { DepartmentPresence } from '@/components/map/department-presence';
 import { DepartmentPresenceSkeleton } from '@/components/map/department-presence-skeleton';
 import { HowWeWork } from '@/components/how-we-work';
@@ -25,6 +26,7 @@ export default async function Home({
 }: {
   searchParams: Promise<{ year?: string | string[] }>;
 }) {
+  await connection();
   const { year: yearParam } = await searchParams;
   const publishedYears = await getPublishedYears();
   const year = resolveYearParam(yearParam, publishedYears, publishedYears[0]);
