@@ -179,6 +179,60 @@ describe('describeAuditDetails', () => {
     ).toBe('Nombre: Salud → Bienestar');
   });
 
+  test('describes a partner with a new name and counterparty type', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: {
+            previousName: 'Socio Prueba',
+            name: 'Socio Editado',
+            previousCounterpartyType: 'publicSector',
+            counterpartyType: 'privateSector',
+          },
+        },
+        {}
+      )
+    ).toBe(
+      'Nombre: Socio Prueba → Socio Editado, Tipo de contraparte: Sector Público → Sector Privado'
+    );
+  });
+
+  test('describes only the counterparty type when the partner name stays the same', () => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: {
+            previousName: 'INAU',
+            name: 'INAU',
+            previousCounterpartyType: 'publicSector',
+            counterpartyType: 'internationalCooperation',
+          },
+        },
+        {}
+      )
+    ).toBe('Tipo de contraparte: Sector Público → Cooperación Internacional');
+  });
+
+  test.each([
+    [true, 'Visible en el sitio público'],
+    [false, 'Oculto en el sitio público'],
+  ])('describes a partner visibility set to %s', (showPublicly, summary) => {
+    expect(
+      describeAuditDetails(
+        {
+          action: 'update',
+          entity: 'partner',
+          details: { name: 'INAU', showPublicly },
+        },
+        {}
+      )
+    ).toBe(summary);
+  });
+
   test('shows the partners as an ordered set before and after the new order', () => {
     expect(
       describeAuditDetails(

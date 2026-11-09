@@ -3,7 +3,16 @@ ADD COLUMN "counterpartyType" "CounterpartyType",
 ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true,
 ADD COLUMN "showPublicly" BOOLEAN NOT NULL DEFAULT true;
 
-DELETE FROM "Partner" WHERE "deletedAt" IS NOT NULL;
+DELETE FROM "Partner" AS partner
+WHERE partner."deletedAt" IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM "Partner" AS other
+    WHERE lower(other."name") = lower(partner."name")
+      AND other."id" <> partner."id"
+      AND (other."deletedAt" IS NULL OR other."id" > partner."id")
+  );
+
+UPDATE "Partner" SET "isActive" = false WHERE "deletedAt" IS NOT NULL;
 
 UPDATE "Partner" SET "counterpartyType" = 'publicSector'
 WHERE lower("name") IN ('inau', 'inefop', 'anep', 'ministerio del interior');

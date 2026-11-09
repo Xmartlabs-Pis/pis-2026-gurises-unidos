@@ -9,6 +9,7 @@ import {
   PUBLIC_REPORT_FIELD_LABELS,
 } from '@/lib/audit-log/constants';
 import { formatAuditValue, PROJECT_VALUE_LABELS } from '@/lib/audit-log/format';
+import { COUNTERPARTY_LABEL } from '@/lib/project-display';
 import {
   loginFailureDetailsSchema,
   LOGIN_FAILURE_REASON_LABELS,
@@ -28,6 +29,9 @@ const auditDetailsSchema = z
     order: z.object({ from: z.array(z.string()), to: z.array(z.string()) }).optional(),
     previousName: z.string().optional(),
     name: z.string().optional(),
+    previousCounterpartyType: z.string().optional(),
+    counterpartyType: z.string().optional(),
+    showPublicly: z.boolean().optional(),
   })
   .catch({});
 
@@ -83,6 +87,36 @@ function formatBeneficiaryTotal(total: number) {
   return total === 1 ? '1 beneficiario' : `${total} beneficiarios`;
 }
 
+function counterpartyLabel(type: string) {
+  return COUNTERPARTY_LABEL[type as keyof typeof COUNTERPARTY_LABEL] ?? type;
+}
+
+function describePublicReportEdit({
+  previousName,
+  name,
+  previousCounterpartyType,
+  counterpartyType,
+  showPublicly,
+}: z.infer<typeof auditDetailsSchema>) {
+  const changes = [];
+  if (previousName !== undefined && name !== undefined && previousName !== name) {
+    changes.push(`Nombre: ${previousName} → ${name}`);
+  }
+  if (
+    previousCounterpartyType !== undefined &&
+    counterpartyType !== undefined &&
+    previousCounterpartyType !== counterpartyType
+  ) {
+    changes.push(
+      `Tipo de contraparte: ${counterpartyLabel(previousCounterpartyType)} → ${counterpartyLabel(counterpartyType)}`
+    );
+  }
+  if (showPublicly !== undefined) {
+    changes.push(showPublicly ? 'Visible en el sitio público' : 'Oculto en el sitio público');
+  }
+  return changes.length ? changes.join(', ') : null;
+}
+
 function describeBeneficiary(
   action: ListedAuditAction,
   { year, values, changes = [] }: z.infer<typeof auditDetailsSchema>,
@@ -117,9 +151,8 @@ export function describeAuditDetails(
       : null;
   }
   if (PUBLIC_REPORT_ENTITIES.has(entry.entity)) {
-    if (details.previousName !== undefined && details.name !== undefined) {
-      return `Nombre: ${details.previousName} → ${details.name}`;
-    }
+    const edit = describePublicReportEdit(details);
+    if (edit) return edit;
     if (details.order) {
       return `${details.order.from.join(', ')} → ${details.order.to.join(', ')}`;
     }
