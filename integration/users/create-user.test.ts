@@ -359,12 +359,12 @@ describe('createUser with a temporary password (integration)', () => {
   });
 
   test.each([
-    ['missing', { password: '' }, 'La contraseña es obligatoria.'],
-    ['too short', { password: 'Abc123' }, 'La contraseña debe tener al menos 8 caracteres.'],
+    ['missing', { password: '' }, 'La contraseña es obligatoria'],
+    ['too short', { password: 'Abc123' }, 'La contraseña debe tener al menos 8 caracteres'],
     [
       'without an uppercase letter',
       { password: 'temporary1' },
-      'La contraseña debe tener al menos una mayúscula.',
+      'La contraseña debe tener al menos una mayúscula',
     ],
   ])(
     'rejects a password that is %s without creating anything',

@@ -350,9 +350,9 @@ describe('createUser with a temporary password', () => {
   });
 
   test.each([
-    ['missing', {}, 'La contraseña es obligatoria.'],
-    ['empty', { password: '' }, 'La contraseña es obligatoria.'],
-    ['weak', { password: 'password' }, 'La contraseña debe tener al menos una mayúscula.'],
+    ['missing', {}, 'La contraseña es obligatoria'],
+    ['empty', { password: '' }, 'La contraseña es obligatoria'],
+    ['weak', { password: 'password' }, 'La contraseña debe tener al menos una mayúscula'],
   ])('rejects a %s password without touching the database', async (_label, override, message) => {
     const formData = buildFormData({ creationMethod: 'password', ...override });
 

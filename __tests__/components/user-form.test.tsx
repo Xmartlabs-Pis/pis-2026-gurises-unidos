@@ -373,7 +373,7 @@ describe('creating a user with a temporary password', () => {
 
     await clickButton('Guardar usuario');
 
-    expect(await screen.findByText('La contraseña es obligatoria.')).toBeDefined();
+    expect(await screen.findByText('La contraseña es obligatoria')).toBeDefined();
     expect(createUser).not.toHaveBeenCalled();
   });
 
@@ -388,7 +388,7 @@ describe('creating a user with a temporary password', () => {
     await clickButton('Guardar usuario');
 
     expect(
-      await screen.findByText('La contraseña debe tener al menos una mayúscula.')
+      await screen.findByText('La contraseña debe tener al menos una mayúscula')
     ).toBeDefined();
     expect(createUser).not.toHaveBeenCalled();
   });

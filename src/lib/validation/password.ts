@@ -3,6 +3,7 @@ import { emailSchema } from '@/lib/validation/email';
 
 export const passwordSchema = z
   .string()
+  .min(1, 'La contraseña es obligatoria')
   .min(8, 'La contraseña debe tener al menos 8 caracteres')
   .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula')
   .regex(/[a-z]/, 'La contraseña debe tener al menos una minúscula')

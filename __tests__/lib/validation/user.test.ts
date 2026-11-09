@@ -73,24 +73,20 @@ describe('userFormSchema', () => {
   });
 
   test.each([
-    ['missing', undefined, 'La contraseña es obligatoria.'],
-    ['empty', '', 'La contraseña es obligatoria.'],
-    ['too short', 'Abc1234', 'La contraseña debe tener al menos 8 caracteres.'],
+    ['missing', undefined, 'La contraseña es obligatoria'],
+    ['empty', '', 'La contraseña es obligatoria'],
+    ['too short', 'Abc1234', 'La contraseña debe tener al menos 8 caracteres'],
     [
       'without an uppercase letter',
       'temporary1',
-      'La contraseña debe tener al menos una mayúscula.',
+      'La contraseña debe tener al menos una mayúscula',
     ],
-    [
-      'without a lowercase letter',
-      'TEMPORARY1',
-      'La contraseña debe tener al menos una minúscula.',
-    ],
-    ['without a digit', 'Temporaryy', 'La contraseña debe tener al menos un número.'],
+    ['without a lowercase letter', 'TEMPORARY1', 'La contraseña debe tener al menos una minúscula'],
+    ['without a digit', 'Temporaryy', 'La contraseña debe tener al menos un número'],
     [
       'longer than 72 characters',
       `Aa1${'x'.repeat(70)}`,
-      'La contraseña no puede superar los 72 caracteres.',
+      'La contraseña no puede superar los 72 caracteres',
     ],
   ])('rejects a password that is %s', (_label, password, message) => {
     expect(passwordErrors(password)).toContain(message);
