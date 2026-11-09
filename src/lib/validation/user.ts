@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { normalizeDocumentId } from '@/lib/utils';
+import { emailSchema } from '@/lib/validation/email';
+import { passwordSchema } from '@/lib/validation/password';
 
 export const PRESERVED_FIELDS = ['firstName', 'lastName', 'documentId', 'email', 'role'] as const;
+
+export const CREATION_METHODS = ['invitation', 'password'] as const;
 
 export type PreservedField = (typeof PRESERVED_FIELDS)[number];
 
@@ -31,14 +35,6 @@ export function isValidUruguayanDocumentId(rawValue: string) {
   return checkDigit === Number(paddedDigits[7]);
 }
 
-export const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(1, 'El correo es obligatorio.')
-  .max(254, 'El correo no puede superar los 254 caracteres.')
-  .pipe(z.email({ error: 'Ingresá un correo electrónico válido.' }));
-
 export const userEditFormSchema = z.object({
   firstName: z
     .string()
@@ -59,3 +55,15 @@ export const userEditFormSchema = z.object({
   email: emailSchema,
   role: z.enum(['admin', 'coordinator']),
 });
+
+export const userFormSchema = userEditFormSchema
+  .extend({
+    creationMethod: z.enum(CREATION_METHODS).default('invitation'),
+    password: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.creationMethod !== 'password') return;
+    const result = passwordSchema.safeParse(data.password ?? '');
+    if (result.success) return;
+    ctx.addIssue({ code: 'custom', path: ['password'], message: result.error.issues[0].message });
+  });
