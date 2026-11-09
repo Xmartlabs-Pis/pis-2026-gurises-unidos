@@ -3,6 +3,8 @@ import { normalizeDocumentId } from '@/lib/utils';
 
 export const PRESERVED_FIELDS = ['firstName', 'lastName', 'documentId', 'email', 'role'] as const;
 
+export const CREATION_METHODS = ['invitation', 'password'] as const;
+
 export type PreservedField = (typeof PRESERVED_FIELDS)[number];
 
 export type UserFormState = {
@@ -59,3 +61,24 @@ export const userEditFormSchema = z.object({
   email: emailSchema,
   role: z.enum(['admin', 'coordinator']),
 });
+
+const temporaryPasswordSchema = z
+  .string()
+  .min(1, 'La contraseña es obligatoria.')
+  .min(8, 'La contraseña debe tener al menos 8 caracteres.')
+  .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula.')
+  .regex(/[a-z]/, 'La contraseña debe tener al menos una minúscula.')
+  .regex(/[0-9]/, 'La contraseña debe tener al menos un número.')
+  .max(72, 'La contraseña no puede superar los 72 caracteres.');
+
+export const userFormSchema = userEditFormSchema
+  .extend({
+    creationMethod: z.enum(CREATION_METHODS).default('invitation'),
+    password: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.creationMethod !== 'password') return;
+    const result = temporaryPasswordSchema.safeParse(data.password ?? '');
+    if (result.success) return;
+    ctx.addIssue({ code: 'custom', path: ['password'], message: result.error.issues[0].message });
+  });

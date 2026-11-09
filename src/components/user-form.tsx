@@ -5,6 +5,7 @@ import { usePendingChanges } from '@/components/ui/forms/pending-changes-provide
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type SubmitEvent } from 'react';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
+import { Copy } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
 
@@ -30,7 +31,14 @@ import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { ResetPasswordDialog } from '@/components/users/reset-password-dialog';
 import { UserStatusDialog } from '@/components/users/user-status-dialog';
 
-import { PRESERVED_FIELDS, userEditFormSchema, type UserFormState } from '@/lib/validation/user';
+import {
+  PRESERVED_FIELDS,
+  userEditFormSchema,
+  userFormSchema,
+  type UserFormState,
+} from '@/lib/validation/user';
+import { generateTemporaryPassword } from '@/lib/users';
+import { copyText } from '@/lib/clipboard';
 import { STATUS_CLASSNAMES, STATUS_LABELS } from '@/lib/users/constants';
 import { notify } from '@/lib/notify';
 import { formDataFromSubmit } from '@/lib/forms';
@@ -43,6 +51,8 @@ type UserFormValues = {
   documentId: string;
   email: string;
   role: 'admin' | 'coordinator';
+  creationMethod: 'invitation' | 'password';
+  password: string;
 };
 
 type UserFormProps = {
@@ -69,6 +79,11 @@ const ROLE_OPTIONS = [
   { value: 'coordinator', label: 'Coordinador' },
 ];
 
+const CREATION_METHOD_OPTIONS = [
+  { value: 'invitation', label: 'Enviar invitación por correo' },
+  { value: 'password', label: 'Crear con contraseña temporal' },
+];
+
 const INFO_ROWS = [
   { key: 'createdAt', label: 'Fecha de creación' },
   { key: 'lastAccess', label: 'Último acceso' },
@@ -88,8 +103,17 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   const router = useRouter();
   const isEditing = mode === 'edit';
   const isPendingInvitation = initialValues?.status === 'pendingInvitation';
+  const [creationMethod, setCreationMethod] =
+    useState<UserFormValues['creationMethod']>('invitation');
+  const withPassword = !isEditing && creationMethod === 'password';
+  let createDescription =
+    'Al guardar, se enviará una invitación al correo ingresado para que la persona elija su contraseña. El ingreso al sistema es por cédula.';
+  if (withPassword) {
+    createDescription =
+      'El administrador comparte esta contraseña con la persona, que deberá cambiarla al ingresar. El ingreso al sistema es por cédula.';
+  }
   const securityDescription = !isEditing
-    ? 'Al guardar, se enviará una invitación al correo ingresado para que la persona elija su contraseña. El ingreso al sistema es por cédula.'
+    ? createDescription
     : isPendingInvitation
       ? 'La persona elegirá su contraseña al aceptar la invitación. Podés reenviarla desde la lista de usuarios.'
       : 'Se generará una contraseña temporal que la persona deberá cambiar al ingresar.';
@@ -106,17 +130,26 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
   const isRestoreDialogOpen =
     Boolean(state.restoreConfirmationRequired) && answeredRestoreState !== state;
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userEditFormSchema) as unknown as Resolver<UserFormValues>,
+    resolver: zodResolver(
+      isEditing ? userEditFormSchema : userFormSchema
+    ) as unknown as Resolver<UserFormValues>,
     defaultValues: {
       firstName: initialValues?.firstName ?? '',
       lastName: initialValues?.lastName ?? '',
       documentId: initialValues?.documentId ?? '',
       email: initialValues?.email ?? '',
       role: initialValues?.role ?? 'coordinator',
+      creationMethod: 'invitation',
+      password: '',
     },
     mode: 'onChange',
   });
-  const { handleSubmit } = form;
+  const {
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { errors },
+  } = form;
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
 
   const busy = pending || form.formState.isSubmitting;
@@ -126,6 +159,22 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
     isSaving: isEditing && busy,
     onSave: saveChanges,
   });
+
+  function handleGeneratePassword() {
+    setValue('password', generateTemporaryPassword(), { shouldValidate: true });
+  }
+
+  async function handleCopyPassword() {
+    const password = getValues('password');
+    if (!password) return;
+
+    try {
+      await copyText(password);
+      notify.success({ title: 'Contraseña copiada al portapapeles' });
+    } catch {
+      notify.error({ title: 'No se pudo copiar la contraseña' });
+    }
+  }
 
   async function saveChanges(submittedData?: FormData): Promise<boolean> {
     if (!formRef.current || submissionRef.current) return false;
@@ -169,9 +218,7 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
   useEffect(() => {
     if (state.restored) {
-      notify.success({
-        title: 'La cuenta se restauró con los nuevos datos y se envió la invitación.',
-      });
+      notify.success({ title: 'La cuenta se restauró con los nuevos datos.' });
       router.push('/management/users');
       return;
     }
@@ -307,6 +354,52 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
                         userName={`${initialValues.firstName} ${initialValues.lastName}`}
                       />
                     )}
+                    {!isEditing && (
+                      <SelectField
+                        id="creationMethod"
+                        name="creationMethod"
+                        label="Método de creación"
+                        options={CREATION_METHOD_OPTIONS}
+                        onValueChange={(value) => {
+                          setCreationMethod(value as UserFormValues['creationMethod']);
+                          setValue('password', '', { shouldValidate: false });
+                        }}
+                      />
+                    )}
+                    {withPassword && (
+                      <>
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <TextInputField
+                            id="password"
+                            name="password"
+                            label="Contraseña temporal"
+                            type="text"
+                            placeholder="Se genera automáticamente"
+                            messages={[errors?.password?.message ?? '']}
+                            trailingAction={
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                aria-label="Copiar contraseña"
+                                onClick={handleCopyPassword}
+                              >
+                                <Copy className="size-3" />
+                              </Button>
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="lg"
+                          className="h-auto min-h-9 w-fit max-w-full px-4 py-1.5 whitespace-normal"
+                          onClick={handleGeneratePassword}
+                        >
+                          Generar contraseña automáticamente
+                        </Button>
+                      </>
+                    )}
                     <FieldDescription className="text-xs leading-4">
                       {securityDescription}
                     </FieldDescription>
@@ -344,7 +437,9 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
 
         <FormActions
           onCancel={() => router.push('/management/users')}
-          submitLabel={isEditing ? 'Guardar usuario' : 'Guardar y enviar invitación'}
+          submitLabel={
+            isEditing || withPassword ? 'Guardar usuario' : 'Guardar y enviar invitación'
+          }
           pending={busy}
           hasUnsavedChanges={hasUnsavedChanges}
         />
@@ -365,7 +460,11 @@ export function UserForm({ mode = 'create', initialValues }: UserFormProps) {
           </AlertDialogHeader>
           <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-sm">
             <li>Se reemplazan su nombre, correo y rol por los que ingresaste.</li>
-            <li>Se le envía una invitación al correo para que elija una contraseña nueva.</li>
+            <li>
+              {withPassword
+                ? 'Vuelve a tener acceso con la contraseña nueva y deberá cambiarla al ingresar.'
+                : 'Se le envía una invitación al correo para que elija una contraseña nueva.'}
+            </li>
             <li>Recupera los proyectos y el historial que tenía asociados.</li>
           </ul>
           <AlertDialogFooter>

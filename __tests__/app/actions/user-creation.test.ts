@@ -284,6 +284,182 @@ describe('createUser', () => {
   });
 });
 
+describe('createUser with a temporary password', () => {
+  const PASSWORD_FIELDS = { creationMethod: 'password', password: 'Temporary1' };
+
+  test('creates an active user that must change the password, without an invitation', async () => {
+    const { userCreate } = setupTransaction();
+
+    await expect(createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS))).rejects.toThrow(
+      'NEXT_REDIRECT:/management/users'
+    );
+
+    expect(userCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        firstName: 'Ana',
+        documentId: '77777777',
+        email: 'ana@gmail.com',
+        role: 'coordinator',
+        status: 'active',
+        mustChangePassword: true,
+        passwordChangedAt: expect.any(Date),
+        passwordHash: 'unusable-hash',
+        createdBy: 7,
+      }),
+    });
+    expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 7,
+      action: 'creation',
+      entity: 'user',
+      entityId: 42,
+    });
+  });
+
+  test('hashes the submitted password instead of a random one', async () => {
+    setupTransaction();
+
+    await expect(createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS))).rejects.toThrow(
+      'NEXT_REDIRECT:/management/users'
+    );
+
+    expect(hashMock).toHaveBeenCalledExactlyOnceWith('Temporary1');
+  });
+
+  test('never stores the plain password', async () => {
+    const { userCreate } = setupTransaction();
+
+    await expect(createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS))).rejects.toThrow(
+      'NEXT_REDIRECT:/management/users'
+    );
+
+    const { data } = userCreate.mock.calls[0][0];
+    expect(Object.values(data)).not.toContain('Temporary1');
+    expect(data).not.toHaveProperty('password');
+    expect(data).not.toHaveProperty('creationMethod');
+  });
+
+  test('does not create an invitation token nor send an email', async () => {
+    setupTransaction();
+
+    await expect(createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS))).rejects.toThrow(
+      'NEXT_REDIRECT:/management/users'
+    );
+
+    expect(createUserTokenMock).not.toHaveBeenCalled();
+    expect(sendInvitationEmailMock).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['missing', {}, 'La contraseña es obligatoria.'],
+    ['empty', { password: '' }, 'La contraseña es obligatoria.'],
+    ['weak', { password: 'password' }, 'La contraseña debe tener al menos una mayúscula.'],
+  ])('rejects a %s password without touching the database', async (_label, override, message) => {
+    const formData = buildFormData({ creationMethod: 'password', ...override });
+
+    const result = await createUser(EMPTY_STATE, formData);
+
+    expect(result.errors?.password).toEqual([message]);
+    expect(result.values).toEqual(SUBMITTED_VALUES);
+    expect(transactionMock).not.toHaveBeenCalled();
+    expect(hashMock).not.toHaveBeenCalled();
+  });
+
+  test('does not echo the password back in the preserved values', async () => {
+    const result = await createUser(
+      EMPTY_STATE,
+      buildFormData({ creationMethod: 'password', password: 'weak' })
+    );
+
+    expect(JSON.stringify(result)).not.toContain('weak');
+  });
+
+  test('ignores a submitted password when inviting', async () => {
+    const { userCreate } = setupTransaction();
+
+    await expect(
+      createUser(
+        EMPTY_STATE,
+        buildFormData({ creationMethod: 'invitation', password: 'Temporary1' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/management/users');
+
+    expect(hashMock).not.toHaveBeenCalledWith('Temporary1');
+    expect(userCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ status: 'pendingInvitation', mustChangePassword: false }),
+    });
+    expect(sendInvitationEmailMock).toHaveBeenCalledOnce();
+  });
+
+  test('rejects an unknown creation method', async () => {
+    const result = await createUser(EMPTY_STATE, buildFormData({ creationMethod: 'magic' }));
+
+    expect(result.errors?.creationMethod).toBeDefined();
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('asks for confirmation before restoring a deleted user', async () => {
+    const { userCreate, userUpdate } = setupTransaction({ deletedUserId: 13 });
+
+    const result = await createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS));
+
+    expect(result).toEqual({ restoreConfirmationRequired: true, values: SUBMITTED_VALUES });
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(userUpdate).not.toHaveBeenCalled();
+    expect(createUserTokenMock).not.toHaveBeenCalled();
+  });
+
+  test('restores a deleted user as active with the new temporary password once confirmed', async () => {
+    const { userCreate, userUpdate } = setupTransaction({ deletedUserId: 13 });
+
+    const result = await createUser(
+      EMPTY_STATE,
+      buildFormData({ ...PASSWORD_FIELDS, confirmRestore: 'true' })
+    );
+
+    expect(result).toEqual({ restored: true });
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(userUpdate).toHaveBeenCalledWith({
+      where: { id: 13, deletedAt: { not: null } },
+      data: expect.objectContaining({
+        status: 'active',
+        passwordHash: 'unusable-hash',
+        mustChangePassword: true,
+        passwordChangedAt: expect.any(Date),
+        deletedAt: null,
+      }),
+    });
+    expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
+      authorId: 7,
+      action: 'creation',
+      entity: 'user',
+      entityId: 13,
+      details: { restored: true },
+    });
+    expect(createUserTokenMock).not.toHaveBeenCalled();
+    expect(sendInvitationEmailMock).not.toHaveBeenCalled();
+  });
+
+  test('returns the database error without sending anything', async () => {
+    transactionMock.mockRejectedValue(knownRequestError('P2002', { target: ['email'] }));
+
+    await expect(createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS))).resolves.toEqual({
+      formError: 'Ya existe un usuario con ese correo electrónico.',
+      values: SUBMITTED_VALUES,
+    });
+    expect(sendInvitationEmailMock).not.toHaveBeenCalled();
+  });
+
+  test('requires an admin', async () => {
+    authMock.mockResolvedValue({ user: { id: '8', role: 'coordinator' } });
+
+    await expect(createUser(EMPTY_STATE, buildFormData(PASSWORD_FIELDS))).rejects.toThrow(
+      'NEXT_REDIRECT:/dashboard'
+    );
+    expect(hashMock).not.toHaveBeenCalled();
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('generateTemporaryPassword', () => {
   test('generates a character password with all required character types', () => {
     const password = generateTemporaryPassword();

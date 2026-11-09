@@ -8,7 +8,12 @@ import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
 import { requireUser } from '@/lib/auth/require-user';
 import { parseId } from '@/lib/validation/ids';
-import { PRESERVED_FIELDS, userEditFormSchema, type UserFormState } from '@/lib/validation/user';
+import {
+  PRESERVED_FIELDS,
+  userEditFormSchema,
+  userFormSchema,
+  type UserFormState,
+} from '@/lib/validation/user';
 import { logAudit } from '@/lib/audit-log';
 import { mapUserDbError } from '@/lib/users/map-user-db-error';
 import { createUserToken } from '@/lib/auth/user-tokens';
@@ -47,7 +52,7 @@ export async function createUser(
     redirect('/dashboard');
   }
 
-  const result = userEditFormSchema.safeParse(Object.fromEntries(formData));
+  const result = userFormSchema.safeParse(Object.fromEntries(formData));
   const values = Object.fromEntries(
     PRESERVED_FIELDS.map((field) => [field, String(formData.get(field) ?? '')])
   );
@@ -57,13 +62,16 @@ export async function createUser(
   }
 
   const userData = result.data;
+  const withPassword = userData.creationMethod === 'password';
   // Invited users have no password until they accept the invitation; this hash matches nothing
-  const passwordHash = await hashPassword(randomBytes(32).toString('base64url'));
+  const passwordHash = await hashPassword(
+    withPassword ? (userData.password ?? '') : randomBytes(32).toString('base64url')
+  );
 
   const restoreConfirmed = formData.get('confirmRestore') === 'true';
   let outcome:
     | { kind: 'restoreConfirmationRequired' }
-    | { kind: 'created' | 'restored'; user: InvitedUser; token: string };
+    | { kind: 'created' | 'restored'; user: InvitedUser; token: string | null };
 
   try {
     outcome = await prisma.$transaction(async (tx) => {
@@ -73,9 +81,9 @@ export async function createUser(
         lastName: userData.lastName,
         email: userData.email,
         role: userData.role,
-        status: 'pendingInvitation' as const,
+        status: withPassword ? ('active' as const) : ('pendingInvitation' as const),
         passwordHash,
-        mustChangePassword: false,
+        mustChangePassword: withPassword,
       };
 
       const deletedUser = await tx.user.findFirst({
@@ -90,7 +98,11 @@ export async function createUser(
       if (deletedUser) {
         const restoredUser = await tx.user.update({
           where: { id: deletedUser.id, deletedAt: { not: null } },
-          data: { ...profile, passwordChangedAt: null, deletedAt: null },
+          data: {
+            ...profile,
+            passwordChangedAt: withPassword ? new Date() : null,
+            deletedAt: null,
+          },
         });
         await logAudit(tx, {
           authorId,
@@ -99,12 +111,19 @@ export async function createUser(
           entityId: restoredUser.id,
           details: { restored: true },
         });
-        const token = await createUserToken(tx, restoredUser.id, 'invitation');
+        const token = withPassword
+          ? null
+          : await createUserToken(tx, restoredUser.id, 'invitation');
         return { kind: 'restored' as const, user: restoredUser, token };
       }
 
       const createdUser = await tx.user.create({
-        data: { ...profile, documentId: userData.documentId, createdBy: authorId },
+        data: {
+          ...profile,
+          documentId: userData.documentId,
+          createdBy: authorId,
+          passwordChangedAt: withPassword ? new Date() : null,
+        },
       });
       await logAudit(tx, {
         authorId,
@@ -112,7 +131,7 @@ export async function createUser(
         entity: 'user',
         entityId: createdUser.id,
       });
-      const token = await createUserToken(tx, createdUser.id, 'invitation');
+      const token = withPassword ? null : await createUserToken(tx, createdUser.id, 'invitation');
       return { kind: 'created' as const, user: createdUser, token };
     });
   } catch (error) {
@@ -135,7 +154,9 @@ export async function createUser(
     return { restoreConfirmationRequired: true, values };
   }
 
-  await sendInvitationEmail(outcome.user, outcome.token, Number(session.user.id));
+  if (outcome.token) {
+    await sendInvitationEmail(outcome.user, outcome.token, Number(session.user.id));
+  }
 
   if (outcome.kind === 'restored') {
     revalidatePath('/management/users');
