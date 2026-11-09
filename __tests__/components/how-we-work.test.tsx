@@ -41,6 +41,18 @@ function selectedTitle() {
     ?.textContent;
 }
 
+test('defers unvisited photos and keeps the previous image visible while the next loads', () => {
+  render(<HowWeWork />);
+  const initialPhoto = screen.getByRole('img');
+  expect(screen.getByRole('tabpanel').querySelectorAll('img')).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+
+  expect(screen.getByRole('tabpanel').querySelectorAll('img')).toHaveLength(2);
+  expect(initialPhoto.className).toContain('opacity-100');
+  expect(screen.getByRole('img').className).toContain('opacity-0');
+});
+
 test.each([
   { title: 'Individual', photos: [8] },
   { title: 'Familiar', photos: [1, 5] },
