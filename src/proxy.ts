@@ -19,6 +19,7 @@ const PUBLIC_ROUTES = [
 ];
 const PASSWORD_RESET_ROUTE = '/password-reset';
 const EMBED_ROUTE = '/embed';
+const LOGIN_ROUTE = '/login';
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
@@ -43,6 +44,10 @@ export const proxy = auth((request) => {
   }
 
   if (request.auth && !mustChangePassword && pathname === PASSWORD_RESET_ROUTE) {
+    return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
+  }
+
+  if (request.auth && pathname === LOGIN_ROUTE) {
     return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
   }
 
