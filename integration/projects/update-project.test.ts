@@ -604,11 +604,12 @@ describe('updateProject (integration)', () => {
       if (args[1].entity === 'beneficiary') throw new Error('Audit failure');
       return realLogAudit(...args);
     });
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     try {
       expect((await updateProject(projectId, {}, formData)).formError).toBeDefined();
     } finally {
+      errorSpy.mockRestore();
       vi.mocked(logAudit).mockImplementation(realLogAudit);
     }
 
