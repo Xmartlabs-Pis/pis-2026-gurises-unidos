@@ -189,7 +189,10 @@ export async function deleteStrategicLine(id: number): Promise<StrategicLineActi
         where: { deletedAt: null, strategicLines: { some: { id } } },
       });
       if (projectCount > 0) return 'associated';
-      const line = await tx.strategicLine.update({ where: { id }, data: { isActive: false } });
+      const line = await tx.strategicLine.update({
+        where: { id, isActive: true },
+        data: { isActive: false },
+      });
       await logAudit(tx, {
         authorId: user.id,
         action: 'deletion',

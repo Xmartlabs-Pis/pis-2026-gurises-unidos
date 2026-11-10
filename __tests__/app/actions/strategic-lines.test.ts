@@ -213,7 +213,7 @@ describe('deleteStrategicLine', () => {
       where: { deletedAt: null, strategicLines: { some: { id: 4 } } },
     });
     expect(mocks.updateStrategicLine).toHaveBeenCalledWith({
-      where: { id: 4 },
+      where: { id: 4, isActive: true },
       data: { isActive: false },
     });
     expect(mocks.createAuditLog).toHaveBeenCalledWith({
@@ -235,6 +235,16 @@ describe('deleteStrategicLine', () => {
       formError: 'No se puede eliminar una línea estratégica asociada a proyectos.',
     });
     expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('does not record a second deletion of an already inactive strategic line', async () => {
+    mocks.updateStrategicLine.mockRejectedValue(new Error('Record not found'));
+
+    await expect(deleteStrategicLine(4)).resolves.toEqual({
+      formError: 'No se pudo eliminar la línea estratégica. Intentá de nuevo.',
+    });
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });

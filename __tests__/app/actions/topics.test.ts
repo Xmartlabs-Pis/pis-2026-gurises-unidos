@@ -185,7 +185,7 @@ describe('deleteTopic', () => {
       where: { topics: { some: { id: 4 } }, deletedAt: null },
     });
     expect(mocks.updateTopic).toHaveBeenCalledWith({
-      where: { id: 4 },
+      where: { id: 4, isActive: true },
       data: { isActive: false },
     });
     expect(mocks.createAuditLog).toHaveBeenCalledWith({
@@ -209,7 +209,7 @@ describe('deleteTopic', () => {
       where: { topics: { some: { id: 4 } }, deletedAt: null },
     });
     expect(mocks.updateTopic).toHaveBeenCalledWith({
-      where: { id: 4 },
+      where: { id: 4, isActive: true },
       data: { isActive: false },
     });
   });
@@ -222,6 +222,16 @@ describe('deleteTopic', () => {
     });
 
     expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('does not record a second deletion of an already inactive topic', async () => {
+    mocks.updateTopic.mockRejectedValue(new Error('Record not found'));
+
+    await expect(deleteTopic(4)).resolves.toEqual({
+      formError: 'No se pudo eliminar la temática. Intentá de nuevo.',
+    });
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });

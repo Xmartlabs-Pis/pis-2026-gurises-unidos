@@ -114,7 +114,7 @@ export async function deleteTopic(topicId: number): Promise<TopicActionState> {
       if (projectCount > 0) return false;
 
       const topic = await tx.topic.update({
-        where: { id: topicId },
+        where: { id: topicId, isActive: true },
         data: { isActive: false },
       });
       await logAudit(tx, {
