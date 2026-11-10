@@ -8,5 +8,5 @@ export function getEmbedHeightOrigins(value = process.env.EMBED_FRAME_ANCESTORS)
       return [];
     }
   });
-  return [...new Set(origins)];
+  return origins.includes('*') ? ['*'] : [...new Set(origins)];
 }

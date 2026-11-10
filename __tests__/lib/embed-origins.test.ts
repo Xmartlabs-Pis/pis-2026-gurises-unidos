@@ -13,11 +13,14 @@ describe('getEmbedHeightOrigins', () => {
   });
 
   it('sends each origin once', () => {
-    expect(getEmbedHeightOrigins('https://a.org https://a.org/path * https://b.org *')).toEqual([
+    expect(getEmbedHeightOrigins('https://a.org https://a.org/path https://b.org')).toEqual([
       'https://a.org',
-      '*',
       'https://b.org',
     ]);
+  });
+
+  it('sends only the wildcard when it is combined with specific origins', () => {
+    expect(getEmbedHeightOrigins('https://a.org * https://b.org *')).toEqual(['*']);
   });
 
   it('reads the allowed sites from the environment', () => {
