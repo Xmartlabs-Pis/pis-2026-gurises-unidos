@@ -59,7 +59,11 @@ export default async function ProjectsPage({
           </svg>
         </div>
       </PublicHero>
-      <section id="projects" aria-label="Proyectos por temática" className="w-full scroll-mt-20">
+      <section
+        id="projects"
+        aria-label="Proyectos por temática"
+        className="w-full flex-1 scroll-mt-20"
+      >
         <div className="mx-auto flex w-full max-w-360 flex-col gap-12 px-5 py-12 sm:px-6 lg:gap-16 lg:px-16 lg:py-16">
           {carousels}
         </div>

@@ -41,6 +41,53 @@ function selectedTitle() {
     ?.textContent;
 }
 
+test('defers unvisited photos and keeps the previous image visible while the next loads', () => {
+  render(<HowWeWork />);
+  const initialPhoto = screen.getByRole('img');
+  expect(screen.getByRole('tabpanel').querySelectorAll('img')).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+
+  expect(screen.getByRole('tabpanel').querySelectorAll('img')).toHaveLength(2);
+  expect(initialPhoto.className).toContain('opacity-100');
+  expect(screen.getByRole('img').className).toContain('opacity-0');
+});
+
+test('shows a previously loaded photo when returning to a tab without another load event', async () => {
+  render(<HowWeWork />);
+  const initialPhoto = screen.getByRole('img');
+  await act(async () => fireEvent.load(initialPhoto));
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+  const familyPhoto = screen.getByRole('img');
+  await act(async () => fireEvent.load(familyPhoto));
+  expect(familyPhoto.className).toContain('opacity-100');
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Individual' }));
+
+  expect(screen.getByRole('img')).toBe(initialPhoto);
+  expect(initialPhoto.className).toContain('opacity-100');
+  expect(familyPhoto.className).toContain('opacity-0');
+});
+
+test('shows cached family photos when their automatic rotation repeats', async () => {
+  render(<HowWeWork />);
+  const loadedPhotos = new Set<number>();
+
+  for (const number of [8, 1, 2, 4, 8, 5, 3, 6, 8, 1, 7, 4, 8, 5]) {
+    const image = screen.getByRole('img');
+    expect(decodeURIComponent(image.getAttribute('src')!)).toContain(
+      `/assets/how-we-work/how-we-work-${number}.webp`
+    );
+    if (!loadedPhotos.has(number)) {
+      await act(async () => fireEvent.load(image));
+      loadedPhotos.add(number);
+    }
+    expect(image.className).toContain('opacity-100');
+    advance(12100);
+  }
+});
+
 test.each([
   { title: 'Individual', photos: [8] },
   { title: 'Familiar', photos: [1, 5] },
@@ -124,7 +171,7 @@ test('supports keyboard selection and moves focus to the chosen level', () => {
   expect(selectedTitle()).toContain('Individual');
 });
 
-test('only the image and individual cards pause changes on hover, not the section background', () => {
+test('hovering the image keeps progress running while active work-level cards pause it', () => {
   render(<HowWeWork />);
   const image = screen.getByRole('tabpanel');
   const section = image.parentElement!;
@@ -132,16 +179,21 @@ test('only the image and individual cards pause changes on hover, not the sectio
   advance(12100);
   expect(selectedTitle()).toContain('Familiar');
   fireEvent.pointerEnter(image, { pointerType: 'mouse' });
-  advance(30000);
+  const progress = section.querySelector<HTMLSpanElement>('span[style]')!;
+  const before = progress.style.transform;
+  advance(6000);
   expect(selectedTitle()).toContain('Familiar');
+  expect(progress.style.transform).not.toBe(before);
+  advance(6100);
+  expect(selectedTitle()).toContain('Institucional');
   fireEvent.pointerLeave(image, { pointerType: 'mouse' });
-  const card = screen.getByRole('tab', { name: 'Familiar' });
+  const card = screen.getByRole('tab', { name: 'Institucional' });
   fireEvent.pointerEnter(card, { pointerType: 'mouse' });
   advance(30000);
-  expect(selectedTitle()).toContain('Familiar');
+  expect(selectedTitle()).toContain('Institucional');
   fireEvent.pointerLeave(card, { pointerType: 'mouse' });
   advance(12100);
-  expect(selectedTitle()).toContain('Institucional');
+  expect(selectedTitle()).toContain('Comunitario');
 });
 
 test('hovering a collapsed work-level card does not pause or change the playback button', () => {

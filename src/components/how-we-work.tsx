@@ -70,6 +70,15 @@ const PHOTOS = [
 
 export function HowWeWork() {
   const imageClipId = useId();
+  const [displayedPhoto, setDisplayedPhoto] = useState<{
+    currentIndex: number;
+    previousIndex: number | null;
+    loadedIndices: Set<number>;
+  }>({
+    currentIndex: LEVELS[0].photoNumbers[0] - 1,
+    previousIndex: null,
+    loadedIndices: new Set(),
+  });
   const [selection, setSelection] = useState({
     activeIndex: 0,
     photoPositions: LEVELS.map(() => 0),
@@ -98,13 +107,20 @@ export function HowWeWork() {
 
   const photoIndex = LEVELS[activeIndex].photoNumbers[selection.photoPositions[activeIndex]] - 1;
 
+  if (displayedPhoto.loadedIndices.has(photoIndex) && photoIndex !== displayedPhoto.currentIndex) {
+    setDisplayedPhoto({
+      ...displayedPhoto,
+      currentIndex: photoIndex,
+      previousIndex: displayedPhoto.currentIndex,
+    });
+  }
+
   return (
     <div
       ref={sectionRef}
       className="relative mx-auto grid w-full max-w-360 lg:min-h-150 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]"
     >
       <figure
-        {...hoverPauseProps}
         id="work-level-panel"
         role="tabpanel"
         aria-labelledby={`work-level-${activeIndex}`}
@@ -116,17 +132,28 @@ export function HowWeWork() {
           } as CSSProperties
         }
       >
-        {PHOTOS.map((photo, index) => (
-          <Image
-            key={index}
-            src={photo.src}
-            alt={index === photoIndex ? photo.alt : ''}
-            aria-hidden={index !== photoIndex}
-            fill
-            sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
-            className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === photoIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
-          />
-        ))}
+        {PHOTOS.map((photo, index) =>
+          index === photoIndex ||
+          index === displayedPhoto.currentIndex ||
+          index === displayedPhoto.previousIndex ? (
+            <Image
+              key={index}
+              src={photo.src}
+              alt={index === photoIndex ? photo.alt : ''}
+              aria-hidden={index !== photoIndex}
+              fill
+              sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
+              onLoad={() => {
+                setDisplayedPhoto((current) =>
+                  current.loadedIndices.has(index)
+                    ? current
+                    : { ...current, loadedIndices: new Set([...current.loadedIndices, index]) }
+                );
+              }}
+              className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === displayedPhoto.currentIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
+            />
+          ) : null
+        )}
         <div
           aria-hidden="true"
           className="from-surface-brand-deep/80 pointer-events-none absolute inset-0 hidden bg-linear-to-t via-transparent to-transparent lg:block"

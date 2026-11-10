@@ -13,8 +13,12 @@ export function DepartmentExplorer({
   departments: PublicDepartment[];
 }) {
   const [selectedName, setSelectedName] = useState(
-    departments.find(({ name }) => name === 'Montevideo')?.name ??
-      departments[0]?.name ??
+    () =>
+      departments.find(({ name, projects }) => name === 'Montevideo' && projects.length > 0)
+        ?.name ??
+      departments
+        .filter(({ projects }) => projects.length > 0)
+        .toSorted((first, second) => second.projects.length - first.projects.length)[0]?.name ??
       'Montevideo'
   );
   const selected = departments.find(({ name }) => name === selectedName);
@@ -31,8 +35,9 @@ export function DepartmentExplorer({
       <div className="flex min-w-0 flex-col gap-5">
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm leading-5">
-            Nuestros proyectos llegan a {departmentCount} departamentos, priorizando comunidades con
-            mayor vulnerabilidad social.
+            {departmentCount === 0
+              ? `Aún no hay proyectos publicados en Uruguay para ${year}.`
+              : `Nuestros proyectos llegan a ${departmentCount} ${departmentCount === 1 ? 'departamento' : 'departamentos'}, priorizando comunidades con mayor vulnerabilidad social.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por departamento">
