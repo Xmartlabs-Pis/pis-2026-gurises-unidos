@@ -49,10 +49,21 @@ test.each([
     departments: [department(1, 'Canelones', 1), department(3, 'Salto', 4)],
     expected: 'Salto',
   },
+  {
+    name: 'falls back to Montevideo when all departments have no projects',
+    departments: [department(1, 'Artigas', 0), department(2, 'Montevideo', 0)],
+    expected: 'Montevideo',
+  },
 ])('$name', ({ departments, expected }) => {
   render(<DepartmentExplorer year={2026} departments={departments} />);
 
-  expect(screen.getByRole('button', { name: expected }).getAttribute('aria-pressed')).toBe('true');
+  if (departments.some(({ name, projects }) => name === expected && projects.length > 0)) {
+    expect(screen.getByRole('button', { name: expected }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+  } else {
+    expect(screen.queryByRole('button', { name: expected })).toBeNull();
+  }
   expect(screen.getByRole('heading', { name: expected })).toBeDefined();
   expect(screen.getByLabelText('Selected department').textContent).toBe(expected);
 });

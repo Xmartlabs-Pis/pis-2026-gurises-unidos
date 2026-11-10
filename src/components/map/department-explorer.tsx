@@ -16,8 +16,9 @@ export function DepartmentExplorer({
     () =>
       departments.find(({ name, projects }) => name === 'Montevideo' && projects.length > 0)
         ?.name ??
-      departments.toSorted((first, second) => second.projects.length - first.projects.length)[0]
-        ?.name ??
+      departments
+        .filter(({ projects }) => projects.length > 0)
+        .toSorted((first, second) => second.projects.length - first.projects.length)[0]?.name ??
       'Montevideo'
   );
   const selected = departments.find(({ name }) => name === selectedName);
