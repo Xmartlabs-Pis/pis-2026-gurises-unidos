@@ -46,36 +46,30 @@ export async function createTopic(
   }
 
   try {
-    const reactivated = await prisma.topic.updateMany({
-      where: {
-        name: { equals: parsed.data.name, mode: 'insensitive' },
-        isActive: false,
-      },
-      data: { isActive: true },
+    const duplicate = await prisma.$transaction(async (tx) => {
+      const existing = await tx.topic.findFirst({
+        where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
+      });
+      if (existing?.isActive) return true;
+      const topic = existing
+        ? await tx.topic.update({ where: { id: existing.id }, data: { isActive: true } })
+        : await tx.topic.create({ data: { name: parsed.data.name, isActive: true } });
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'creation',
+        entity: 'topic',
+        entityId: topic.id,
+        details: { name: topic.name },
+      });
+      return false;
     });
 
-    if (reactivated.count > 0) {
-      revalidateTopics();
-      return { success: true };
-    }
-
-    const existing = await prisma.topic.findFirst({
-      where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
-    });
-
-    if (existing) {
+    if (duplicate) {
       return {
         formError: 'Ya existe una temática con ese nombre.',
         values: { name },
       };
     }
-
-    await prisma.topic.create({
-      data: {
-        name: parsed.data.name,
-        isActive: true,
-      },
-    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return {
@@ -119,9 +113,16 @@ export async function deleteTopic(topicId: number): Promise<TopicActionState> {
       });
       if (projectCount > 0) return false;
 
-      await tx.topic.update({
+      const topic = await tx.topic.update({
         where: { id: topicId },
         data: { isActive: false },
+      });
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'deletion',
+        entity: 'topic',
+        entityId: topicId,
+        details: { name: topic.name },
       });
       return true;
     });

@@ -46,6 +46,7 @@ const OUTDATED_PUBLIC_REPORT_ENTRIES: Prisma.AuditLogWhereInput[] = [
     action: 'update',
     details: { path: ['sortOrder'], not: Prisma.AnyNull },
   },
+  { entity: 'partner', action: 'update', details: { path: ['order'], not: Prisma.AnyNull } },
 ];
 
 const ONLY_USER_STATUS_AND_ROLE_UPDATES: Prisma.AuditLogWhereInput[] = [
@@ -99,7 +100,16 @@ function idsOf(rows: ListedAuditLogRow[], entity: ListedAuditEntity) {
 }
 
 async function resolveEntityNames(rows: ListedAuditLogRow[]) {
-  const [projects, beneficiaries, users, metrics, topics, partners] = await Promise.all([
+  const [
+    projects,
+    beneficiaries,
+    users,
+    metrics,
+    topics,
+    partners,
+    strategicLines,
+    beneficiaryCategories,
+  ] = await Promise.all([
     prisma.project.findMany({
       where: { id: { in: idsOf(rows, 'project') } },
       select: { id: true, name: true },
@@ -124,6 +134,14 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
       where: { id: { in: idsOf(rows, 'partner') } },
       select: { id: true, name: true },
     }),
+    prisma.strategicLine.findMany({
+      where: { id: { in: idsOf(rows, 'strategicLine') } },
+      select: { id: true, name: true },
+    }),
+    prisma.beneficiaryCategory.findMany({
+      where: { id: { in: idsOf(rows, 'beneficiaryCategory') } },
+      select: { id: true, name: true },
+    }),
   ]);
 
   const names: Record<ListedAuditEntity, Map<number, string>> = {
@@ -137,6 +155,8 @@ async function resolveEntityNames(rows: ListedAuditLogRow[]) {
     topic: new Map(topics.map(({ id, name }) => [id, name])),
     partner: new Map(partners.map(({ id, name }) => [id, name])),
     authentication: new Map(),
+    strategicLine: new Map(strategicLines.map(({ id, name }) => [id, name])),
+    beneficiaryCategory: new Map(beneficiaryCategories.map(({ id, name }) => [id, name])),
   };
 
   return (row: Pick<ListedAuditLogRow, 'entity' | 'entityId'>) =>

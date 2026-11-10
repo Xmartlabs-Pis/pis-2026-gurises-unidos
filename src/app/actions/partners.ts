@@ -138,7 +138,7 @@ export async function deletePartner(id: number): Promise<PartnerActionState> {
   return { success: true };
 }
 
-async function savePartnerOrder(tx: Prisma.TransactionClient, authorId: number, order: number[]) {
+async function savePartnerOrder(tx: Prisma.TransactionClient, order: number[]) {
   const partners = await tx.partner.findMany({ where: { isActive: true } });
   const partnersById = new Map(partners.map((partner) => [partner.id, partner]));
   if (partners.length !== order.length || order.some((id) => !partnersById.has(id))) {
@@ -149,24 +149,12 @@ async function savePartnerOrder(tx: Prisma.TransactionClient, authorId: number, 
     return partner.sortOrder === sortOrder ? [] : [{ id, sortOrder }];
   });
   if (!changes.length) return;
-  const previousOrder = [...partners].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
   await tx.$executeRaw(Prisma.sql`
     UPDATE "Partner" AS partner
     SET "sortOrder" = ordering."sortOrder"
     FROM (VALUES ${Prisma.join(changes.map(({ id, sortOrder }) => Prisma.sql`(${id}::integer, ${sortOrder}::integer)`))}) AS ordering("id", "sortOrder")
     WHERE partner."id" = ordering."id" AND partner."isActive"
   `);
-  await logAudit(tx, {
-    authorId,
-    action: 'update',
-    entity: 'partner',
-    details: {
-      order: {
-        from: previousOrder.map(({ name }) => name),
-        to: order.map((id) => partnersById.get(id)!.name),
-      },
-    },
-  });
 }
 
 export async function reorderPartners(input: unknown) {
@@ -179,7 +167,7 @@ export async function reorderPartners(input: unknown) {
     return { success: false, message: 'El orden de socios no es válido.' };
   }
   try {
-    await prisma.$transaction((tx) => savePartnerOrder(tx, user.id, result.data), {
+    await prisma.$transaction((tx) => savePartnerOrder(tx, result.data), {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
   } catch {
@@ -216,7 +204,7 @@ export async function placePartner(input: unknown) {
           entityId: id,
           details: { name: partner.name, showPublicly },
         });
-        await savePartnerOrder(tx, user.id, order);
+        await savePartnerOrder(tx, order);
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );

@@ -60,6 +60,8 @@ export const AUDIT_ENTITY_LABELS: Record<ListedAuditEntity, string> = {
   topic: 'Temáticas',
   partner: 'Socios',
   authentication: 'Autenticación',
+  strategicLine: 'Líneas estratégicas',
+  beneficiaryCategory: 'Categorías de beneficiarios',
 };
 
 export const COVER_CHANGE_FIELDS = new Set(['coverPhoto', 'coverCrop']);

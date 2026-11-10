@@ -85,13 +85,12 @@ describe('parseAuditLogFilters', () => {
     });
   });
 
-  it.each(['beneficiaryCategory', 'strategicLine'])('drops the %s entity', (entity) => {
-    expect(parseAuditLogFilters({ entity }).entity).toBeUndefined();
-  });
-
-  it.each(['publicSettings', 'metric', 'topic', 'partner'])('keeps the %s entity', (entity) => {
-    expect(parseAuditLogFilters({ entity }).entity).toBe(entity);
-  });
+  it.each(['publicSettings', 'metric', 'topic', 'partner', 'strategicLine', 'beneficiaryCategory'])(
+    'keeps the %s entity',
+    (entity) => {
+      expect(parseAuditLogFilters({ entity }).entity).toBe(entity);
+    }
+  );
 
   it('drops an author id beyond the database integer range', () => {
     expect(parseAuditLogFilters({ authorId: '99999999999' }).authorId).toBeUndefined();
