@@ -1,6 +1,7 @@
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { deletePartner } from '@/app/actions/partners';
 import { createProject, updateProject } from '@/app/actions/projects';
+import { logAudit } from '@/lib/audit-log';
 import prisma from '@/lib/prisma';
 import { toBeneficiaryValuesCreate } from '@/lib/project-display';
 import { loadSeedData, type SeedData } from '../fixtures';
@@ -8,6 +9,11 @@ import { signInAs } from '../session';
 import { auditLogsFor, deleteProject, loadProject } from './project-helpers';
 
 const BENEFICIARY_YEAR = 2024;
+
+vi.mock('@/lib/audit-log', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/audit-log')>();
+  return { logAudit: vi.fn(actual.logAudit) };
+});
 
 let seed: SeedData;
 let createdProjectIds: number[] = [];
@@ -581,6 +587,54 @@ describe('updateProject (integration)', () => {
         entityId: projectBeneficiaries[1].id,
       }),
     ]);
+  });
+
+  test('rolls back project, topics, beneficiaries and audit together, then persists a retry', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const formData = buildFormData({
+      name: 'Rolled back project',
+      topicIds: [String(seed.topicIds[1])],
+      year: '2025',
+      families: '35',
+    });
+    const before = await loadProject(projectId);
+    const realLogAudit = vi.mocked(logAudit).getMockImplementation()!;
+    vi.mocked(logAudit).mockImplementation((...args) => {
+      if (args[1].entity === 'beneficiary') throw new Error('Audit failure');
+      return realLogAudit(...args);
+    });
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      expect((await updateProject(projectId, {}, formData)).formError).toBeDefined();
+    } finally {
+      vi.mocked(logAudit).mockImplementation(realLogAudit);
+    }
+
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+
+    await expectRedirectToProject(updateProject(projectId, {}, formData), projectId);
+
+    const saved = await loadProject(projectId);
+    expect(saved).toMatchObject({
+      name: 'Rolled back project',
+      topics: [{ id: seed.topicIds[1] }],
+    });
+    expect(saved.projectBeneficiaries).toEqual([
+      before.projectBeneficiaries[0],
+      expect.objectContaining({ year: 2025, families: 35 }),
+    ]);
+    expect(await auditLogsFor(projectId)).toEqual([
+      expect.objectContaining({ entity: 'project', action: 'update' }),
+      expect.objectContaining({ entity: 'beneficiary', action: 'creation' }),
+    ]);
+
+    await expectRedirectToProject(updateProject(projectId, {}, formData), projectId);
+
+    expect((await loadProject(projectId)).updatedAt).toEqual(saved.updatedAt);
+    expect(await auditLogsFor(projectId)).toHaveLength(2);
   });
 
   test('lets the lead coordinator edit their own project', async () => {

@@ -140,7 +140,7 @@ export function PartnersManager({ partners }: { partners: MetricsPartner[] }) {
               const list = listRef.current;
               if (!list) return;
               const { left, top, width } = list.getBoundingClientRect();
-              const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
+              const gap = Number.parseFloat(getComputedStyle(list).columnGap) || 0;
               sortingStrategyRef.current = createPartnerSortingStrategy({
                 left,
                 top,

@@ -35,6 +35,7 @@ describe('report file names', () => {
       'Ficha-Ninez-Educacion-Canelones-2026.pdf'
     );
     expect(toFileNameSegment('¿?')).toBe('');
+    expect(toFileNameSegment('--¿Año  2026?--')).toBe('Ano-2026');
     expect(getProjectSheetFileName('¿?', 2026)).toBe('Ficha-proyecto-2026.pdf');
   });
 });

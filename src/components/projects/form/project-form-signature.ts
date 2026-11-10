@@ -17,7 +17,9 @@ export function getProjectDetailsSignature(
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, value]) => [
         key,
-        Array.isArray(value) && key !== 'locations' ? [...value].sort() : value,
+        Array.isArray(value) && key !== 'locations'
+          ? [...value].sort((a, b) => String(a).localeCompare(String(b)))
+          : value,
       ])
   );
 }
