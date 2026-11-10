@@ -88,7 +88,7 @@ export function PublicFooter({
   }
 
   return (
-    <footer className={`bg-surface-brand-deep relative grow text-white ${curved ? 'pt-16' : ''}`}>
+    <footer className={`bg-surface-brand-deep relative text-white ${curved ? 'pt-16' : ''}`}>
       {curved && (
         <svg
           aria-hidden="true"
