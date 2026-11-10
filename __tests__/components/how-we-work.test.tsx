@@ -53,6 +53,41 @@ test('defers unvisited photos and keeps the previous image visible while the nex
   expect(screen.getByRole('img').className).toContain('opacity-0');
 });
 
+test('shows a previously loaded photo when returning to a tab without another load event', async () => {
+  render(<HowWeWork />);
+  const initialPhoto = screen.getByRole('img');
+  await act(async () => fireEvent.load(initialPhoto));
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+  const familyPhoto = screen.getByRole('img');
+  await act(async () => fireEvent.load(familyPhoto));
+  expect(familyPhoto.className).toContain('opacity-100');
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Individual' }));
+
+  expect(screen.getByRole('img')).toBe(initialPhoto);
+  expect(initialPhoto.className).toContain('opacity-100');
+  expect(familyPhoto.className).toContain('opacity-0');
+});
+
+test('shows cached family photos when their automatic rotation repeats', async () => {
+  render(<HowWeWork />);
+  const loadedPhotos = new Set<number>();
+
+  for (const number of [8, 1, 2, 4, 8, 5, 3, 6, 8, 1, 7, 4, 8, 5]) {
+    const image = screen.getByRole('img');
+    expect(decodeURIComponent(image.getAttribute('src')!)).toContain(
+      `/assets/how-we-work/how-we-work-${number}.webp`
+    );
+    if (!loadedPhotos.has(number)) {
+      await act(async () => fireEvent.load(image));
+      loadedPhotos.add(number);
+    }
+    expect(image.className).toContain('opacity-100');
+    advance(12100);
+  }
+});
+
 test.each([
   { title: 'Individual', photos: [8] },
   { title: 'Familiar', photos: [1, 5] },

@@ -73,7 +73,12 @@ export function HowWeWork() {
   const [displayedPhoto, setDisplayedPhoto] = useState<{
     currentIndex: number;
     previousIndex: number | null;
-  }>({ currentIndex: LEVELS[0].photoNumbers[0] - 1, previousIndex: null });
+    loadedIndices: Set<number>;
+  }>({
+    currentIndex: LEVELS[0].photoNumbers[0] - 1,
+    previousIndex: null,
+    loadedIndices: new Set(),
+  });
   const [selection, setSelection] = useState({
     activeIndex: 0,
     photoPositions: LEVELS.map(() => 0),
@@ -101,6 +106,14 @@ export function HowWeWork() {
   }
 
   const photoIndex = LEVELS[activeIndex].photoNumbers[selection.photoPositions[activeIndex]] - 1;
+
+  if (displayedPhoto.loadedIndices.has(photoIndex) && photoIndex !== displayedPhoto.currentIndex) {
+    setDisplayedPhoto({
+      ...displayedPhoto,
+      currentIndex: photoIndex,
+      previousIndex: displayedPhoto.currentIndex,
+    });
+  }
 
   return (
     <div
@@ -131,11 +144,11 @@ export function HowWeWork() {
               fill
               sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
               onLoad={() => {
-                if (index !== photoIndex || index === displayedPhoto.currentIndex) return;
-                setDisplayedPhoto({
-                  currentIndex: index,
-                  previousIndex: displayedPhoto.currentIndex,
-                });
+                setDisplayedPhoto((current) =>
+                  current.loadedIndices.has(index)
+                    ? current
+                    : { ...current, loadedIndices: new Set([...current.loadedIndices, index]) }
+                );
               }}
               className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === displayedPhoto.currentIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
             />
