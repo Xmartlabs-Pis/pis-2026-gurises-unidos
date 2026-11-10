@@ -482,7 +482,7 @@ test('keeps the department, topic, strategic line and beneficiary category when 
   );
 });
 
-test('clears the menu filters and restores the default year while preserving status and search', async () => {
+test('clears the menu filters and selects all years while preserving status and search', async () => {
   mocks.searchParams = new URLSearchParams(
     'departmentId=2&topicId=1&strategicLineId=5&beneficiaryCategoryId=3&beneficiaryYear=2025&status=inactive&search=Centro&page=3'
   );
@@ -496,20 +496,21 @@ test('clears the menu filters and restores the default year while preserving sta
   });
   fireEvent.click(screen.getAllByRole('button', { name: 'Filtros de proyectos' })[0]);
   fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
-  expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=inactive&search=Centro', {
-    scroll: false,
-  });
+  expect(mocks.replace).toHaveBeenCalledWith(
+    '/dashboard/projects?beneficiaryYear=all&status=inactive&search=Centro',
+    { scroll: false }
+  );
 });
 
-test('counts department, topic, strategic line and beneficiary category without counting the default year', () => {
+test('counts department, topic, strategic line, beneficiary category and the default year', () => {
   renderList({ departmentId: 2, topicId: 1, strategicLineId: 5, beneficiaryCategoryId: 3 });
   for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
-    expect(button.textContent).toBe('4');
-    expect(button.getAttribute('aria-description')).toBe('4 filtros activos');
+    expect(button.textContent).toBe('5');
+    expect(button.getAttribute('aria-description')).toBe('5 filtros activos');
   }
 });
 
-test('counts all years as an applied filter', () => {
+test('does not count all years as an applied filter', () => {
   render(
     <ProjectsCardList
       projects={[]}
@@ -523,17 +524,25 @@ test('counts all years as an applied filter', () => {
     />
   );
   for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
+    expect(button.textContent).toBe('');
+    expect(button.getAttribute('aria-description')).toBe('0 filtros activos');
+  }
+});
+
+test('counts the default year as an applied filter', () => {
+  renderList();
+  for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
     expect(button.textContent).toBe('1');
     expect(button.getAttribute('aria-description')).toBe('1 filtros activos');
   }
 });
 
-test('hides the filter counter for the default year without other filters', () => {
+test('shows the default year without a default marker', async () => {
   renderList();
-  for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
-    expect(button.textContent).toBe('');
-    expect(button.getAttribute('aria-description')).toBe('0 filtros activos');
-  }
+  fireEvent.click(screen.getAllByRole('button', { name: 'Filtros de proyectos' })[0]);
+  const yearSelect = await screen.findByRole('combobox', { name: 'Filtrar por año' });
+  expect(yearSelect.textContent).toContain('2025');
+  expect(yearSelect.textContent).not.toContain('por defecto');
 });
 
 test('counts a year different from the default as an applied filter', () => {
@@ -768,13 +777,14 @@ test('counts and clears the partner filter', async () => {
   mocks.searchParams = new URLSearchParams('partnerId=8&status=inactive');
   renderList({ partnerId: 8, status: 'inactive' });
   const [button] = screen.getAllByRole('button', { name: 'Filtros de proyectos' });
-  expect(button.textContent).toBe('1');
+  expect(button.textContent).toBe('2');
   fireEvent.click(button);
   expect(
     (await screen.findByRole('combobox', { name: 'Filtrar por socio' })).textContent
   ).toContain('INAU');
   fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
-  expect(mocks.replace).toHaveBeenCalledWith('/dashboard/projects?status=inactive', {
-    scroll: false,
-  });
+  expect(mocks.replace).toHaveBeenCalledWith(
+    '/dashboard/projects?status=inactive&beneficiaryYear=all',
+    { scroll: false }
+  );
 });

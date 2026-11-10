@@ -71,14 +71,14 @@ export function ProjectsCardList({
   partnerId,
   beneficiaryCategoryId,
 }: ProjectsCardListProps) {
-  const { searchText, changeSearch, updateFilters, clearFilters, isPending } = useUrlFilters({
+  const { searchText, changeSearch, updateFilters, isPending } = useUrlFilters({
     search,
     resetKeys: ['page'],
   });
 
   const year: YearFilterValue = beneficiaryYear ?? ALL_YEARS;
   const activeFilterCount =
-    Number(year !== (years[0] ?? ALL_YEARS)) +
+    Number(year !== ALL_YEARS) +
     Number(departmentId !== undefined) +
     Number(topicId !== undefined) +
     Number(strategicLineId !== undefined) +
@@ -88,7 +88,7 @@ export function ProjectsCardList({
     { value: ALL_YEARS, label: 'Todos' },
     ...years.map((y) => ({
       value: y,
-      label: y === years[0] ? `${y} (por defecto)` : String(y),
+      label: String(y),
     })),
   ];
 
@@ -358,14 +358,14 @@ export function ProjectsCardList({
           size="sm"
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={() =>
-            clearFilters([
-              'beneficiaryYear',
-              'departmentId',
-              'topicId',
-              'strategicLineId',
-              'partnerId',
-              'beneficiaryCategoryId',
-            ])
+            updateFilters({
+              beneficiaryYear: ALL_YEARS,
+              departmentId: null,
+              topicId: null,
+              strategicLineId: null,
+              partnerId: null,
+              beneficiaryCategoryId: null,
+            })
           }
         >
           Limpiar filtros
