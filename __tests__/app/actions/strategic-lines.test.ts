@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   createStrategicLine: vi.fn(),
   findStrategicLine: vi.fn(),
   updateStrategicLine: vi.fn(),
+  reactivateStrategicLine: vi.fn(),
   createAuditLog: vi.fn(),
   countProjects: vi.fn(),
   transaction: vi.fn(),
@@ -42,6 +43,7 @@ beforeEach(() => {
         create: mocks.createStrategicLine,
         findFirst: mocks.findStrategicLine,
         update: mocks.updateStrategicLine,
+        updateMany: mocks.reactivateStrategicLine,
       },
       auditLog: { create: mocks.createAuditLog },
     })
@@ -77,7 +79,7 @@ describe('createStrategicLine', () => {
       name: 'Community Development',
       isActive: false,
     });
-    mocks.updateStrategicLine.mockResolvedValue({ id: 3, name: 'Community Development' });
+    mocks.reactivateStrategicLine.mockResolvedValue({ count: 1 });
     const data = new FormData();
     data.set('name', 'community development');
 
@@ -86,8 +88,8 @@ describe('createStrategicLine', () => {
     expect(mocks.findStrategicLine).toHaveBeenCalledWith({
       where: { name: { equals: 'community development', mode: 'insensitive' } },
     });
-    expect(mocks.updateStrategicLine).toHaveBeenCalledWith({
-      where: { id: 3 },
+    expect(mocks.reactivateStrategicLine).toHaveBeenCalledWith({
+      where: { id: 3, isActive: false },
       data: { isActive: true },
     });
     expect(mocks.createStrategicLine).not.toHaveBeenCalled();
@@ -100,6 +102,24 @@ describe('createStrategicLine', () => {
         details: { name: 'Community Development' },
       },
     });
+  });
+
+  test('does not record a second creation when another request reactivated the line first', async () => {
+    mocks.findStrategicLine.mockResolvedValue({
+      id: 3,
+      name: 'Community Development',
+      isActive: false,
+    });
+    mocks.reactivateStrategicLine.mockResolvedValue({ count: 0 });
+    const data = new FormData();
+    data.set('name', 'community development');
+
+    await expect(createStrategicLine(EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una línea estratégica con ese nombre.',
+      values: { name: 'community development' },
+    });
+    expect(mocks.createStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
 
   test('rejects a name used by an active strategic line', async () => {

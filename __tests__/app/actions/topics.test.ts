@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   createTopic: vi.fn(),
   findTopic: vi.fn(),
   updateTopic: vi.fn(),
+  reactivateTopic: vi.fn(),
   createAuditLog: vi.fn(),
   countProjects: vi.fn(),
   transaction: vi.fn(),
@@ -34,7 +35,12 @@ beforeEach(() => {
     callback({
       $queryRaw: mocks.queryRaw,
       project: { count: mocks.countProjects },
-      topic: { create: mocks.createTopic, findFirst: mocks.findTopic, update: mocks.updateTopic },
+      topic: {
+        create: mocks.createTopic,
+        findFirst: mocks.findTopic,
+        update: mocks.updateTopic,
+        updateMany: mocks.reactivateTopic,
+      },
       auditLog: { create: mocks.createAuditLog },
     })
   );
@@ -65,14 +71,14 @@ describe('createTopic', () => {
 
   test('reactivates an inactive topic with the same name', async () => {
     mocks.findTopic.mockResolvedValue({ id: 3, name: 'Education', isActive: false });
-    mocks.updateTopic.mockResolvedValue({ id: 3, name: 'Education' });
+    mocks.reactivateTopic.mockResolvedValue({ count: 1 });
     const data = new FormData();
     data.set('name', 'Education');
 
     await expect(createTopic(EMPTY_STATE, data)).resolves.toEqual({ success: true });
 
-    expect(mocks.updateTopic).toHaveBeenCalledWith({
-      where: { id: 3 },
+    expect(mocks.reactivateTopic).toHaveBeenCalledWith({
+      where: { id: 3, isActive: false },
       data: { isActive: true },
     });
     expect(mocks.createTopic).not.toHaveBeenCalled();
@@ -85,6 +91,20 @@ describe('createTopic', () => {
         details: { name: 'Education' },
       },
     });
+  });
+
+  test('does not record a second creation when another request reactivated the topic first', async () => {
+    mocks.findTopic.mockResolvedValue({ id: 3, name: 'Education', isActive: false });
+    mocks.reactivateTopic.mockResolvedValue({ count: 0 });
+    const data = new FormData();
+    data.set('name', 'Education');
+
+    await expect(createTopic(EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una temática con ese nombre.',
+      values: { name: 'Education' },
+    });
+    expect(mocks.createTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
 
   test('rejects a name that already exists with different casing', async () => {

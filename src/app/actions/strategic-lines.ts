@@ -50,9 +50,16 @@ export async function createStrategicLine(
         where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
       });
       if (existing?.isActive) return true;
-      const line = existing
-        ? await tx.strategicLine.update({ where: { id: existing.id }, data: { isActive: true } })
-        : await tx.strategicLine.create({ data: { name: parsed.data.name, isActive: true } });
+      if (existing) {
+        const { count } = await tx.strategicLine.updateMany({
+          where: { id: existing.id, isActive: false },
+          data: { isActive: true },
+        });
+        if (count === 0) return true;
+      }
+      const line =
+        existing ??
+        (await tx.strategicLine.create({ data: { name: parsed.data.name, isActive: true } }));
       await logAudit(tx, {
         authorId: user.id,
         action: 'creation',

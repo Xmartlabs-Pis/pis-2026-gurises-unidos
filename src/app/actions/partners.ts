@@ -139,7 +139,10 @@ export async function deletePartner(id: number): Promise<PartnerActionState> {
 }
 
 async function savePartnerOrder(tx: Prisma.TransactionClient, order: number[]) {
-  const partners = await tx.partner.findMany({ where: { isActive: true } });
+  const partners = await tx.partner.findMany({
+    where: { isActive: true },
+    select: { id: true, sortOrder: true },
+  });
   const partnersById = new Map(partners.map((partner) => [partner.id, partner]));
   if (partners.length !== order.length || order.some((id) => !partnersById.has(id))) {
     throw new Error('Partner list changed');

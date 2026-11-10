@@ -51,9 +51,15 @@ export async function createTopic(
         where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
       });
       if (existing?.isActive) return true;
-      const topic = existing
-        ? await tx.topic.update({ where: { id: existing.id }, data: { isActive: true } })
-        : await tx.topic.create({ data: { name: parsed.data.name, isActive: true } });
+      if (existing) {
+        const { count } = await tx.topic.updateMany({
+          where: { id: existing.id, isActive: false },
+          data: { isActive: true },
+        });
+        if (count === 0) return true;
+      }
+      const topic =
+        existing ?? (await tx.topic.create({ data: { name: parsed.data.name, isActive: true } }));
       await logAudit(tx, {
         authorId: user.id,
         action: 'creation',
