@@ -1,7 +1,6 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { access } from 'node:fs/promises';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -59,10 +58,10 @@ describe('saveCoverPhoto', () => {
     if (!('path' in large) || !('path' in small)) return;
 
     const largeMeta = await sharp(
-      path.join(directory, 'covers', path.basename(large.path))
+      await readFile(path.join(directory, 'covers', path.basename(large.path)))
     ).metadata();
     const smallMeta = await sharp(
-      path.join(directory, 'covers', path.basename(small.path))
+      await readFile(path.join(directory, 'covers', path.basename(small.path)))
     ).metadata();
     expect(largeMeta).toMatchObject({ format: 'webp', width: 1600, height: 800 });
     expect(smallMeta).toMatchObject({ format: 'webp', width: 80, height: 40 });

@@ -17,7 +17,7 @@ const PERMISSION_ERROR = {
 
 vi.mock('@/lib/audit-log', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/audit-log')>();
-  return { logAudit: vi.fn(actual.logAudit) };
+  return { ...actual, logAudit: vi.fn(actual.logAudit) };
 });
 
 let seed: SeedData;
