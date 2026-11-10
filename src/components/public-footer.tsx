@@ -58,6 +58,9 @@ export function PublicFooter({
       const glow =
         '0 0 0 2px color-mix(in srgb, var(--primary) 60%, transparent), 0 0 18px color-mix(in srgb, var(--primary) 45%, transparent)';
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const toolbarHeight =
+        document.querySelector('[data-slot="public-session-toolbar"]')?.getBoundingClientRect()
+          .height ?? 0;
       yearObserverRef.current = new IntersectionObserver(
         ([entry], observer) => {
           if (!entry.isIntersecting || entry.intersectionRatio < 1) return;
@@ -74,7 +77,7 @@ export function PublicFooter({
             }
           );
         },
-        { threshold: 1, rootMargin: '-64px 0px 0px' }
+        { threshold: 1, rootMargin: `-${64 + toolbarHeight}px 0px 0px` }
       );
       yearObserverRef.current.observe(selector);
     }
