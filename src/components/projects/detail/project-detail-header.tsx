@@ -107,24 +107,22 @@ export function ProjectDetailHeader({
         </div>
 
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
+          <ExportPdfButton
+            href={`/api/reports/projects/${project.id}?year=${selectedYear}`}
+            label="Exportar"
+            className="h-9 px-4 shadow-sm"
+          />
           {canEdit && (
-            <>
-              <ExportPdfButton
-                href={`/api/reports/projects/${project.id}?year=${selectedYear}`}
-                label="Exportar"
-                className="h-9 px-4 shadow-sm"
-              />
-              <Link
-                href={`/dashboard/projects/${project.id}/edit`}
-                className={buttonVariants({
-                  variant: 'outline',
-                  size: 'lg',
-                  className: 'h-9 px-4 shadow-sm',
-                })}
-              >
-                Editar proyecto
-              </Link>
-            </>
+            <Link
+              href={`/dashboard/projects/${project.id}/edit`}
+              className={buttonVariants({
+                variant: 'outline',
+                size: 'lg',
+                className: 'h-9 px-4 shadow-sm',
+              })}
+            >
+              Editar proyecto
+            </Link>
           )}
         </div>
       </div>

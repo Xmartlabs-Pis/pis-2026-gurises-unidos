@@ -19,9 +19,8 @@ export async function GET(request: NextRequest, ctx: RouteContext<'/api/reports/
   const parsed = parseProjectDetailInput(projectId, rawYear, currentYear);
   const year = (parsed.success && parsed.data.year) || currentYear;
 
-  const result = await getProjectSheetData(user, projectId, year);
+  const result = await getProjectSheetData(projectId, year);
   if (result.status === 'notFound') return reportErrorResponse(request, 'projectNotFound');
-  if (result.status === 'forbidden') return reportErrorResponse(request, 'projectForbidden');
 
   const { data } = result;
   return pdfResponse(await renderProjectSheet(data), getProjectSheetFileName(data.name, data.year));

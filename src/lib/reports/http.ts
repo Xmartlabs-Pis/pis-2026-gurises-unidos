@@ -8,11 +8,6 @@ export const REPORT_ERRORS = {
     title: 'Sesión expirada',
     message: 'Tu sesión expiró. Volvé a iniciar sesión.',
   },
-  projectForbidden: {
-    status: 403,
-    title: 'Acceso denegado',
-    message: 'Solo podés exportar las fichas de los proyectos que coordinás.',
-  },
   projectNotFound: {
     status: 404,
     title: 'Proyecto no encontrado',
