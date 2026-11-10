@@ -12,7 +12,7 @@ const BENEFICIARY_YEAR = 2024;
 
 vi.mock('@/lib/audit-log', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/audit-log')>();
-  return { logAudit: vi.fn(actual.logAudit) };
+  return { ...actual, logAudit: vi.fn(actual.logAudit) };
 });
 
 let seed: SeedData;
@@ -597,6 +597,7 @@ describe('updateProject (integration)', () => {
       topicIds: [String(seed.topicIds[1])],
       year: '2025',
       families: '35',
+      coverPhoto: '/forged-cover.png',
     });
     const before = await loadProject(projectId);
     const auditCountBefore = await prisma.auditLog.count({ where: { authorId: seed.adminId } });
@@ -632,6 +633,7 @@ describe('updateProject (integration)', () => {
     expect(saved).toMatchObject({
       name: 'Rolled back project',
       topics: [{ id: seed.topicIds[1] }],
+      coverPhoto: before.coverPhoto,
     });
     expect(saved.projectBeneficiaries).toEqual([
       before.projectBeneficiaries[0],
