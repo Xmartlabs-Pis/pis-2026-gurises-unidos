@@ -46,7 +46,7 @@ export function GeographyProjectCarousel({
         <div className="flex min-h-9 items-start justify-between gap-4">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h3 className="text-foreground text-xl font-semibold">{name}</h3>
-            <span className="text-primary text-sm font-medium">
+            <span className="text-primary-text text-sm font-medium">
               {formatNumber(projects.length)} {projects.length === 1 ? 'proyecto' : 'proyectos'}
             </span>
           </div>

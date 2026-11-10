@@ -99,10 +99,16 @@ export default async function Home({
               aria-label="Seleccionar geografía"
               className="bg-card mx-auto h-11! w-64 rounded-full p-1"
             >
-              <TabsTrigger value="uruguay" className="rounded-full px-5 data-active:bg-white">
+              <TabsTrigger
+                value="uruguay"
+                className="text-foreground/75 rounded-full px-5 data-active:bg-white"
+              >
                 Uruguay
               </TabsTrigger>
-              <TabsTrigger value="region" className="rounded-full px-5 data-active:bg-white">
+              <TabsTrigger
+                value="region"
+                className="text-foreground/75 rounded-full px-5 data-active:bg-white"
+              >
                 Región
               </TabsTrigger>
             </TabsList>

@@ -2,6 +2,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { HowWeWork } from '@/components/how-we-work';
 
+function tab(title: string) {
+  return screen.getByRole('tab', { name: new RegExp(`^${title}`) });
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.stubGlobal(
@@ -46,7 +50,7 @@ test('defers unvisited photos and keeps the previous image visible while the nex
   const initialPhoto = screen.getByRole('img');
   expect(screen.getByRole('tabpanel').querySelectorAll('img')).toHaveLength(1);
 
-  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+  fireEvent.click(tab('Familiar'));
 
   expect(screen.getByRole('tabpanel').querySelectorAll('img')).toHaveLength(2);
   expect(initialPhoto.className).toContain('opacity-100');
@@ -58,12 +62,12 @@ test('shows a previously loaded photo when returning to a tab without another lo
   const initialPhoto = screen.getByRole('img');
   await act(async () => fireEvent.load(initialPhoto));
 
-  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+  fireEvent.click(tab('Familiar'));
   const familyPhoto = screen.getByRole('img');
   await act(async () => fireEvent.load(familyPhoto));
   expect(familyPhoto.className).toContain('opacity-100');
 
-  fireEvent.click(screen.getByRole('tab', { name: 'Individual' }));
+  fireEvent.click(tab('Individual'));
 
   expect(screen.getByRole('img')).toBe(initialPhoto);
   expect(initialPhoto.className).toContain('opacity-100');
@@ -97,7 +101,7 @@ test.each([
   render(<HowWeWork />);
 
   for (const number of [...photos, ...photos]) {
-    fireEvent.click(screen.getByRole('tab', { name: title }));
+    fireEvent.click(tab(title));
     const image = screen.getByRole('img');
     expect(decodeURIComponent(image.getAttribute('src')!)).toContain(
       `/assets/how-we-work/how-we-work-${number}.webp`
@@ -133,7 +137,7 @@ test('automatically visits all four levels and loops to the first', () => {
 test('manual selection updates the image panel and restarts the timer without changing the pause button', () => {
   render(<HowWeWork />);
   advance(5000);
-  const card = screen.getByRole('tab', { name: 'Comunitario' });
+  const card = tab('Comunitario');
   act(() => card.focus());
   fireEvent.click(card);
   expect(screen.getByRole('tabpanel').getAttribute('aria-labelledby')).toBe('work-level-3');
@@ -156,7 +160,7 @@ test('reduced motion disables automatic changes while keeping manual selection a
   render(<HowWeWork />);
   advance(30000);
   expect(selectedTitle()).toContain('Individual');
-  fireEvent.click(screen.getByRole('tab', { name: 'Familiar' }));
+  fireEvent.click(tab('Familiar'));
   expect(selectedTitle()).toContain('Familiar');
   advance(30000);
   expect(selectedTitle()).toContain('Familiar');
@@ -164,9 +168,9 @@ test('reduced motion disables automatic changes while keeping manual selection a
 
 test('supports keyboard selection and moves focus to the chosen level', () => {
   render(<HowWeWork />);
-  fireEvent.keyDown(screen.getByRole('tab', { name: 'Individual' }), { key: 'End' });
+  fireEvent.keyDown(tab('Individual'), { key: 'End' });
   expect(selectedTitle()).toContain('Comunitario');
-  expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Comunitario' }));
+  expect(document.activeElement).toBe(tab('Comunitario'));
   fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' });
   expect(selectedTitle()).toContain('Individual');
 });
@@ -187,7 +191,7 @@ test('hovering the image keeps progress running while active work-level cards pa
   advance(6100);
   expect(selectedTitle()).toContain('Institucional');
   fireEvent.pointerLeave(image, { pointerType: 'mouse' });
-  const card = screen.getByRole('tab', { name: 'Institucional' });
+  const card = tab('Institucional');
   fireEvent.pointerEnter(card, { pointerType: 'mouse' });
   advance(30000);
   expect(selectedTitle()).toContain('Institucional');
@@ -198,7 +202,7 @@ test('hovering the image keeps progress running while active work-level cards pa
 
 test('hovering a collapsed work-level card does not pause or change the playback button', () => {
   render(<HowWeWork />);
-  fireEvent.pointerEnter(screen.getByRole('tab', { name: 'Comunitario' }), {
+  fireEvent.pointerEnter(tab('Comunitario'), {
     pointerType: 'mouse',
   });
   advance(12100);
@@ -218,4 +222,16 @@ test('offers manual pause and play controls for the work levels', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Reanudar rotación de Cómo trabajamos' }));
   advance(12100);
   expect(selectedTitle()).toContain('Familiar');
+});
+
+test('names each level by its visible text', () => {
+  render(<HowWeWork />);
+
+  expect(screen.getByRole('tab', { selected: true }).getAttribute('aria-label')).toBeNull();
+  expect(
+    screen.getByRole('tab', {
+      name: /^Individual\s*Niños, niñas, adolescentes y jóvenes: acompañamiento directo y personalizado\.$/,
+    })
+  ).toBeDefined();
+  expect(screen.getByRole('tab', { name: 'Familiar' })).toBeDefined();
 });
