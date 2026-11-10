@@ -166,9 +166,9 @@ export function HowWeWork() {
           aria-hidden="true"
           className="via-background/95 to-background pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-30% via-80% lg:hidden"
         />
-        <figcaption className="absolute inset-x-0 bottom-0 hidden px-6 pt-12 pb-10 text-sm text-white sm:px-10 lg:block">
+        <p className="absolute inset-x-0 bottom-0 hidden px-6 pt-12 pb-10 text-sm text-white sm:px-10 lg:block">
           Acompañamiento {LEVELS[activeIndex].title.toLocaleLowerCase('es-UY')}
-        </figcaption>
+        </p>
         <svg aria-hidden="true" width="0" height="0" className="pointer-events-none absolute">
           <defs>
             <clipPath id={`${imageClipId}-mobile`} clipPathUnits="objectBoundingBox">
@@ -219,7 +219,7 @@ export function HowWeWork() {
                 {level.title}
               </span>
               <span
-                aria-hidden={index !== activeIndex}
+                aria-hidden={index !== activeIndex || undefined}
                 className={`grid transition-[grid-template-rows,opacity] duration-500 motion-reduce:transition-none ${index === activeIndex ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
               >
                 <span className="overflow-hidden">
