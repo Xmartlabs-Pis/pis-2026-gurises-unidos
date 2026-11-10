@@ -599,6 +599,7 @@ describe('updateProject (integration)', () => {
       families: '35',
     });
     const before = await loadProject(projectId);
+    const auditCountBefore = await prisma.auditLog.count({ where: { authorId: seed.adminId } });
     const realLogAudit = vi.mocked(logAudit).getMockImplementation()!;
     vi.mocked(logAudit).mockImplementation((...args) => {
       if (args[1].entity === 'beneficiary') throw new Error('Audit failure');
@@ -607,14 +608,23 @@ describe('updateProject (integration)', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     try {
-      expect((await updateProject(projectId, {}, formData)).formError).toBeDefined();
+      vi.mocked(logAudit).mockClear();
+      expect(await updateProject(projectId, {}, formData)).toEqual({
+        formError: 'No se pudo actualizar el proyecto. Intentá de nuevo.',
+      });
+      expect(vi.mocked(logAudit).mock.calls.map(([, entry]) => entry.entity)).toEqual([
+        'project',
+        'beneficiary',
+      ]);
     } finally {
       errorSpy.mockRestore();
       vi.mocked(logAudit).mockImplementation(realLogAudit);
     }
 
     expect(await loadProject(projectId)).toEqual(before);
-    expect(await auditLogsFor(projectId)).toEqual([]);
+    expect(await prisma.auditLog.count({ where: { authorId: seed.adminId } })).toBe(
+      auditCountBefore
+    );
 
     await expectRedirectToProject(updateProject(projectId, {}, formData), projectId);
 
