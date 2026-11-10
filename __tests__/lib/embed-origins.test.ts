@@ -1,11 +1,28 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getEmbedHeightOrigins } from '@/lib/embed-origins';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('getEmbedHeightOrigins', () => {
   it('returns the origin of each allowed site', () => {
     expect(
       getEmbedHeightOrigins('  https://gurisesunidos.org.uy/impacto  http://localhost:4100 ')
     ).toEqual(['https://gurisesunidos.org.uy', 'http://localhost:4100']);
+  });
+
+  it('sends each origin once', () => {
+    expect(getEmbedHeightOrigins('https://a.org https://a.org/path * https://b.org *')).toEqual([
+      'https://a.org',
+      '*',
+      'https://b.org',
+    ]);
+  });
+
+  it('reads the allowed sites from the environment', () => {
+    vi.stubEnv('EMBED_FRAME_ANCESTORS', 'https://gurisesunidos.org.uy');
+    expect(getEmbedHeightOrigins()).toEqual(['https://gurisesunidos.org.uy']);
   });
 
   it('keeps the wildcard that allows any site', () => {
@@ -20,6 +37,7 @@ describe('getEmbedHeightOrigins', () => {
 
   it('returns nothing when no site is allowed', () => {
     expect(getEmbedHeightOrigins('')).toEqual([]);
-    expect(getEmbedHeightOrigins(undefined)).toEqual([]);
+    vi.stubEnv('EMBED_FRAME_ANCESTORS', undefined);
+    expect(getEmbedHeightOrigins()).toEqual([]);
   });
 });

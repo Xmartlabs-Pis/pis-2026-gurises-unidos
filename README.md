@@ -362,9 +362,11 @@ así que alcanza con reiniciar el contenedor. Si no está definida, el embed no 
 
 La misma lista define a qué sitios les manda el embed su altura (ver el snippet de abajo): el
 mensaje va dirigido a cada origen de la lista, y el navegador lo entrega solo al que coincide con la
-página que lo contiene. Con `*` se manda a cualquiera. Los comodines de subdominio
-(`https://*.ejemplo.org`) pueden embeberla, pero no reciben la altura y el iframe queda con su altura
-inicial, así que para su web conviene poner el origen exacto.
+página que lo contiene. Con `*` se manda a cualquiera. Por eso cada sitio tiene que ir como origen
+exacto, con esquema: `https://gurisesunidos.org.uy`, no `gurisesunidos.org.uy` ni
+`http://gurisesunidos.org.uy` si la web es HTTPS. Las entradas sin esquema, con comodines
+(`https://*.ejemplo.org`, `https://ejemplo.org:*`) o como `'self'` dejan embeberla, pero no reciben
+la altura y el iframe queda con su altura inicial.
 
 ```
 EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy"

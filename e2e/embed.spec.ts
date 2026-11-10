@@ -56,8 +56,8 @@ async function hostPage(page: Page, host: string, path: string) {
           window.addEventListener('message', function (event) {
             var iframe = document.getElementById('embed');
             if (event.source !== iframe.contentWindow) return;
-            window.embedMessages.push({ origin: event.origin, data: event.data });
             if (!event.data || event.data.type !== 'gurises-unidos:embed-height') return;
+            window.embedMessages.push({ origin: event.origin, data: event.data });
             iframe.style.height = event.data.height + 'px';
           });
         </script>`,

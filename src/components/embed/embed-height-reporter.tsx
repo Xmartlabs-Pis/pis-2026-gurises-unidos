@@ -14,6 +14,7 @@ export function EmbedHeightReporter({
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (window.parent === window) return;
     const content = contentRef.current!;
     const observer = new ResizeObserver(() => {
       const height = Math.ceil(content.getBoundingClientRect().height);

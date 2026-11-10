@@ -1,5 +1,5 @@
 export function getEmbedHeightOrigins(value = process.env.EMBED_FRAME_ANCESTORS) {
-  return (value ?? '').split(/\s+/).flatMap((source) => {
+  const origins = (value ?? '').split(/\s+/).flatMap((source) => {
     if (source === '*') return [source];
     if (!/^https?:\/\//.test(source) || source.includes('*')) return [];
     try {
@@ -8,4 +8,5 @@ export function getEmbedHeightOrigins(value = process.env.EMBED_FRAME_ANCESTORS)
       return [];
     }
   });
+  return [...new Set(origins)];
 }
