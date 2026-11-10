@@ -374,7 +374,7 @@ test('concurrent creations never commit the same position', async () => {
   expect(new Set(created.map(({ sortOrder }) => sortOrder)).size).toBe(created.length);
 });
 
-test('updates a large order with a single audit entry', async () => {
+test('updates a large order without recording it in the audit log', async () => {
   signInAs(seed.adminId, 'admin');
   const created = await prisma.partner.createManyAndReturn({
     data: Array.from({ length: 100 }, (_, index) => ({
@@ -391,5 +391,5 @@ test('updates a large order with a single audit entry', async () => {
     await prisma.auditLog.count({
       where: { entity: 'partner', entityId: null, action: 'update' },
     })
-  ).toBe(1);
+  ).toBe(0);
 });
