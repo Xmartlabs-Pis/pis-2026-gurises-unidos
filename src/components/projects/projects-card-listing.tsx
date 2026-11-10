@@ -265,7 +265,7 @@ export function ProjectsCardList({
       <PopoverTrigger
         render={<Button variant="outline" size="icon" className="relative h-9 w-9" />}
         aria-label="Filtros de proyectos"
-        aria-description={`${activeFilterCount} filtros activos`}
+        aria-description={`${activeFilterCount} ${activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}`}
       >
         <ListFilter />
         {activeFilterCount > 0 && (

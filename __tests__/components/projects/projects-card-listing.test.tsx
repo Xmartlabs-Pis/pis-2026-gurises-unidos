@@ -533,7 +533,7 @@ test('counts the default year as an applied filter', () => {
   renderList();
   for (const button of screen.getAllByRole('button', { name: 'Filtros de proyectos' })) {
     expect(button.textContent).toBe('1');
-    expect(button.getAttribute('aria-description')).toBe('1 filtros activos');
+    expect(button.getAttribute('aria-description')).toBe('1 filtro activo');
   }
 });
 
