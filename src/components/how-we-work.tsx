@@ -120,7 +120,7 @@ export function HowWeWork() {
       ref={sectionRef}
       className="relative mx-auto grid w-full max-w-360 lg:min-h-150 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]"
     >
-      <figure
+      <div
         id="work-level-panel"
         role="tabpanel"
         aria-labelledby={`work-level-${activeIndex}`}
@@ -179,7 +179,7 @@ export function HowWeWork() {
             </clipPath>
           </defs>
         </svg>
-      </figure>
+      </div>
       <div className="pointer-events-none relative flex min-w-0 flex-col gap-6 px-6 pt-28 pb-10 sm:pt-40 lg:pointer-events-auto lg:px-12 lg:py-14">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
@@ -208,7 +208,6 @@ export function HowWeWork() {
               id={`work-level-${index}`}
               type="button"
               role="tab"
-              aria-label={level.title}
               aria-selected={index === activeIndex}
               aria-controls="work-level-panel"
               tabIndex={index === activeIndex ? 0 : -1}
@@ -220,6 +219,7 @@ export function HowWeWork() {
                 {level.title}
               </span>
               <span
+                aria-hidden={index !== activeIndex}
                 className={`grid transition-[grid-template-rows,opacity] duration-500 motion-reduce:transition-none ${index === activeIndex ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
               >
                 <span className="overflow-hidden">
