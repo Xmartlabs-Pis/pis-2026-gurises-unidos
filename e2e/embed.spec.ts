@@ -52,10 +52,12 @@ async function hostPage(page: Page, host: string, path: string) {
       body: `<!doctype html>
         <iframe id="embed" src="${src}" style="display: block; width: 100%; height: 1px; border: 0"></iframe>
         <script>
+          window.embedMessages = [];
           window.addEventListener('message', function (event) {
             var iframe = document.getElementById('embed');
             if (event.source !== iframe.contentWindow) return;
             if (!event.data || event.data.type !== 'gurises-unidos:embed-height') return;
+            window.embedMessages.push({ origin: event.origin, data: event.data });
             iframe.style.height = event.data.height + 'px';
           });
         </script>`,
@@ -123,6 +125,13 @@ test.describe('without a session', () => {
     await expect
       .poll(() => iframe.evaluate((element) => element.getBoundingClientRect().height))
       .toBeGreaterThan(100);
+    const [message] = await page.evaluate(
+      () => (window as unknown as { embedMessages: unknown[] }).embedMessages
+    );
+    expect(message).toEqual({
+      origin: new URL(test.info().project.use.baseURL!).origin,
+      data: { type: 'gurises-unidos:embed-height', height: expect.any(Number) },
+    });
 
     const [report] = await Promise.all([
       page.context().waitForEvent('page'),

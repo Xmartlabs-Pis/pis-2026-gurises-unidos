@@ -6,6 +6,7 @@ import { getAvatarColorIndex } from './users/avatar';
 import { LoginCooldownError } from './auth/login-cooldown-error';
 import { logFailedLoginAttempt } from './audit-log';
 
+// nosemgrep: detected-bcrypt-hash
 const DUMMY_PASSWORD_HASH = '$2b$10$qYzMcJ.E4lnDm6ffrfnKjuksp7QvpqWK1L476sVjmNEqsJyQMuz.O';
 const FREE_LOGIN_ATTEMPTS = 5;
 const LOGIN_COOLDOWN_MS = 5 * 60 * 1000;

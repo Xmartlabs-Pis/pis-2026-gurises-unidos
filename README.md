@@ -360,6 +360,14 @@ Los sitios que pueden embeberla se configuran con `EMBED_FRAME_ANCESTORS` en el 
 entorno (separados por espacio, o `*` para cualquiera). Se lee en cada request desde `src/proxy.ts`,
 así que alcanza con reiniciar el contenedor. Si no está definida, el embed no carga en ningún sitio.
 
+La misma lista define a qué sitios les manda el embed su altura (ver el snippet de abajo): el
+mensaje va dirigido a cada origen de la lista, y el navegador lo entrega solo al que coincide con la
+página que lo contiene. Con `*` se manda a cualquiera. Por eso cada sitio tiene que ir como origen
+exacto, con esquema: `https://gurisesunidos.org.uy`, no `gurisesunidos.org.uy` ni
+`http://gurisesunidos.org.uy` si la web es HTTPS. Las entradas sin esquema, con comodines
+(`https://*.ejemplo.org`, `https://ejemplo.org:*`) o como `'self'` dejan embeberla, pero no reciben
+la altura y el iframe queda con su altura inicial.
+
 ```
 EMBED_FRAME_ANCESTORS="https://gurisesunidos.org.uy"
 ```
