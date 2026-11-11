@@ -9,6 +9,9 @@
   --surface-page: #fafafb;
   --surface-subtle: #f5f5f5;
   --surface-brand-deep: #0e3a2e;
+  --surface-paper: #fafaf7;
+  --surface-brand-muted: #a9c2b8;
+  --hairline: #ecece6;
   --text-accent: #f5970c;
   --status-success: #16a34b;
   --status-warning: #ff9500;
@@ -68,6 +71,9 @@
   --color-history-marker: var(--history-marker);
   --color-surface-subtle: var(--surface-subtle);
   --color-surface-brand-deep: var(--surface-brand-deep);
+  --color-surface-paper: var(--surface-paper);
+  --color-surface-brand-muted: var(--surface-brand-muted);
+  --color-hairline: var(--hairline);
   --color-text-accent: var(--text-accent);
   --color-beneficiary-children: var(--beneficiary-children);
   --color-beneficiary-indirect-children: var(--beneficiary-indirect-children);
@@ -128,6 +134,10 @@
 
 html:has(.theme-public) {
   scroll-behavior: smooth;
+}
+
+.theme-public:has([data-slot='public-session-toolbar']) main > section[id] {
+  scroll-margin-top: calc(var(--public-session-toolbar-height) + 4rem);
 }
 
 @media (prefers-reduced-motion: reduce) {
