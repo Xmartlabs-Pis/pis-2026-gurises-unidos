@@ -196,6 +196,96 @@ describe('createBeneficiaryCategory', () => {
 });
 
 describe('editBeneficiaryCategory', () => {
+  test('renames an active category and records the audit event', async () => {
+    mocks.findCategory.mockResolvedValueOnce({ name: 'Volunteers' });
+
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData(' Families '))
+    ).resolves.toEqual({ success: true });
+
+    expect(mocks.updateCategory).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { name: 'Families' },
+    });
+    expect(mocks.audit).toHaveBeenCalledExactlyOnceWith({
+      data: {
+        authorId: 1,
+        action: 'update',
+        entity: 'beneficiaryCategory',
+        entityId: 5,
+        details: { previousName: 'Volunteers', name: 'Families' },
+      },
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith('/', 'layout');
+  });
+
+  test('rejects editing by a non-administrator', async () => {
+    mocks.requireUser.mockResolvedValue({ id: 2, role: 'coordinator' });
+
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({ formError: 'No tenés permisos para realizar esta acción.' });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['   ', 'Ingresá un nombre para la categoría'],
+    ['a'.repeat(51), 'El nombre no puede superar los 50 caracteres'],
+  ])('rejects the invalid name %#', async (name, message) => {
+    await expect(editBeneficiaryCategory(5, EMPTY_STATE, nameFormData(name))).resolves.toEqual({
+      errors: { name: [message] },
+      values: { name },
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.updateCategory).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([0, -1, 1.5, NaN])('rejects the invalid id %s', async (id) => {
+    await expect(
+      editBeneficiaryCategory(id, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({ formError: 'La categoría no es válida.' });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports a duplicate name without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '6',
+      })
+    );
+
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({
+      formError: 'Ya existe una categoría con ese nombre.',
+      values: { name: 'Families' },
+    });
+
+    expect(mocks.audit).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(
+      editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))
+    ).resolves.toEqual({
+      formError: 'No se pudo editar la categoría. Intentá de nuevo.',
+      values: { name: 'Families' },
+    });
+
+    expect(mocks.audit).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
   test('rejects editing a category that does not exist or is inactive', async () => {
     await expect(
       editBeneficiaryCategory(5, EMPTY_STATE, nameFormData('Families'))

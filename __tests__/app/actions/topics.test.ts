@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { Prisma } from '@/generated/prisma/client';
 
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
@@ -22,6 +23,19 @@ vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 import { createTopic, deleteTopic, editTopic } from '@/app/actions/topics';
 
 const EMPTY_STATE = {};
+
+function nameForm(name: string) {
+  const data = new FormData();
+  data.set('name', name);
+  return data;
+}
+
+function uniqueNameError() {
+  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+    code: 'P2002',
+    clientVersion: '6',
+  });
+}
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -123,6 +137,54 @@ describe('createTopic', () => {
     expect(mocks.createTopic).not.toHaveBeenCalled();
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
+
+  test('rejects creation by a non-administrator', async () => {
+    mocks.requireUser.mockResolvedValue({ id: 2, role: 'coordinator' });
+
+    await expect(createTopic(EMPTY_STATE, nameForm('Education'))).resolves.toEqual({
+      formError: 'No tenés permisos para realizar esta acción.',
+    });
+
+    expect(mocks.reactivateTopic).not.toHaveBeenCalled();
+    expect(mocks.createTopic).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['   ', 'Ingresá un nombre para la temática'],
+    ['a'.repeat(31), 'El nombre no puede superar los 30 caracteres'],
+  ])('rejects the invalid name %#', async (name, message) => {
+    await expect(createTopic(EMPTY_STATE, nameForm(name))).resolves.toEqual({
+      errors: { name: [message] },
+      values: { name },
+    });
+
+    expect(mocks.reactivateTopic).not.toHaveBeenCalled();
+    expect(mocks.createTopic).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports a duplicate name without revalidating', async () => {
+    mocks.createTopic.mockRejectedValue(uniqueNameError());
+
+    await expect(createTopic(EMPTY_STATE, nameForm('Education'))).resolves.toEqual({
+      formError: 'Ya existe una temática con ese nombre.',
+      values: { name: 'Education' },
+    });
+
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.createTopic.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(createTopic(EMPTY_STATE, nameForm('Education'))).resolves.toEqual({
+      formError: 'No se pudo crear la temática. Intentá de nuevo.',
+      values: { name: 'Education' },
+    });
+
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
 });
 
 describe('editTopic', () => {
@@ -192,6 +254,63 @@ describe('editTopic', () => {
     });
 
     expect(mocks.updateTopic).not.toHaveBeenCalled();
+  });
+
+  test('rejects editing by a non-administrator', async () => {
+    mocks.requireUser.mockResolvedValue({ id: 2, role: 'coordinator' });
+
+    await expect(editTopic(4, EMPTY_STATE, nameForm('Health'))).resolves.toEqual({
+      formError: 'No tenés permisos para realizar esta acción.',
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['   ', 'Ingresá un nombre para la temática'],
+    ['a'.repeat(31), 'El nombre no puede superar los 30 caracteres'],
+  ])('rejects the invalid name %#', async (name, message) => {
+    await expect(editTopic(4, EMPTY_STATE, nameForm(name))).resolves.toEqual({
+      errors: { name: [message] },
+      values: { name },
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([0, -1, 1.5, NaN])('rejects the invalid id %s', async (id) => {
+    await expect(editTopic(id, EMPTY_STATE, nameForm('Health'))).resolves.toEqual({
+      formError: 'La temática no es válida.',
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports a duplicate name without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(uniqueNameError());
+
+    await expect(editTopic(4, EMPTY_STATE, nameForm('Health'))).resolves.toEqual({
+      formError: 'Ya existe una temática con ese nombre.',
+      values: { name: 'Health' },
+    });
+
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(editTopic(4, EMPTY_STATE, nameForm('Health'))).resolves.toEqual({
+      formError: 'No se pudo editar la temática. Intentá de nuevo.',
+    });
+
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 });
 
@@ -273,5 +392,26 @@ describe('deleteTopic', () => {
 
     expect(mocks.countProjects).not.toHaveBeenCalled();
     expect(mocks.updateTopic).not.toHaveBeenCalled();
+  });
+
+  test.each([0, -1, 1.5, NaN])('rejects the invalid id %s', async (id) => {
+    await expect(deleteTopic(id)).resolves.toEqual({
+      formError: 'La temática no es válida.',
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(deleteTopic(4)).resolves.toEqual({
+      formError: 'No se pudo eliminar la temática. Intentá de nuevo.',
+    });
+
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 });
