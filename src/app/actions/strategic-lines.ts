@@ -192,12 +192,17 @@ export async function deleteStrategicLine(id: number): Promise<StrategicLineActi
   try {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "StrategicLine" WHERE "id" = ${id} FOR UPDATE`;
+      const line = await tx.strategicLine.findFirst({
+        where: { id, isActive: true },
+        select: { name: true },
+      });
+      if (!line) return 'missing';
       const projectCount = await tx.project.count({
         where: { deletedAt: null, strategicLines: { some: { id } } },
       });
       if (projectCount > 0) return 'associated';
-      const line = await tx.strategicLine.update({
-        where: { id, isActive: true },
+      await tx.strategicLine.update({
+        where: { id },
         data: { isActive: false },
       });
       await logAudit(tx, {
@@ -209,6 +214,11 @@ export async function deleteStrategicLine(id: number): Promise<StrategicLineActi
       });
       return 'deleted';
     });
+    if (result === 'missing') {
+      return {
+        formError: 'La línea estratégica no existe o ya fue eliminada.',
+      };
+    }
     if (result === 'associated') {
       return {
         formError: 'No se puede eliminar una línea estratégica asociada a proyectos.',

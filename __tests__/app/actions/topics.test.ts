@@ -196,16 +196,18 @@ describe('editTopic', () => {
 });
 
 describe('deleteTopic', () => {
-  test('deactivates a topic only when it has no associated projects', async () => {
-    mocks.updateTopic.mockResolvedValue({ id: 4, name: 'Health' });
+  beforeEach(() => {
+    mocks.findTopic.mockResolvedValue({ name: 'Health' });
+  });
 
+  test('deactivates a topic only when it has no associated projects', async () => {
     await expect(deleteTopic(4)).resolves.toEqual({ success: true });
 
     expect(mocks.countProjects).toHaveBeenCalledWith({
       where: { topics: { some: { id: 4 } }, deletedAt: null },
     });
     expect(mocks.updateTopic).toHaveBeenCalledWith({
-      where: { id: 4, isActive: true },
+      where: { id: 4 },
       data: { isActive: false },
     });
     expect(mocks.createAuditLog).toHaveBeenCalledWith({
@@ -229,7 +231,7 @@ describe('deleteTopic', () => {
       where: { topics: { some: { id: 4 } }, deletedAt: null },
     });
     expect(mocks.updateTopic).toHaveBeenCalledWith({
-      where: { id: 4, isActive: true },
+      where: { id: 4 },
       data: { isActive: false },
     });
   });
@@ -246,12 +248,18 @@ describe('deleteTopic', () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  test('does not record a second deletion of an already inactive topic', async () => {
-    mocks.updateTopic.mockRejectedValue(new Error('Record not found'));
+  test('explains that an already inactive topic was deleted without recording it again', async () => {
+    mocks.findTopic.mockResolvedValue(null);
 
     await expect(deleteTopic(4)).resolves.toEqual({
-      formError: 'No se pudo eliminar la temática. Intentá de nuevo.',
+      formError: 'La temática no existe o ya fue eliminada.',
     });
+    expect(mocks.findTopic).toHaveBeenCalledWith({
+      where: { id: 4, isActive: true },
+      select: { name: true },
+    });
+    expect(mocks.countProjects).not.toHaveBeenCalled();
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });

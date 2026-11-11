@@ -223,9 +223,11 @@ describe('editStrategicLine', () => {
 });
 
 describe('deleteStrategicLine', () => {
-  test('deletes a strategic line only when no active projects use it', async () => {
-    mocks.updateStrategicLine.mockResolvedValue({ id: 4, name: 'Youth Support' });
+  beforeEach(() => {
+    mocks.findStrategicLine.mockResolvedValue({ name: 'Youth Support' });
+  });
 
+  test('deletes a strategic line only when no active projects use it', async () => {
     await expect(deleteStrategicLine(4)).resolves.toEqual({ success: true });
 
     expect(mocks.queryRaw).toHaveBeenCalled();
@@ -233,7 +235,7 @@ describe('deleteStrategicLine', () => {
       where: { deletedAt: null, strategicLines: { some: { id: 4 } } },
     });
     expect(mocks.updateStrategicLine).toHaveBeenCalledWith({
-      where: { id: 4, isActive: true },
+      where: { id: 4 },
       data: { isActive: false },
     });
     expect(mocks.createAuditLog).toHaveBeenCalledWith({
@@ -259,12 +261,18 @@ describe('deleteStrategicLine', () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
-  test('does not record a second deletion of an already inactive strategic line', async () => {
-    mocks.updateStrategicLine.mockRejectedValue(new Error('Record not found'));
+  test('explains that an already inactive strategic line was deleted without recording it again', async () => {
+    mocks.findStrategicLine.mockResolvedValue(null);
 
     await expect(deleteStrategicLine(4)).resolves.toEqual({
-      formError: 'No se pudo eliminar la línea estratégica. Intentá de nuevo.',
+      formError: 'La línea estratégica no existe o ya fue eliminada.',
     });
+    expect(mocks.findStrategicLine).toHaveBeenCalledWith({
+      where: { id: 4, isActive: true },
+      select: { name: true },
+    });
+    expect(mocks.countProjects).not.toHaveBeenCalled();
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });

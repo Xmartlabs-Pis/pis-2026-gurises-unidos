@@ -114,13 +114,19 @@ export async function deleteTopic(topicId: number): Promise<TopicActionState> {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${topicId} FOR UPDATE`;
 
+      const topic = await tx.topic.findFirst({
+        where: { id: topicId, isActive: true },
+        select: { name: true },
+      });
+      if (!topic) return 'missing';
+
       const projectCount = await tx.project.count({
         where: { topics: { some: { id: topicId } }, deletedAt: null },
       });
-      if (projectCount > 0) return false;
+      if (projectCount > 0) return 'associated';
 
-      const topic = await tx.topic.update({
-        where: { id: topicId, isActive: true },
+      await tx.topic.update({
+        where: { id: topicId },
         data: { isActive: false },
       });
       await logAudit(tx, {
@@ -130,10 +136,15 @@ export async function deleteTopic(topicId: number): Promise<TopicActionState> {
         entityId: topicId,
         details: { name: topic.name },
       });
-      return true;
+      return 'deleted';
     });
 
-    if (!result) {
+    if (result === 'missing') {
+      return {
+        formError: 'La temática no existe o ya fue eliminada.',
+      };
+    }
+    if (result === 'associated') {
       return {
         formError: 'No se puede eliminar una temática asociada a proyectos.',
       };
