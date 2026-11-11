@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { Prisma } from '@/generated/prisma/client';
 
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
@@ -26,6 +27,19 @@ import {
 } from '@/app/actions/strategic-lines';
 
 const EMPTY_STATE = {};
+
+function nameForm(name: string) {
+  const data = new FormData();
+  data.set('name', name);
+  return data;
+}
+
+function uniqueNameError() {
+  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+    code: 'P2002',
+    clientVersion: '6',
+  });
+}
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -133,6 +147,7 @@ describe('createStrategicLine', () => {
     });
     expect(mocks.createStrategicLine).not.toHaveBeenCalled();
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
   test('returns field errors and preserves the submitted value for invalid names', async () => {
@@ -153,6 +168,28 @@ describe('createStrategicLine', () => {
       formError: 'No tenés permisos para realizar esta acción.',
     });
     expect(mocks.createStrategicLine).not.toHaveBeenCalled();
+  });
+
+  test('reports a duplicate name without revalidating', async () => {
+    mocks.createStrategicLine.mockRejectedValue(uniqueNameError());
+
+    await expect(createStrategicLine(EMPTY_STATE, nameForm('Youth Support'))).resolves.toEqual({
+      formError: 'Ya existe una línea estratégica con ese nombre.',
+      values: { name: 'Youth Support' },
+    });
+
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.createStrategicLine.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(createStrategicLine(EMPTY_STATE, nameForm('Youth Support'))).resolves.toEqual({
+      formError: 'No se pudo crear la línea estratégica. Intentá de nuevo.',
+      values: { name: 'Youth Support' },
+    });
+
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 });
 
@@ -220,6 +257,72 @@ describe('editStrategicLine', () => {
     expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
     expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
+
+  test('rejects editing by a non-administrator', async () => {
+    mocks.requireUser.mockResolvedValue({ id: 2, role: 'coordinator' });
+
+    await expect(editStrategicLine(4, EMPTY_STATE, nameForm('Youth Development'))).resolves.toEqual(
+      {
+        formError: 'No tenés permisos para realizar esta acción.',
+      }
+    );
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['   ', 'Ingresá un nombre para la línea estratégica'],
+    ['a'.repeat(101), 'El nombre no puede superar los 100 caracteres'],
+  ])('rejects the invalid name %#', async (name, message) => {
+    await expect(editStrategicLine(4, EMPTY_STATE, nameForm(name))).resolves.toEqual({
+      errors: { name: [message] },
+      values: { name },
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([0, -1, 1.5, NaN])('rejects the invalid id %s', async (id) => {
+    await expect(
+      editStrategicLine(id, EMPTY_STATE, nameForm('Youth Development'))
+    ).resolves.toEqual({
+      formError: 'La línea estratégica no es válida.',
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports a duplicate name without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(uniqueNameError());
+
+    await expect(editStrategicLine(4, EMPTY_STATE, nameForm('Youth Development'))).resolves.toEqual(
+      {
+        formError: 'Ya existe una línea estratégica con ese nombre.',
+        values: { name: 'Youth Development' },
+      }
+    );
+
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(editStrategicLine(4, EMPTY_STATE, nameForm('Youth Development'))).resolves.toEqual(
+      {
+        formError: 'No se pudo editar la línea estratégica. Intentá de nuevo.',
+        values: { name: 'Youth Development' },
+      }
+    );
+
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
 });
 
 describe('deleteStrategicLine', () => {
@@ -284,5 +387,26 @@ describe('deleteStrategicLine', () => {
       formError: 'No tenés permisos para realizar esta acción.',
     });
     expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  test.each([0, -1, 1.5, NaN])('rejects the invalid id %s', async (id) => {
+    await expect(deleteStrategicLine(id)).resolves.toEqual({
+      formError: 'La línea estratégica no es válida.',
+    });
+
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('reports unexpected failures without revalidating', async () => {
+    mocks.transaction.mockRejectedValue(new Error('Connection lost'));
+
+    await expect(deleteStrategicLine(4)).resolves.toEqual({
+      formError: 'No se pudo eliminar la línea estratégica. Intentá de nuevo.',
+    });
+
+    expect(mocks.updateStrategicLine).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 });
