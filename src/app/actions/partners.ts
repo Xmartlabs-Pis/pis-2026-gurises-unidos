@@ -8,16 +8,18 @@ import { logAudit } from '@/lib/audit-log';
 import { Prisma } from '@/generated/prisma/client';
 import { parseId } from '@/lib/validation/ids';
 import { partnerSchema } from '@/lib/validation/partner';
+import {
+  catalogWriteError,
+  guardCatalogId,
+  parseCatalogFields,
+  readCatalogAdmin,
+  type CatalogActionState,
+} from '@/lib/catalog-actions';
 
-export type PartnerActionState = {
-  errors?: Record<string, string[]>;
-  formError?: string;
-  values?: {
-    name: string;
-    counterpartyType: string;
-  };
-  success?: boolean;
-};
+export type PartnerActionState = CatalogActionState<{
+  name: string;
+  counterpartyType: string;
+}>;
 
 const PARTNER_ID_SCHEMA = z.number().int().positive();
 const PARTNER_ORDER_SCHEMA = z
@@ -36,23 +38,24 @@ function revalidatePartners() {
   revalidatePath('/');
 }
 
+function partnerValues(formData: FormData) {
+  return {
+    name: String(formData.get('name') ?? ''),
+    counterpartyType: String(formData.get('counterpartyType') ?? ''),
+  };
+}
+
 export async function createPartner(
   _previousState: PartnerActionState,
   formData: FormData
 ): Promise<PartnerActionState> {
-  const user = await requireUser();
-  if (user.role !== 'admin') {
-    return { formError: 'No tenés permisos para realizar esta acción.' };
-  }
+  const access = await readCatalogAdmin();
+  if (!access.user) return access.state;
+  const user = access.user;
 
-  const values = {
-    name: String(formData.get('name') ?? ''),
-    counterpartyType: String(formData.get('counterpartyType') ?? ''),
-  };
-  const parsed = partnerSchema.safeParse(values);
-  if (!parsed.success) {
-    return { errors: z.flattenError(parsed.error).fieldErrors, values };
-  }
+  const values = partnerValues(formData);
+  const parsed = parseCatalogFields(partnerSchema, values);
+  if (!parsed.ok) return parsed.state;
   const { name, counterpartyType } = parsed.data;
 
   try {
@@ -90,10 +93,11 @@ export async function createPartner(
     );
     if (error) return { formError: error, values };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return { formError: 'Ya existe un socio con ese nombre.', values };
-    }
-    return { formError: 'No se pudo crear el socio. Intentá de nuevo.', values };
+    return catalogWriteError(
+      error,
+      { message: 'Ya existe un socio con ese nombre.', values },
+      { message: 'No se pudo crear el socio. Intentá de nuevo.', values }
+    );
   }
 
   revalidatePartners();
@@ -101,13 +105,12 @@ export async function createPartner(
 }
 
 export async function deletePartner(id: number): Promise<PartnerActionState> {
-  const user = await requireUser();
-  if (user.role !== 'admin') {
-    return { formError: 'No tenés permisos para realizar esta acción.' };
-  }
-  if (!parseId(id)) {
-    return { formError: 'El socio no es válido.' };
-  }
+  const access = await readCatalogAdmin();
+  if (!access.user) return access.state;
+  const user = access.user;
+
+  const invalid = guardCatalogId(id, 'El socio no es válido.');
+  if (invalid) return invalid;
   try {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Partner" WHERE "id" = ${id} FOR UPDATE`;
@@ -226,22 +229,16 @@ export async function editPartner(
   _previousState: PartnerActionState,
   formData: FormData
 ): Promise<PartnerActionState> {
-  const user = await requireUser();
-  if (user.role !== 'admin') {
-    return { formError: 'No tenés permisos para realizar esta acción.' };
-  }
-  if (!parseId(id)) {
-    return { formError: 'El socio no es válido.' };
-  }
+  const access = await readCatalogAdmin();
+  if (!access.user) return access.state;
+  const user = access.user;
 
-  const values = {
-    name: String(formData.get('name') ?? ''),
-    counterpartyType: String(formData.get('counterpartyType') ?? ''),
-  };
-  const parsed = partnerSchema.safeParse(values);
-  if (!parsed.success) {
-    return { errors: z.flattenError(parsed.error).fieldErrors, values };
-  }
+  const invalid = guardCatalogId(id, 'El socio no es válido.');
+  if (invalid) return invalid;
+
+  const values = partnerValues(formData);
+  const parsed = parseCatalogFields(partnerSchema, values);
+  if (!parsed.ok) return parsed.state;
   const { name, counterpartyType } = parsed.data;
 
   try {
@@ -293,10 +290,11 @@ export async function editPartner(
     });
     if (error) return { formError: error, values };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return { formError: 'Ya existe un socio con ese nombre.', values };
-    }
-    return { formError: 'No se pudo editar el socio. Intentá de nuevo.', values };
+    return catalogWriteError(
+      error,
+      { message: 'Ya existe un socio con ese nombre.', values },
+      { message: 'No se pudo editar el socio. Intentá de nuevo.', values }
+    );
   }
 
   revalidatePartners();
