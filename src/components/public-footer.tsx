@@ -35,6 +35,7 @@ export function PublicFooter({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const yearObserverRef = useRef<IntersectionObserver | null>(null);
+  const toolbarResizeObserverRef = useRef<ResizeObserver | null>(null);
   const yearHighlightRef = useRef<Animation | null>(null);
   const geographies = [{ id: 'uruguay', name: 'Uruguay' }, ...GEOGRAPHIC_REGIONS];
   const hasMoreTopics = topics.length > MAX_FOOTER_ITEMS;
@@ -45,6 +46,7 @@ export function PublicFooter({
   useEffect(
     () => () => {
       yearObserverRef.current?.disconnect();
+      toolbarResizeObserverRef.current?.disconnect();
       yearHighlightRef.current?.cancel();
     },
     []
@@ -52,34 +54,43 @@ export function PublicFooter({
 
   function showAllYears() {
     yearObserverRef.current?.disconnect();
+    toolbarResizeObserverRef.current?.disconnect();
     yearHighlightRef.current?.cancel();
     const selector = document.getElementById('metrics-year');
     if (selector) {
       const glow =
         '0 0 0 2px color-mix(in srgb, var(--primary) 60%, transparent), 0 0 18px color-mix(in srgb, var(--primary) 45%, transparent)';
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const toolbarHeight =
-        document.querySelector('[data-slot="public-session-toolbar"]')?.getBoundingClientRect()
-          .height ?? 0;
-      yearObserverRef.current = new IntersectionObserver(
-        ([entry], observer) => {
-          if (!entry.isIntersecting || entry.intersectionRatio < 1) return;
-          observer.disconnect();
-          selector.focus({ preventScroll: true });
-          yearHighlightRef.current = selector.animate(
-            reducedMotion
-              ? [{ boxShadow: glow }, { boxShadow: glow }]
-              : [{ boxShadow: 'none' }, { boxShadow: glow }, { boxShadow: 'none' }],
-            {
-              duration: reducedMotion ? 2100 : 1600,
-              iterations: reducedMotion ? 1 : 2,
-              easing: 'ease-in-out',
-            }
-          );
-        },
-        { threshold: 1, rootMargin: `-${64 + toolbarHeight}px 0px 0px` }
-      );
-      yearObserverRef.current.observe(selector);
+      const toolbar = document.querySelector('[data-slot="public-session-toolbar"]');
+      const observeSelector = () => {
+        yearObserverRef.current?.disconnect();
+        const toolbarHeight = toolbar?.getBoundingClientRect().height ?? 0;
+        yearObserverRef.current = new IntersectionObserver(
+          ([entry], observer) => {
+            if (!entry.isIntersecting || entry.intersectionRatio < 1) return;
+            observer.disconnect();
+            toolbarResizeObserverRef.current?.disconnect();
+            selector.focus({ preventScroll: true });
+            yearHighlightRef.current = selector.animate(
+              reducedMotion
+                ? [{ boxShadow: glow }, { boxShadow: glow }]
+                : [{ boxShadow: 'none' }, { boxShadow: glow }, { boxShadow: 'none' }],
+              {
+                duration: reducedMotion ? 2100 : 1600,
+                iterations: reducedMotion ? 1 : 2,
+                easing: 'ease-in-out',
+              }
+            );
+          },
+          { threshold: 1, rootMargin: `-${64 + toolbarHeight}px 0px 0px` }
+        );
+        yearObserverRef.current.observe(selector);
+      };
+      observeSelector();
+      if (toolbar) {
+        toolbarResizeObserverRef.current = new ResizeObserver(observeSelector);
+        toolbarResizeObserverRef.current.observe(toolbar);
+      }
     }
     scrollToTop();
   }

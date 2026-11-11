@@ -73,7 +73,7 @@ export function Header() {
       )}
       <Link
         href="/"
-        className="pointer-events-auto fixed top-0 left-0 z-10 block"
+        className="pointer-events-auto fixed top-[var(--public-session-toolbar-height,0px)] left-0 z-10 block lg:top-0"
         aria-label="Gurises Unidos, inicio"
       >
         <Image

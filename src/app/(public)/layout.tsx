@@ -12,7 +12,7 @@ export default async function PublicLayout({ children }: { children: React.React
       className={cn(
         'theme-public bg-background flex min-h-full flex-auto shrink-0 flex-col',
         session?.user &&
-          '[--public-session-toolbar-height:4rem] lg:[--public-session-toolbar-height:2.5rem]'
+          '[--public-session-toolbar-height:0px] lg:[--public-session-toolbar-height:2.5rem]'
       )}
     >
       <PublicGeographyProvider>
