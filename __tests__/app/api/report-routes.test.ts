@@ -112,20 +112,27 @@ describe('report routes', () => {
     });
   });
 
-  it('denies the sheet of a project the coordinator does not lead', async () => {
-    vi.mocked(getProjectSheetData).mockResolvedValue({ status: 'forbidden' });
+  it('lets a coordinator export the sheet of a project they do not lead', async () => {
+    vi.mocked(getActiveUser).mockResolvedValue({ ...ADMIN, id: 7, role: 'coordinator' });
+    vi.mocked(getProjectSheetData).mockResolvedValue({
+      status: 'success',
+      data: { name: 'El Resorte', year: 2026 } as never,
+    });
 
-    expect((await sheetRequest('5')).status).toBe(403);
+    const response = await sheetRequest('42');
+
+    expect(response.status).toBe(200);
+    expect(getProjectSheetData).toHaveBeenCalledWith(42, 2026);
   });
 
   it('sends browser navigations to the error screen instead of returning JSON', async () => {
-    vi.mocked(getProjectSheetData).mockResolvedValue({ status: 'forbidden' });
+    vi.mocked(getProjectSheetData).mockResolvedValue({ status: 'notFound' });
 
     const response = await sheetRequest('5', { 'Sec-Fetch-Dest': 'document' });
 
     expect(response.status).toBe(303);
     expect(response.headers.get('Location')).toBe(
-      'http://localhost/dashboard/report-error?reason=projectForbidden'
+      'http://localhost/dashboard/report-error?reason=projectNotFound'
     );
   });
 
@@ -143,7 +150,7 @@ describe('report routes', () => {
     await sheetRequest('5', undefined, '?year=abc');
     await sheetRequest('5');
 
-    expect(vi.mocked(getProjectSheetData).mock.calls.map(([, , year]) => year)).toEqual([
+    expect(vi.mocked(getProjectSheetData).mock.calls.map(([, year]) => year)).toEqual([
       2024, 2026, 2026,
     ]);
   });

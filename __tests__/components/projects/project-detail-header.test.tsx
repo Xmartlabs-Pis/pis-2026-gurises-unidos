@@ -202,12 +202,18 @@ test('places the general objective before metadata in the mobile reading order',
   expect(objectivePosition).toBeLessThan(metadataPosition);
 });
 
-test('shows the export button only to users who can edit the project', () => {
-  const { rerender } = renderHeader(null);
-  expect(screen.queryByRole('button', { name: 'Exportar' })).toBeNull();
+test('shows the export button to users who cannot edit the project', () => {
+  renderHeader(null);
 
-  rerender(<ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit />);
   expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+  expect(screen.queryByRole('link', { name: 'Editar proyecto' })).toBeNull();
+});
+
+test('shows the edit link only to users who can edit the project', () => {
+  render(<ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit />);
+
+  expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+  expect(screen.getByRole('link', { name: 'Editar proyecto' })).toBeDefined();
 });
 
 test('shows the project partners only when it has some', () => {

@@ -7,13 +7,11 @@ async function renderPage(reason?: string) {
 }
 
 test('explains why the project sheet could not be exported', async () => {
-  await renderPage('projectForbidden');
+  await renderPage('projectNotFound');
 
-  expect(screen.getByText('403')).toBeDefined();
-  expect(screen.getByRole('heading', { name: 'Acceso denegado' })).toBeDefined();
-  expect(
-    screen.getByText('Solo podés exportar las fichas de los proyectos que coordinás.')
-  ).toBeDefined();
+  expect(screen.getByText('404')).toBeDefined();
+  expect(screen.getByRole('heading', { name: 'Proyecto no encontrado' })).toBeDefined();
+  expect(screen.getByText('No encontramos el proyecto.')).toBeDefined();
 });
 
 test('falls back to the not found screen for unknown reasons', async () => {
