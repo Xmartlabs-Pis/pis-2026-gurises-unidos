@@ -116,17 +116,12 @@ test.each([['1990'], ['2027'], ['abc'], ['2024.5'], [['2024', '2025']]])(
 );
 
 test.each(['admin', 'coordinator'])(
-  'disables the actions that are not available yet as %s',
+  'links the new project action to the project creation page as %s',
   async (role) => {
     authMock.mockResolvedValue({ user: { id: '1', role } });
 
     render(await renderPage());
 
-    expect(
-      screen.getByRole('button', { name: 'Publicar dashboard' }).hasAttribute('disabled')
-    ).toBe(true);
-    expect(screen.queryByRole('button', { name: 'Exportar reporte' })).toBeNull();
-    expect(screen.queryByText('Cargar métricas')).toBeNull();
     expect(screen.getByText('Nuevo proyecto').closest('a')?.getAttribute('href')).toBe(
       '/dashboard/projects/new'
     );

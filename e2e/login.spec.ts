@@ -71,7 +71,7 @@ test('rejects a malformed document id', async ({ page }) => {
 test('logs in as admin and lands on the dashboard', async ({ page }) => {
   await loginAs(page, E2E_ADMIN.documentId);
 
-  await expect(page.getByRole('button', { name: 'Publicar dashboard' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Nuevo proyecto' })).toBeVisible();
 });
 
 test('opens the dashboard from the sidebar logo', async ({ page }) => {
@@ -81,7 +81,7 @@ test('opens the dashboard from the sidebar logo', async ({ page }) => {
   await page.getByRole('link', { name: 'Gurises Unidos' }).click();
 
   await expect(page).toHaveURL('/dashboard');
-  await expect(page.getByRole('button', { name: 'Publicar dashboard' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Nuevo proyecto' })).toBeVisible();
 });
 
 test('blocks non admin users from the users management page', async ({ page }) => {
