@@ -15,6 +15,8 @@ export const LISTED_AUDIT_ENTITIES = [
   'topic',
   'partner',
   'authentication',
+  'strategicLine',
+  'beneficiaryCategory',
 ] as const;
 
 export type ListedAuditAction = (typeof LISTED_AUDIT_ACTIONS)[number];

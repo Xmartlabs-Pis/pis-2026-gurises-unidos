@@ -24,6 +24,8 @@ const LISTED_ENTITIES = {
     'topic',
     'partner',
     'authentication',
+    'strategicLine',
+    'beneficiaryCategory',
   ],
 };
 
@@ -48,6 +50,8 @@ function mockEntityLookups() {
   prismaMock.metric.findMany.mockResolvedValue([]);
   prismaMock.topic.findMany.mockResolvedValue([]);
   prismaMock.partner.findMany.mockResolvedValue([]);
+  prismaMock.strategicLine.findMany.mockResolvedValue([]);
+  prismaMock.beneficiaryCategory.findMany.mockResolvedValue([]);
 }
 
 describe('buildAuditLogWhere', () => {
@@ -74,6 +78,7 @@ describe('buildAuditLogWhere', () => {
         action: 'update',
         details: { path: ['sortOrder'], not: Prisma.AnyNull },
       },
+      { entity: 'partner', action: 'update', details: { path: ['order'], not: Prisma.AnyNull } },
     ]);
   });
 

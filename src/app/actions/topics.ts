@@ -46,36 +46,36 @@ export async function createTopic(
   }
 
   try {
-    const reactivated = await prisma.topic.updateMany({
-      where: {
-        name: { equals: parsed.data.name, mode: 'insensitive' },
-        isActive: false,
-      },
-      data: { isActive: true },
+    const duplicate = await prisma.$transaction(async (tx) => {
+      const existing = await tx.topic.findFirst({
+        where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
+      });
+      if (existing?.isActive) return true;
+      if (existing) {
+        const { count } = await tx.topic.updateMany({
+          where: { id: existing.id, isActive: false },
+          data: { isActive: true },
+        });
+        if (count === 0) return true;
+      }
+      const topic =
+        existing ?? (await tx.topic.create({ data: { name: parsed.data.name, isActive: true } }));
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'creation',
+        entity: 'topic',
+        entityId: topic.id,
+        details: { name: topic.name },
+      });
+      return false;
     });
 
-    if (reactivated.count > 0) {
-      revalidateTopics();
-      return { success: true };
-    }
-
-    const existing = await prisma.topic.findFirst({
-      where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
-    });
-
-    if (existing) {
+    if (duplicate) {
       return {
         formError: 'Ya existe una temática con ese nombre.',
         values: { name },
       };
     }
-
-    await prisma.topic.create({
-      data: {
-        name: parsed.data.name,
-        isActive: true,
-      },
-    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return {
@@ -114,19 +114,37 @@ export async function deleteTopic(topicId: number): Promise<TopicActionState> {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${topicId} FOR UPDATE`;
 
+      const topic = await tx.topic.findFirst({
+        where: { id: topicId, isActive: true },
+        select: { name: true },
+      });
+      if (!topic) return 'missing';
+
       const projectCount = await tx.project.count({
         where: { topics: { some: { id: topicId } }, deletedAt: null },
       });
-      if (projectCount > 0) return false;
+      if (projectCount > 0) return 'associated';
 
       await tx.topic.update({
         where: { id: topicId },
         data: { isActive: false },
       });
-      return true;
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'deletion',
+        entity: 'topic',
+        entityId: topicId,
+        details: { name: topic.name },
+      });
+      return 'deleted';
     });
 
-    if (!result) {
+    if (result === 'missing') {
+      return {
+        formError: 'La temática no existe o ya fue eliminada.',
+      };
+    }
+    if (result === 'associated') {
       return {
         formError: 'No se puede eliminar una temática asociada a proyectos.',
       };

@@ -4,8 +4,8 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   createTopic: vi.fn(),
   findTopic: vi.fn(),
-  reactivateTopic: vi.fn(),
   updateTopic: vi.fn(),
+  reactivateTopic: vi.fn(),
   createAuditLog: vi.fn(),
   countProjects: vi.fn(),
   transaction: vi.fn(),
@@ -15,16 +15,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/auth/require-user', () => ({ requireUser: mocks.requireUser }));
 vi.mock('@/lib/prisma', () => ({
-  default: {
-    $transaction: mocks.transaction,
-    topic: {
-      create: mocks.createTopic,
-      findFirst: mocks.findTopic,
-      update: mocks.updateTopic,
-      updateMany: mocks.reactivateTopic,
-    },
-    project: { count: mocks.countProjects },
-  },
+  default: { $transaction: mocks.transaction },
 }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
@@ -36,8 +27,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.requireUser.mockResolvedValue({ id: 1, role: 'admin' });
   mocks.countProjects.mockResolvedValue(0);
-  mocks.createTopic.mockResolvedValue({ id: 1 });
-  mocks.reactivateTopic.mockResolvedValue({ count: 0 });
+  mocks.createTopic.mockResolvedValue({ id: 1, name: 'Education' });
   mocks.findTopic.mockResolvedValue(null);
   mocks.updateTopic.mockResolvedValue({ id: 1 });
   mocks.queryRaw.mockResolvedValue([]);
@@ -45,7 +35,12 @@ beforeEach(() => {
     callback({
       $queryRaw: mocks.queryRaw,
       project: { count: mocks.countProjects },
-      topic: { findFirst: mocks.findTopic, update: mocks.updateTopic },
+      topic: {
+        create: mocks.createTopic,
+        findFirst: mocks.findTopic,
+        update: mocks.updateTopic,
+        updateMany: mocks.reactivateTopic,
+      },
       auditLog: { create: mocks.createAuditLog },
     })
   );
@@ -61,11 +56,21 @@ describe('createTopic', () => {
     expect(mocks.createTopic).toHaveBeenCalledWith({
       data: { name: 'Education', isActive: true },
     });
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        authorId: 1,
+        action: 'creation',
+        entity: 'topic',
+        entityId: 1,
+        details: { name: 'Education' },
+      },
+    });
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/management/topics');
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/projects', 'layout');
   });
 
   test('reactivates an inactive topic with the same name', async () => {
+    mocks.findTopic.mockResolvedValue({ id: 3, name: 'Education', isActive: false });
     mocks.reactivateTopic.mockResolvedValue({ count: 1 });
     const data = new FormData();
     data.set('name', 'Education');
@@ -73,14 +78,37 @@ describe('createTopic', () => {
     await expect(createTopic(EMPTY_STATE, data)).resolves.toEqual({ success: true });
 
     expect(mocks.reactivateTopic).toHaveBeenCalledWith({
-      where: { name: { equals: 'Education', mode: 'insensitive' }, isActive: false },
+      where: { id: 3, isActive: false },
       data: { isActive: true },
     });
     expect(mocks.createTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        authorId: 1,
+        action: 'creation',
+        entity: 'topic',
+        entityId: 3,
+        details: { name: 'Education' },
+      },
+    });
+  });
+
+  test('does not record a second creation when another request reactivated the topic first', async () => {
+    mocks.findTopic.mockResolvedValue({ id: 3, name: 'Education', isActive: false });
+    mocks.reactivateTopic.mockResolvedValue({ count: 0 });
+    const data = new FormData();
+    data.set('name', 'Education');
+
+    await expect(createTopic(EMPTY_STATE, data)).resolves.toEqual({
+      formError: 'Ya existe una temática con ese nombre.',
+      values: { name: 'Education' },
+    });
+    expect(mocks.createTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
 
   test('rejects a name that already exists with different casing', async () => {
-    mocks.findTopic.mockResolvedValue({ id: 2 });
+    mocks.findTopic.mockResolvedValue({ id: 2, isActive: true });
     const data = new FormData();
     data.set('name', 'education');
 
@@ -93,6 +121,7 @@ describe('createTopic', () => {
       where: { name: { equals: 'education', mode: 'insensitive' } },
     });
     expect(mocks.createTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
   });
 });
 
@@ -167,6 +196,10 @@ describe('editTopic', () => {
 });
 
 describe('deleteTopic', () => {
+  beforeEach(() => {
+    mocks.findTopic.mockResolvedValue({ name: 'Health' });
+  });
+
   test('deactivates a topic only when it has no associated projects', async () => {
     await expect(deleteTopic(4)).resolves.toEqual({ success: true });
 
@@ -176,6 +209,15 @@ describe('deleteTopic', () => {
     expect(mocks.updateTopic).toHaveBeenCalledWith({
       where: { id: 4 },
       data: { isActive: false },
+    });
+    expect(mocks.createAuditLog).toHaveBeenCalledWith({
+      data: {
+        authorId: 1,
+        action: 'deletion',
+        entity: 'topic',
+        entityId: 4,
+        details: { name: 'Health' },
+      },
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/management/topics');
   });
@@ -202,6 +244,23 @@ describe('deleteTopic', () => {
     });
 
     expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test('explains that an already inactive topic was deleted without recording it again', async () => {
+    mocks.findTopic.mockResolvedValue(null);
+
+    await expect(deleteTopic(4)).resolves.toEqual({
+      formError: 'La temática no existe o ya fue eliminada.',
+    });
+    expect(mocks.findTopic).toHaveBeenCalledWith({
+      where: { id: 4, isActive: true },
+      select: { name: true },
+    });
+    expect(mocks.countProjects).not.toHaveBeenCalled();
+    expect(mocks.updateTopic).not.toHaveBeenCalled();
+    expect(mocks.createAuditLog).not.toHaveBeenCalled();
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
