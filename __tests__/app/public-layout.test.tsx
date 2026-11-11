@@ -64,3 +64,32 @@ test('closes the session using the existing logout action', async () => {
 
   await waitFor(() => expect(mocks.logout).toHaveBeenCalledOnce());
 });
+
+test.each(['mouse', 'touch'])(
+  'closes the session menu when a %s pointer presses outside it',
+  async (pointerType) => {
+    mocks.auth.mockResolvedValue(SESSION);
+    render(await PublicLayout({ children: <h1>Public report</h1> }));
+    const toggle = screen.getByRole('button', { name: 'Abrir menú de sesión' });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Public report' }), { pointerType });
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  }
+);
+
+test('keeps the menu open when pressing inside and still closes using its toggle', async () => {
+  mocks.auth.mockResolvedValue(SESSION);
+  render(await PublicLayout({ children: <h1>Public report</h1> }));
+  const toggle = screen.getByRole('button', { name: 'Abrir menú de sesión' });
+  fireEvent.click(toggle);
+
+  fireEvent.pointerDown(screen.getByText('user@example.com'), { pointerType: 'touch' });
+
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  fireEvent.pointerDown(toggle, { pointerType: 'touch' });
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+});

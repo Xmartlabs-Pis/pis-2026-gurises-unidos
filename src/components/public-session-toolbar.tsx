@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LayoutDashboard, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { logout } from '@/app/actions/auth';
@@ -9,9 +9,24 @@ import { Button, buttonVariants } from '@/components/ui/button';
 export function PublicSessionToolbar({ email }: { email?: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const panelId = useId();
+  const toolbarRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (event.target instanceof Node && !toolbarRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+  }, [isOpen]);
 
   return (
     <nav
+      ref={toolbarRef}
       aria-label="Navegación de sesión"
       data-slot="public-session-toolbar"
       className="text-foreground border-hairline lg:bg-surface-paper pointer-events-none fixed inset-x-0 top-0 z-70 h-0 lg:pointer-events-auto lg:sticky lg:z-50 lg:h-10 lg:shrink-0 lg:border-b"
