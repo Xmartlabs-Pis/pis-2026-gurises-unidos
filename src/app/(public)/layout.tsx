@@ -6,7 +6,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="theme-public bg-background flex min-h-full flex-1 flex-col">
       <PublicGeographyProvider>
         <Header />
-        <main className="bg-background flex-1">{children}</main>
+        <main className="bg-background flex flex-1 flex-col">{children}</main>
       </PublicGeographyProvider>
     </div>
   );

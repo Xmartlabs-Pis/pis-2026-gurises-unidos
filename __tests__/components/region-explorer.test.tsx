@@ -100,7 +100,7 @@ test('clicking a region immediately filters its carousel without changing the pa
 });
 
 test.each(['mouse', 'touch'])(
-  '%s interaction pauses progress and resumes from the same point after leaving',
+  '%s interaction with the carousel keeps progress and automatic rotation running',
   (pointerType) => {
     render(<RegionExplorer regions={REGIONS} year={2026} />);
     act(() => vi.advanceTimersByTime(5000));
@@ -108,14 +108,12 @@ test.each(['mouse', 'touch'])(
     const progress = section.querySelector<HTMLSpanElement>('span[style]')!;
     const before = progress.style.transform;
     fireEvent.pointerEnter(screen.getByRole('tabpanel'), { pointerType });
-    act(() => vi.advanceTimersByTime(30000));
-    expect(screen.getByText('Regional project 0')).toBeDefined();
-    expect(progress.style.transform).toBe(before);
-    fireEvent.pointerLeave(screen.getByRole('tabpanel'), { pointerType });
     act(() => vi.advanceTimersByTime(6000));
     expect(screen.getByText('Regional project 0')).toBeDefined();
+    expect(progress.style.transform).not.toBe(before);
     act(() => vi.advanceTimersByTime(1200));
     expect(screen.getByText('Regional project 1')).toBeDefined();
+    fireEvent.pointerLeave(screen.getByRole('tabpanel'), { pointerType });
   }
 );
 

@@ -90,18 +90,9 @@ test('persists the public order and appends newly created partners', async () =>
   const { result, partner } = await createThroughAction('Appended partner');
   expect(result.success).toBe(true);
   expect((await getMetricsPartners()).at(-1)?.id).toBe(partner?.id);
-  const logs = await prisma.auditLog.findMany({
-    where: { entity: 'partner', entityId: null, action: 'update' },
-  });
-  expect(logs).toHaveLength(1);
-  expect(logs[0]).toMatchObject({ authorId: seed.adminId });
-  const names = new Map((await prisma.partner.findMany()).map(({ id, name }) => [id, name]));
-  expect(logs[0].details).toEqual({
-    order: {
-      from: ids.map((id) => names.get(id)),
-      to: reordered.map((id) => names.get(id)),
-    },
-  });
+  expect(
+    await prisma.auditLog.count({ where: { entity: 'partner', entityId: null, action: 'update' } })
+  ).toBe(0);
 });
 
 test('rejects duplicate, incomplete, deleted and stale partner lists without changing the order', async () => {
@@ -383,7 +374,7 @@ test('concurrent creations never commit the same position', async () => {
   expect(new Set(created.map(({ sortOrder }) => sortOrder)).size).toBe(created.length);
 });
 
-test('updates a large order with a single audit entry', async () => {
+test('updates a large order without recording it in the audit log', async () => {
   signInAs(seed.adminId, 'admin');
   const created = await prisma.partner.createManyAndReturn({
     data: Array.from({ length: 100 }, (_, index) => ({
@@ -400,5 +391,5 @@ test('updates a large order with a single audit entry', async () => {
     await prisma.auditLog.count({
       where: { entity: 'partner', entityId: null, action: 'update' },
     })
-  ).toBe(1);
+  ).toBe(0);
 });

@@ -118,7 +118,6 @@ function RegionExplorerContent({
         </div>
       </div>
       <div
-        {...hoverPauseProps}
         id={`${id}-projects`}
         role="tabpanel"
         aria-labelledby={`${id}-${selected.id}`}

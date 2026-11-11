@@ -106,6 +106,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-text: var(--primary-text, var(--primary));
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -190,6 +191,7 @@ html:has(.theme-public) {
   --popover-foreground: #0e3a2e;
   --primary: #f5970c;
   --primary-foreground: #0a2c22;
+  --primary-text: #a85400;
   --secondary: #e7f0eb;
   --secondary-foreground: #0e3a2e;
   --muted: #f8faf9;

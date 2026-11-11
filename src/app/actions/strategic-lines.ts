@@ -45,36 +45,37 @@ export async function createStrategicLine(
   }
 
   try {
-    const reactivated = await prisma.strategicLine.updateMany({
-      where: {
-        name: { equals: parsed.data.name, mode: 'insensitive' },
-        isActive: false,
-      },
-      data: { isActive: true },
+    const duplicate = await prisma.$transaction(async (tx) => {
+      const existing = await tx.strategicLine.findFirst({
+        where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
+      });
+      if (existing?.isActive) return true;
+      if (existing) {
+        const { count } = await tx.strategicLine.updateMany({
+          where: { id: existing.id, isActive: false },
+          data: { isActive: true },
+        });
+        if (count === 0) return true;
+      }
+      const line =
+        existing ??
+        (await tx.strategicLine.create({ data: { name: parsed.data.name, isActive: true } }));
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'creation',
+        entity: 'strategicLine',
+        entityId: line.id,
+        details: { name: line.name },
+      });
+      return false;
     });
 
-    if (reactivated.count > 0) {
-      revalidateStrategicLines();
-      return { success: true };
-    }
-
-    const existing = await prisma.strategicLine.findFirst({
-      where: { name: { equals: parsed.data.name, mode: 'insensitive' } },
-    });
-
-    if (existing) {
+    if (duplicate) {
       return {
         formError: 'Ya existe una línea estratégica con ese nombre.',
         values: { name },
       };
     }
-
-    await prisma.strategicLine.create({
-      data: {
-        name: parsed.data.name,
-        isActive: true,
-      },
-    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return {
@@ -191,13 +192,33 @@ export async function deleteStrategicLine(id: number): Promise<StrategicLineActi
   try {
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "id" FROM "StrategicLine" WHERE "id" = ${id} FOR UPDATE`;
+      const line = await tx.strategicLine.findFirst({
+        where: { id, isActive: true },
+        select: { name: true },
+      });
+      if (!line) return 'missing';
       const projectCount = await tx.project.count({
         where: { deletedAt: null, strategicLines: { some: { id } } },
       });
       if (projectCount > 0) return 'associated';
-      await tx.strategicLine.update({ where: { id }, data: { isActive: false } });
+      await tx.strategicLine.update({
+        where: { id },
+        data: { isActive: false },
+      });
+      await logAudit(tx, {
+        authorId: user.id,
+        action: 'deletion',
+        entity: 'strategicLine',
+        entityId: id,
+        details: { name: line.name },
+      });
       return 'deleted';
     });
+    if (result === 'missing') {
+      return {
+        formError: 'La línea estratégica no existe o ya fue eliminada.',
+      };
+    }
     if (result === 'associated') {
       return {
         formError: 'No se puede eliminar una línea estratégica asociada a proyectos.',

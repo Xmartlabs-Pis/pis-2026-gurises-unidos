@@ -233,17 +233,22 @@ describe('describeAuditDetails', () => {
     ).toBe(summary);
   });
 
-  test('shows the partners as an ordered set before and after the new order', () => {
+  test.each(['strategicLine', 'beneficiaryCategory'] as const)('shows the renamed %s', (entity) => {
     expect(
       describeAuditDetails(
-        {
-          action: 'update',
-          entity: 'partner',
-          details: { order: { from: ['A', 'B', 'C'], to: ['B', 'C', 'A'] } },
-        },
+        { action: 'update', entity, details: { previousName: 'Salud', name: 'Salud integral' } },
         {}
       )
-    ).toBe('A, B, C → B, C, A');
+    ).toBe('Nombre: Salud → Salud integral');
+  });
+
+  test.each([
+    ['creation', 'strategicLine'],
+    ['deletion', 'strategicLine'],
+    ['creation', 'beneficiaryCategory'],
+    ['deletion', 'beneficiaryCategory'],
+  ] as const)('leaves the detail of the %s of a %s empty', (action, entity) => {
+    expect(describeAuditDetails({ action, entity, details: { name: 'Salud' } }, {})).toBeNull();
   });
 
   test('keeps describing project changes when the details carry a name', () => {

@@ -70,6 +70,15 @@ const PHOTOS = [
 
 export function HowWeWork() {
   const imageClipId = useId();
+  const [displayedPhoto, setDisplayedPhoto] = useState<{
+    currentIndex: number;
+    previousIndex: number | null;
+    loadedIndices: Set<number>;
+  }>({
+    currentIndex: LEVELS[0].photoNumbers[0] - 1,
+    previousIndex: null,
+    loadedIndices: new Set(),
+  });
   const [selection, setSelection] = useState({
     activeIndex: 0,
     photoPositions: LEVELS.map(() => 0),
@@ -98,13 +107,20 @@ export function HowWeWork() {
 
   const photoIndex = LEVELS[activeIndex].photoNumbers[selection.photoPositions[activeIndex]] - 1;
 
+  if (displayedPhoto.loadedIndices.has(photoIndex) && photoIndex !== displayedPhoto.currentIndex) {
+    setDisplayedPhoto({
+      ...displayedPhoto,
+      currentIndex: photoIndex,
+      previousIndex: displayedPhoto.currentIndex,
+    });
+  }
+
   return (
     <div
       ref={sectionRef}
       className="relative mx-auto grid w-full max-w-360 lg:min-h-150 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]"
     >
-      <figure
-        {...hoverPauseProps}
+      <div
         id="work-level-panel"
         role="tabpanel"
         aria-labelledby={`work-level-${activeIndex}`}
@@ -116,17 +132,28 @@ export function HowWeWork() {
           } as CSSProperties
         }
       >
-        {PHOTOS.map((photo, index) => (
-          <Image
-            key={index}
-            src={photo.src}
-            alt={index === photoIndex ? photo.alt : ''}
-            aria-hidden={index !== photoIndex}
-            fill
-            sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
-            className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === photoIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
-          />
-        ))}
+        {PHOTOS.map((photo, index) =>
+          index === photoIndex ||
+          index === displayedPhoto.currentIndex ||
+          index === displayedPhoto.previousIndex ? (
+            <Image
+              key={index}
+              src={photo.src}
+              alt={index === photoIndex ? photo.alt : ''}
+              aria-hidden={index !== photoIndex}
+              fill
+              sizes="(min-width: 1440px) 900px, (min-width: 1024px) 63vw, 100vw"
+              onLoad={() => {
+                setDisplayedPhoto((current) =>
+                  current.loadedIndices.has(index)
+                    ? current
+                    : { ...current, loadedIndices: new Set([...current.loadedIndices, index]) }
+                );
+              }}
+              className={`object-cover object-top transition-[opacity,transform] duration-700 motion-reduce:transition-none lg:object-center ${index === displayedPhoto.currentIndex ? 'scale-100 opacity-100' : 'scale-105 opacity-0'}`}
+            />
+          ) : null
+        )}
         <div
           aria-hidden="true"
           className="from-surface-brand-deep/80 pointer-events-none absolute inset-0 hidden bg-linear-to-t via-transparent to-transparent lg:block"
@@ -139,9 +166,9 @@ export function HowWeWork() {
           aria-hidden="true"
           className="via-background/95 to-background pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-30% via-80% lg:hidden"
         />
-        <figcaption className="absolute inset-x-0 bottom-0 hidden px-6 pt-12 pb-10 text-sm text-white sm:px-10 lg:block">
+        <p className="absolute inset-x-0 bottom-0 hidden px-6 pt-12 pb-10 text-sm text-white sm:px-10 lg:block">
           Acompañamiento {LEVELS[activeIndex].title.toLocaleLowerCase('es-UY')}
-        </figcaption>
+        </p>
         <svg aria-hidden="true" width="0" height="0" className="pointer-events-none absolute">
           <defs>
             <clipPath id={`${imageClipId}-mobile`} clipPathUnits="objectBoundingBox">
@@ -152,7 +179,7 @@ export function HowWeWork() {
             </clipPath>
           </defs>
         </svg>
-      </figure>
+      </div>
       <div className="pointer-events-none relative flex min-w-0 flex-col gap-6 px-6 pt-28 pb-10 sm:pt-40 lg:pointer-events-auto lg:px-12 lg:py-14">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
@@ -181,7 +208,6 @@ export function HowWeWork() {
               id={`work-level-${index}`}
               type="button"
               role="tab"
-              aria-label={level.title}
               aria-selected={index === activeIndex}
               aria-controls="work-level-panel"
               tabIndex={index === activeIndex ? 0 : -1}
@@ -193,6 +219,7 @@ export function HowWeWork() {
                 {level.title}
               </span>
               <span
+                aria-hidden={index !== activeIndex || undefined}
                 className={`grid transition-[grid-template-rows,opacity] duration-500 motion-reduce:transition-none ${index === activeIndex ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
               >
                 <span className="overflow-hidden">

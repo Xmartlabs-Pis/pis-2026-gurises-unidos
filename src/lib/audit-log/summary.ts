@@ -26,7 +26,6 @@ const auditDetailsSchema = z
       .optional(),
     changedFields: z.array(z.string()).optional(),
     restored: z.boolean().optional(),
-    order: z.object({ from: z.array(z.string()), to: z.array(z.string()) }).optional(),
     previousName: z.string().optional(),
     name: z.string().optional(),
     previousCounterpartyType: z.string().optional(),
@@ -150,12 +149,13 @@ export function describeAuditDetails(
       ? formatChanges(details.changes, USER_FIELD_LABELS, USER_VALUE_LABELS)
       : null;
   }
+  if (entry.entity === 'strategicLine' || entry.entity === 'beneficiaryCategory') {
+    if (entry.action !== 'update' || !details.previousName || !details.name) return null;
+    return `Nombre: ${details.previousName} → ${details.name}`;
+  }
   if (PUBLIC_REPORT_ENTITIES.has(entry.entity)) {
     const edit = describePublicReportEdit(details);
     if (edit) return edit;
-    if (details.order) {
-      return `${details.order.from.join(', ')} → ${details.order.to.join(', ')}`;
-    }
     return details.changes?.length
       ? formatChanges(details.changes, PUBLIC_REPORT_FIELD_LABELS)
       : null;

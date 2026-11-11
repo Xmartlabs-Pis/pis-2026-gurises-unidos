@@ -5,7 +5,7 @@ const COLLABORATE_URL = 'https://gurisesunidos.org.uy/como-colaborar/';
 
 export function PublicCollaborate() {
   return (
-    <section className="public-collaborate relative w-full text-white">
+    <section className="public-collaborate relative w-full flex-1 text-white">
       <svg
         aria-hidden="true"
         viewBox="0 0 1440 80"
