@@ -10,6 +10,7 @@ import {
   parseCatalogFields,
   reactivateOrCreate,
   readCatalogAdmin,
+  readName,
   renameCatalogRecord,
   type CatalogActionState,
 } from '@/lib/catalog-actions';
@@ -23,10 +24,6 @@ function revalidateStrategicLines() {
   revalidatePath('/dashboard/projects', 'layout');
 }
 
-function lineName(formData: FormData) {
-  return String(formData.get('name') ?? '');
-}
-
 export async function createStrategicLine(
   _previousState: StrategicLineActionState,
   formData: FormData
@@ -35,7 +32,7 @@ export async function createStrategicLine(
   if (!access.user) return access.state;
   const user = access.user;
 
-  const name = lineName(formData);
+  const name = readName(formData);
   const parsed = parseCatalogFields(strategicLineSchema, { name });
   if (!parsed.ok) return parsed.state;
 
@@ -81,7 +78,7 @@ export async function editStrategicLine(
   const invalid = guardCatalogId(id, 'La línea estratégica no es válida.');
   if (invalid) return invalid;
 
-  const name = lineName(formData);
+  const name = readName(formData);
   const parsed = parseCatalogFields(strategicLineSchema, { name });
   if (!parsed.ok) return parsed.state;
 

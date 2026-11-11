@@ -10,6 +10,7 @@ import {
   parseCatalogFields,
   reactivateOrCreate,
   readCatalogAdmin,
+  readName,
   renameCatalogRecord,
   type CatalogActionState,
 } from '@/lib/catalog-actions';
@@ -23,10 +24,6 @@ function revalidateTopics() {
   revalidatePath('/dashboard/projects', 'layout');
 }
 
-function topicName(formData: FormData) {
-  return String(formData.get('name') ?? '');
-}
-
 export async function createTopic(
   _previousState: TopicActionState,
   formData: FormData
@@ -35,7 +32,7 @@ export async function createTopic(
   if (!access.user) return access.state;
   const user = access.user;
 
-  const name = topicName(formData);
+  const name = readName(formData);
   const parsed = parseCatalogFields(topicSchema, { name });
   if (!parsed.ok) return parsed.state;
 
@@ -119,7 +116,7 @@ export async function editTopic(
   const invalid = guardCatalogId(topicId, 'La temática no es válida.');
   if (invalid) return invalid;
 
-  const name = topicName(formData);
+  const name = readName(formData);
   const parsed = parseCatalogFields(topicSchema, { name });
   if (!parsed.ok) return parsed.state;
 

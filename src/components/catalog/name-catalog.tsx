@@ -4,6 +4,7 @@ import { useActionState, useState, type ReactNode, type SubmitEvent } from 'reac
 import { z } from 'zod';
 import { MoreHorizontal } from 'lucide-react';
 import { ProjectCountLink } from '@/components/project-count-link';
+import type { CatalogActionState as ServerCatalogActionState } from '@/lib/catalog-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -33,11 +34,7 @@ export type CatalogRecord = {
   deletable?: boolean;
 };
 
-type CatalogActionState = {
-  errors?: Record<string, string[]>;
-  formError?: string;
-  success?: boolean;
-};
+type CatalogActionState = Pick<ServerCatalogActionState, 'errors' | 'formError' | 'success'>;
 
 type CatalogActions = {
   create: (state: CatalogActionState, formData: FormData) => Promise<CatalogActionState>;
@@ -69,22 +66,38 @@ type NameCatalogProps<T extends CatalogRecord> = {
   editFields?: (item: T, pending: boolean) => ReactNode;
 };
 
+type CatalogRowProps<T extends CatalogRecord> = Pick<
+  NameCatalogProps<T>,
+  | 'schema'
+  | 'maxLength'
+  | 'projectFilter'
+  | 'idPrefix'
+  | 'actions'
+  | 'editTitle'
+  | 'editDescription'
+  | 'blockedTitle'
+  | 'blockedDescription'
+  | 'deleteTitle'
+  | 'deleteDescription'
+  | 'nameAriaLabel'
+  | 'systemLabel'
+  | 'renderLabel'
+  | 'editFields'
+> & { item: T };
+
 const INITIAL_STATE: CatalogActionState = {};
 
 const NAME_INPUT_CLASS =
   'border-border placeholder:text-muted-foreground h-9 min-w-0 flex-1 rounded-md border bg-white px-3 py-1 font-sans text-base leading-6 font-normal tracking-normal shadow-[0_1px_2px_0_rgb(0_0_0/0.1)]';
 
 function clientError(schema: z.ZodType, formData: FormData) {
-  const parsed = schema.safeParse({
-    name: formData.get('name'),
-    counterpartyType: formData.get('counterpartyType'),
-  });
+  const parsed = schema.safeParse(Object.fromEntries(formData));
   if (parsed.success) return undefined;
   return parsed.error.issues[0]?.message;
 }
 
 function serverFieldError(errors?: Record<string, string[]>) {
-  return errors?.name?.[0] ?? errors?.counterpartyType?.[0];
+  return Object.values(errors ?? {}).flat()[0];
 }
 
 export function NameCatalog<T extends CatalogRecord>({
@@ -137,6 +150,23 @@ export function NameCatalog<T extends CatalogRecord>({
   }
 
   const fieldError = clientErrorMessage ?? serverFieldError(state.errors);
+  const rowProps = {
+    schema,
+    maxLength,
+    projectFilter,
+    idPrefix,
+    actions,
+    editTitle,
+    editDescription,
+    blockedTitle,
+    blockedDescription,
+    deleteTitle,
+    deleteDescription,
+    nameAriaLabel,
+    systemLabel,
+    renderLabel,
+    editFields,
+  };
 
   return (
     <Card className="border-border flex w-full flex-col gap-4 rounded-[14px] border bg-white p-6 ring-0">
@@ -175,25 +205,7 @@ export function NameCatalog<T extends CatalogRecord>({
       </p>
       <ul className="w-full">
         {items.map((item) => (
-          <CatalogRow
-            key={item.id}
-            item={item}
-            schema={schema}
-            maxLength={maxLength}
-            projectFilter={projectFilter}
-            idPrefix={idPrefix}
-            actions={actions}
-            editTitle={editTitle}
-            editDescription={editDescription}
-            blockedTitle={blockedTitle}
-            blockedDescription={blockedDescription}
-            deleteTitle={deleteTitle}
-            deleteDescription={deleteDescription}
-            nameAriaLabel={nameAriaLabel}
-            systemLabel={systemLabel}
-            renderLabel={renderLabel}
-            editFields={editFields}
-          />
+          <CatalogRow key={item.id} item={item} {...rowProps} />
         ))}
       </ul>
     </Card>
@@ -217,24 +229,7 @@ function CatalogRow<T extends CatalogRecord>({
   systemLabel,
   renderLabel,
   editFields,
-}: {
-  item: T;
-  schema: z.ZodType;
-  maxLength: number;
-  projectFilter: string;
-  idPrefix: string;
-  actions: CatalogActions;
-  editTitle: string;
-  editDescription: string;
-  blockedTitle: string;
-  blockedDescription: string;
-  deleteTitle: string;
-  deleteDescription: (name: string) => string;
-  nameAriaLabel?: string;
-  systemLabel?: string;
-  renderLabel?: (item: T) => ReactNode;
-  editFields?: (item: T, pending: boolean) => ReactNode;
-}) {
+}: CatalogRowProps<T>) {
   const deletable = item.deletable !== false;
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);

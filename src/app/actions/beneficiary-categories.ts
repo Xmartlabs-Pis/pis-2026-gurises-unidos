@@ -10,6 +10,7 @@ import {
   guardCatalogId,
   parseCatalogFields,
   readCatalogAdmin,
+  readName,
   renameCatalogRecord,
   type CatalogActionState,
 } from '@/lib/catalog-actions';
@@ -22,10 +23,6 @@ function revalidateBeneficiaryCategories() {
   revalidatePath('/', 'layout');
 }
 
-function categoryName(formData: FormData) {
-  return String(formData.get('name') ?? '');
-}
-
 export async function createBeneficiaryCategory(
   _previousState: BeneficiaryCategoryActionState,
   formData: FormData
@@ -34,7 +31,7 @@ export async function createBeneficiaryCategory(
   if (!access.user) return access.state;
   const user = access.user;
 
-  const name = categoryName(formData);
+  const name = readName(formData);
   const parsed = parseCatalogFields(beneficiaryCategorySchema, { name });
   if (!parsed.ok) return parsed.state;
 
@@ -95,7 +92,7 @@ export async function editBeneficiaryCategory(
   const invalid = guardCatalogId(categoryId, 'La categoría no es válida.');
   if (invalid) return invalid;
 
-  const name = categoryName(formData);
+  const name = readName(formData);
   const parsed = parseCatalogFields(beneficiaryCategorySchema, { name });
   if (!parsed.ok) return parsed.state;
 

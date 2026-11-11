@@ -40,6 +40,10 @@ export function guardCatalogId(id: number, message: string) {
   return { formError: message };
 }
 
+export function readName(formData: FormData) {
+  return String(formData.get('name') ?? '');
+}
+
 export function catalogWriteError<Values>(
   error: unknown,
   duplicate: { message: string; values?: Values },
