@@ -22,7 +22,8 @@ export function Header() {
         ? boundary.getBoundingClientRect().top
         : boundary.getBoundingClientRect().bottom;
       const height = navigation.offsetHeight;
-      const offset = Math.max(-height, Math.min(0, boundaryPosition - height));
+      const headerTop = navigation.parentElement?.getBoundingClientRect().top ?? 0;
+      const offset = Math.max(-height, Math.min(0, boundaryPosition - height - headerTop));
       navigation.style.transform = `translate3d(0, ${offset}px, 0)`;
       setIsNavigationHidden(offset <= -height);
     }
@@ -45,32 +46,34 @@ export function Header() {
   }, [pathname]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-40 text-white">
+    <header className="pointer-events-none fixed inset-x-0 top-[var(--public-session-toolbar-height,0px)] z-60 text-white">
       {pathname === '/' && (
-        <div
-          ref={navigationRef}
-          aria-hidden={isNavigationHidden}
-          inert={isNavigationHidden}
-          className={`bg-surface-brand-deep relative hidden h-16 will-change-transform lg:block ${isNavigationHidden ? 'pointer-events-none' : 'pointer-events-auto'}`}
-        >
-          <div className="relative mx-auto flex h-16 max-w-360 items-center justify-end gap-4 px-4 sm:px-6 lg:px-16">
-            <nav className="hidden items-center gap-6 text-sm text-white/85 lg:flex">
-              <Link href="#department-presence" className="hover:text-primary">
-                Proyectos
-              </Link>
-              <Link href="#how-we-work" className="hover:text-primary">
-                Cómo trabajamos
-              </Link>
-              <Link href="#mission" className="hover:text-primary">
-                Nuestra Misión
-              </Link>
-            </nav>
+        <div className="overflow-hidden">
+          <div
+            ref={navigationRef}
+            aria-hidden={isNavigationHidden}
+            inert={isNavigationHidden}
+            className={`bg-surface-brand-deep relative hidden h-16 will-change-transform lg:block ${isNavigationHidden ? 'pointer-events-none' : 'pointer-events-auto'}`}
+          >
+            <div className="relative mx-auto flex h-16 max-w-360 items-center justify-end gap-4 px-4 sm:px-6 lg:px-16">
+              <nav className="hidden items-center gap-6 text-sm text-white/85 lg:flex">
+                <Link href="#department-presence" className="hover:text-primary">
+                  Proyectos
+                </Link>
+                <Link href="#how-we-work" className="hover:text-primary">
+                  Cómo trabajamos
+                </Link>
+                <Link href="#mission" className="hover:text-primary">
+                  Nuestra Misión
+                </Link>
+              </nav>
+            </div>
           </div>
         </div>
       )}
       <Link
         href="/"
-        className="pointer-events-auto absolute top-0 left-0 z-10 block"
+        className="pointer-events-auto fixed top-[var(--public-session-toolbar-height,0px)] left-0 z-10 block lg:top-0"
         aria-label="Gurises Unidos, inicio"
       >
         <Image

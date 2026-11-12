@@ -12,9 +12,6 @@ export function DashboardQuickActions() {
       >
         Nuevo proyecto
       </Button>
-      <Button variant="outline" className="h-9 rounded-[10px] px-4" disabled>
-        Publicar dashboard
-      </Button>
     </div>
   );
 }

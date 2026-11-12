@@ -1,4 +1,3 @@
-import type { UserRole } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { getActiveBeneficiaryCategories } from '@/lib/beneficiary-categories';
 import { getCurrentYear } from '@/lib/metrics/year';
@@ -18,7 +17,6 @@ import {
   getLocationLabel,
   getTerritoryNames,
 } from '@/lib/projects/location';
-import { canEditProject } from '@/lib/projects/permissions';
 import { formatDelta, toFileNameSegment } from '@/lib/reports/format';
 import type { ReportBar, ReportKpi } from '@/lib/reports/impact-report';
 
@@ -52,11 +50,7 @@ export function getProjectSheetFileName(projectName: string, year: number) {
   return `Ficha-${toFileNameSegment(projectName) || 'proyecto'}-${year}.pdf`;
 }
 
-export async function getProjectSheetData(
-  user: { id: number; role: UserRole },
-  projectId: number,
-  year: number
-) {
+export async function getProjectSheetData(projectId: number, year: number) {
   const previousYear = year - 1;
 
   const project = await prisma.project.findFirst({
@@ -68,7 +62,6 @@ export async function getProjectSheetData(
       counterpartyTypes: true,
       startYear: true,
       endYear: true,
-      leadCoordinatorId: true,
       generalObjective: true,
       publicDescription: true,
       showOnLanding: true,
@@ -85,7 +78,6 @@ export async function getProjectSheetData(
   });
 
   if (project === null) return { status: 'notFound' as const };
-  if (!canEditProject(user, project)) return { status: 'forbidden' as const };
 
   const categories = await getActiveBeneficiaryCategories();
   const activeKeys = new Set<string>(categories.map(({ key }) => key));
