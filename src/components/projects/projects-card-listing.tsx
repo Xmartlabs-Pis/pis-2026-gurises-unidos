@@ -277,7 +277,7 @@ export function ProjectsCardList({
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 gap-4 p-4">
+      <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] gap-4 p-4">
         <div className="flex flex-col gap-2">
           <span>Año</span>
           {yearSelect}
@@ -376,8 +376,8 @@ export function ProjectsCardList({
 
   return (
     <div className="bg-primary-foreground flex h-full w-auto flex-col gap-5 pt-5 pr-4 pb-4 pl-4 lg:px-8 lg:py-7">
-      <div className="flex flex-row items-start justify-between gap-3 lg:items-center">
-        <div className="flex flex-col justify-center gap-0.5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-col justify-center gap-0.5">
           <p className="text-muted-foreground block text-xs leading-4 font-medium lg:hidden">
             Proyectos
           </p>
@@ -385,12 +385,9 @@ export function ProjectsCardList({
             {current.title}
           </h1>
         </div>
-        <div className="flex flex-col items-end gap-3">
-          <div className="lg:hidden">{filterMenu}</div>
-          <div className="flex flex-wrap justify-end gap-2">
-            {!selectedIds && exportReportButton}
-            {newProjectButton}
-          </div>
+        <div className="flex items-center gap-2 lg:justify-end">
+          {!selectedIds && exportReportButton}
+          {newProjectButton}
         </div>
       </div>
 
@@ -418,19 +415,21 @@ export function ProjectsCardList({
             {filteredCountLabel}
           </p>
         </div>
-        <InputGroup className="bg-background h-9 w-full rounded-md lg:ml-auto lg:w-80">
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label="Buscar proyectos por nombre"
-            placeholder="Buscar por nombre..."
-            maxLength={PROJECT_SEARCH_MAX_LENGTH}
-            value={searchText}
-            onChange={(e) => changeSearch(e.target.value)}
-          />
-        </InputGroup>
-        <div className="hidden lg:block">{filterMenu}</div>
+        <div className="flex min-w-0 items-center gap-2 lg:ml-auto">
+          <InputGroup className="bg-background h-9 min-w-0 flex-1 rounded-md lg:w-80 lg:flex-none">
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Buscar proyectos por nombre"
+              placeholder="Buscar por nombre..."
+              maxLength={PROJECT_SEARCH_MAX_LENGTH}
+              value={searchText}
+              onChange={(e) => changeSearch(e.target.value)}
+            />
+          </InputGroup>
+          {filterMenu}
+        </div>
       </div>
       <p className="text-primary block text-lg leading-7 font-semibold lg:hidden">
         {filteredCountLabel}

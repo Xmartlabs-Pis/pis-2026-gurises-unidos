@@ -1,6 +1,6 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { ListFilter, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import {
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUrlFilters } from '@/hooks/use-url-filters';
 import {
   ROLE_FILTER_LABELS,
@@ -47,6 +47,10 @@ export function UsersListToolbar({
   const roleFilter = filters.role ?? 'all';
   const statusFilter = filters.status ?? 'all';
   const sortBy = filters.sortBy ?? DEFAULT_SORT;
+  const activeFilterCount =
+    Number(Boolean(filters.role)) +
+    Number(Boolean(filters.status)) +
+    Number(sortBy !== DEFAULT_SORT);
 
   const roleSelect = (
     <Select
@@ -130,50 +134,56 @@ export function UsersListToolbar({
           {sortSelect}
         </div>
 
-        <Sheet>
-          <SheetTrigger
+        <Popover>
+          <PopoverTrigger
             render={
-              <Button variant="outline" className="shrink-0 xl:hidden">
-                Filtros
-              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative h-9 w-9 shrink-0 xl:hidden"
+              />
             }
-          />
-          <SheetContent side="bottom" showCloseButton={false} className="rounded-t-2xl">
-            <div className="bg-muted mx-auto mt-2 h-1.5 w-10 rounded-full" />
-
-            <div className="flex items-center justify-between px-4 pt-2">
-              <SheetTitle className="text-lg">Filtros</SheetTitle>
-              <button
-                type="button"
-                onClick={() => clearFilters(['role', 'status', 'sort'])}
-                className="text-muted-foreground text-sm"
+            aria-label="Filtros de usuarios"
+            aria-description={`${activeFilterCount} ${activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}`}
+          >
+            <ListFilter />
+            {activeFilterCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="bg-primary text-primary-foreground absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-semibold"
               >
-                Limpiar
-              </button>
+                {activeFilterCount}
+              </span>
+            )}
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-72 max-w-[calc(100vw-2rem)] gap-4 p-4 [&_[data-slot=select-trigger]]:w-full"
+          >
+            <div className="flex flex-col gap-1.5">
+              <span className="text-foreground text-sm font-medium">Rol</span>
+              {roleSelect}
             </div>
 
-            <div className="flex flex-col gap-4 px-4 pb-2">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-foreground text-sm font-medium">Rol</span>
-                {roleSelect}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-foreground text-sm font-medium">Estado</span>
-                {statusSelect}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-foreground text-sm font-medium">Ordenar por</span>
-                {mobileSortSelect}
-              </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-foreground text-sm font-medium">Estado</span>
+              {statusSelect}
             </div>
 
-            <div className="p-4 pt-2">
-              <SheetClose render={<Button className="w-full">Aplicar filtros</Button>} />
+            <div className="flex flex-col gap-1.5">
+              <span className="text-foreground text-sm font-medium">Ordenar por</span>
+              {mobileSortSelect}
             </div>
-          </SheetContent>
-        </Sheet>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => clearFilters(['role', 'status', 'sort'])}
+            >
+              Limpiar filtros
+            </Button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <span className="hidden text-sm leading-5 font-normal tracking-normal md:inline">
