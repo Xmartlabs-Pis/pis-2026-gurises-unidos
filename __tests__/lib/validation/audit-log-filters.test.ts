@@ -6,6 +6,20 @@ import {
 } from '@/lib/validation/audit-log-filters';
 
 describe('parseAuditLogFilters', () => {
+  it.each(['from', 'to'])('accepts the maximum date for %s', (key) => {
+    expect(parseAuditLogFilters({ [key]: '2100-12-31' })).toMatchObject({ [key]: '2100-12-31' });
+  });
+
+  it.each(['2101-01-01', '9999-12-31', '99999-12-31'])(
+    'ignores dates beyond the limit: %s',
+    (date) => {
+      expect(parseAuditLogFilters({ from: date, to: date })).toMatchObject({
+        from: undefined,
+        to: undefined,
+      });
+    }
+  );
+
   it('accepts failed login filters and normalizes a formatted document id', () => {
     expect(
       parseAuditLogFilters({

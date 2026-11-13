@@ -22,7 +22,13 @@ export const LISTED_AUDIT_ENTITIES = [
 export type ListedAuditAction = (typeof LISTED_AUDIT_ACTIONS)[number];
 export type ListedAuditEntity = (typeof LISTED_AUDIT_ENTITIES)[number];
 
-const optionalDate = z.iso.date().optional().catch(undefined);
+export const AUDIT_LOG_MAX_DATE = '2100-12-31';
+export const AUDIT_LOG_MAX_DATE_MESSAGE = 'La fecha no puede ser posterior al 31/12/2100.';
+export const auditLogDateSchema = z.iso
+  .date()
+  .refine((date) => date <= AUDIT_LOG_MAX_DATE, AUDIT_LOG_MAX_DATE_MESSAGE);
+
+const optionalDate = auditLogDateSchema.optional().catch(undefined);
 
 export const auditLogFiltersSchema = z
   .object({
