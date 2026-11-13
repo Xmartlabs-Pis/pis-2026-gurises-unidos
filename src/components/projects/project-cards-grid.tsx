@@ -93,7 +93,7 @@ export function ProjectCardsGrid({
       <div
         aria-busy={isPending || isLoadingMore}
         className={cn(
-          'grid grid-cols-[repeat(auto-fill,minmax(358px,1fr))] gap-4 transition-opacity',
+          'grid min-w-0 grid-cols-[repeat(auto-fill,minmax(min(100%,358px),1fr))] gap-4 transition-opacity',
           isPending && 'opacity-60'
         )}
       >

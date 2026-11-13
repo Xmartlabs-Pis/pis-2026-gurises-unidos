@@ -19,6 +19,33 @@ function projectCards(page: Page) {
   return page.getByRole('link').filter({ has: page.getByRole('heading', { level: 2 }) });
 }
 
+test('keeps project cards inside narrow mobile screens', async ({ page }) => {
+  for (const width of [320, 375, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(ALL_PROJECTS_URL);
+    const cards = projectCards(page);
+    await expect(cards).toHaveCount(E2E_PROJECTS.length);
+
+    for (const card of await cards.all()) {
+      const bounds = await card.boundingBox();
+      expect(bounds).not.toBeNull();
+      if (!bounds) continue;
+      expect(bounds.x).toBeGreaterThanOrEqual(0);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+      expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+        true
+      );
+      const content = card.locator('[data-slot="card"]');
+      expect(await content.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+        true
+      );
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+    ).toBe(true);
+  }
+});
+
 test('shows active projects of the latest year by default', async ({ page }) => {
   await page.goto('/dashboard/projects');
 

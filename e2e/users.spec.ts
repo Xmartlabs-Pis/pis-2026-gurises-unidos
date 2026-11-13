@@ -55,6 +55,23 @@ test.describe('desktop', () => {
 test.describe('mobile', () => {
   test.use({ viewport: MOBILE });
 
+  test('applies user filters from an anchored popover without an apply button', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Filtros de usuarios' }).click();
+    const popover = page.locator('[data-slot="popover-content"]');
+    await expect(popover).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Aplicar filtros' })).toHaveCount(0);
+
+    await popover.getByRole('combobox', { name: 'Filtrar por rol' }).click();
+    await page.getByRole('option', { name: 'Administrador', exact: true }).click();
+    await expect(page).toHaveURL(/role=admin/);
+    await expect(popover).toBeVisible();
+
+    await popover.getByRole('button', { name: 'Limpiar filtros' }).click();
+    await expect(page).not.toHaveURL(/role=/);
+  });
+
   test('shows the full user card on small screens', async ({ page }) => {
     const card = page.locator('[data-slot="card"]:visible').filter({ hasText: E2E_ADMIN.email });
 

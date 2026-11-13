@@ -123,11 +123,11 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
         }}
       >
         <PopoverTrigger
-          render={<Button variant="outline" className="relative h-9 w-fit gap-2" />}
+          render={<Button variant="outline" size="icon" className="relative h-9 w-9 shrink-0" />}
+          aria-label="Filtros del historial"
           aria-description={`${activeFilterCount} filtros activos`}
         >
           <ListFilter />
-          Filtros
           {activeFilterCount > 0 && (
             <span
               aria-hidden="true"
@@ -137,7 +137,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 gap-4 p-4">
+        <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] gap-4 p-4">
           <label className="flex flex-col gap-2">
             <span>Cédula ingresada</span>
             <Input
@@ -177,19 +177,20 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
               </Select>
             </div>
           ))}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid min-w-0 grid-cols-1 gap-4">
             {(
               [
                 { key: 'from', label: 'Desde', value: filters.from },
                 { key: 'to', label: 'Hasta', value: filters.to },
               ] as const
             ).map(({ key, label, value }) => (
-              <label key={key} className="flex flex-col gap-2">
+              <label key={key} className="flex min-w-0 flex-col gap-2">
                 <span>{label}</span>
                 <Input
                   key={value}
                   ref={dateInputRefs[key]}
                   type="date"
+                  className="max-w-full min-w-0"
                   defaultValue={value ?? ''}
                   onBlur={(event) => commitDate(key, event.currentTarget.value)}
                   onKeyDown={(event) => {
