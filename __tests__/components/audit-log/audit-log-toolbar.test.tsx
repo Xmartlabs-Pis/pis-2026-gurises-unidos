@@ -25,6 +25,17 @@ beforeEach(() => {
 });
 
 describe('AuditLogToolbar date filters', () => {
+  it.each([
+    [{}, '0 filtros activos'],
+    [{ entity: 'user' }, '1 filtro activo'],
+    [{ entity: 'user', from: '2026-05-10' }, '2 filtros activos'],
+  ])('describes the active filter count for %o', (params, description) => {
+    renderToolbar(params);
+    expect(screen.getByRole('button', { name: /Filtros/ }).getAttribute('aria-description')).toBe(
+      description
+    );
+  });
+
   it('waits until the field loses focus before applying a typed date', () => {
     const from = renderToolbar();
 

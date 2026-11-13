@@ -125,7 +125,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
         <PopoverTrigger
           render={<Button variant="outline" size="icon" className="relative h-9 w-9 shrink-0" />}
           aria-label="Filtros del historial"
-          aria-description={`${activeFilterCount} filtros activos`}
+          aria-description={`${activeFilterCount} ${activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}`}
         >
           <ListFilter />
           {activeFilterCount > 0 && (
