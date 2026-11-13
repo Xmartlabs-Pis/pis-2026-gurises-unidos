@@ -21,7 +21,6 @@ import { ALL_FILTER_VALUE } from '@/lib/url-filters';
 import { fullName } from '@/lib/users/format';
 import {
   AUDIT_LOG_MAX_DATE,
-  AUDIT_LOG_MAX_DATE_MESSAGE,
   auditLogDateSchema,
   type AuditLogFilters,
 } from '@/lib/validation/audit-log-filters';
@@ -64,12 +63,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
   }
 
   function commitDate(key: 'from' | 'to', value: string) {
-    const error =
-      value && Number(value.split('-')[0]) > Number(AUDIT_LOG_MAX_DATE.slice(0, 4))
-        ? AUDIT_LOG_MAX_DATE_MESSAGE
-        : value && !auditLogDateSchema.safeParse(value).success
-          ? 'Ingresá una fecha válida.'
-          : undefined;
+    const error = value ? auditLogDateSchema.safeParse(value).error?.issues[0]?.message : undefined;
     setDateErrors((errors) => ({ ...errors, [key]: error }));
     if (error) return;
     if (value !== (filters[key] ?? '')) updateFilters({ [key]: value || null });
