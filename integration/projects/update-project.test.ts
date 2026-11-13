@@ -268,6 +268,84 @@ describe('updateProject (integration)', () => {
     expect(await auditLogsFor(projectId)).toEqual([]);
   });
 
+  test('rejects moving the start after stored beneficiary years without changing any data', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    const result = await updateProject(
+      projectId,
+      {},
+      buildFormData({ startYear: '2025', year: '2025', families: '99' })
+    );
+
+    expect(result.errors?.startYear).toEqual([
+      'El año de inicio no puede ser posterior a 2024, porque tiene beneficiarios registrados',
+    ]);
+    expect(await loadProject(projectId)).toEqual(before);
+    expect(await auditLogsFor(projectId)).toEqual([]);
+  });
+
+  test('allows moving the start past a saved year whose counts are all zero', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    await prisma.projectBeneficiaryValue.updateMany({
+      where: { beneficiary: { projectId } },
+      data: { value: 0 },
+    });
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ startYear: '2025', year: '2025' })),
+      projectId
+    );
+
+    const after = await loadProject(projectId);
+    expect(after.startYear).toBe(2025);
+    expect(after.projectBeneficiaries.some(({ year }) => year === BENEFICIARY_YEAR)).toBe(true);
+  });
+
+  test('clears all counts and moves the start in the same transaction', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const categories = await prisma.beneficiaryCategory.findMany({ where: { isActive: true } });
+    const emptyCounts = Object.fromEntries(categories.map(({ key }) => [key, '0']));
+
+    await expectRedirectToProject(
+      updateProject(
+        projectId,
+        {},
+        buildFormData({
+          startYear: '2025',
+          year: '2025',
+          beneficiaryDrafts: [JSON.stringify({ year: String(BENEFICIARY_YEAR), ...emptyCounts })],
+        })
+      ),
+      projectId
+    );
+
+    expect((await loadProject(projectId)).startYear).toBe(2025);
+    expect(
+      await prisma.projectBeneficiaryValue.count({
+        where: { beneficiary: { projectId, year: BENEFICIARY_YEAR }, value: { gt: 0 } },
+      })
+    ).toBe(0);
+  });
+
+  test('allows moving the start to the first stored beneficiary year', async () => {
+    const projectId = await createProjectFixture();
+    signInAs(seed.adminId);
+    const before = await loadProject(projectId);
+
+    await expectRedirectToProject(
+      updateProject(projectId, {}, buildFormData({ startYear: String(BENEFICIARY_YEAR) })),
+      projectId
+    );
+
+    const after = await loadProject(projectId);
+    expect(after.startYear).toBe(BENEFICIARY_YEAR);
+    expect(after.projectBeneficiaries).toEqual(before.projectBeneficiaries);
+  });
+
   test('rejects marking as inactive before stored beneficiary years without changing any data', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);

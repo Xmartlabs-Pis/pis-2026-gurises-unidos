@@ -404,6 +404,33 @@ function checkProjectEditable(
   return null;
 }
 
+async function validateStartYear(
+  tx: Prisma.TransactionClient,
+  projectId: number,
+  { projectData: { startYear }, beneficiaryData, beneficiaryDraftData, keys }: ParsedProjectForm
+): Promise<ProjectFormState | null> {
+  const clearedYears = [beneficiaryData, ...beneficiaryDraftData]
+    .filter(({ counts }) => keys.every((key) => counts[key] === 0))
+    .map(({ year }) => year);
+  const earlierBeneficiary = await tx.projectBeneficiary.findFirst({
+    where: {
+      projectId,
+      year: { lt: startYear, notIn: clearedYears },
+      values: { some: { value: { gt: 0 } } },
+    },
+    orderBy: { year: 'asc' },
+    select: { year: true },
+  });
+  if (!earlierBeneficiary) return null;
+  return {
+    errors: {
+      startYear: [
+        `El año de inicio no puede ser posterior a ${earlierBeneficiary.year}, porque tiene beneficiarios registrados`,
+      ],
+    },
+  };
+}
+
 async function validateEndYear(
   tx: Prisma.TransactionClient,
   projectId: number,
@@ -428,8 +455,9 @@ async function validateEndYear(
 async function validateProjectUpdate(
   tx: Prisma.TransactionClient,
   previous: EditableProject,
-  { keys, projectData, topicIds, strategicLineIds, partnerIds, departmentIds }: ParsedProjectForm
+  parsed: ParsedProjectForm
 ): Promise<ProjectFormState | null> {
+  const { keys, projectData, topicIds, strategicLineIds, partnerIds, departmentIds } = parsed;
   const currentTopicIds = previous.topics.map(({ id }) => id);
   const strategicLinesError = await validateStrategicLines(tx, strategicLineIds);
   if (strategicLinesError) return strategicLinesError;
@@ -450,7 +478,8 @@ async function validateProjectUpdate(
       currentTopicIds
     )) ??
     (await validateUniqueName(tx, projectData.name, projectData.startYear, previous.id)) ??
-    (await validateEndYear(tx, previous.id, projectData))
+    (await validateEndYear(tx, previous.id, projectData)) ??
+    (await validateStartYear(tx, previous.id, parsed))
   );
 }
 

@@ -18,6 +18,7 @@ export function BasicInfoSection({
   topics,
   strategicLines,
   partners,
+  firstBeneficiaryYear,
 }: Pick<
   SectionProps,
   | 'yearOptions'
@@ -26,7 +27,7 @@ export function BasicInfoSection({
   | 'topics'
   | 'strategicLines'
   | 'partners'
->) {
+> & { firstBeneficiaryYear?: number }) {
   const { clearErrors, getValues, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
@@ -45,7 +46,9 @@ export function BasicInfoSection({
     name: 'leadCoordinatorId',
   });
   const startYearOptions = yearOptions.filter(
-    ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
+    ({ value }) =>
+      (firstBeneficiaryYear === undefined || Number(value) <= firstBeneficiaryYear) &&
+      (status !== 'inactive' || !endYear || Number(value) <= Number(endYear))
   );
   const endYearOptions = yearOptions.filter(
     ({ value }) => !startYear || Number(value) >= Number(startYear)
@@ -110,6 +113,11 @@ export function BasicInfoSection({
           name="startYear"
           label="Año de inicio"
           options={startYearOptions}
+          description={
+            firstBeneficiaryYear === undefined
+              ? undefined
+              : `El año de inicio no puede ser posterior a ${firstBeneficiaryYear}, porque tiene beneficiarios registrados`
+          }
         />
         <SelectField
           id="endYear"

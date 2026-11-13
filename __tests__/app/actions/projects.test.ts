@@ -361,6 +361,14 @@ describe.each([
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
   });
 
+  it('rejects beneficiary data before the project starts without writing', async () => {
+    const result = await submit(formData({ year: '2015' }));
+    expect(result.errors?.year).toEqual([
+      'El año de beneficiarios no puede ser anterior al año de inicio',
+    ]);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
   it.each(['2023', '2024'])(
     'rejects beneficiary year %s after project closure before writing',
     async (year) => {
@@ -482,6 +490,92 @@ it('rejects more than three strategic lines before starting a transaction', asyn
 });
 
 describe('updateProject persistence', () => {
+  it.each(['selected', 'draft'])(
+    'rejects positive custom category counts before the start in the %s year',
+    (source) => {
+      const schema = buildProjectFormSchema([...BENEFICIARY_CATEGORY_KEYS, 'customTest']);
+      const emptyCounts = Object.fromEntries(BENEFICIARY_CATEGORY_KEYS.map((key) => [key, '0']));
+      const data = readProjectFormData(
+        formData({
+          ...emptyCounts,
+          startYear: '2022',
+          year: source === 'selected' ? '2020' : '2024',
+          customTest: source === 'selected' ? '1' : '0',
+          beneficiaryDrafts:
+            source === 'draft'
+              ? [JSON.stringify({ year: '2020', ...emptyCounts, customTest: '1' })]
+              : [],
+        })
+      );
+      const result = schema.safeParse(data);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: [source === 'selected' ? 'year' : 'beneficiaryDrafts'],
+            }),
+          ])
+        );
+      }
+    }
+  );
+
+  it('allows moving the start after a beneficiary year cleared in the same submission', async () => {
+    mocks.findBeneficiary.mockResolvedValue({ values: beneficiaryValueRows({ families: 30 }) });
+    const emptyCounts = Object.fromEntries(BENEFICIARY_CATEGORY_KEYS.map((key) => [key, '0']));
+    await expect(
+      updateProject(
+        10,
+        {},
+        formData({
+          startYear: '2022',
+          beneficiaryDrafts: [JSON.stringify({ year: '2020', ...emptyCounts })],
+        })
+      )
+    ).rejects.toThrow('Redirect: /dashboard/projects/10');
+    expect(mocks.findLaterBeneficiary).toHaveBeenCalledWith({
+      where: {
+        projectId: 10,
+        year: { lt: 2022, notIn: [2020] },
+        values: { some: { value: { gt: 0 } } },
+      },
+      orderBy: { year: 'asc' },
+      select: { year: true },
+    });
+    expect(mocks.upsertBeneficiary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { projectId_year: { projectId: 10, year: 2020 } },
+      })
+    );
+  });
+
+  it('rejects moving the start after an existing beneficiary year without writing', async () => {
+    mocks.findLaterBeneficiary.mockResolvedValue({ year: 2015 });
+    const result = await updateProject(10, {}, formData({ startYear: '2019' }));
+    expect(result).toEqual({
+      errors: {
+        startYear: [
+          'El año de inicio no puede ser posterior a 2015, porque tiene beneficiarios registrados',
+        ],
+      },
+    });
+    expect(mocks.findLaterBeneficiary).toHaveBeenCalledWith({
+      where: {
+        projectId: 10,
+        year: { lt: 2019, notIn: [] },
+        values: { some: { value: { gt: 0 } } },
+      },
+      orderBy: { year: 'asc' },
+      select: { year: true },
+    });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(mocks.upsertBeneficiary).not.toHaveBeenCalled();
+    expect(mocks.audit).not.toHaveBeenCalled();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it('rejects marking as inactive before an existing beneficiary year without writing', async () => {
     mocks.findLaterBeneficiary.mockResolvedValue({ year: 2024 });
     const result = await updateProject(

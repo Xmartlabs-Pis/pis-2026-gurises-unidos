@@ -120,10 +120,15 @@ export function buildProjectFormSchema(keys: readonly string[]) {
     beneficiaryDrafts: z.array(z.object({ year: beneficiaryYear, ...countsShape })).default([]),
   }) as unknown as typeof baseProjectFormSchema;
   return schema
-    .refine((data) => data.year >= data.startYear, {
-      message: 'El año de beneficiarios no puede ser anterior al año de inicio',
-      path: ['year'],
-    })
+    .refine(
+      (data) =>
+        data.year >= data.startYear ||
+        keys.every((key) => !Number((data as Record<string, unknown>)[key])),
+      {
+        message: 'El año de beneficiarios no puede ser anterior al año de inicio',
+        path: ['year'],
+      }
+    )
     .refine(
       (data) => data.status !== 'inactive' || data.endYear === null || data.year <= data.endYear,
       {
@@ -134,9 +139,9 @@ export function buildProjectFormSchema(keys: readonly string[]) {
     .refine(
       (data) =>
         data.beneficiaryDrafts.every(
-          ({ year }) =>
-            year >= data.startYear &&
-            (data.status !== 'inactive' || data.endYear === null || year <= data.endYear)
+          (draft) =>
+            (draft.year >= data.startYear || keys.every((key) => !Number(draft[key]))) &&
+            (data.status !== 'inactive' || data.endYear === null || draft.year <= data.endYear)
         ),
       {
         message: 'Hay beneficiarios en años fuera del período del proyecto',
