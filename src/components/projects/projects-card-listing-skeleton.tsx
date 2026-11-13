@@ -34,22 +34,24 @@ export function ProjectsCardListSkeleton() {
   return (
     <div className="bg-primary-foreground flex h-full w-auto flex-col gap-5 pt-5 pr-4 pb-4 pl-4 lg:px-8 lg:py-7">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col justify-center gap-0.5">
+        <div className="flex min-w-0 flex-col justify-center gap-0.5">
           <Skeleton className="h-4 w-16 lg:hidden" />
           <Skeleton className="h-8 w-48" />
         </div>
-        <div className="flex flex-col items-end gap-3">
-          <Skeleton className="h-9 w-22.5 rounded-md lg:hidden" />
+        <div className="flex items-center gap-2 lg:justify-end">
+          <Skeleton className="h-8 w-32 rounded-md" />
           <Skeleton className="h-8 w-32 rounded-md" />
         </div>
       </div>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-row items-center gap-3">
-          <Skeleton className="h-9 w-72 rounded-lg" />
+          <Skeleton className="h-9 w-55 rounded-lg" />
           <Skeleton className="hidden h-5 w-20 lg:block" />
         </div>
-        <Skeleton className="h-9 w-full rounded-md lg:ml-auto lg:w-80" />
-        <Skeleton className="hidden h-9 w-22.5 rounded-md lg:block" />
+        <div className="flex min-w-0 items-center gap-2 lg:ml-auto">
+          <Skeleton className="h-9 min-w-0 flex-1 rounded-md lg:w-80 lg:flex-none" />
+          <Skeleton className="h-9 w-9 shrink-0 rounded-md" />
+        </div>
       </div>
       <Skeleton className="h-7 w-24 lg:hidden" />
       <div className="grid min-w-0 grid-cols-[repeat(auto-fill,minmax(min(100%,358px),1fr))] gap-4">

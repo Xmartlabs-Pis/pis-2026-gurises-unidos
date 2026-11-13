@@ -277,7 +277,7 @@ export function ProjectsCardList({
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 gap-4 p-4">
+      <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] gap-4 p-4">
         <div className="flex flex-col gap-2">
           <span>Año</span>
           {yearSelect}
