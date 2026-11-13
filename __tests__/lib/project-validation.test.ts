@@ -450,8 +450,18 @@ describe('beneficiary drafts', () => {
     ['before the start year', form, '2019'],
     ['after the end year', { ...form, status: 'inactive', endYear: '2024' }, '2025'],
   ])('rejects a draft %s', (_case, values, year) => {
-    const result = schema.safeParse({ ...values, beneficiaryDrafts: [{ year }] });
+    const result = schema.safeParse({ ...values, beneficiaryDrafts: [{ year, families: '1' }] });
     expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toHaveLength(1);
+  });
+
+  it('allows clearing a draft before the start year', () => {
+    const parsed = schema.parse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2019', families: '0' }],
+    });
+    const [draft] = splitProjectFormData(parsed, BENEFICIARY_CATEGORY_KEYS).beneficiaryDraftData;
+    expect(draft.year).toBe(2019);
+    expect(Object.values(draft.counts).every((count) => count === 0)).toBe(true);
   });
 
   it.each([
