@@ -434,11 +434,23 @@ async function validateStartYear(
 async function validateEndYear(
   tx: Prisma.TransactionClient,
   projectId: number,
-  { status, endYear }: ProjectData
+  {
+    projectData: { status, endYear },
+    beneficiaryData,
+    beneficiaryDraftData,
+    keys,
+  }: ParsedProjectForm
 ): Promise<ProjectFormState | null> {
   if (status !== 'inactive' || endYear === null) return null;
+  const clearedYears = [beneficiaryData, ...beneficiaryDraftData]
+    .filter(({ counts }) => keys.every((key) => counts[key] === 0))
+    .map(({ year }) => year);
   const laterBeneficiary = await tx.projectBeneficiary.findFirst({
-    where: { projectId, year: { gt: endYear } },
+    where: {
+      projectId,
+      year: { gt: endYear, notIn: clearedYears },
+      values: { some: { value: { gt: 0 } } },
+    },
     orderBy: { year: 'desc' },
     select: { year: true },
   });
@@ -478,7 +490,7 @@ async function validateProjectUpdate(
       currentTopicIds
     )) ??
     (await validateUniqueName(tx, projectData.name, projectData.startYear, previous.id)) ??
-    (await validateEndYear(tx, previous.id, projectData)) ??
+    (await validateEndYear(tx, previous.id, parsed)) ??
     (await validateStartYear(tx, previous.id, parsed))
   );
 }

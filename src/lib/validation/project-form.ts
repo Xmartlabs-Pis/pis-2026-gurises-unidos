@@ -130,7 +130,11 @@ export function buildProjectFormSchema(keys: readonly string[]) {
       }
     )
     .refine(
-      (data) => data.status !== 'inactive' || data.endYear === null || data.year <= data.endYear,
+      (data) =>
+        data.status !== 'inactive' ||
+        data.endYear === null ||
+        data.year <= data.endYear ||
+        keys.every((key) => !Number((data as Record<string, unknown>)[key])),
       {
         message: 'El año de beneficiarios no puede ser posterior al año de fin',
         path: ['year'],
@@ -141,7 +145,10 @@ export function buildProjectFormSchema(keys: readonly string[]) {
         data.beneficiaryDrafts.every(
           (draft) =>
             (draft.year >= data.startYear || keys.every((key) => !Number(draft[key]))) &&
-            (data.status !== 'inactive' || data.endYear === null || draft.year <= data.endYear)
+            (data.status !== 'inactive' ||
+              data.endYear === null ||
+              draft.year <= data.endYear ||
+              keys.every((key) => !Number(draft[key])))
         ),
       {
         message: 'Hay beneficiarios en años fuera del período del proyecto',

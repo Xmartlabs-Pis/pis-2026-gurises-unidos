@@ -19,6 +19,7 @@ export function BasicInfoSection({
   strategicLines,
   partners,
   firstBeneficiaryYear,
+  lastBeneficiaryYear,
 }: Pick<
   SectionProps,
   | 'yearOptions'
@@ -27,7 +28,7 @@ export function BasicInfoSection({
   | 'topics'
   | 'strategicLines'
   | 'partners'
-> & { firstBeneficiaryYear?: number }) {
+> & { firstBeneficiaryYear?: number; lastBeneficiaryYear?: number }) {
   const { clearErrors, getValues, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
@@ -51,7 +52,9 @@ export function BasicInfoSection({
       (status !== 'inactive' || !endYear || Number(value) <= Number(endYear))
   );
   const endYearOptions = yearOptions.filter(
-    ({ value }) => !startYear || Number(value) >= Number(startYear)
+    ({ value }) =>
+      (!startYear || Number(value) >= Number(startYear)) &&
+      (lastBeneficiaryYear === undefined || Number(value) >= lastBeneficiaryYear)
   );
 
   function removePartnersOutside(selectedTypes: string[]) {
@@ -126,6 +129,11 @@ export function BasicInfoSection({
           placeholder="Seleccionar..."
           clearLabel="Sin año de fin"
           options={endYearOptions}
+          description={
+            status !== 'inactive' || lastBeneficiaryYear === undefined
+              ? undefined
+              : `El año de fin no puede ser anterior a ${lastBeneficiaryYear}, porque tiene beneficiarios registrados`
+          }
           disabled={status !== 'inactive'}
           required={status === 'inactive'}
         />

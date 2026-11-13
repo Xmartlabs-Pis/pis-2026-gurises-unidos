@@ -386,6 +386,43 @@ describe('updateProject (integration)', () => {
     ]);
   });
 
+  test.each([false, true])(
+    'allows closing before an empty later year (clear in submission: %s)',
+    async (clearInSubmission) => {
+      const projectId = await createProjectFixture();
+      signInAs(seed.adminId);
+      const categories = await prisma.beneficiaryCategory.findMany({ where: { isActive: true } });
+      const emptyCounts = Object.fromEntries(categories.map(({ key }) => [key, '0']));
+      if (!clearInSubmission) {
+        await prisma.projectBeneficiaryValue.updateMany({
+          where: { beneficiary: { projectId } },
+          data: { value: 0 },
+        });
+      }
+      await expectRedirectToProject(
+        updateProject(
+          projectId,
+          {},
+          buildFormData({
+            status: 'inactive',
+            endYear: '2022',
+            year: '2022',
+            beneficiaryDrafts: clearInSubmission
+              ? [JSON.stringify({ year: String(BENEFICIARY_YEAR), ...emptyCounts })]
+              : [],
+          })
+        ),
+        projectId
+      );
+      expect(await loadProject(projectId)).toMatchObject({ status: 'inactive', endYear: 2022 });
+      expect(
+        await prisma.projectBeneficiaryValue.count({
+          where: { beneficiary: { projectId, year: BENEFICIARY_YEAR }, value: { gt: 0 } },
+        })
+      ).toBe(0);
+    }
+  );
+
   test('persists changed fields and topics and audits only what changed', async () => {
     const projectId = await createProjectFixture();
     signInAs(seed.adminId);

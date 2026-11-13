@@ -90,6 +90,31 @@ const SAVED_COUNTS = {
 const CUSTOM_CATEGORY = { key: 'customTest', name: 'Custom beneficiaries' } as const;
 
 it.each([...BENEFICIARY_CATEGORY_OPTIONS, CUSTOM_CATEGORY])(
+  'limits the end year using $key and unlocks it after clearing counts',
+  (category) => {
+    const emptyCounts = Object.fromEntries(BENEFICIARY_CATEGORY_OPTIONS.map(({ key }) => [key, 0]));
+    renderForm({
+      mode: 'edit',
+      initialValues: { startYear: '2020', status: 'inactive', endYear: '2026' },
+      beneficiaryCategories: [...BENEFICIARY_CATEGORY_OPTIONS, CUSTOM_CATEGORY],
+      beneficiaryRecords: [{ ...SAVED_COUNTS, ...emptyCounts, year: 2025, [category.key]: 1 }],
+    });
+    const endSelect = screen.getByLabelText('Año de fin') as HTMLSelectElement;
+    expect([...endSelect.options].some((option) => option.value === '2024')).toBe(false);
+    expect([...endSelect.options].some((option) => option.value === '2025')).toBe(true);
+    selectYear('2025');
+    fireEvent.change(screen.getByLabelText(category.name), { target: { value: '0' } });
+    expect([...endSelect.options].some((option) => option.value === '2024')).toBe(true);
+    fireEvent.change(endSelect, { target: { value: '2024' } });
+    const yearSelect = screen.getByLabelText('Año de beneficiarios') as HTMLSelectElement;
+    expect([...yearSelect.options].some((option) => option.value === '2025')).toBe(false);
+    expect(submittedDrafts()).toEqual([
+      expect.objectContaining({ year: '2025', [category.key]: '0' }),
+    ]);
+  }
+);
+
+it.each([...BENEFICIARY_CATEGORY_OPTIONS, CUSTOM_CATEGORY])(
   'uses positive counts in $key to limit the start year',
   (category) => {
     const emptyCounts = Object.fromEntries(BENEFICIARY_CATEGORY_OPTIONS.map(({ key }) => [key, 0]));
@@ -129,6 +154,37 @@ it('does not restrict the start for a saved year with only zero counts', () => {
 
   const startSelect = screen.getByLabelText('Año de inicio') as HTMLSelectElement;
   expect([...startSelect.options].some((option) => option.value === '2022')).toBe(true);
+});
+
+it.each([
+  { startYear: '2022', year: 2020, status: 'active', endYear: '' },
+  { startYear: '2020', year: 2025, status: 'inactive', endYear: '2022' },
+])('hides empty saved years outside $startYear–$endYear after reopening', (period) => {
+  renderForm({
+    mode: 'edit',
+    initialValues: { ...period, year: String(period.year) },
+    beneficiaryRecords: [{ ...SAVED_COUNTS, families: 0, year: period.year }],
+  });
+
+  const yearSelect = screen.getByLabelText('Año de beneficiarios') as HTMLSelectElement;
+  expect([...yearSelect.options].some((option) => option.value === String(period.year))).toBe(
+    false
+  );
+  expect((screen.getByLabelText('Familias') as HTMLInputElement).value).toBe('0');
+  expect(submittedDrafts()).toEqual([]);
+});
+
+it('keeps empty saved years selectable within the project period', () => {
+  renderForm({
+    mode: 'edit',
+    beneficiaryRecords: [{ ...SAVED_COUNTS, families: 0, year: 2020 }],
+  });
+
+  const yearSelect = screen.getByLabelText('Año de beneficiarios') as HTMLSelectElement;
+  expect([...yearSelect.options].some((option) => option.value === '2020')).toBe(true);
+  selectYear('2020');
+  fireEvent.change(screen.getByLabelText('Familias'), { target: { value: '5' } });
+  expect((screen.getByLabelText('Familias') as HTMLInputElement).value).toBe('5');
 });
 
 it('keeps the earliest remaining populated year as the limit after partially clearing data', () => {
@@ -213,6 +269,7 @@ it('limits the start year to years compatible with the current beneficiary count
   fireEvent.change(screen.getByLabelText('Familias'), { target: { value: '0' } });
   expect([...startSelect.options].some((option) => option.value === '2022')).toBe(true);
   fireEvent.change(startSelect, { target: { value: '2022' } });
+  expect([...yearSelect.options].some((option) => option.value === '2020')).toBe(false);
   selectYear('2026');
   expect(submittedDrafts()).toEqual([expect.objectContaining({ year: '2020', families: '0' })]);
 });

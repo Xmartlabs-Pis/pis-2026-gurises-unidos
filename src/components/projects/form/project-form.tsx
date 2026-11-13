@@ -151,15 +151,6 @@ export function ProjectForm({
     beneficiaryCategories
   );
 
-  const beneficiaryYearOptions = yearOptions.filter(
-    ({ value }) =>
-      beneficiaryRecords.some((record) => record.year === Number(value)) ||
-      (Number(value) >= Number(values.startYear) &&
-        (values.status !== 'inactive' ||
-          !values.endYear ||
-          Number(value) <= Number(values.endYear)))
-  );
-
   const beneficiaryCountsByYear = new Map<string, Record<string, unknown>>(
     beneficiaryRecords.map((record) => [String(record.year), record])
   );
@@ -171,6 +162,15 @@ export function ProjectForm({
     .filter(([, counts]) => beneficiaryCategories.some(({ key }) => Number(counts[key]) > 0))
     .map(([year]) => Number(year));
   const firstBeneficiaryYear = populatedYears.length ? Math.min(...populatedYears) : undefined;
+  const lastBeneficiaryYear = populatedYears.length ? Math.max(...populatedYears) : undefined;
+  const beneficiaryYearOptions = yearOptions.filter(
+    ({ value }) =>
+      populatedYears.includes(Number(value)) ||
+      (Number(value) >= Number(values.startYear) &&
+        (values.status !== 'inactive' ||
+          !values.endYear ||
+          Number(value) <= Number(values.endYear)))
+  );
 
   const hasUnsavedChanges =
     isEditing &&
@@ -300,6 +300,7 @@ export function ProjectForm({
             <BasicInfoSection
               yearOptions={yearOptions}
               firstBeneficiaryYear={firstBeneficiaryYear}
+              lastBeneficiaryYear={lastBeneficiaryYear}
               coordinatorOptions={coordinatorOptions}
               topics={topics}
               strategicLines={strategicLines}

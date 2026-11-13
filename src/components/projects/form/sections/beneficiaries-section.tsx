@@ -139,7 +139,7 @@ export function BeneficiariesSection({
 
   useEffect(() => {
     if (!startYear || !year) return;
-    if (beneficiaryRecords.some((record) => record.year === Number(year))) return;
+    if (yearOptions.some(({ value }) => value === year)) return;
     if (Number(year) < Number(startYear)) {
       selectYear(startYear);
       return;
@@ -152,19 +152,19 @@ export function BeneficiariesSection({
     ) {
       selectYear(endYear);
     }
-  }, [startYear, status, endYear, year, selectYear, beneficiaryRecords]);
+  }, [startYear, status, endYear, year, selectYear, yearOptions]);
 
   useEffect(() => {
     const currentDrafts = getValues('beneficiaryDrafts');
     const nextDrafts = currentDrafts.filter(
       (draft) =>
         yearOptions.some(({ value }) => value === draft.year) ||
-        beneficiaryRecords.some((record) => record.year === Number(draft.year))
+        beneficiaryCategories.every(({ key }) => !Number(draft[key]))
     );
     if (nextDrafts.length < currentDrafts.length) {
       setValue('beneficiaryDrafts', nextDrafts, { shouldValidate: true });
     }
-  }, [drafts, yearOptions, getValues, setValue, beneficiaryRecords]);
+  }, [drafts, yearOptions, getValues, setValue, beneficiaryCategories]);
 
   useEffect(() => {
     if (!onUnsavedChangesChange) return;
