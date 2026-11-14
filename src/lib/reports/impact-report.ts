@@ -7,7 +7,7 @@ import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { getTerritoryNames } from '@/lib/projects/location';
 import { formatDelta } from '@/lib/reports/format';
 
-export type ReportKpi = { value: number; label: string; delta: string | null; aside?: string };
+export type ReportKpi = { value: number; label: string; delta: string | null };
 
 export type ReportBar = { label: string; value: number };
 
@@ -38,13 +38,6 @@ function countBy(groups: string[][]) {
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'es'));
 }
 
-function isActiveIn(
-  year: number,
-  { startYear, endYear }: { startYear: number; endYear: number | null }
-) {
-  return startYear <= year && (endYear === null || endYear >= year);
-}
-
 export function getImpactReportFileName(year: number) {
   return `Informe-de-impacto-${year}.pdf`;
 }
@@ -57,64 +50,44 @@ export async function getImpactReportData(
   const previousYear = year - 1;
   const isCurrentYear = year === getCurrentYear();
 
-  const [
-    current,
-    previous,
-    projects,
-    categories,
-    categoryTotals,
-    departmentTotal,
-    pending,
-    previousActiveProjects,
-  ] = await Promise.all([
-    getMetricValues(year, projectWhere),
-    getMetricValues(previousYear, projectWhere),
-    prisma.project.findMany({
-      where: { ...projectWhere, deletedAt: null, projectBeneficiaries: { some: { year } } },
-      select: {
-        name: true,
-        startYear: true,
-        endYear: true,
-        publicDescription: true,
-        generalObjective: true,
-        geographicScope: true,
-        countries: true,
-        region: true,
-        topics: { select: { name: true } },
-        departments: { select: { name: true } },
-      },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
-    }),
-    getActiveBeneficiaryCategories(),
-    sumBeneficiaryCounts({ year, project: { ...projectWhere, deletedAt: null } }),
-    prisma.department.count(),
-    isCurrentYear
-      ? prisma.project.count({
-          where: {
-            AND: [projectWhere, { OR: [{ endYear: null }, { endYear: { gte: year } }] }],
-            deletedAt: null,
-            status: 'active',
-            startYear: { lte: year },
-            projectBeneficiaries: { none: { year } },
-          },
-        })
-      : null,
-    prisma.project.count({
-      where: {
-        AND: [projectWhere, { OR: [{ endYear: null }, { endYear: { gte: previousYear } }] }],
-        deletedAt: null,
-        startYear: { lte: previousYear },
-        projectBeneficiaries: { some: { year: previousYear } },
-      },
-    }),
-  ]);
+  const [current, previous, projects, categories, categoryTotals, departmentTotal, pending] =
+    await Promise.all([
+      getMetricValues(year, projectWhere),
+      getMetricValues(previousYear, projectWhere),
+      prisma.project.findMany({
+        where: { ...projectWhere, deletedAt: null, projectBeneficiaries: { some: { year } } },
+        select: {
+          name: true,
+          publicDescription: true,
+          generalObjective: true,
+          geographicScope: true,
+          countries: true,
+          region: true,
+          topics: { select: { name: true } },
+          departments: { select: { name: true } },
+        },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      }),
+      getActiveBeneficiaryCategories(),
+      sumBeneficiaryCounts({ year, project: { ...projectWhere, deletedAt: null } }),
+      prisma.department.count(),
+      isCurrentYear
+        ? prisma.project.count({
+            where: {
+              AND: [projectWhere, { OR: [{ endYear: null }, { endYear: { gte: year } }] }],
+              deletedAt: null,
+              status: 'active',
+              startYear: { lte: year },
+              projectBeneficiaries: { none: { year } },
+            },
+          })
+        : null,
+    ]);
 
   if (current.active_projects === 0) return null;
 
   const hasPrevious = previous.active_projects > 0;
   const previousValue = (value: number) => (hasPrevious ? value : null);
-  const activeProjects = projects.filter((project) => isActiveIn(year, project)).length;
-  const inactiveProjects = projects.length - activeProjects;
 
   return {
     year,
@@ -154,17 +127,14 @@ export async function getImpactReportData(
         ),
       },
       {
-        value: activeProjects,
+        value: current.active_projects,
         label: 'proyectos activos',
         delta: formatDelta(
-          activeProjects,
-          previousValue(previousActiveProjects),
+          current.active_projects,
+          previousValue(previous.active_projects),
           previousYear,
           'count'
         ),
-        ...(inactiveProjects > 0 && {
-          aside: `+ ${inactiveProjects} ${inactiveProjects === 1 ? 'inactivo' : 'inactivos'}`,
-        }),
       },
     ],
     topics: countBy(projects.map(({ topics }) => topics.map(({ name }) => name))),

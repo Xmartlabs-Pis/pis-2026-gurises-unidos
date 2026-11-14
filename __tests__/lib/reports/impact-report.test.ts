@@ -44,8 +44,6 @@ function mockMetricsByYear(values: Record<number, MetricValues>) {
 const PROJECTS = [
   {
     name: 'Aldea',
-    startYear: 2024,
-    endYear: null,
     publicDescription: 'Acompañamiento a familias.',
     generalObjective: 'Objetivo',
     geographicScope: 'national',
@@ -55,8 +53,6 @@ const PROJECTS = [
   },
   {
     name: 'El Resorte',
-    startYear: 2024,
-    endYear: null,
     publicDescription: null,
     generalObjective: 'Trabajo en territorio.',
     geographicScope: 'national',
@@ -66,8 +62,6 @@ const PROJECTS = [
   },
   {
     name: 'Faro',
-    startYear: 2024,
-    endYear: null,
     publicDescription: '',
     generalObjective: null,
     geographicScope: 'international',
@@ -78,8 +72,6 @@ const PROJECTS = [
   },
   {
     name: 'Hornero',
-    startYear: 2020,
-    endYear: 2025,
     publicDescription: 'Talleres en escuelas.',
     generalObjective: null,
     geographicScope: 'international',
@@ -90,17 +82,11 @@ const PROJECTS = [
   },
 ];
 
-function mockProjectCounts(counts: { pending: number; previousActive: number }) {
-  vi.mocked(prisma.project.count).mockImplementation((async (args: {
-    where: { projectBeneficiaries?: { some?: unknown } };
-  }) => (args.where.projectBeneficiaries?.some ? counts.previousActive : counts.pending)) as never);
-}
-
 describe('getImpactReportData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.department.count).mockResolvedValue(19);
-    mockProjectCounts({ pending: 3, previousActive: 4 });
+    vi.mocked(prisma.project.count).mockResolvedValue(3);
     vi.mocked(prisma.project.findMany).mockResolvedValue(PROJECTS as never);
   });
 
@@ -122,11 +108,7 @@ describe('getImpactReportData', () => {
       expect.objectContaining({ value: 110, delta: '+10,0 % frente a 2025 (100)' }),
       expect.objectContaining({ value: 30, delta: '−25,0 % frente a 2025 (40)' }),
       expect.objectContaining({ value: 45, delta: 'Igual que en 2025' }),
-      expect.objectContaining({
-        value: 3,
-        delta: '1 menos que en 2025 (4)',
-        aside: '+ 1 inactivo',
-      }),
+      expect.objectContaining({ value: 3, delta: '1 menos que en 2025 (4)' }),
     ]);
     expect(data?.comparisonYear).toBe(2025);
     expect(data?.topics).toEqual([
@@ -181,50 +163,5 @@ describe('getImpactReportData', () => {
       { name: 'Faro', description: null },
       { name: 'Hornero', description: 'Talleres en escuelas.' },
     ]);
-  });
-
-  it('counts as active only the projects running in the report year', async () => {
-    mockMetricsByYear({ 2026: metricValues({ active_projects: 4 }) });
-    vi.mocked(prisma.project.findMany).mockResolvedValue(
-      PROJECTS.map((project) => ({ ...project, endYear: 2025 })) as never
-    );
-
-    const data = await getImpactReportData(PROJECT_IDS, 2026);
-
-    expect(data?.projectCount).toBe(4);
-    expect(data?.kpis.at(-1)).toEqual(
-      expect.objectContaining({ value: 0, aside: '+ 4 inactivos' })
-    );
-  });
-
-  it('counts a project that ended after the report year as active', async () => {
-    mockMetricsByYear({ 2025: metricValues({ active_projects: 4 }) });
-
-    const data = await getImpactReportData(PROJECT_IDS, 2025);
-
-    expect(data?.kpis.at(-1)).toEqual(expect.objectContaining({ value: 4 }));
-    expect(data?.kpis.at(-1)).not.toHaveProperty('aside');
-  });
-
-  it('compares against the projects running in the previous year', async () => {
-    mockMetricsByYear({ 2026: metricValues({ active_projects: 3 }) });
-
-    await getImpactReportData(PROJECT_IDS, 2026);
-
-    expect(prisma.project.count).toHaveBeenCalledWith({
-      where: expect.objectContaining({
-        startYear: { lte: 2025 },
-        projectBeneficiaries: { some: { year: 2025 } },
-      }),
-    });
-  });
-
-  it('omits the aside when every project is active', async () => {
-    mockMetricsByYear({ 2026: metricValues({ active_projects: 3 }) });
-    vi.mocked(prisma.project.findMany).mockResolvedValue(PROJECTS.slice(0, 3) as never);
-
-    const data = await getImpactReportData(PROJECT_IDS, 2026);
-
-    expect(data?.kpis.at(-1)).not.toHaveProperty('aside');
   });
 });
