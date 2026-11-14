@@ -9,6 +9,7 @@ const DEPARTMENTS = Array.from({ length: 19 }, (_, index) => `Departamento ${ind
 
 const SHEET: ProjectSheetData = {
   year: 2026,
+  comparisonYear: 2025,
   isCurrentYear: true,
   generatedAt: new Date('2026-10-21T15:00:00Z'),
   name: 'El Resorte',
@@ -43,6 +44,7 @@ const SHEET: ProjectSheetData = {
 
 const REPORT: ImpactReportData = {
   year: 2026,
+  comparisonYear: 2025,
   generatedAt: new Date('2026-10-21T15:00:00Z'),
   projectCount: 27,
   pendingProjects: 3,

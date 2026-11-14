@@ -57,7 +57,9 @@ export const styles = StyleSheet.create({
   kpiRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: RULE },
   kpiCell: { flex: 1, paddingVertical: 14, paddingRight: 12 },
   kpiCellDivided: { borderLeftWidth: 1, borderLeftColor: RULE, paddingLeft: 18 },
+  kpiValueRow: { flexDirection: 'row', alignItems: 'flex-end' },
   kpiValue: { fontSize: 25, fontWeight: 700, color: INK },
+  kpiAside: { marginLeft: 6, marginBottom: 4, fontSize: 9, color: SUBTLE },
   kpiLabel: { marginTop: 4, fontSize: 9, lineHeight: 1.35, color: TEXT },
   kpiDelta: { marginTop: 5, fontSize: 7, color: SUBTLE },
   section: { marginTop: 28 },
@@ -130,7 +132,10 @@ export function KpiGrid({ kpis, columns }: { kpis: ReportKpi[]; columns: number 
               key={kpi.label}
               style={index === 0 ? styles.kpiCell : [styles.kpiCell, styles.kpiCellDivided]}
             >
-              <Text style={styles.kpiValue}>{formatNumber(kpi.value)}</Text>
+              <View style={styles.kpiValueRow}>
+                <Text style={styles.kpiValue}>{formatNumber(kpi.value)}</Text>
+                {kpi.aside && <Text style={styles.kpiAside}>{kpi.aside}</Text>}
+              </View>
               <Text style={styles.kpiLabel}>{kpi.label}</Text>
               {kpi.delta && <Text style={styles.kpiDelta}>{kpi.delta}</Text>}
             </View>

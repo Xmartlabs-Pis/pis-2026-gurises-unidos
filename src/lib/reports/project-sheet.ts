@@ -24,6 +24,7 @@ export type ReportField = { label: string; value: string };
 
 export type ProjectSheetData = {
   year: number;
+  comparisonYear: number | null;
   isCurrentYear: boolean;
   generatedAt: Date;
   name: string;
@@ -122,6 +123,7 @@ export async function getProjectSheetData(projectId: number, year: number) {
 
   const data: ProjectSheetData = {
     year,
+    comparisonYear: current && previous ? previousYear : null,
     isCurrentYear: year === getCurrentYear(),
     generatedAt: new Date(),
     name: project.name,
