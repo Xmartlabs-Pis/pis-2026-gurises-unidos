@@ -132,7 +132,7 @@ function ImpactDetailsPage({ data, logo, fit = DESIGN_FIT }: ImpactPageProps) {
 
       <Section
         title="3) Dónde trabajamos"
-        note={`Proyectos activos por departamento. ${data.departments.length} de los ${data.departmentTotal} departamentos.`}
+        note={`Proyectos con datos por departamento. ${data.departments.length} de los ${data.departmentTotal} departamentos.`}
       >
         <DepartmentTable departments={data.departments} fit={fit} />
         {data.internationalCountries.length > 0 && (

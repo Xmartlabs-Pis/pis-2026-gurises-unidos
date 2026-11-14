@@ -51,7 +51,7 @@ const REPORT: ImpactReportData = {
   kpis: [
     { value: 6315, label: 'niños, niñas y adolescentes alcanzados', delta: null },
     { value: 800, label: 'familias acompañadas', delta: null },
-    { value: 4498, label: 'docentes y educadores capacitados', delta: null },
+    { value: 4498, label: 'funcionarios de servicios básicos formados', delta: null },
     { value: 27, label: 'proyectos activos', delta: null },
   ],
   topics: [{ label: 'Educación', value: 8 }],

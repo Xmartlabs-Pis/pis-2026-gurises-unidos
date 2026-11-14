@@ -137,7 +137,7 @@ export async function getImpactReportData(
       },
       {
         value: current.teachers,
-        label: 'docentes y educadores capacitados',
+        label: 'funcionarios de servicios básicos formados',
         delta: formatDelta(
           current.teachers,
           previousValue(previous.teachers),
