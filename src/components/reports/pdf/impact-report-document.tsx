@@ -147,6 +147,7 @@ function ImpactDetailsPage({ data, logo, fit = DESIGN_FIT }: ImpactPageProps) {
         lines={[
           'NNA: niños, niñas y adolescentes.',
           'Las cifras son la suma de lo que carga cada proyecto en el año; no hay datos de personas individuales.',
+          `Proyectos activos: los que estaban en curso en ${data.year}, aunque hoy estén inactivos.`,
           ...(data.comparisonYear === null
             ? []
             : [`La comparación es contra el mismo período de ${data.comparisonYear}.`]),
