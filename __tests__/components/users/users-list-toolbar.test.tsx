@@ -119,23 +119,53 @@ describe('UsersListToolbar', () => {
     expect(updateFilters).toHaveBeenLastCalledWith({ sort: null });
   });
 
-  test('shows the sort value without its prefix in the mobile sheet', async () => {
+  test('shows the sort value without its prefix in the mobile popover', async () => {
     render(<UsersListToolbar filters={{ sortBy: 'status' }} filteredCount={1} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    const sheet = within(await screen.findByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros de usuarios' }));
+    const popover = within(await screen.findByRole('dialog'));
 
-    const sortTrigger = sheet.getByRole('combobox', { name: 'Ordenar por' });
+    const sortTrigger = popover.getByRole('combobox', { name: 'Ordenar por' });
     expect(sortTrigger.textContent).toContain('Estado');
     expect(sortTrigger.textContent).not.toContain('Ordenar:');
   });
 
-  test('clears the filters from the mobile sheet', async () => {
+  test('clears the filters from the mobile popover', async () => {
     render(<UsersListToolbar filters={{ role: 'admin' }} filteredCount={1} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Limpiar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros de usuarios' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Limpiar filtros' }));
 
     expect(clearFilters).toHaveBeenCalledExactlyOnceWith(['role', 'status', 'sort']);
+  });
+
+  test.each([
+    ['Filtrar por rol', 'Administrador', { role: 'admin' }],
+    ['Filtrar por estado', 'Deshabilitado', { status: 'disabled' }],
+    ['Ordenar por', 'Último acceso', { sort: 'lastAccess' }],
+  ])('applies %s immediately from the mobile popover', async (label, option, expected) => {
+    render(<UsersListToolbar filters={{}} filteredCount={1} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros de usuarios' }));
+    const popover = within(await screen.findByRole('dialog'));
+    expect(popover.queryByRole('button', { name: 'Aplicar filtros' })).toBeNull();
+    fireEvent.click(popover.getByRole('combobox', { name: label }));
+    fireEvent.keyDown(await screen.findByRole('option', { name: option }), { key: 'Enter' });
+
+    expect(updateFilters).toHaveBeenCalledExactlyOnceWith(expected);
+    expect(screen.getByRole('dialog')).toBeDefined();
+  });
+
+  test('counts active role, status and sort filters on the mobile button', () => {
+    render(
+      <UsersListToolbar
+        filters={{ role: 'admin', status: 'active', sortBy: 'role' }}
+        filteredCount={1}
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Filtros de usuarios' }).getAttribute('aria-description')
+    ).toBe('3 filtros activos');
   });
 });

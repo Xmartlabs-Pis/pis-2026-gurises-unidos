@@ -4,6 +4,36 @@ import { DESKTOP, MOBILE, NO_SESSION, deleteUsers, login, loginAs } from './help
 
 const DOCUMENT_ID = '65432105';
 
+for (const width of [320, 390]) {
+  test(`keeps both history date filters inside the popover at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/management/history?from=2026-01-01&to=2026-11-13');
+    await page.getByRole('button', { name: 'Filtros del historial' }).click();
+
+    const popover = page.locator('[data-slot="popover-content"]');
+    await expect(popover).toBeVisible();
+    const bounds = await popover.boundingBox();
+    expect(bounds).not.toBeNull();
+    if (!bounds) return;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+
+    const from = page.getByLabel('Desde', { exact: true });
+    const to = page.getByLabel('Hasta', { exact: true });
+    for (const input of [from, to]) {
+      await expect(input).toBeVisible();
+      const inputBounds = await input.boundingBox();
+      expect(inputBounds).not.toBeNull();
+      if (!inputBounds) continue;
+      expect(inputBounds.x).toBeGreaterThanOrEqual(bounds.x);
+      expect(inputBounds.x + inputBounds.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+    }
+    const fromBounds = await from.boundingBox();
+    const toBounds = await to.boundingBox();
+    expect(toBounds!.y).toBeGreaterThanOrEqual(fromBounds!.y + fromBounds!.height);
+  });
+}
+
 for (const [layout, viewport] of [
   ['desktop', DESKTOP],
   ['mobile', MOBILE],

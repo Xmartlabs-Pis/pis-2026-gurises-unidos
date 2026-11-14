@@ -446,12 +446,57 @@ describe('beneficiary drafts', () => {
     expect(draft.counts.youth18To29).toBe(0);
   });
 
+  it.each(['selected', 'draft'])(
+    'rejects positive custom category counts before the start in the %s year',
+    (source) => {
+      const customSchema = buildProjectFormSchema([...BENEFICIARY_CATEGORY_KEYS, 'customTest']);
+      const result = customSchema.safeParse({
+        ...form,
+        startYear: '2022',
+        year: source === 'selected' ? '2020' : '2024',
+        customTest: source === 'selected' ? '1' : '0',
+        beneficiaryDrafts: source === 'draft' ? [{ year: '2020', customTest: '1' }] : [],
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: [source === 'selected' ? 'year' : 'beneficiaryDrafts'],
+            }),
+          ])
+        );
+      }
+    }
+  );
+
   it.each([
     ['before the start year', form, '2019'],
     ['after the end year', { ...form, status: 'inactive', endYear: '2024' }, '2025'],
   ])('rejects a draft %s', (_case, values, year) => {
-    const result = schema.safeParse({ ...values, beneficiaryDrafts: [{ year }] });
+    const result = schema.safeParse({ ...values, beneficiaryDrafts: [{ year, families: '1' }] });
     expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toHaveLength(1);
+  });
+
+  it('allows clearing a draft before the start year', () => {
+    const parsed = schema.parse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2019', families: '0' }],
+    });
+    const [draft] = splitProjectFormData(parsed, BENEFICIARY_CATEGORY_KEYS).beneficiaryDraftData;
+    expect(draft.year).toBe(2019);
+    expect(Object.values(draft.counts).every((count) => count === 0)).toBe(true);
+  });
+
+  it.each(['selected', 'draft'])('allows zero counts after the end in the %s year', (source) => {
+    const parsed = schema.parse({
+      ...form,
+      status: 'inactive',
+      endYear: '2022',
+      year: source === 'selected' ? '2024' : '2022',
+      beneficiaryDrafts: source === 'draft' ? [{ year: '2024', families: '0' }] : [],
+    });
+    expect(parsed.endYear).toBe(2022);
   });
 
   it.each([

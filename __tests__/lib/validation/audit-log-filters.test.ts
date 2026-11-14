@@ -1,11 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import {
   AUDIT_LOG_DEFAULT_PAGE_SIZE,
+  AUDIT_LOG_MAX_DATE_MESSAGE,
+  auditLogDateSchema,
   parseAuditLogFilters,
   toCanonicalAuditLogQuery,
 } from '@/lib/validation/audit-log-filters';
 
 describe('parseAuditLogFilters', () => {
+  it.each(['2101-01-01', '9999-12-31', '99999-12-31'])(
+    'returns the same limit error for excessive years: %s',
+    (date) => {
+      const result = auditLogDateSchema.safeParse(date);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toBe(AUDIT_LOG_MAX_DATE_MESSAGE);
+    }
+  );
+  it.each(['from', 'to'])('accepts the maximum date for %s', (key) => {
+    expect(parseAuditLogFilters({ [key]: '2100-12-31' })).toMatchObject({ [key]: '2100-12-31' });
+  });
+
+  it.each(['2101-01-01', '9999-12-31', '99999-12-31'])(
+    'ignores dates beyond the limit: %s',
+    (date) => {
+      expect(parseAuditLogFilters({ from: date, to: date })).toMatchObject({
+        from: undefined,
+        to: undefined,
+      });
+    }
+  );
+
   it('accepts failed login filters and normalizes a formatted document id', () => {
     expect(
       parseAuditLogFilters({

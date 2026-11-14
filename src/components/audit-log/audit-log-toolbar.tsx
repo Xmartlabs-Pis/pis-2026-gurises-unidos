@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ListFilter } from 'lucide-react';
 import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,11 @@ import { AUDIT_ACTION_TABS, AUDIT_ENTITY_LABELS } from '@/lib/audit-log/constant
 import { formatAuditLogCount } from '@/lib/audit-log/format';
 import { ALL_FILTER_VALUE } from '@/lib/url-filters';
 import { fullName } from '@/lib/users/format';
-import type { AuditLogFilters } from '@/lib/validation/audit-log-filters';
+import {
+  AUDIT_LOG_MAX_DATE,
+  auditLogDateSchema,
+  type AuditLogFilters,
+} from '@/lib/validation/audit-log-filters';
 import { normalizeDocumentId } from '@/lib/utils';
 
 const FILTER_KEYS: (keyof AuditLogFilters)[] = ['entity', 'authorId', 'documentId', 'from', 'to'];
@@ -40,6 +44,16 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
     to: useRef<HTMLInputElement>(null),
   };
   const documentIdInputRef = useRef<HTMLInputElement>(null);
+  const [dateDrafts, setDateDrafts] = useState({ from: filters.from ?? '', to: filters.to ?? '' });
+  const [appliedDates, setAppliedDates] = useState({ from: filters.from, to: filters.to });
+  const [dateErrors, setDateErrors] = useState<Partial<Record<'from' | 'to', string>>>({});
+  if (appliedDates.from !== filters.from || appliedDates.to !== filters.to) {
+    setDateDrafts((drafts) => ({
+      from: appliedDates.from !== filters.from ? (filters.from ?? '') : drafts.from,
+      to: appliedDates.to !== filters.to ? (filters.to ?? '') : drafts.to,
+    }));
+    setAppliedDates({ from: filters.from, to: filters.to });
+  }
 
   function commitDocumentId(value: string) {
     const documentId = normalizeDocumentId(value.trim());
@@ -49,6 +63,9 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
   }
 
   function commitDate(key: 'from' | 'to', value: string) {
+    const error = value ? auditLogDateSchema.safeParse(value).error?.issues[0]?.message : undefined;
+    setDateErrors((errors) => ({ ...errors, [key]: error }));
+    if (error) return;
     if (value !== (filters[key] ?? '')) updateFilters({ [key]: value || null });
   }
 
@@ -123,11 +140,11 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
         }}
       >
         <PopoverTrigger
-          render={<Button variant="outline" className="relative h-9 w-fit gap-2" />}
-          aria-description={`${activeFilterCount} filtros activos`}
+          render={<Button variant="outline" size="icon" className="relative h-9 w-9 shrink-0" />}
+          aria-label="Filtros del historial"
+          aria-description={`${activeFilterCount} ${activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}`}
         >
           <ListFilter />
-          Filtros
           {activeFilterCount > 0 && (
             <span
               aria-hidden="true"
@@ -137,7 +154,7 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
             </span>
           )}
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 gap-4 p-4">
+        <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] gap-4 p-4">
           <label className="flex flex-col gap-2">
             <span>Cédula ingresada</span>
             <Input
@@ -177,33 +194,55 @@ export function AuditLogToolbar({ filters, total, authors }: AuditLogToolbarProp
               </Select>
             </div>
           ))}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid min-w-0 grid-cols-1 gap-4">
             {(
               [
-                { key: 'from', label: 'Desde', value: filters.from },
-                { key: 'to', label: 'Hasta', value: filters.to },
+                { key: 'from', label: 'Desde' },
+                { key: 'to', label: 'Hasta' },
               ] as const
-            ).map(({ key, label, value }) => (
-              <label key={key} className="flex flex-col gap-2">
-                <span>{label}</span>
+            ).map(({ key, label }) => (
+              <div key={key} className="flex min-w-0 flex-col gap-2">
+                <label htmlFor={`audit-date-${key}`}>{label}</label>
                 <Input
-                  key={value}
+                  id={`audit-date-${key}`}
                   ref={dateInputRefs[key]}
                   type="date"
-                  defaultValue={value ?? ''}
+                  max={AUDIT_LOG_MAX_DATE}
+                  className="max-w-full min-w-0"
+                  value={dateDrafts[key]}
+                  aria-invalid={Boolean(dateErrors[key])}
+                  aria-describedby={dateErrors[key] ? `audit-date-${key}-error` : undefined}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
+                    setDateDrafts((drafts) => ({ ...drafts, [key]: value }));
+                    setDateErrors((errors) => ({ ...errors, [key]: undefined }));
+                  }}
                   onBlur={(event) => commitDate(key, event.currentTarget.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') commitDate(key, event.currentTarget.value);
                   }}
                 />
-              </label>
+                {dateErrors[key] && (
+                  <span
+                    id={`audit-date-${key}-error`}
+                    role="alert"
+                    className="text-destructive text-xs"
+                  >
+                    {dateErrors[key]}
+                  </span>
+                )}
+              </div>
             ))}
           </div>
           <Button
             variant="ghost"
             size="sm"
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => clearFilters(FILTER_KEYS)}
+            onClick={() => {
+              setDateDrafts({ from: '', to: '' });
+              setDateErrors({});
+              clearFilters(FILTER_KEYS);
+            }}
           >
             Limpiar filtros
           </Button>

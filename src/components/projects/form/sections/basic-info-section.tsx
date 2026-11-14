@@ -18,6 +18,8 @@ export function BasicInfoSection({
   topics,
   strategicLines,
   partners,
+  firstBeneficiaryYear,
+  lastBeneficiaryYear,
 }: Pick<
   SectionProps,
   | 'yearOptions'
@@ -26,7 +28,7 @@ export function BasicInfoSection({
   | 'topics'
   | 'strategicLines'
   | 'partners'
->) {
+> & { firstBeneficiaryYear?: number; lastBeneficiaryYear?: number }) {
   const { clearErrors, getValues, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
@@ -45,10 +47,14 @@ export function BasicInfoSection({
     name: 'leadCoordinatorId',
   });
   const startYearOptions = yearOptions.filter(
-    ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
+    ({ value }) =>
+      (firstBeneficiaryYear === undefined || Number(value) <= firstBeneficiaryYear) &&
+      (status !== 'inactive' || !endYear || Number(value) <= Number(endYear))
   );
   const endYearOptions = yearOptions.filter(
-    ({ value }) => !startYear || Number(value) >= Number(startYear)
+    ({ value }) =>
+      (!startYear || Number(value) >= Number(startYear)) &&
+      (lastBeneficiaryYear === undefined || Number(value) >= lastBeneficiaryYear)
   );
 
   function removePartnersOutside(selectedTypes: string[]) {
@@ -110,6 +116,11 @@ export function BasicInfoSection({
           name="startYear"
           label="Año de inicio"
           options={startYearOptions}
+          description={
+            firstBeneficiaryYear === undefined
+              ? undefined
+              : `El año de inicio no puede ser posterior a ${firstBeneficiaryYear}, porque tiene beneficiarios registrados`
+          }
         />
         <SelectField
           id="endYear"
@@ -118,6 +129,11 @@ export function BasicInfoSection({
           placeholder="Seleccionar..."
           clearLabel="Sin año de fin"
           options={endYearOptions}
+          description={
+            status !== 'inactive' || lastBeneficiaryYear === undefined
+              ? undefined
+              : `El año de fin no puede ser anterior a ${lastBeneficiaryYear}, porque tiene beneficiarios registrados`
+          }
           disabled={status !== 'inactive'}
           required={status === 'inactive'}
         />

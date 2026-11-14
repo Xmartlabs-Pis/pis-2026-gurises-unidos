@@ -155,7 +155,7 @@ function InternalProjectCard({
               {selection.selected && <CheckIcon className="size-3.5" strokeWidth={3} />}
             </span>
           )}
-          <h2 className="line-clamp-2 min-w-0" title={name}>
+          <h2 className="line-clamp-2 min-w-0 wrap-anywhere" title={name}>
             {name}
           </h2>
         </div>
@@ -167,27 +167,27 @@ function InternalProjectCard({
         </Badge>
       </CardHeader>
       <div className="flex flex-col gap-1.5">
-        <CardDescription className="flex flex-row justify-between">
-          <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
+        <CardDescription className="flex min-w-0 flex-row justify-between gap-2">
+          <p className="text-muted-foreground shrink-0 text-xs leading-4 font-normal tracking-normal">
             Territorio
           </p>
-          <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
+          <p className="text-foreground min-w-0 text-right text-xs leading-4 font-medium tracking-normal wrap-anywhere">
             {territory}
           </p>
         </CardDescription>
-        <CardDescription className="flex flex-row justify-between">
-          <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
+        <CardDescription className="flex min-w-0 flex-row justify-between gap-2">
+          <p className="text-muted-foreground shrink-0 text-xs leading-4 font-normal tracking-normal">
             Coordinador/a
           </p>
-          <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
+          <p className="text-foreground min-w-0 text-right text-xs leading-4 font-medium tracking-normal wrap-anywhere">
             {coordinator}
           </p>
         </CardDescription>
-        <CardDescription className="flex flex-row justify-between">
-          <p className="text-muted-foreground text-xs leading-4 font-normal tracking-normal">
+        <CardDescription className="flex min-w-0 flex-row justify-between gap-2">
+          <p className="text-muted-foreground shrink-0 text-xs leading-4 font-normal tracking-normal">
             Intensidad
           </p>
-          <p className="text-foreground text-xs leading-4 font-medium tracking-normal">
+          <p className="text-foreground min-w-0 text-right text-xs leading-4 font-medium tracking-normal wrap-anywhere">
             {getIntensityLabel(intensity)}
           </p>
         </CardDescription>
