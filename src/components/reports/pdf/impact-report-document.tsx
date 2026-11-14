@@ -132,7 +132,7 @@ function ImpactDetailsPage({ data, logo, fit = DESIGN_FIT }: ImpactPageProps) {
 
       <Section
         title="3) Dónde trabajamos"
-        note={`Proyectos activos por departamento. ${data.departments.length} de los ${data.departmentTotal} departamentos.`}
+        note={`Proyectos con datos por departamento. ${data.departments.length} de los ${data.departmentTotal} departamentos.`}
       >
         <DepartmentTable departments={data.departments} fit={fit} />
         {data.internationalCountries.length > 0 && (
@@ -147,7 +147,10 @@ function ImpactDetailsPage({ data, logo, fit = DESIGN_FIT }: ImpactPageProps) {
         lines={[
           'NNA: niños, niñas y adolescentes.',
           'Las cifras son la suma de lo que carga cada proyecto en el año; no hay datos de personas individuales.',
-          `La comparación es contra el mismo período de ${data.year - 1}.`,
+          `Proyectos activos: los que estaban en curso en ${data.year}, aunque hoy estén inactivos.`,
+          ...(data.comparisonYear === null
+            ? []
+            : [`La comparación es contra el mismo período de ${data.comparisonYear}.`]),
         ]}
       />
     </ReportPage>

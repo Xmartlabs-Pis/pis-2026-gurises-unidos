@@ -9,6 +9,7 @@ const DEPARTMENTS = Array.from({ length: 19 }, (_, index) => `Departamento ${ind
 
 const SHEET: ProjectSheetData = {
   year: 2026,
+  comparisonYear: 2025,
   isCurrentYear: true,
   generatedAt: new Date('2026-10-21T15:00:00Z'),
   name: 'El Resorte',
@@ -43,13 +44,14 @@ const SHEET: ProjectSheetData = {
 
 const REPORT: ImpactReportData = {
   year: 2026,
+  comparisonYear: 2025,
   generatedAt: new Date('2026-10-21T15:00:00Z'),
   projectCount: 27,
   pendingProjects: 3,
   kpis: [
     { value: 6315, label: 'niños, niñas y adolescentes alcanzados', delta: null },
     { value: 800, label: 'familias acompañadas', delta: null },
-    { value: 4498, label: 'docentes y educadores capacitados', delta: null },
+    { value: 4498, label: 'funcionarios de servicios básicos formados', delta: null },
     { value: 27, label: 'proyectos activos', delta: null },
   ],
   topics: [{ label: 'Educación', value: 8 }],
