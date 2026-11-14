@@ -38,6 +38,13 @@ function countBy(groups: string[][]) {
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'es'));
 }
 
+function isActiveIn(
+  year: number,
+  { startYear, endYear }: { startYear: number; endYear: number | null }
+) {
+  return startYear <= year && (endYear === null || endYear >= year);
+}
+
 export function getImpactReportFileName(year: number) {
   return `Informe-de-impacto-${year}.pdf`;
 }
@@ -66,7 +73,8 @@ export async function getImpactReportData(
       where: { ...projectWhere, deletedAt: null, projectBeneficiaries: { some: { year } } },
       select: {
         name: true,
-        status: true,
+        startYear: true,
+        endYear: true,
         publicDescription: true,
         generalObjective: true,
         geographicScope: true,
@@ -93,9 +101,9 @@ export async function getImpactReportData(
       : null,
     prisma.project.count({
       where: {
-        ...projectWhere,
+        AND: [projectWhere, { OR: [{ endYear: null }, { endYear: { gte: previousYear } }] }],
         deletedAt: null,
-        status: 'active',
+        startYear: { lte: previousYear },
         projectBeneficiaries: { some: { year: previousYear } },
       },
     }),
@@ -105,7 +113,7 @@ export async function getImpactReportData(
 
   const hasPrevious = previous.active_projects > 0;
   const previousValue = (value: number) => (hasPrevious ? value : null);
-  const activeProjects = projects.filter(({ status }) => status === 'active').length;
+  const activeProjects = projects.filter((project) => isActiveIn(year, project)).length;
   const inactiveProjects = projects.length - activeProjects;
 
   return {
