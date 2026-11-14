@@ -1,0 +1,57 @@
+name: Seed main
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        type: string
+        required: true
+        description: "Escribi 'main' para confirmar"
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    name: Seed the production database
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: main
+    permissions:
+      contents: read
+    steps:
+      - env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          [ "$CONFIRM" = main ] || {
+            echo "confirmacion invalida: escribi exactamente 'main'" >&2
+            exit 1
+          }
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - uses: ./.github/actions/db-tunnel
+        with:
+          branch: main
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-user: ${{ vars.SSH_USER || 'deploy' }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+
+      - name: Check that every migration is applied
+        run: npx prisma migrate status
+
+      - run: npx tsx prisma/seed-main.ts
+        env:
+          SEED_USER_PASSWORD: ${{ secrets.SEED_USER_PASSWORD }}
+
+      - run: echo "Production seeded from \`prisma/seed-main.ts\`." >> "$GITHUB_STEP_SUMMARY"

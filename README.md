@@ -571,6 +571,22 @@ En main hace falta `CONFIRM=main ./scripts/clear-uploads.sh main`.
 El dataset vive en `prisma/seed-staging.ts`, separado del seed local (`prisma/seed.ts`). El único
 fixture compartido es el admin, en `prisma/fixtures.ts`.
 
+### Datos de producción
+
+El workflow manual **Seed main** deja producción lista para entrar: crea el primer admin y las
+categorías de beneficiarios de sistema (estas ya las inserta una migración; el seed solo las
+completa si faltan). No carga datos de prueba. Pide escribir `main` en el input `confirm`, solo
+corre desde la rama `main` y corta si la base tiene migraciones pendientes: correr **Deploy main**
+antes.
+
+El admin es el mismo que en staging, `admin@gurisesunidos.test` (documento `11111111`), y su
+contraseña es el secret `SEED_USER_PASSWORD` del **environment `main`**. Queda con
+`mustChangePassword`, así que en el primer login tiene que elegir otra contraseña.
+
+Es idempotente: si ese admin ya existe y está activo, no lo toca (no pisa la contraseña). Si el
+documento o el email los usa otro usuario, o ese admin está borrado o deshabilitado, falla en vez
+de seguir. Corre con `prisma/seed-main.ts`.
+
 ### Pendiente
 
 **Backups.** Falta un cron con `pg_dump` a un archivo fuera del volumen. Las portadas en
