@@ -22,6 +22,13 @@ function readPassword() {
   return result.data;
 }
 
+async function createIfEmpty(
+  existingCount: Promise<number>,
+  create: () => Promise<{ count: number }>
+) {
+  return (await existingCount) === 0 ? (await create()).count : 0;
+}
+
 async function ensureAdmin(tx: Prisma.TransactionClient, passwordHash: string) {
   const existing = await tx.user.findMany({
     where: { OR: [{ documentId: admin.documentId }, { email: admin.email }] },
@@ -63,44 +70,42 @@ async function main() {
   const password = readPassword();
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const summary = await prisma.$transaction(async (tx) => {
-    await tx.beneficiaryCategory.createMany({
-      data: BENEFICIARY_CATEGORIES,
-      skipDuplicates: true,
-    });
+  const summary = await prisma.$transaction(
+    async (tx) => {
+      await tx.beneficiaryCategory.createMany({
+        data: BENEFICIARY_CATEGORIES,
+        skipDuplicates: true,
+      });
 
-    const topics = await tx.topic.createMany({
-      data: TOPICS.map((name) => ({ name })),
-      skipDuplicates: true,
-    });
+      const topics = await createIfEmpty(tx.topic.count(), () =>
+        tx.topic.createMany({ data: TOPICS.map((name) => ({ name })) })
+      );
 
-    const strategicLines = await tx.strategicLine.createMany({
-      data: STRATEGIC_LINES.map((name) => ({ name })),
-      skipDuplicates: true,
-    });
+      const strategicLines = await createIfEmpty(tx.strategicLine.count(), () =>
+        tx.strategicLine.createMany({ data: STRATEGIC_LINES.map((name) => ({ name })) })
+      );
 
-    const { _max: partnerOrder } = await tx.partner.aggregate({
-      where: { isActive: true },
-      _max: { sortOrder: true },
-    });
-    const partners = await tx.partner.createMany({
-      data: PARTNERS.map((partner, index) => ({
-        ...partner,
-        showPublicly: true,
-        sortOrder: (partnerOrder.sortOrder ?? 0) + index + 1,
-      })),
-      skipDuplicates: true,
-    });
+      const partners = await createIfEmpty(tx.partner.count(), () =>
+        tx.partner.createMany({
+          data: PARTNERS.map((partner, index) => ({
+            ...partner,
+            showPublicly: true,
+            sortOrder: index + 1,
+          })),
+        })
+      );
 
-    const adminCreated = await ensureAdmin(tx, passwordHash);
+      const adminCreated = await ensureAdmin(tx, passwordHash);
 
-    return {
-      admin: adminCreated ? 'created' : 'already existed, left untouched',
-      topics: topics.count,
-      strategicLines: strategicLines.count,
-      partners: partners.count,
-    };
-  });
+      return {
+        admin: adminCreated ? 'created' : 'already existed, left untouched',
+        topics,
+        strategicLines,
+        partners,
+      };
+    },
+    { maxWait: 20_000, timeout: 120_000 }
+  );
 
   console.log(
     `Main seed completed. Admin ${summary.admin}. Created ${summary.topics} topics, ` +

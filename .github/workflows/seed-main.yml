@@ -15,7 +15,6 @@ concurrency:
 jobs:
   seed:
     name: Seed the production database
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: main
     permissions:
@@ -24,6 +23,10 @@ jobs:
       - env:
           CONFIRM: ${{ inputs.confirm }}
         run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || {
+            echo "Seed main solo corre desde la rama main (se lanzo desde $GITHUB_REF)" >&2
+            exit 1
+          }
           [ "$CONFIRM" = main ] || {
             echo "confirmacion invalida: escribi exactamente 'main'" >&2
             exit 1

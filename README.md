@@ -575,14 +575,20 @@ fixture compartido es el admin, en `prisma/fixtures.ts`.
 
 El workflow manual **Seed main** deja producción lista para usar: crea el primer admin, las
 temáticas, las líneas estratégicas y los socios de `prisma/fixtures.ts` (los mismos que staging), y
-las categorías de beneficiarios de sistema. Las categorías y los socios ya los insertan migraciones;
-el seed solo completa lo que falte. No carga proyectos ni otros datos de prueba. Pide escribir `main` en el input `confirm`, solo
-corre desde la rama `main` y corta si la base tiene migraciones pendientes: correr **Deploy main**
-antes.
+las categorías de beneficiarios de sistema. No carga proyectos ni otros datos de prueba.
 
-El admin es el mismo que en staging, `admin@gurisesunidos.test` (documento `11111111`), y su
-contraseña es el secret `SEED_USER_PASSWORD` del **environment `main`**. Queda con
-`mustChangePassword`, así que en el primer login tiene que elegir otra contraseña.
+Temáticas, líneas estratégicas y socios se cargan solo si la tabla está vacía, para no revivir
+entradas que un admin renombró o desactivó. Los socios ya los inserta una migración, así que en la
+práctica no se tocan. Las categorías de sistema también vienen de una migración; el seed solo
+completa las que falten.
+
+Pide escribir `main` en el input `confirm`, falla si se lanza desde otra rama que no sea `main` y
+corta si la base tiene migraciones pendientes: correr **Deploy main** antes.
+
+El admin usa el mismo documento y email que el de staging, `11111111` y
+`admin@gurisesunidos.test`, y su contraseña es el secret `SEED_USER_PASSWORD` del **environment
+`main`**. Queda con `mustChangePassword`, así que en el primer login tiene que elegir otra
+contraseña. El email `.test` no recibe correos: ese admin no puede recuperar la contraseña por mail.
 
 Es idempotente: si ese admin ya existe y está activo, no lo toca (no pisa la contraseña). Si el
 documento o el email los usa otro usuario, o ese admin está borrado o deshabilitado, falla en vez
