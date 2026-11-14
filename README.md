@@ -573,9 +573,10 @@ fixture compartido es el admin, en `prisma/fixtures.ts`.
 
 ### Datos de producción
 
-El workflow manual **Seed main** deja producción lista para entrar: crea el primer admin y las
-categorías de beneficiarios de sistema (estas ya las inserta una migración; el seed solo las
-completa si faltan). No carga datos de prueba. Pide escribir `main` en el input `confirm`, solo
+El workflow manual **Seed main** deja producción lista para usar: crea el primer admin, las
+temáticas, las líneas estratégicas y los socios de `prisma/fixtures.ts` (los mismos que staging), y
+las categorías de beneficiarios de sistema. Las categorías y los socios ya los insertan migraciones;
+el seed solo completa lo que falte. No carga proyectos ni otros datos de prueba. Pide escribir `main` en el input `confirm`, solo
 corre desde la rama `main` y corta si la base tiene migraciones pendientes: correr **Deploy main**
 antes.
 

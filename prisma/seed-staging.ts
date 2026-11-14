@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client';
 import { METRIC_DEFINITIONS } from '../src/lib/metrics/constants';
 import { PROJECT_PLACEHOLDERS } from '../src/lib/projects/project-placeholders';
-import { ADMIN, BENEFICIARY_CATEGORIES, PARTNERS, STRATEGIC_LINES } from './fixtures';
+import { ADMIN, BENEFICIARY_CATEGORIES, PARTNERS, STRATEGIC_LINES, TOPICS } from './fixtures';
 import {
   formCategoryValuesWhere,
   SYSTEM_BENEFICIARY_KEYS,
@@ -37,8 +37,6 @@ const DEPARTMENTS = [
 ];
 
 const COUNTERPARTY_TYPES = Object.values(CounterpartyType);
-
-const TOPICS = ['Educación', 'Salud', 'Protección', 'Comunidad', 'Empleo'];
 
 const COORDINATORS = [
   { firstName: 'Carlos', lastName: 'Pérez', documentId: '22222222', status: 'active' },
