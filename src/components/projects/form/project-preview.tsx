@@ -54,7 +54,7 @@ export function ProjectPreview({
               <span className="text-primary text-2xl leading-8 font-bold">
                 {beneficiaryTotal.toLocaleString('es-UY')}
               </span>
-              <span className="text-muted-foreground text-xs leading-4">personas alcanzadas</span>
+              <span className="text-muted-foreground text-xs leading-4">beneficiarios</span>
             </div>
           </div>
         </Card>

@@ -113,7 +113,7 @@ function PublicProjectCard({
             {formatNumber(reach)}
           </span>
           <span className={`${styles.reachLabel} text-xs leading-4 font-normal tracking-normal`}>
-            personas alcanzadas
+            beneficiarios
           </span>
         </div>
       </div>
