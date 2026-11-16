@@ -339,4 +339,22 @@ describe('getPublicProjectsPage', () => {
 
     expect(result.items[0].reach).toBe(0);
   });
+
+  test('includes system and custom category counts in the public beneficiary total', async () => {
+    prismaMock.project.findMany.mockResolvedValue([
+      {
+        ...row(1),
+        projectBeneficiaries: [
+          {
+            values: [
+              { value: 10, category: { key: 'families' } },
+              { value: 25, category: { key: 'customVolunteers' } },
+            ],
+          },
+        ],
+      },
+    ]);
+    const result = await getPublicProjectsPage(2026, TOPIC_ID, 1);
+    expect(result.items[0].reach).toBe(35);
+  });
 });

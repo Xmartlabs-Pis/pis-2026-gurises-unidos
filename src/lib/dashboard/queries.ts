@@ -2,7 +2,7 @@ import type { Intensity, ProjectStatus } from '@/generated/prisma/enums';
 import prisma from '@/lib/prisma';
 import { getMetricValues } from '@/lib/metrics/queries';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
-import { getChildrenReached } from '@/lib/projects/detail-metrics';
+import { sumBeneficiaries } from '@/lib/project-display';
 
 export type DashboardKpi = {
   value: number;
@@ -52,7 +52,7 @@ async function getProjectsWithActivity(year: number): Promise<DashboardProjectRo
   return projects.map(({ projectBeneficiaries, ...project }) => ({
     ...project,
     beneficiaries: projectBeneficiaries.reduce(
-      (sum, record) => sum + (getChildrenReached(toBeneficiaryCounts(record.values)) ?? 0),
+      (sum, record) => sum + sumBeneficiaries(toBeneficiaryCounts(record.values)),
       0
     ),
   }));

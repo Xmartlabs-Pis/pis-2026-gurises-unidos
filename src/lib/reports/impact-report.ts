@@ -15,6 +15,7 @@ export type ReportProject = { name: string; description: string | null };
 
 export type ImpactReportData = {
   year: number;
+  comparisonYear: number | null;
   generatedAt: Date;
   projectCount: number;
   pendingProjects: number | null;
@@ -90,6 +91,7 @@ export async function getImpactReportData(
 
   return {
     year,
+    comparisonYear: hasPrevious ? previousYear : null,
     generatedAt: new Date(),
     projectCount: current.active_projects,
     pendingProjects: pending,
@@ -116,7 +118,7 @@ export async function getImpactReportData(
       },
       {
         value: current.teachers,
-        label: 'docentes y educadores capacitados',
+        label: 'funcionarios de servicios básicos formados',
         delta: formatDelta(
           current.teachers,
           previousValue(previous.teachers),

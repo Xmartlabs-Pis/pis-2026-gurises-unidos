@@ -110,6 +110,7 @@ describe('getImpactReportData', () => {
       expect.objectContaining({ value: 45, delta: 'Igual que en 2025' }),
       expect.objectContaining({ value: 3, delta: '1 menos que en 2025 (4)' }),
     ]);
+    expect(data?.comparisonYear).toBe(2025);
     expect(data?.topics).toEqual([
       { label: 'Educación', value: 2 },
       { label: 'Salud', value: 1 },
@@ -132,6 +133,7 @@ describe('getImpactReportData', () => {
     const data = await getImpactReportData(PROJECT_IDS, 2024);
 
     expect(data?.kpis.every(({ delta }) => delta === null)).toBe(true);
+    expect(data?.comparisonYear).toBeNull();
     expect(data?.pendingProjects).toBeNull();
   });
 

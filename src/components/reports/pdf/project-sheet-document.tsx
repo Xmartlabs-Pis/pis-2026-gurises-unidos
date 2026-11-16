@@ -102,7 +102,9 @@ export function ProjectSheetDocument({ data, logo, fit = DESIGN_FIT }: ProjectSh
           lines={[
             'NNA: niños, niñas y adolescentes.',
             'Las cifras son lo que el proyecto cargó en el año; no hay datos de personas individuales.',
-            `La comparación es contra el mismo período de ${data.year - 1}.`,
+            ...(data.comparisonYear === null
+              ? []
+              : [`La comparación es contra el mismo período de ${data.comparisonYear}.`]),
           ]}
         />
       </ReportPage>

@@ -1,6 +1,26 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { ProjectCard } from '@/components/projects/project-card';
+
+it.each(['public-light', 'public-dark'] as const)(
+  'labels the total as beneficiaries in %s cards',
+  (variant) => {
+    render(
+      <ProjectCard
+        variant={variant}
+        territory="Montevideo"
+        name="Community project"
+        description="Public description"
+        coverPhoto={null}
+        coverCrop={null}
+        reach={35}
+      />
+    );
+    expect(screen.getByText('35')).toBeDefined();
+    expect(screen.getByText('beneficiarios')).toBeDefined();
+    expect(screen.queryByText('personas alcanzadas')).toBeNull();
+  }
+);
 
 it('keeps the public cover frame at 16:9 so a stored crop is not stretched', () => {
   const { container } = render(
