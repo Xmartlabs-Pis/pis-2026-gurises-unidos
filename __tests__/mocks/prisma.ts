@@ -23,8 +23,24 @@ export const prismaMock = {
   topic: {
     findMany: vi.fn(),
   },
+  metric: {
+    findMany: vi.fn(),
+  },
+  partner: {
+    findMany: vi.fn(),
+  },
+  strategicLine: {
+    findMany: vi.fn(),
+  },
+  beneficiaryCategory: {
+    findMany: vi.fn(),
+  },
   department: {
     findMany: vi.fn(),
+  },
+  auditLog: {
+    findMany: vi.fn(),
+    count: vi.fn(),
   },
   $transaction: vi.fn(),
 };

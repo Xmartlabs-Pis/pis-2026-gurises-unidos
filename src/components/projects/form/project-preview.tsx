@@ -1,20 +1,18 @@
 'use client';
 
-import Image from 'next/image';
-import { Button } from '@/components/ui/button';
+import { cn } from 'cn';
 import { Card } from '@/components/ui/card';
+import { CoverFrame } from '@/components/projects/cover/cover-frame';
 import type { ProjectFormValues } from './project-form-values';
 
 export function ProjectPreview({
   values,
   locationLabel,
   beneficiaryTotal,
-  isEditing,
 }: {
   values: ProjectFormValues;
   locationLabel: string;
   beneficiaryTotal: number;
-  isEditing: boolean;
 }) {
   return (
     <aside
@@ -29,17 +27,19 @@ export function ProjectPreview({
       </div>
 
       <div className="bg-muted flex flex-col items-center gap-3 px-6 py-8">
-        <Card className="theme-public bg-card text-card-foreground w-full max-w-[377px] gap-0 overflow-hidden rounded-xl border-0 py-0 shadow-none ring-0">
-          <div className="bg-project-cover relative aspect-video w-full overflow-hidden">
-            {values.coverPhotoUrl && (
-              <Image src={values.coverPhotoUrl} alt="" fill className="object-cover" />
-            )}
-          </div>
+        <Card className="theme-public text-card-foreground border-border-default w-full max-w-[377px] gap-0 overflow-hidden rounded-[10px] border bg-white py-0 shadow-none ring-0">
+          <CoverFrame
+            src={values.coverPhotoUrl}
+            alt=""
+            crop={values.coverCrop}
+            sizes="377px"
+            className={cn(!values.coverPhotoUrl && 'bg-project-cover')}
+          />
 
           <div className="flex flex-col gap-3 p-5">
             <div className="text-muted-foreground flex items-center gap-2 text-xs leading-4">
               <span aria-hidden="true" className="bg-primary size-1.5 shrink-0 rounded-full" />
-              <span>{locationLabel}</span>
+              <span className="min-w-0 wrap-anywhere">{locationLabel}</span>
             </div>
 
             <h3 className="text-lg leading-7 font-semibold break-words">
@@ -54,25 +54,13 @@ export function ProjectPreview({
               <span className="text-primary text-2xl leading-8 font-bold">
                 {beneficiaryTotal.toLocaleString('es-UY')}
               </span>
-              <span className="text-muted-foreground text-xs leading-4">personas alcanzadas</span>
+              <span className="text-muted-foreground text-xs leading-4">beneficiarios</span>
             </div>
           </div>
         </Card>
         <p className="text-muted-foreground text-center text-xs leading-4">
-          Así se verá en el listado público
+          Así se verá en el reporte público
         </p>
-
-        {isEditing && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="lg"
-            disabled
-            className="rounded-[10px] px-4 font-medium disabled:opacity-100"
-          >
-            Ver vista pública →
-          </Button>
-        )}
       </div>
     </aside>
   );

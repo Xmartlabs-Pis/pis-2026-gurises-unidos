@@ -1,15 +1,20 @@
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ProjectFormState } from '@/lib/validation/project';
 
-const { authMock, redirectMock, logAuditMock, transactionMock, findUserMock } = vi.hoisted(() => ({
-  authMock: vi.fn(),
-  redirectMock: vi.fn((url: string) => {
-    throw new Error(`NEXT_REDIRECT:${url}`);
-  }),
-  logAuditMock: vi.fn(),
-  transactionMock: vi.fn(),
-  findUserMock: vi.fn(),
-}));
+const { authMock, redirectMock, logAuditMock, transactionMock, findUserMock, findLiveCoverMock } =
+  vi.hoisted(() => ({
+    authMock: vi.fn(),
+    redirectMock: vi.fn((url: string) => {
+      throw new Error(`NEXT_REDIRECT:${url}`);
+    }),
+    logAuditMock: vi.fn(),
+    transactionMock: vi.fn(),
+    findUserMock: vi.fn(),
+    findLiveCoverMock: vi.fn(),
+  }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
@@ -18,6 +23,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     $transaction: transactionMock,
     user: { findUnique: findUserMock },
+    project: { findFirst: findLiveCoverMock },
   },
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -34,17 +40,20 @@ const EMPTY_STATE: ProjectFormState = {};
 
 type FormDataInput = Record<string, string | string[] | undefined>;
 
+function location(departmentId: string, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId, city, neighborhood });
+}
+
 const VALID_FIELDS: FormDataInput = {
   name: 'Community Center',
   topicIds: '1',
   status: 'active',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2020',
   leadCoordinatorId: '1',
   geographicScope: 'national',
-  departmentIds: '2',
-  zone: 'city',
+  locations: location('2', 'Las Piedras'),
   generalObjective: '',
   publicDescription: '',
   internalNotes: '',
@@ -98,6 +107,21 @@ function setupTransaction({ projectId = 42, beneficiaryId = 9, existingDepartmen
   return { projectCreate, beneficiaryCreate };
 }
 
+async function writeOwnedCover(
+  directory: string,
+  coverPath: string,
+  userId: number,
+  contents = 'new'
+) {
+  const id = path.basename(coverPath, '.webp');
+  await mkdir(path.join(directory, 'covers'), { recursive: true });
+  await writeFile(path.join(directory, 'covers', `${id}.webp`), contents);
+  await writeFile(
+    path.join(directory, 'covers', `${id}.json`),
+    JSON.stringify({ userId, createdAt: new Date().toISOString() })
+  );
+}
+
 function knownRequestError(code: string, meta: Record<string, unknown>) {
   return new Prisma.PrismaClientKnownRequestError('Prisma request failed', {
     code,
@@ -109,6 +133,7 @@ function knownRequestError(code: string, meta: Record<string, unknown>) {
 beforeEach(() => {
   authMock.mockResolvedValue({ user: { id: '7' } });
   findUserMock.mockResolvedValue({ id: 7, role: 'admin', status: 'active', deletedAt: null });
+  findLiveCoverMock.mockResolvedValue(null);
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`);
   });
@@ -119,11 +144,11 @@ describe('createProject', () => {
     'creates a project with counterparty %s',
     async (counterpartyType) => {
       const { projectCreate } = setupTransaction();
-      await expect(createProject(EMPTY_STATE, buildFormData({ counterpartyType }))).rejects.toThrow(
-        'NEXT_REDIRECT:/dashboard/projects/42'
-      );
+      await expect(
+        createProject(EMPTY_STATE, buildFormData({ counterpartyTypes: [counterpartyType] }))
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
       expect(projectCreate).toHaveBeenCalledWith({
-        data: expect.objectContaining({ counterpartyType }),
+        data: expect.objectContaining({ counterpartyTypes: [counterpartyType] }),
       });
     }
   );
@@ -162,6 +187,21 @@ describe('createProject', () => {
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
+  test('assigns the tenth color placeholder when creating a project without a cover', async () => {
+    const { projectCreate } = setupTransaction();
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.999999);
+    try {
+      await expect(createProject(EMPTY_STATE, buildFormData())).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ coverPhoto: '/images/project-placeholders/10.webp' }),
+      });
+    } finally {
+      random.mockRestore();
+    }
+  });
+
   test('creates the project and its beneficiary record in one transaction, then redirects', async () => {
     const { projectCreate, beneficiaryCreate } = setupTransaction();
 
@@ -174,24 +214,25 @@ describe('createProject', () => {
         name: 'Community Center',
         status: 'active',
         intensity: 'high',
-        counterpartyType: 'publicSector',
+        counterpartyTypes: ['publicSector'],
         startYear: 2020,
         endYear: null,
         leadCoordinatorId: 1,
         geographicScope: 'national',
         countries: [],
-        cities: [],
-        neighborhoods: [],
-        zone: 'city',
+        region: null,
         generalObjective: null,
         publicDescription: null,
         internalNotes: null,
         showOnLanding: true,
-        coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/[1-6]\.webp$/),
+        coverPhoto: expect.stringMatching(/^\/images\/project-placeholders\/(?:[1-9]|10)\.webp$/),
+        coverCrop: Prisma.DbNull,
         createdBy: 7,
         topics: { connect: [{ id: 1 }] },
         strategicLines: { connect: [{ id: 1 }] },
+        partners: { connect: [] },
         departments: { connect: [{ id: 2 }] },
+        localities: { create: [{ departmentId: 2, city: 'Las Piedras', neighborhood: null }] },
       },
     });
     expect(beneficiaryCreate).toHaveBeenCalledWith({
@@ -242,30 +283,151 @@ describe('createProject', () => {
     });
   });
 
-  test('allows a coordinator to create a project', async () => {
-    authMock.mockResolvedValue({ user: { id: '3' } });
-    findUserMock.mockResolvedValue({
-      id: 3,
-      role: 'coordinator',
-      status: 'active',
-      deletedAt: null,
-    });
-    const { projectCreate } = setupTransaction();
+  test('stores an uploaded cover instead of a placeholder', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 7);
+      const { projectCreate } = setupTransaction();
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
+        'NEXT_REDIRECT:/dashboard/projects/42'
+      );
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ coverPhoto: coverPhotoPath }),
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([
+        path.basename(coverPhotoPath),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 
-    await expect(createProject(EMPTY_STATE, buildFormData())).rejects.toThrow(
+  test('reuses an in-use cover and stores its crop', async () => {
+    const coverPhotoPath = '/uploads/covers/44444444-4444-4444-8444-444444444444.webp';
+    const crop = { x: 5, y: 5, width: 90, height: 80 };
+    findLiveCoverMock.mockResolvedValue({ id: 8 });
+    const { projectCreate } = setupTransaction();
+    const data = buildFormData();
+    data.set('coverPhotoPath', coverPhotoPath);
+    data.set('coverCrop', JSON.stringify(crop));
+    await expect(createProject(EMPTY_STATE, data)).rejects.toThrow(
       'NEXT_REDIRECT:/dashboard/projects/42'
     );
-
     expect(projectCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ createdBy: 3 }),
-    });
-    expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
-      authorId: 3,
-      action: 'creation',
-      entity: 'project',
-      entityId: 42,
+      data: expect.objectContaining({ coverPhoto: coverPhotoPath, coverCrop: crop }),
     });
   });
+
+  test('rejects a cover path that the user does not own', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 3);
+      const { projectCreate } = setupTransaction();
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      data.set('coverCrop', JSON.stringify({ x: 5, y: 5, width: 90, height: 80 }));
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        formError: 'La imagen de portada que elegiste ya no está disponible. Elegí otra.',
+      });
+      expect(projectCreate).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('deletes the owned pending cover when creation is rejected', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 7);
+      setupTransaction({ existingDepartments: 0 });
+      const data = buildFormData();
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { locations: ['Elegí departamentos válidos'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test('deletes the owned pending cover when form parsing fails', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 7);
+      const data = buildFormData({ name: '' });
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { name: ['El nombre es obligatorio'] },
+      });
+      expect(await readdir(path.join(directory, 'covers'))).toEqual([]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("leaves another user's pending cover when form parsing fails", async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'covers-'));
+    process.env.COVER_UPLOAD_DIR = directory;
+    const coverPhotoPath = '/uploads/covers/11111111-1111-4111-8111-111111111111.webp';
+    try {
+      await writeOwnedCover(directory, coverPhotoPath, 3);
+      const data = buildFormData({ name: '' });
+      data.set('coverPhotoPath', coverPhotoPath);
+      expect(await createProject(EMPTY_STATE, data)).toEqual({
+        errors: { name: ['El nombre es obligatorio'] },
+      });
+      expect((await readdir(path.join(directory, 'covers'))).sort()).toEqual([
+        `${path.basename(coverPhotoPath, '.webp')}.json`,
+        path.basename(coverPhotoPath),
+      ]);
+    } finally {
+      delete process.env.COVER_UPLOAD_DIR;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test.each([undefined, '', '1', 'invalid'])(
+    'assigns the signed-in coordinator regardless of the submitted coordinator: %s',
+    async (leadCoordinatorId) => {
+      authMock.mockResolvedValue({ user: { id: '3' } });
+      findUserMock.mockResolvedValue({
+        id: 3,
+        role: 'coordinator',
+        status: 'active',
+        deletedAt: null,
+      });
+      const { projectCreate } = setupTransaction();
+
+      await expect(
+        createProject(EMPTY_STATE, buildFormData({ leadCoordinatorId }))
+      ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+      expect(projectCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ createdBy: 3, leadCoordinatorId: 3 }),
+      });
+      expect(logAuditMock).toHaveBeenCalledWith(expect.anything(), {
+        authorId: 3,
+        action: 'creation',
+        entity: 'project',
+        entityId: 42,
+      });
+    }
+  );
 
   test('defaults beneficiary counts to 0 and year to the current year when omitted', async () => {
     const { beneficiaryCreate } = setupTransaction();
@@ -304,16 +466,19 @@ describe('createProject', () => {
     });
   });
 
-  test('creates a national project with several departments, cities and neighborhoods', async () => {
+  test('creates a national project with each city and neighborhood tied to its department', async () => {
     const { projectCreate } = setupTransaction();
 
     await expect(
       createProject(
         EMPTY_STATE,
         buildFormData({
-          departmentIds: ['2', '5'],
-          cities: ['Las Piedras', 'Pando'],
-          neighborhoods: ['Centro', 'Barrio Obrero'],
+          locations: [
+            location('2', 'Las Piedras', 'Centro'),
+            location('2', 'Las Piedras', 'Barrio Obrero'),
+            location('5', 'Pando'),
+            location('6', 'Salto'),
+          ],
         })
       )
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
@@ -322,9 +487,15 @@ describe('createProject', () => {
       data: expect.objectContaining({
         geographicScope: 'national',
         countries: [],
-        cities: ['Las Piedras', 'Pando'],
-        neighborhoods: ['Centro', 'Barrio Obrero'],
-        departments: { connect: [{ id: 2 }, { id: 5 }] },
+        departments: { connect: [{ id: 2 }, { id: 5 }, { id: 6 }] },
+        localities: {
+          create: [
+            { departmentId: 2, city: 'Las Piedras', neighborhood: 'Centro' },
+            { departmentId: 2, city: 'Las Piedras', neighborhood: 'Barrio Obrero' },
+            { departmentId: 5, city: 'Pando', neighborhood: null },
+            { departmentId: 6, city: 'Salto', neighborhood: null },
+          ],
+        },
       }),
     });
   });
@@ -338,7 +509,8 @@ describe('createProject', () => {
         buildFormData({
           geographicScope: 'international',
           countries: ['Argentina', 'Brasil'],
-          cities: ['Pando'],
+          region: 'southAmerica',
+          locations: location('2', 'Pando'),
         })
       )
     ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
@@ -347,36 +519,65 @@ describe('createProject', () => {
       data: expect.objectContaining({
         geographicScope: 'international',
         countries: ['Argentina', 'Brasil'],
-        cities: [],
-        neighborhoods: [],
+        region: 'southAmerica',
         departments: { connect: [] },
+        localities: { create: [] },
       }),
     });
   });
 
   test('requires a department for a national project without accessing the database', async () => {
-    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: undefined }));
+    const result = await createProject(EMPTY_STATE, buildFormData({ locations: undefined }));
 
-    expect(result.errors?.departmentIds).toEqual(['Seleccioná al menos un departamento']);
+    expect(result.errors?.locations).toEqual(['Agregá al menos una ubicación']);
     expect(transactionMock).not.toHaveBeenCalled();
   });
 
-  test('requires a country for an international project without accessing the database', async () => {
+  test('requires a city for a national project without accessing the database', async () => {
+    const result = await createProject(EMPTY_STATE, buildFormData({ locations: location('2') }));
+
+    expect(result.errors?.locations).toEqual(['Ingresá al menos una ciudad']);
+    expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('requires a region for an international project without accessing the database', async () => {
     const result = await createProject(
       EMPTY_STATE,
-      buildFormData({ geographicScope: 'international' })
+      buildFormData({ geographicScope: 'international', countries: ['Argentina'] })
     );
 
-    expect(result.errors?.countries).toEqual(['Ingresá al menos un país']);
+    expect(result.errors?.region).toEqual(['Seleccioná una región']);
     expect(transactionMock).not.toHaveBeenCalled();
+  });
+
+  test('creates an international project with a region and no countries', async () => {
+    const { projectCreate } = setupTransaction();
+
+    await expect(
+      createProject(
+        EMPTY_STATE,
+        buildFormData({ geographicScope: 'international', region: 'otherRegions' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard/projects/42');
+
+    expect(projectCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        geographicScope: 'international',
+        countries: [],
+        region: 'otherRegions',
+      }),
+    });
   });
 
   test('rejects departments that do not exist before creating the project', async () => {
     const { projectCreate } = setupTransaction({ existingDepartments: 1 });
 
-    const result = await createProject(EMPTY_STATE, buildFormData({ departmentIds: ['2', '999'] }));
+    const result = await createProject(
+      EMPTY_STATE,
+      buildFormData({ locations: [location('2', 'Las Piedras'), location('999', 'Pando')] })
+    );
 
-    expect(result).toEqual({ errors: { departmentIds: ['Elegí departamentos válidos'] } });
+    expect(result).toEqual({ errors: { locations: ['Elegí departamentos válidos'] } });
     expect(projectCreate).not.toHaveBeenCalled();
   });
 

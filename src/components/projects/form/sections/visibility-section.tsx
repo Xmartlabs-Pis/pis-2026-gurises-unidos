@@ -9,7 +9,7 @@ export function VisibilitySection() {
   return (
     <FormSection
       title="Visibilidad"
-      description="Define si el proyecto se muestra a usuarios externos en la vista pública."
+      description="Define si el proyecto se muestra a usuarios externos en el reporte público."
     >
       <Controller
         control={control}
@@ -22,7 +22,7 @@ export function VisibilitySection() {
               onCheckedChange={(checked) => field.onChange(String(checked))}
             />
             <label htmlFor="showOnLanding" className="cursor-pointer text-sm">
-              Mostrar en la vista pública
+              Mostrar en el reporte público
             </label>
             <input type="hidden" name="showOnLanding" value={field.value} />
           </div>

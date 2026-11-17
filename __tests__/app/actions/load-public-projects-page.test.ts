@@ -3,7 +3,10 @@ import { loadPublicProjectsPage } from '@/app/actions/public-projects';
 
 const mocks = vi.hoisted(() => ({
   getPublicProjectsPage: vi.fn(),
+  getPublishedYears: vi.fn(),
 }));
+
+vi.mock('@/lib/metrics/queries', () => ({ getPublishedYears: mocks.getPublishedYears }));
 
 vi.mock('@/lib/projects/public-projects', () => ({
   getPublicProjectsPage: mocks.getPublicProjectsPage,
@@ -13,6 +16,12 @@ const PAGE = { items: [], page: 2, hasMore: true };
 
 beforeEach(() => {
   mocks.getPublicProjectsPage.mockReset().mockResolvedValue(PAGE);
+  mocks.getPublishedYears.mockReset().mockResolvedValue([2026, 2025]);
+});
+
+test('does not load projects for an unpublished year', async () => {
+  expect(await loadPublicProjectsPage(2024, 3, 2)).toEqual({ items: [], page: 1, hasMore: false });
+  expect(mocks.getPublicProjectsPage).not.toHaveBeenCalled();
 });
 
 test('loads the requested page for a valid topic', async () => {

@@ -1,7 +1,13 @@
 import Link from 'next/link';
+import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
-import { COUNTERPARTY_LABEL, INTENSITY_LABEL, STATUS_LABEL } from '@/lib/project-display';
+import {
+  COUNTERPARTY_LABEL,
+  INTENSITY_LABEL,
+  REGION_LABEL,
+  STATUS_LABEL,
+} from '@/lib/project-display';
 import { STATUS_BADGE_VARIANT } from '@/lib/projects/constants';
 import type { ProjectDetail } from '@/lib/projects/detail';
 import { getLocationLabel } from '@/lib/projects/location';
@@ -29,13 +35,25 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
   const territory = getLocationLabel(project);
   const coordinator = `${project.leadCoordinator.firstName} ${project.leadCoordinator.lastName}`;
   const period = `${project.startYear}–${project.endYear ?? 'actualidad'}`;
-  const counterparty = COUNTERPARTY_LABEL[project.counterpartyType];
+  const counterparties = project.counterpartyTypes
+    .map((type) => COUNTERPARTY_LABEL[type])
+    .join(', ');
+  const partners = project.partners.map(({ name }) => name).join(', ');
   const strategicLines = project.strategicLines.map(({ name }) => name).join(', ');
+  const topics = project.topics.map(({ name }) => name).join(', ');
   const rows = [
-    { label: 'Territorio:', value: territory },
+    ...(territory ? [{ label: 'Territorio:', value: territory }] : []),
+    ...(project.geographicScope === 'international' && project.region
+      ? [{ label: 'Región:', value: REGION_LABEL[project.region] }]
+      : []),
     { label: 'Coordinador/a:', value: coordinator },
     { label: 'Período:', value: period },
-    { label: 'Contraparte:', value: counterparty },
+    { label: 'Contrapartes:', value: counterparties },
+    ...(partners ? [{ label: 'Socios:', value: partners }] : []),
+  ];
+  const classifications = [
+    { label: 'Líneas Estratégicas:', value: strategicLines },
+    { label: 'Temáticas:', value: topics },
   ];
 
   return (
@@ -46,16 +64,25 @@ function ProjectMetadata({ project }: { project: ProjectDetail['project'] }) {
             •
           </span>
           <dt>{label}</dt>
-          <dd className="text-foreground/80 sm:text-foreground/65">{value}</dd>
+          <dd className="text-foreground/80 sm:text-foreground/65 min-w-0 wrap-anywhere">
+            {value}
+          </dd>
         </div>
       ))}
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-baseline">
-        <span aria-hidden="true" className="hidden sm:inline">
-          •
-        </span>
-        <dt className="whitespace-nowrap">Líneas estratégicas:</dt>
-        <dd className="text-foreground/80 sm:text-foreground/65">{strategicLines}</dd>
-      </div>
+      {classifications.map(({ label, value }) => (
+        <div
+          key={label}
+          className="flex max-w-full min-w-0 flex-col gap-1.5 sm:flex-row sm:items-baseline"
+        >
+          <span aria-hidden="true" className="hidden sm:inline">
+            •
+          </span>
+          <dt className="shrink-0 whitespace-nowrap">{label}</dt>
+          <dd className="text-foreground/80 sm:text-foreground/65 min-w-0 [overflow-wrap:anywhere]">
+            {value}
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }
@@ -80,6 +107,11 @@ export function ProjectDetailHeader({
         </div>
 
         <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
+          <ExportPdfButton
+            href={`/api/reports/projects/${project.id}?year=${selectedYear}`}
+            label="Exportar"
+            className="h-9 px-4 shadow-sm"
+          />
           {canEdit && (
             <Link
               href={`/dashboard/projects/${project.id}/edit`}
@@ -97,7 +129,7 @@ export function ProjectDetailHeader({
 
       <div className="flex flex-col">
         {project.generalObjective && (
-          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 sm:order-2">
+          <p className="text-muted-foreground order-1 mt-3 max-w-4xl text-sm leading-5 break-words sm:order-2">
             {project.generalObjective}
           </p>
         )}

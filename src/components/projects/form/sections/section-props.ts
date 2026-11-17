@@ -1,3 +1,4 @@
+import type { ProjectPartnerOption } from '@/lib/partners';
 import type { BeneficiaryCategoryOption, BeneficiaryCounts } from '@/lib/project-display';
 
 export type SectionProps = {
@@ -7,7 +8,9 @@ export type SectionProps = {
   departmentOptions: { value: string; label: string }[];
   topics: { id: number; name: string }[];
   strategicLines: { id: number; name: string }[];
+  partners: ProjectPartnerOption[];
   coverageLabel: string;
   beneficiaryRecords: (BeneficiaryCounts & { year: number })[];
   beneficiaryCategories: BeneficiaryCategoryOption[];
+  canSelectCoordinator: boolean;
 };

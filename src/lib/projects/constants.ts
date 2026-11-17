@@ -1,3 +1,4 @@
+import type { Prisma } from '@/generated/prisma/client';
 import type { ProjectStatus } from '@/generated/prisma/enums';
 
 export const STATUS_BADGE_VARIANT: Record<ProjectStatus, 'active' | 'neutral'> = {
@@ -12,3 +13,9 @@ export const STATUS_FILTERS = [
 ] as const;
 
 export type StatusFilterValue = (typeof STATUS_FILTERS)[number]['value'];
+
+export const ASSIGNABLE_LEAD_COORDINATOR_WHERE = {
+  role: { in: ['coordinator', 'admin'] },
+  status: 'active',
+  deletedAt: null,
+} satisfies Prisma.UserWhereInput;

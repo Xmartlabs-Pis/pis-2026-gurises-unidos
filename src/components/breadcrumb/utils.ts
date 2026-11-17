@@ -12,24 +12,29 @@ const STATIC_SEGMENTS = new Set([
   'topics',
   'beneficiary-categories',
   'strategic-lines',
+  'partners',
+  'history',
   'new',
   'edit',
 ]);
 
-export const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
+const BREADCRUMB_SEGMENT_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   metrics: 'Métricas',
   projects: 'Proyectos',
   users: 'Usuarios',
   topics: 'Temáticas',
   profile: 'Perfil',
-  'beneficiary-categories': 'Categorías de beneficiarios',
-  'strategic-lines': 'Líneas estratégicas',
+  'report-error': 'Error al exportar',
+  'beneficiary-categories': 'Categorías de Beneficiarios',
+  'strategic-lines': 'Líneas Estratégicas',
+  partners: 'Socios',
+  history: 'Historial de Cambios',
   new: 'Nuevo',
   edit: 'Editar',
 };
 
-export function formatBreadcrumbSegment(segment: string): string {
+function formatBreadcrumbSegment(segment: string): string {
   const decoded = decodeURIComponent(segment);
   return decoded
     .split('-')

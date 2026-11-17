@@ -1,6 +1,9 @@
 'use client';
 
-import Link from 'next/link';
+import { startTransition, type ReactNode, type SubmitEvent } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { NavigationGuardLink as Link } from 'nextjs-nav-guard';
+import { usePendingChangesContext } from '@/components/ui/forms/pending-changes-provider';
 import { logout } from '@/app/actions/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -44,9 +47,24 @@ function SidebarUser({ user }: Props) {
   );
 }
 
+function LogoutForm({ children }: { children: ReactNode }) {
+  const { confirmLeave } = usePendingChangesContext();
+
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (await confirmLeave()) {
+      startTransition(async () => {
+        await logout();
+      });
+    }
+  }
+
+  return <form onSubmit={onSubmit}>{children}</form>;
+}
+
 function LogoutButton() {
   return (
-    <form action={logout}>
+    <LogoutForm>
       <SidebarMenuButton
         type="submit"
         className="text-destructive hover:bg-destructive/10 hover:text-destructive h-10 gap-3 [&_svg]:size-5"
@@ -54,12 +72,14 @@ function LogoutButton() {
         <LogOut />
         <span>Cerrar sesión</span>
       </SidebarMenuButton>
-    </form>
+    </LogoutForm>
   );
 }
 
 export function AppSidebarFooter({ user }: Props) {
   const { isMobile, setOpenMobile } = useSidebar();
+  const pathname = usePathname();
+  const router = useRouter();
 
   if (isMobile) {
     return (
@@ -71,7 +91,14 @@ export function AppSidebarFooter({ user }: Props) {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="h-10 gap-3 [&_svg]:size-5"
-              render={<Link href="/management/profile" onClick={() => setOpenMobile(false)} />}
+              render={
+                <Link
+                  href="/management/profile"
+                  onClick={() => {
+                    if (pathname === '/management/profile') setOpenMobile(false);
+                  }}
+                />
+              }
             >
               <UserRound />
               <span>Mi perfil</span>
@@ -106,12 +133,22 @@ export function AppSidebarFooter({ user }: Props) {
                 </DropdownMenuLabel>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem render={<Link href="/management/profile" />}>
+              <DropdownMenuItem
+                render={
+                  <Link
+                    href="/management/profile"
+                    onNavigate={(event) => {
+                      event.preventDefault();
+                      router.push('/management/profile');
+                    }}
+                  />
+                }
+              >
                 <UserRound />
                 <span>Mi perfil</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <form action={logout}>
+              <LogoutForm>
                 <DropdownMenuItem
                   variant="destructive"
                   nativeButton
@@ -120,7 +157,7 @@ export function AppSidebarFooter({ user }: Props) {
                   <LogOut />
                   <span>Cerrar sesión</span>
                 </DropdownMenuItem>
-              </form>
+              </LogoutForm>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { ACCESS_DENIED_ROUTE, canAccessRoute } from '@/lib/auth/route-access';
 import {
   getSessionExpirationTimestamp,
   hasSessionExpired,
@@ -8,8 +9,17 @@ import {
   SESSION_EXPIRATION_REASON,
 } from '@/lib/auth/session-expiration';
 
-const PUBLIC_ROUTES = ['/', '/login'];
+const LOGIN_ROUTE = '/login';
+const PUBLIC_ROUTES = [
+  '/',
+  '/projects',
+  LOGIN_ROUTE,
+  '/forgot-password',
+  '/reset-password',
+  '/accept-invitation',
+];
 const PASSWORD_RESET_ROUTE = '/password-reset';
+const EMBED_ROUTE = '/embed';
 
 function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.includes(pathname);
@@ -17,18 +27,34 @@ function isPublicRoute(pathname: string) {
 
 export const proxy = auth((request) => {
   const { pathname } = request.nextUrl;
+
+  if (pathname === EMBED_ROUTE) {
+    const response = NextResponse.next();
+    response.headers.set(
+      'Content-Security-Policy',
+      `frame-ancestors ${process.env.EMBED_FRAME_ANCESTORS || "'none'"}`
+    );
+    return response;
+  }
+
   const mustChangePassword = request.auth?.user?.mustChangePassword === true;
 
   if (mustChangePassword && pathname !== PASSWORD_RESET_ROUTE) {
     return NextResponse.redirect(new URL(PASSWORD_RESET_ROUTE, request.nextUrl));
   }
 
-  if (request.auth && !mustChangePassword && pathname === PASSWORD_RESET_ROUTE) {
+  if (
+    request.auth &&
+    !mustChangePassword &&
+    (pathname === PASSWORD_RESET_ROUTE || pathname === LOGIN_ROUTE)
+  ) {
     return NextResponse.redirect(new URL('/dashboard', request.nextUrl));
   }
 
   if (request.auth) {
-    const response = NextResponse.next();
+    const response = canAccessRoute(pathname, request.auth.user.role)
+      ? NextResponse.next()
+      : NextResponse.rewrite(new URL(ACCESS_DENIED_ROUTE, request.nextUrl));
     response.cookies.set(
       SESSION_EXPIRATION_COOKIE,
       String(getSessionExpirationTimestamp(Boolean(request.auth.user.remember))),
@@ -41,7 +67,7 @@ export const proxy = auth((request) => {
     return NextResponse.next();
   }
 
-  const loginUrl = new URL('/login', request.nextUrl);
+  const loginUrl = new URL(LOGIN_ROUTE, request.nextUrl);
   const expirationCookie = request.cookies.get(SESSION_EXPIRATION_COOKIE)?.value;
 
   if (hasSessionExpired(expirationCookie)) {
@@ -59,6 +85,6 @@ export const proxy = auth((request) => {
 
 export const config = {
   matcher: [
-    '/((?!api/auth(?:/|$)|_next/static/|_next/image$|images/project-placeholders/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|(?:.+/)?(?:icon|apple-icon|opengraph-image|twitter-image)\\d*(?:\\.\\w+)?$).*)',
+    '/((?!api/auth(?:/|$)|_next/static/|_next/image$|images/|uploads/covers/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|manifest\\.webmanifest$|(?:.+/)?(?:icon|apple-icon|opengraph-image|twitter-image)\\d*(?:\\.\\w+)?$).*)',
   ],
 };

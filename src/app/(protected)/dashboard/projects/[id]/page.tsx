@@ -1,20 +1,34 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { ProjectTopbarRegistration } from '@/components/layout/topbar-context';
+import { ProjectDetailSkeleton } from '@/components/projects/project-detail-skeleton';
+import { ProjectHistory } from '@/components/projects/form/project-history';
 import { BeneficiaryDistribution } from '@/components/projects/detail/beneficiary-distribution';
 import { InstitutionalContribution } from '@/components/projects/detail/institutional-contribution';
 import { ProjectDetailHeader } from '@/components/projects/detail/project-detail-header';
+import { ProjectInformation } from '@/components/projects/detail/project-information';
 import { ProjectMetrics } from '@/components/projects/detail/project-metrics';
 import { ProjectPublicCard } from '@/components/projects/detail/project-public-card';
 import { ProjectRecentActivity } from '@/components/projects/detail/project-recent-activity';
 import { ProjectYearEmptyState } from '@/components/projects/detail/project-year-empty-state';
+import { getBeneficiaryCategoryLabels } from '@/lib/beneficiary-categories';
 import { getProjectDetail } from '@/lib/projects/detail';
+import { getProjectHistory } from '@/lib/projects/history';
 
 type ProjectDetailPageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ year?: string | string[] }>;
 };
 
-export default async function ProjectDetailPage({ params, searchParams }: ProjectDetailPageProps) {
+export default function ProjectDetailPage(props: ProjectDetailPageProps) {
+  return (
+    <Suspense fallback={<ProjectDetailSkeleton />}>
+      <ProjectDetail {...props} />
+    </Suspense>
+  );
+}
+
+async function ProjectDetail({ params, searchParams }: ProjectDetailPageProps) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const result = await getProjectDetail(id, query.year);
 
@@ -34,6 +48,10 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
     institutionalContribution,
   } = result.data;
 
+  const [history, fieldLabels] = canEdit
+    ? await Promise.all([getProjectHistory(project.id), getBeneficiaryCategoryLabels()])
+    : [null, null];
+
   return (
     <div className="bg-surface-page flex-1">
       <ProjectTopbarRegistration
@@ -49,6 +67,11 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
           canEdit={canEdit}
         />
 
+        <ProjectInformation
+          publicDescription={project.publicDescription}
+          internalNotes={project.internalNotes}
+        />
+
         {hasData ? (
           <>
             <ProjectMetrics metrics={metrics} comparisonYear={comparisonYear} />
@@ -57,8 +80,8 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
                 <BeneficiaryDistribution data={distribution} year={selectedYear} />
                 <ProjectPublicCard
                   name={project.name}
-                  description={project.publicDescription}
                   coverPhoto={project.coverPhoto}
+                  coverCrop={project.coverCrop}
                 />
               </div>
               <InstitutionalContribution data={institutionalContribution} />
@@ -69,11 +92,12 @@ export default async function ProjectDetailPage({ params, searchParams }: Projec
             <ProjectYearEmptyState year={selectedYear} />
             <ProjectPublicCard
               name={project.name}
-              description={project.publicDescription}
               coverPhoto={project.coverPhoto}
+              coverCrop={project.coverCrop}
             />
           </>
         )}
+        {history && fieldLabels && <ProjectHistory entries={history} fieldLabels={fieldLabels} />}
         <ProjectRecentActivity />
       </div>
     </div>

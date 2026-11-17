@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useState, type SubmitEvent } from 'react';
 import { FormProvider, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { completeForcedPasswordChange } from '@/app/actions/password';
+import { completeForcedPasswordChange, type PasswordFormState } from '@/app/actions/password';
 import { TextInputField } from '@/components/ui/forms/text-input-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,9 +11,20 @@ import {
   type ForcedPasswordChangeFormValues,
 } from '@/lib/validation/password';
 import InputVisibilityToggle from './ui/forms/input-visibility-toggle';
+import { formDataFromSubmit } from '@/lib/forms';
 
-export function PasswordResetForm() {
-  const [state, formAction, pending] = useActionState(completeForcedPasswordChange, {});
+type PasswordResetFormProps = {
+  action?: (state: PasswordFormState, formData: FormData) => Promise<PasswordFormState>;
+  token?: string;
+  submitLabel?: string;
+};
+
+export function PasswordResetForm({
+  action = completeForcedPasswordChange,
+  token,
+  submitLabel = 'Actualizar contraseña',
+}: PasswordResetFormProps) {
+  const [state, formAction, pending] = useActionState(action, {});
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const form = useForm<ForcedPasswordChangeFormValues>({
@@ -45,11 +56,10 @@ export function PasswordResetForm() {
 
   function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
-    const submitter = event.nativeEvent.submitter;
+    const formData = formDataFromSubmit(event);
     return handleSubmit(() => {
       startTransition(() => {
-        formAction(submitter ? new FormData(formElement, submitter) : new FormData(formElement));
+        formAction(formData);
       });
     })(event);
   }
@@ -62,6 +72,7 @@ export function PasswordResetForm() {
             {state.formError}
           </p>
         ) : null}
+        {token ? <input type="hidden" name="token" value={token} /> : null}
         <div className="flex flex-col gap-4.5">
           <TextInputField
             id="newPassword"
@@ -69,7 +80,8 @@ export function PasswordResetForm() {
             label="Nueva contraseña"
             type={showNewPassword ? 'text' : 'password'}
             autoComplete="new-password"
-            placeholder="Mínimo 8 caracteres"
+            placeholder="Tu nueva contraseña"
+            description="Al menos 8 caracteres, con mayúscula, minúscula y número."
             onChange={() => clearServerError('newPassword')}
             trailingAction={
               <InputVisibilityToggle
@@ -95,7 +107,7 @@ export function PasswordResetForm() {
           />
         </div>
         <Button type="submit" disabled={pending} className="h-9 w-full shadow-xs/10">
-          Actualizar contraseña
+          {submitLabel}
         </Button>
       </form>
     </FormProvider>

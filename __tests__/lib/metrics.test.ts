@@ -1,15 +1,78 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
-import { getMetricSettings, getMetricValues, getMetricYears } from '@/lib/metrics/queries';
+import {
+  getMetricSettings,
+  getMetricValues,
+  getMetricYears,
+  getPublishedYears,
+} from '@/lib/metrics/queries';
 
 vi.mock('@/lib/prisma', () => ({
   default: {
     metric: { findMany: vi.fn() },
-    projectBeneficiary: { findMany: vi.fn() },
+    publicSettings: { findUnique: vi.fn() },
+    projectBeneficiary: { findMany: vi.fn(), count: vi.fn() },
     projectBeneficiaryValue: { groupBy: vi.fn() },
     beneficiaryCategory: { findMany: vi.fn() },
   },
 }));
+
+describe('getPublishedYears', () => {
+  beforeEach(() => {
+    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([{ year: 2024 }] as Awaited<
+      ReturnType<typeof prisma.projectBeneficiary.findMany>
+    >);
+  });
+
+  it('removes published historical years once their projects no longer have data', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [2026, 2005],
+    });
+    expect(await getPublishedYears(2026)).toEqual([2026]);
+  });
+
+  it('falls back to available years when every saved year is unavailable', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [2005],
+    });
+    expect(await getPublishedYears(2026)).toEqual([2026, 2025, 2024]);
+  });
+
+  it('loads saved years in descending order', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [2024, 2026],
+    });
+    expect(await getPublishedYears(2026)).toEqual([2026, 2024]);
+  });
+
+  it('defaults to all available years when no years have been saved yet', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue({
+      id: 1,
+      updatedBy: null,
+      updatedAt: null,
+      publishedYears: [],
+    });
+    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([{ year: 2024 }] as Awaited<
+      ReturnType<typeof prisma.projectBeneficiary.findMany>
+    >);
+    expect(await getPublishedYears(2026)).toEqual([2026, 2025, 2024]);
+  });
+
+  it('defaults to all available years when settings do not exist', async () => {
+    vi.mocked(prisma.publicSettings.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([]);
+    expect(await getPublishedYears(2026)).toEqual([2026, 2025]);
+  });
+});
 
 function mockBeneficiarySums(sums: Record<string, number>) {
   const keys = Object.keys(sums);
@@ -36,11 +99,7 @@ describe('getMetricValues', () => {
       basicServiceStaff: 12,
       coordinatedInstitutions: 5,
     });
-    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([
-      { projectId: 1, project: { departments: [{ id: 1 }] } },
-      { projectId: 2, project: { departments: [{ id: 1 }, { id: 2 }] } },
-      { projectId: 3, project: { departments: [] } },
-    ] as unknown as Awaited<ReturnType<typeof prisma.projectBeneficiary.findMany>>);
+    vi.mocked(prisma.projectBeneficiary.count).mockResolvedValue(3);
 
     expect(await getMetricValues(year)).toEqual({
       children_reached: 140,
@@ -49,7 +108,6 @@ describe('getMetricValues', () => {
       families: 20,
       teachers: 12,
       institutions: 5,
-      departments: 2,
       active_projects: 3,
     });
     expect(prisma.projectBeneficiaryValue.groupBy).toHaveBeenCalledWith(
@@ -57,16 +115,16 @@ describe('getMetricValues', () => {
         where: { beneficiary: { year, project: { deletedAt: null } } },
       })
     );
-    expect(prisma.projectBeneficiary.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { year, project: { deletedAt: null } } })
-    );
+    expect(prisma.projectBeneficiary.count).toHaveBeenCalledWith({
+      where: { year, project: { deletedAt: null } },
+    });
   });
 
   it('returns zeros when the year has no data', async () => {
     mockBeneficiarySums({});
-    vi.mocked(prisma.projectBeneficiary.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.projectBeneficiary.count).mockResolvedValue(0);
 
-    expect(Object.values(await getMetricValues(2027))).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(Object.values(await getMetricValues(2027))).toEqual([0, 0, 0, 0, 0, 0, 0]);
   });
 });
 
@@ -78,9 +136,9 @@ describe('getMetricSettings', () => {
     ] as Awaited<ReturnType<typeof prisma.metric.findMany>>);
     const settings = await getMetricSettings();
     expect(settings.filter((metric) => metric.showPublicly).map((metric) => metric.key)).toEqual([
+      'children_reached',
       'direct_children_reached',
       'families',
-      'departments',
       'active_projects',
     ]);
     expect(settings).toHaveLength(7);

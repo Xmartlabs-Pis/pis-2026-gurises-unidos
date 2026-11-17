@@ -33,8 +33,14 @@ async function Projects({ searchParams }: ProjectsPageProps) {
       years={years}
       departments={options.departments}
       topics={options.topics}
+      strategicLines={options.strategicLines}
+      partners={options.partners}
+      beneficiaryCategories={options.beneficiaryCategories}
       departmentId={filters.departmentId}
       topicId={filters.topicId}
+      strategicLineId={filters.strategicLineId}
+      partnerId={filters.partnerId}
+      beneficiaryCategoryId={filters.beneficiaryCategoryId}
       status={filters.status ?? 'all'}
       beneficiaryYear={filters.beneficiaryYear}
       search={filters.search}

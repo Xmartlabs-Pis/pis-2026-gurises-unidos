@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Mulish } from 'next/font/google';
+import { PendingChangesProvider } from '@/components/ui/forms/pending-changes-provider';
 import { Toaster } from '@/components/ui/toast';
 import './globals.css';
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${mulish.variable} h-full antialiased`}>
       <body className="flex h-full flex-col font-sans">
-        <Toaster>{children}</Toaster>
+        <Toaster>
+          <PendingChangesProvider>{children}</PendingChangesProvider>
+        </Toaster>
       </body>
     </html>
   );

@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 import { TopbarProvider } from '@/components/layout/topbar-context';
 
-const { getProjectDetailMock, notFoundMock } = vi.hoisted(() => ({
+const { getProjectDetailMock, getProjectHistoryMock, notFoundMock } = vi.hoisted(() => ({
   getProjectDetailMock: vi.fn(),
+  getProjectHistoryMock: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -12,6 +13,12 @@ const { getProjectDetailMock, notFoundMock } = vi.hoisted(() => ({
 vi.mock('@/lib/projects/detail', () => ({
   getProjectDetail: getProjectDetailMock,
 }));
+vi.mock('@/lib/projects/history', () => ({
+  getProjectHistory: getProjectHistoryMock,
+}));
+vi.mock('@/lib/beneficiary-categories', () => ({
+  getBeneficiaryCategoryLabels: vi.fn().mockResolvedValue({}),
+}));
 vi.mock('next/navigation', () => ({
   notFound: notFoundMock,
   usePathname: () => '/dashboard/projects/42',
@@ -19,6 +26,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 import ProjectDetailPage from '@/app/(protected)/dashboard/projects/[id]/page';
+import { hydrateSuspensePage, resolveSuspenseChild } from '../helpers/suspense-page';
 
 const DETAIL = {
   status: 'success',
@@ -28,18 +36,19 @@ const DETAIL = {
       name: 'El Resorte',
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear: 2024,
       endYear: null,
       strategicLines: [{ id: 1, name: 'Formación' }],
+      partners: [],
       leadCoordinatorId: 7,
       zone: 'city',
       geographicScope: 'national',
       countries: [],
-      cities: ['Montevideo'],
-      neighborhoods: ['Casavalle'],
+      localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
       generalObjective: 'Support adolescents and families.',
       publicDescription: 'Community support project.',
+      internalNotes: 'Coordinate with the education team.',
       coverPhoto: '/images/project-placeholders/1.webp',
       leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
       departments: [{ id: 1, name: 'Montevideo' }],
@@ -94,8 +103,7 @@ const DETAIL = {
             zone: 'city',
             geographicScope: 'national',
             countries: [],
-            cities: ['Montevideo'],
-            neighborhoods: ['Casavalle'],
+            localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
           },
         ],
       },
@@ -110,21 +118,54 @@ beforeEach(() => {
     throw new Error('NEXT_NOT_FOUND');
   });
   getProjectDetailMock.mockResolvedValue(DETAIL);
+  getProjectHistoryMock.mockReset();
+  getProjectHistoryMock.mockResolvedValue([
+    {
+      id: 1,
+      action: 'update',
+      entity: 'project',
+      details: { changes: [{ field: 'name', from: 'Resorte', to: 'El Resorte' }] },
+      occurredAt: new Date('2026-05-10T15:00:00Z'),
+      author: { firstName: 'Ana', lastName: 'García' },
+    },
+  ]);
+});
+
+async function renderPage(
+  params: { id: string } = { id: '42' },
+  searchParams: Record<string, string> = {}
+) {
+  const page = await ProjectDetailPage({
+    params: Promise.resolve(params),
+    searchParams: Promise.resolve(searchParams),
+  });
+  render(<TopbarProvider>{await hydrateSuspensePage(page)}</TopbarProvider>);
+}
+
+test('shows the project change history to users who can edit the project', async () => {
+  await renderPage();
+
+  expect(getProjectHistoryMock).toHaveBeenCalledWith(42);
+  expect(screen.getByRole('heading', { name: 'Historial' })).toBeDefined();
+  expect(screen.getByText('Ana García actualizó el proyecto')).toBeDefined();
+  expect(screen.getByText('Nombre: Resorte → El Resorte')).toBeDefined();
+});
+
+test('hides the project change history from users who cannot edit the project', async () => {
+  getProjectDetailMock.mockResolvedValue({ ...DETAIL, data: { ...DETAIL.data, canEdit: false } });
+
+  await renderPage();
+
+  expect(getProjectHistoryMock).not.toHaveBeenCalled();
+  expect(screen.queryByRole('heading', { name: 'Historial' })).toBeNull();
 });
 
 test('renders the selected project year and its main sections', async () => {
-  render(
-    <TopbarProvider>
-      {await ProjectDetailPage({
-        params: Promise.resolve({ id: '42' }),
-        searchParams: Promise.resolve({ year: '2026' }),
-      })}
-    </TopbarProvider>
-  );
+  await renderPage({ id: '42' }, { year: '2026' });
 
   expect(getProjectDetailMock).toHaveBeenCalledWith('42', '2026');
   expect(screen.getByRole('heading', { level: 1, name: 'El Resorte' })).toBeDefined();
-  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Líneas Estratégicas:')).toBeDefined();
   expect(screen.getByText('Formación')).toBeDefined();
   expect(screen.getByRole('region', { name: 'Métricas del proyecto' })).toBeDefined();
   expect(screen.getByRole('heading', { name: 'Distribución de beneficiarios' })).toBeDefined();
@@ -136,17 +177,72 @@ test('renders the selected project year and its main sections', async () => {
   expect(screen.getByRole('link', { name: 'Editar proyecto' }).getAttribute('href')).toBe(
     '/dashboard/projects/42/edit'
   );
-  expect(screen.getByRole('link', { name: 'Ver vista pública →' }).getAttribute('href')).toBe('/');
+  expect(screen.getByRole('link', { name: 'Ver reporte público →' }).getAttribute('href')).toBe(
+    '/'
+  );
+});
+
+test.each([true, false])(
+  'shows full project information when beneficiary data is available: %s',
+  async (hasData) => {
+    const publicDescription = `Public description\n${'description'.repeat(80)}`;
+    const internalNotes = `Internal notes\n${'note'.repeat(200)}`;
+    getProjectDetailMock.mockResolvedValue({
+      ...DETAIL,
+      data: {
+        ...DETAIL.data,
+        hasData,
+        canEdit: false,
+        project: { ...DETAIL.data.project, publicDescription, internalNotes },
+      },
+    });
+
+    await renderPage();
+
+    const description = screen.getByRole('region', { name: 'Descripción pública' });
+    const notes = screen.getByRole('region', { name: 'Notas internas' });
+    expect(within(description).getByRole('heading').textContent).toBe('Descripción pública');
+    expect(description.querySelector('p')?.textContent).toBe(publicDescription);
+    expect(notes.querySelector('p')?.textContent).toBe(internalNotes);
+    expect(screen.getAllByText(publicDescription, { normalizer: (text) => text })).toHaveLength(1);
+    expect(screen.getByText('Temáticas:')).toBeDefined();
+    expect(screen.getByText('Educación')).toBeDefined();
+  }
+);
+
+test('shows empty messages for missing descriptions and notes', async () => {
+  getProjectDetailMock.mockResolvedValue({
+    ...DETAIL,
+    data: {
+      ...DETAIL.data,
+      project: { ...DETAIL.data.project, publicDescription: null, internalNotes: null },
+    },
+  });
+
+  await renderPage();
+
+  expect(
+    within(screen.getByRole('region', { name: 'Descripción pública' })).getByText(
+      'Este proyecto todavía no tiene una descripción pública.'
+    )
+  ).toBeDefined();
+  expect(
+    within(screen.getByRole('region', { name: 'Notas internas' })).getByText(
+      'Este proyecto todavía no tiene notas internas.'
+    )
+  ).toBeDefined();
 });
 
 test('returns not found for invalid project input', async () => {
   getProjectDetailMock.mockResolvedValue({ status: 'invalidInput', field: 'projectId' });
 
   await expect(
-    ProjectDetailPage({
-      params: Promise.resolve({ id: 'invalid' }),
-      searchParams: Promise.resolve({}),
-    })
+    resolveSuspenseChild(
+      await ProjectDetailPage({
+        params: Promise.resolve({ id: 'invalid' }),
+        searchParams: Promise.resolve({}),
+      })
+    )
   ).rejects.toThrow('NEXT_NOT_FOUND');
 
   expect(getProjectDetailMock).toHaveBeenCalledWith('invalid', undefined);
@@ -156,9 +252,11 @@ test('returns not found when the project does not exist', async () => {
   getProjectDetailMock.mockResolvedValue({ status: 'notFound' });
 
   await expect(
-    ProjectDetailPage({
-      params: Promise.resolve({ id: '42' }),
-      searchParams: Promise.resolve({}),
-    })
+    resolveSuspenseChild(
+      await ProjectDetailPage({
+        params: Promise.resolve({ id: '42' }),
+        searchParams: Promise.resolve({}),
+      })
+    )
   ).rejects.toThrow('NEXT_NOT_FOUND');
 });

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/prisma';
 import { getDashboardOverview } from '@/lib/dashboard/queries';
-import { getMetricValues, type MetricValues } from '@/lib/metrics/queries';
+import { getMetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 import { beneficiaryValueRows } from '../mocks/beneficiary-values';
 
 vi.mock('@/lib/prisma', () => ({
@@ -17,7 +18,6 @@ function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
     families: 0,
     teachers: 0,
     institutions: 0,
-    departments: 0,
     active_projects: 0,
     ...overrides,
   };
@@ -119,7 +119,7 @@ describe('getDashboardOverview', () => {
     );
   });
 
-  it('sums direct and indirect children per project and in the total', async () => {
+  it('sums all beneficiary categories per project and in the total', async () => {
     mockMetricsByYear({});
     mockProjects([
       {
@@ -132,6 +132,8 @@ describe('getDashboardOverview', () => {
             values: beneficiaryValueRows({
               directChildrenAdolescents: 30,
               indirectChildrenAdolescents: 12,
+              families: 10,
+              customVolunteers: 25,
             }),
           },
         ],
@@ -155,9 +157,31 @@ describe('getDashboardOverview', () => {
     const { projects, projectsTotal } = await getDashboardOverview(2026);
 
     expect(projects).toEqual([
-      { id: 1, name: 'Playground', status: 'active', intensity: 'high', beneficiaries: 42 },
+      { id: 1, name: 'Playground', status: 'active', intensity: 'high', beneficiaries: 77 },
       { id: 2, name: 'Talleres', status: 'inactive', intensity: 'low', beneficiaries: 5 },
     ]);
-    expect(projectsTotal).toBe(47);
+    expect(projectsTotal).toBe(82);
+  });
+
+  it.each([
+    [{ families: 10, customVolunteers: 4 }, 14],
+    [{ customVolunteers: 25 }, 25],
+    [{ families: 0, customVolunteers: 0 }, 0],
+  ])('counts beneficiaries without NNA: %o', async (counts, expected) => {
+    mockMetricsByYear({});
+    mockProjects([
+      {
+        id: 1,
+        name: 'Community project',
+        status: 'active',
+        intensity: null,
+        projectBeneficiaries: [{ values: beneficiaryValueRows(counts) }],
+      },
+    ]);
+
+    const overview = await getDashboardOverview(2026);
+    expect(overview.projects[0].beneficiaries).toBe(expected);
+    expect(overview.projectsTotal).toBe(expected);
+    expect(overview.heroKpi.value).toBe(0);
   });
 });

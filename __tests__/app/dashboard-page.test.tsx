@@ -27,9 +27,13 @@ vi.mock('@/components/metrics/metrics-year-select', () => ({
 }));
 
 import DashboardPage from '@/app/(protected)/dashboard/page';
+import { resolveSuspenseChild } from '../helpers/suspense-page';
 
-function renderPage(year?: string | string[]) {
-  return DashboardPage({ searchParams: Promise.resolve(year === undefined ? {} : { year }) });
+async function renderPage(year?: string | string[]) {
+  const page = await DashboardPage({
+    searchParams: Promise.resolve(year === undefined ? {} : { year }),
+  });
+  return resolveSuspenseChild(page);
 }
 
 beforeEach(() => {
@@ -112,15 +116,13 @@ test.each([['1990'], ['2027'], ['abc'], ['2024.5'], [['2024', '2025']]])(
 );
 
 test.each(['admin', 'coordinator'])(
-  'disables the actions that are not available yet as %s',
+  'shows only the available quick actions as %s',
   async (role) => {
     authMock.mockResolvedValue({ user: { id: '1', role } });
 
     render(await renderPage());
 
-    for (const name of ['Exportar reporte', 'Publicar dashboard']) {
-      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true);
-    }
+    expect(screen.queryByRole('button', { name: 'Exportar reporte' })).toBeNull();
     expect(screen.queryByText('Cargar métricas')).toBeNull();
     expect(screen.getByText('Nuevo proyecto').closest('a')?.getAttribute('href')).toBe(
       '/dashboard/projects/new'

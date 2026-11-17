@@ -12,6 +12,6 @@ export function resolveYearParam(
   years: number[],
   fallback: number
 ) {
-  const parsed = typeof value === 'string' ? Number(value) : NaN;
+  const parsed = typeof value === 'string' ? Number(value) : Number.NaN;
   return Number.isInteger(parsed) && years.includes(parsed) ? parsed : fallback;
 }

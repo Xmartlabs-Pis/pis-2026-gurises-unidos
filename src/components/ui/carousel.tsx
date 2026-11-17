@@ -51,6 +51,8 @@ function Carousel({
 }: React.ComponentProps<'div'> & CarouselProps) {
   const [carouselRef, api] = useEmblaCarousel(
     {
+      align: 'end',
+      slidesToScroll: 'auto',
       ...opts,
       axis: orientation === 'horizontal' ? 'x' : 'y',
     },
@@ -131,10 +133,53 @@ function Carousel({
 }
 
 function CarouselContent({ className, ...props }: React.ComponentProps<'div'>) {
-  const { carouselRef, orientation } = useCarousel();
+  const { carouselRef, orientation, api } = useCarousel();
+  const subscribe = React.useCallback(
+    (onChange: () => void) => {
+      if (!api) return () => {};
+      api.on('scroll', onChange).on('reInit', onChange).on('settle', onChange);
+      return () => {
+        api.off('scroll', onChange).off('reInit', onChange).off('settle', onChange);
+      };
+    },
+    [api]
+  );
+  const fadingEdges = React.useSyncExternalStore(
+    subscribe,
+    () => {
+      if (!api) return 'none';
+      const viewport = api.rootNode().getBoundingClientRect();
+      const start = orientation === 'horizontal' ? 'left' : 'top';
+      const end = orientation === 'horizontal' ? 'right' : 'bottom';
+      let clippedStart = false;
+      let clippedEnd = false;
+      for (const slide of api.slideNodes()) {
+        const bounds = (slide.firstElementChild ?? slide).getBoundingClientRect();
+        clippedStart ||= bounds[start] < viewport[start] - 1 && bounds[end] > viewport[start] + 1;
+        clippedEnd ||= bounds[start] < viewport[end] - 1 && bounds[end] > viewport[end] + 1;
+        if (clippedStart && clippedEnd) return 'both';
+      }
+      if (clippedStart) return 'start';
+      if (clippedEnd) return 'end';
+      return 'none';
+    },
+    () => 'none'
+  );
+  const fadeStart = fadingEdges === 'start' || fadingEdges === 'both' ? '2rem' : '0px';
+  const fadeEnd = fadingEdges === 'end' || fadingEdges === 'both' ? '2rem' : '0px';
 
   return (
-    <div ref={carouselRef} className="overflow-hidden" data-slot="carousel-content">
+    <div
+      ref={carouselRef}
+      className="overflow-hidden"
+      data-slot="carousel-content"
+      style={{
+        maskImage:
+          fadingEdges !== 'none'
+            ? `linear-gradient(to ${orientation === 'horizontal' ? 'right' : 'bottom'}, transparent, black ${fadeStart}, black calc(100% - ${fadeEnd}), transparent)`
+            : undefined,
+      }}
+    >
       <div
         className={cn('flex', orientation === 'horizontal' ? '-ml-4' : '-mt-4 flex-col', className)}
         {...props}

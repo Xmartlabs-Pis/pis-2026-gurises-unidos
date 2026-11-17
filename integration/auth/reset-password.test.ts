@@ -1,6 +1,8 @@
 import { afterEach, beforeAll, describe, expect, test } from 'vitest';
 import { resetPassword } from '@/app/actions/password';
-import { verifyPassword } from '@/lib/credentials';
+import { resetPasswordWithToken } from '@/app/actions/password-recovery';
+import { verifyPassword, verifyUserCredentials } from '@/lib/credentials';
+import { createUserToken } from '@/lib/auth/user-tokens';
 import prisma from '@/lib/prisma';
 import type { User } from '@/generated/prisma/client';
 import { loadSeedData, type SeedData } from '../fixtures';
@@ -53,6 +55,25 @@ afterEach(async () => {
 });
 
 describe('resetPassword (integration)', () => {
+  test('clears the login cooldown after an admin resets the password and allows immediate login', async () => {
+    const user = await createTestUser(DOCUMENT_ID);
+    await prisma.loginThrottle.create({
+      data: {
+        documentId: DOCUMENT_ID,
+        failedAttempts: 5,
+        blockedUntil: new Date(Date.now() + 300_000),
+      },
+    });
+    signInAs(seed.adminId, 'admin');
+
+    expect(await resetPassword({}, buildFormData(user.id))).toEqual({ success: true });
+
+    expect(
+      await prisma.loginThrottle.findUnique({ where: { documentId: DOCUMENT_ID } })
+    ).toBeNull();
+    expect(await verifyUserCredentials(DOCUMENT_ID, NEW_PASSWORD)).toMatchObject({ id: user.id });
+  });
+
   test('replaces the password, forces a change on next login and audits the reset', async () => {
     const user = await createTestUser(DOCUMENT_ID);
     signInAs(seed.adminId, 'admin');
@@ -160,5 +181,55 @@ describe('resetPassword (integration)', () => {
       'La contraseña debe tener al menos un número',
     ]);
     await expectUnchanged(user);
+  });
+});
+
+describe('password recovery cooldown (integration)', () => {
+  function recoveryFormData(token: string) {
+    const formData = new FormData();
+    formData.set('token', token);
+    formData.set('newPassword', NEW_PASSWORD);
+    formData.set('confirmNewPassword', NEW_PASSWORD);
+    return formData;
+  }
+
+  test('clears the login cooldown after completing an email reset and allows immediate login', async () => {
+    const user = await createTestUser(DOCUMENT_ID);
+    const token = await prisma.$transaction((tx) => createUserToken(tx, user.id, 'passwordReset'));
+    await prisma.loginThrottle.create({
+      data: {
+        documentId: DOCUMENT_ID,
+        failedAttempts: 5,
+        blockedUntil: new Date(Date.now() + 300_000),
+      },
+    });
+
+    await expect(resetPasswordWithToken({}, recoveryFormData(token))).rejects.toThrow(
+      'NEXT_REDIRECT:/login?passwordChanged=1'
+    );
+
+    expect(
+      await prisma.loginThrottle.findUnique({ where: { documentId: DOCUMENT_ID } })
+    ).toBeNull();
+    expect(await verifyUserCredentials(DOCUMENT_ID, NEW_PASSWORD)).toMatchObject({ id: user.id });
+  });
+
+  test('keeps the cooldown when the reset token is invalid', async () => {
+    await createTestUser(DOCUMENT_ID);
+    const throttle = await prisma.loginThrottle.create({
+      data: {
+        documentId: DOCUMENT_ID,
+        failedAttempts: 5,
+        blockedUntil: new Date(Date.now() + 300_000),
+      },
+    });
+
+    expect(await resetPasswordWithToken({}, recoveryFormData('invalid-token'))).toHaveProperty(
+      'formError'
+    );
+
+    expect(await prisma.loginThrottle.findUnique({ where: { documentId: DOCUMENT_ID } })).toEqual(
+      throttle
+    );
   });
 });

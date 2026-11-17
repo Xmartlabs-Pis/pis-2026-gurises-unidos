@@ -1,12 +1,16 @@
 import { z } from 'zod';
-import { firstValue, type CanonicalQuery } from '@/lib/url-filters';
+import {
+  ALL_FILTER_VALUE,
+  firstValue,
+  toSingleValues,
+  type CanonicalQuery,
+} from '@/lib/url-filters';
 
 export const PROJECT_LIST_PAGE_SIZE = 20;
 export const PROJECT_LIST_MAX_PAGE_SIZE = 100;
-export const PROJECT_MIN_START_YEAR = 1989;
+const PROJECT_MIN_START_YEAR = 1989;
 export const PROJECT_SEARCH_MAX_LENGTH = 100;
-export const DEFAULT_PROJECT_STATUS = 'active';
-export const ALL_FILTER_VALUE = 'all';
+const DEFAULT_PROJECT_STATUS = 'active';
 
 const optionalYear = z.coerce
   .number()
@@ -18,7 +22,7 @@ const optionalYear = z.coerce
 
 const optionalPositiveInt = z.coerce.number().int().positive().optional().catch(undefined);
 
-export const projectFiltersSchema = z
+const projectFiltersSchema = z
   .object({
     search: z
       .string()
@@ -31,6 +35,9 @@ export const projectFiltersSchema = z
     leadCoordinatorId: optionalPositiveInt,
     departmentId: optionalPositiveInt,
     topicId: optionalPositiveInt,
+    strategicLineId: optionalPositiveInt,
+    partnerId: optionalPositiveInt,
+    beneficiaryCategoryId: optionalPositiveInt,
     startYearFrom: optionalYear,
     startYearTo: optionalYear,
     beneficiaryYear: optionalYear,
@@ -59,22 +66,28 @@ export type ProjectFilters = z.infer<typeof projectFiltersSchema>;
 export type RawProjectFilters = Record<string, string | string[] | undefined>;
 
 export function parseProjectFilters(raw: RawProjectFilters): ProjectFilters {
-  const singleValued = Object.fromEntries(
-    Object.entries(raw).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])
-  );
-
-  return projectFiltersSchema.parse(singleValued);
+  return projectFiltersSchema.parse(toSingleValues(raw));
 }
 
 type ProjectFilterOptions = {
   years: number[];
   departments: { id: number }[];
   topics: { id: number }[];
+  strategicLines: { id: number }[];
+  partners: { id: number }[];
+  beneficiaryCategories: { id: number }[];
 };
 
 export function resolveProjectListFilters(
   raw: RawProjectFilters,
-  { years, departments, topics }: ProjectFilterOptions
+  {
+    years,
+    departments,
+    topics,
+    strategicLines,
+    partners,
+    beneficiaryCategories,
+  }: ProjectFilterOptions
 ): { canonical: CanonicalQuery; filters: ProjectFilters } {
   const parsed = parseProjectFilters(raw);
 
@@ -85,15 +98,32 @@ export function resolveProjectListFilters(
       : years.find((year) => year === parsed.beneficiaryYear);
   const departmentId = departments.find(({ id }) => id === parsed.departmentId)?.id;
   const topicId = topics.find(({ id }) => id === parsed.topicId)?.id;
+  const strategicLineId = strategicLines.find(({ id }) => id === parsed.strategicLineId)?.id;
+  const partnerId = partners.find(({ id }) => id === parsed.partnerId)?.id;
+  const beneficiaryCategoryId = beneficiaryCategories.find(
+    ({ id }) => id === parsed.beneficiaryCategoryId
+  )?.id;
 
   return {
-    canonical: { status, beneficiaryYear, search: parsed.search, departmentId, topicId },
+    canonical: {
+      status,
+      beneficiaryYear,
+      search: parsed.search,
+      departmentId,
+      topicId,
+      strategicLineId,
+      partnerId,
+      beneficiaryCategoryId,
+    },
     filters: parseProjectFilters({
       status: status ?? DEFAULT_PROJECT_STATUS,
       beneficiaryYear: String(beneficiaryYear ?? years[0] ?? ''),
       search: parsed.search,
       departmentId: departmentId?.toString(),
       topicId: topicId?.toString(),
+      strategicLineId: strategicLineId?.toString(),
+      partnerId: partnerId?.toString(),
+      beneficiaryCategoryId: beneficiaryCategoryId?.toString(),
       pageSize: String(PROJECT_LIST_PAGE_SIZE),
     }),
   };

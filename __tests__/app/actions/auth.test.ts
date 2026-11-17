@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuthError, CredentialsSignin } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { login, logout } from '@/app/actions/auth';
-import { auth, signIn, signOut } from '@/auth';
+import { signIn, signOut } from '@/auth';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 import {
   SESSION_EXPIRATION_COOKIE,
   SESSION_EXPIRATION_COOKIE_OPTIONS,
@@ -13,12 +14,17 @@ const cookieStore = vi.hoisted(() => ({
   delete: vi.fn(),
 }));
 
+const findUniqueMock = vi.hoisted(() => vi.fn());
+
 vi.mock('next-auth', () => import('@auth/core/errors'));
 
 vi.mock('@/auth', () => ({
-  auth: vi.fn(),
   signIn: vi.fn(),
   signOut: vi.fn(),
+}));
+
+vi.mock('@/lib/prisma', () => ({
+  default: { user: { findUnique: findUniqueMock } },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -40,17 +46,18 @@ function makeFormData(documentId: string, password: string, remember = false) {
 }
 
 describe('login', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   beforeEach(() => {
     vi.mocked(signIn).mockReset();
-    vi.mocked(auth).mockReset();
+    findUniqueMock.mockReset();
     vi.mocked(redirect).mockReset();
     cookieStore.set.mockReset();
     vi.mocked(redirect).mockImplementation(() => {
       throw new Error('NEXT_REDIRECT');
     });
-    vi.mocked(auth).mockResolvedValue({
-      user: { mustChangePassword: false },
-    } as never);
+    findUniqueMock.mockResolvedValue({ mustChangePassword: false });
   });
 
   test('signs in with the normalized document id and redirects to the dashboard', async () => {
@@ -77,9 +84,7 @@ describe('login', () => {
 
   test('redirects to password reset when mustChangePassword is true', async () => {
     vi.mocked(signIn).mockResolvedValue(undefined);
-    vi.mocked(auth).mockResolvedValue({
-      user: { mustChangePassword: true },
-    } as never);
+    findUniqueMock.mockResolvedValue({ mustChangePassword: true });
 
     await expect(login({}, makeFormData('1.111.111-1', 'password'))).rejects.toThrow(
       'NEXT_REDIRECT'
@@ -90,7 +95,25 @@ describe('login', () => {
       expect.any(String),
       SESSION_EXPIRATION_COOKIE_OPTIONS
     );
+    expect(findUniqueMock).toHaveBeenCalledWith({
+      where: { documentId: '11111111' },
+      select: { mustChangePassword: true },
+    });
     expect(redirect).toHaveBeenCalledWith('/password-reset');
+  });
+
+  test('redirects to the dashboard when reading mustChangePassword fails', async () => {
+    vi.mocked(signIn).mockResolvedValue(undefined);
+    findUniqueMock.mockRejectedValue(new Error('database down'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(login({}, makeFormData('1.111.111-1', 'password'))).rejects.toThrow(
+      'NEXT_REDIRECT'
+    );
+
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   test('passes remember: "true" when the checkbox is checked', async () => {
@@ -132,6 +155,33 @@ describe('login', () => {
 
     await expect(login({}, makeFormData('11111111', 'password'))).rejects.toThrow('network');
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  test('returns the persisted next attempt date and normalized document id on cooldown', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T15:00:00Z'));
+    const nextAllowedAt = new Date('2026-10-26T15:05:00Z');
+    vi.mocked(signIn).mockRejectedValue(new LoginCooldownError(nextAllowedAt));
+
+    await expect(login({}, makeFormData('1.111.111-1', 'password'))).resolves.toEqual({
+      formError: 'Login cooldown',
+      documentId: '11111111',
+      nextAllowedAt: nextAllowedAt.toISOString(),
+      retryAfterSeconds: 300,
+    });
+    expect(cookieStore.set).not.toHaveBeenCalled();
+    expect(findUniqueMock).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  test('returns the remaining wait rounded up to a whole second', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-26T15:04:58.100Z'));
+    vi.mocked(signIn).mockRejectedValue(new LoginCooldownError(new Date('2026-10-26T15:05:00Z')));
+
+    expect(await login({}, makeFormData('11111111', 'password'))).toMatchObject({
+      retryAfterSeconds: 2,
+    });
   });
 
   test('ignores previous login state', async () => {

@@ -5,6 +5,10 @@ export const PROJECT_PLACEHOLDERS = [
   '/images/project-placeholders/4.webp',
   '/images/project-placeholders/5.webp',
   '/images/project-placeholders/6.webp',
+  '/images/project-placeholders/7.webp',
+  '/images/project-placeholders/8.webp',
+  '/images/project-placeholders/9.webp',
+  '/images/project-placeholders/10.webp',
 ] as const;
 
 export type ProjectPlaceholder = (typeof PROJECT_PLACEHOLDERS)[number];

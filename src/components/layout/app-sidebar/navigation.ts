@@ -2,6 +2,9 @@ import {
   ChartNoAxesColumn,
   // FileChartColumnIncreasing,
   FolderKanban,
+  Globe,
+  Handshake,
+  History,
   HomeIcon,
   Tags,
   Waypoints,
@@ -21,7 +24,6 @@ export interface NavigationItem {
   icon: LucideIcon;
   match?: PathMatch;
   roles?: readonly UserRole[];
-  children?: readonly NavigationItem[];
 }
 
 export interface NavigationGroup {
@@ -53,20 +55,19 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         href: '/dashboard',
         icon: HomeIcon,
         match: 'exact',
-        children: [
-          {
-            id: 'projects',
-            title: 'Proyectos',
-            href: '/dashboard/projects',
-            icon: FolderKanban,
-          },
-          // {
-          //   id: 'beneficiaries',
-          //   title: 'Beneficiarios',
-          //   href: '#',
-          //   icon: Users,
-          // },
-        ],
+      },
+      {
+        id: 'projects',
+        title: 'Proyectos',
+        href: '/dashboard/projects',
+        icon: FolderKanban,
+      },
+      {
+        id: 'publicReport',
+        title: 'Reporte Público',
+        href: '/',
+        icon: Globe,
+        match: 'exact',
       },
       // {
       //   id: 'publications',
@@ -102,16 +103,23 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
       },
       {
         id: 'beneficiary-categories',
-        title: 'Categorías de beneficiarios',
+        title: 'Categorías de Beneficiarios',
         href: '/management/beneficiary-categories',
         icon: UsersRound,
         roles: ['admin'],
       },
       {
         id: 'strategicLines',
-        title: 'Líneas estratégicas',
+        title: 'Líneas Estratégicas',
         href: '/management/strategic-lines',
         icon: Waypoints,
+        roles: ['admin'],
+      },
+      {
+        id: 'partners',
+        title: 'Socios',
+        href: '/management/partners',
+        icon: Handshake,
         roles: ['admin'],
       },
       {
@@ -121,11 +129,18 @@ export const NAV_GROUPS: readonly NavigationGroup[] = [
         icon: ChartNoAxesColumn,
         roles: ['admin'],
       },
+      {
+        id: 'history',
+        title: 'Historial de Cambios',
+        href: '/management/history',
+        icon: History,
+        roles: ['admin'],
+      },
     ],
   },
 ];
 
-export function canAccessNavItem(item: NavigationItem, role: UserRole) {
+function canAccessNavItem(item: NavigationItem, role: UserRole) {
   return !item.roles || item.roles.includes(role);
 }
 
@@ -136,15 +151,4 @@ export function filterNavGroups(groups: readonly NavigationGroup[], role: UserRo
       items: group.items.filter((item) => canAccessNavItem(item, role)),
     }))
     .filter((group) => group.items.length > 0);
-}
-
-export function flattenNavItems(items: readonly NavigationItem[]): NavigationItem[] {
-  return items.flatMap((item) => {
-    if (!item.children?.length) {
-      return [item];
-    }
-
-    const { children, ...parent } = item;
-    return [parent, ...children];
-  });
 }

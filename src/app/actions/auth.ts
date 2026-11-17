@@ -4,13 +4,15 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
 import { flattenError } from 'zod';
-import { auth, signIn, signOut } from '@/auth';
+import { signIn, signOut } from '@/auth';
+import prisma from '@/lib/prisma';
 import {
   getSessionExpirationTimestamp,
   SESSION_EXPIRATION_COOKIE,
   SESSION_EXPIRATION_COOKIE_OPTIONS,
 } from '@/lib/auth/session-expiration';
 import { loginSchema, type LoginFormState } from '@/lib/validation/auth';
+import { LoginCooldownError } from '@/lib/auth/login-cooldown-error';
 
 export async function login(
   _prevState: LoginFormState,
@@ -34,6 +36,17 @@ export async function login(
       redirect: false,
     });
   } catch (error) {
+    if (error instanceof LoginCooldownError) {
+      return {
+        formError: 'Login cooldown',
+        documentId,
+        nextAllowedAt: error.nextAllowedAt.toISOString(),
+        retryAfterSeconds: Math.max(
+          0,
+          Math.ceil((error.nextAllowedAt.getTime() - Date.now()) / 1000)
+        ),
+      };
+    }
     if (error instanceof AuthError) {
       return { formError: 'Invalid credentials', documentId: rawDocumentId };
     }
@@ -47,13 +60,18 @@ export async function login(
     SESSION_EXPIRATION_COOKIE_OPTIONS
   );
 
-  const session = await auth();
-
-  if (session?.user?.mustChangePassword) {
-    redirect('/password-reset');
+  let mustChangePassword = false;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { documentId },
+      select: { mustChangePassword: true },
+    });
+    mustChangePassword = Boolean(user?.mustChangePassword);
+  } catch (error) {
+    console.error('Failed to read mustChangePassword after login', error);
   }
 
-  redirect('/dashboard');
+  redirect(mustChangePassword ? '/password-reset' : '/dashboard');
 }
 
 export async function logout() {

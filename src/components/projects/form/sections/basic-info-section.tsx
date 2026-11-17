@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { STATUS_OPTIONS, COUNTERPARTY_OPTIONS } from '@/lib/project-display';
-import { TextInputField } from '@/components/ui/forms/text-input-field';
+import { TextareaField } from '@/components/ui/forms/textarea-field';
 import { MultiSelectField } from '@/components/ui/forms/multi-select-field';
 import { SelectField } from '@/components/ui/forms/select-field';
 import { FormSection } from '@/components/ui/forms/form-section';
@@ -14,23 +14,58 @@ import type { SectionProps } from './section-props';
 export function BasicInfoSection({
   yearOptions,
   coordinatorOptions,
+  canSelectCoordinator,
   topics,
   strategicLines,
-}: Pick<SectionProps, 'yearOptions' | 'coordinatorOptions' | 'topics' | 'strategicLines'>) {
-  const { clearErrors, setValue } = useFormContext<ProjectFormValues>();
+  partners,
+  firstBeneficiaryYear,
+  lastBeneficiaryYear,
+}: Pick<
+  SectionProps,
+  | 'yearOptions'
+  | 'coordinatorOptions'
+  | 'canSelectCoordinator'
+  | 'topics'
+  | 'strategicLines'
+  | 'partners'
+> & { firstBeneficiaryYear?: number; lastBeneficiaryYear?: number }) {
+  const { clearErrors, getValues, setValue } = useFormContext<ProjectFormValues>();
   const strategicLineOptions = strategicLines.map(({ id, name }) => ({
     value: String(id),
     label: name,
   }));
+  const counterpartyTypes = useWatch<ProjectFormValues, 'counterpartyTypes'>({
+    name: 'counterpartyTypes',
+  });
+  const partnerOptions = partners
+    .filter(({ counterpartyType }) => counterpartyTypes.includes(counterpartyType))
+    .map(({ id, name }) => ({ value: String(id), label: name }));
   const status = useWatch<ProjectFormValues, 'status'>({ name: 'status' });
   const startYear = useWatch<ProjectFormValues, 'startYear'>({ name: 'startYear' });
   const endYear = useWatch<ProjectFormValues, 'endYear'>({ name: 'endYear' });
+  const leadCoordinatorId = useWatch<ProjectFormValues, 'leadCoordinatorId'>({
+    name: 'leadCoordinatorId',
+  });
   const startYearOptions = yearOptions.filter(
-    ({ value }) => status !== 'inactive' || !endYear || Number(value) <= Number(endYear)
+    ({ value }) =>
+      (firstBeneficiaryYear === undefined || Number(value) <= firstBeneficiaryYear) &&
+      (status !== 'inactive' || !endYear || Number(value) <= Number(endYear))
   );
   const endYearOptions = yearOptions.filter(
-    ({ value }) => !startYear || Number(value) >= Number(startYear)
+    ({ value }) =>
+      (!startYear || Number(value) >= Number(startYear)) &&
+      (lastBeneficiaryYear === undefined || Number(value) >= lastBeneficiaryYear)
   );
+
+  function removePartnersOutside(selectedTypes: string[]) {
+    const allowedIds = partners
+      .filter(({ counterpartyType }) => selectedTypes.includes(counterpartyType))
+      .map(({ id }) => String(id));
+    setValue(
+      'partnerIds',
+      getValues('partnerIds').filter((id) => allowedIds.includes(id))
+    );
+  }
 
   useEffect(() => {
     if (status === 'inactive' && startYear && endYear && Number(endYear) < Number(startYear)) {
@@ -40,13 +75,14 @@ export function BasicInfoSection({
 
   return (
     <FormSection title="Información básica">
-      <TextInputField
+      <TextareaField
         maxLength={100}
         id="name"
         name="name"
         label="Nombre del proyecto"
         placeholder="Ej: Espacio joven Malvín Norte"
         description="Nombre de fantasía — puede cambiarse después"
+        className="min-h-9"
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SelectField
@@ -80,6 +116,11 @@ export function BasicInfoSection({
           name="startYear"
           label="Año de inicio"
           options={startYearOptions}
+          description={
+            firstBeneficiaryYear === undefined
+              ? undefined
+              : `El año de inicio no puede ser posterior a ${firstBeneficiaryYear}, porque tiene beneficiarios registrados`
+          }
         />
         <SelectField
           id="endYear"
@@ -88,17 +129,35 @@ export function BasicInfoSection({
           placeholder="Seleccionar..."
           clearLabel="Sin año de fin"
           options={endYearOptions}
+          description={
+            status !== 'inactive' || lastBeneficiaryYear === undefined
+              ? undefined
+              : `El año de fin no puede ser anterior a ${lastBeneficiaryYear}, porque tiene beneficiarios registrados`
+          }
           disabled={status !== 'inactive'}
           required={status === 'inactive'}
         />
       </div>
-      <SelectField
-        id="counterpartyType"
-        name="counterpartyType"
-        label="Contraparte"
-        placeholder="Seleccionar contraparte..."
+      <MultiSelectField
+        id="counterpartyTypes"
+        name="counterpartyTypes"
+        label="Contrapartes"
+        placeholder="Seleccionar contrapartes..."
         options={COUNTERPARTY_OPTIONS}
+        onValueChange={removePartnersOutside}
         required
+      />
+      <MultiSelectField
+        id="partnerIds"
+        name="partnerIds"
+        label="Socios"
+        placeholder="Seleccionar socios..."
+        options={partnerOptions}
+        emptyMessage={
+          counterpartyTypes.length
+            ? 'No hay socios de las contrapartes seleccionadas.'
+            : 'Seleccioná una contraparte para ver sus socios.'
+        }
       />
       <SelectField
         id="leadCoordinatorId"
@@ -106,11 +165,15 @@ export function BasicInfoSection({
         label="Coordinador responsable"
         placeholder="Seleccionar coordinador..."
         options={coordinatorOptions}
+        disabled={!canSelectCoordinator}
       />
+      {!canSelectCoordinator && (
+        <input type="hidden" name="leadCoordinatorId" value={leadCoordinatorId ?? ''} />
+      )}
       <MultiSelectField
         id="strategicLineIds"
         name="strategicLineIds"
-        label="Líneas estratégicas"
+        label="Líneas Estratégicas"
         placeholder="Seleccionar líneas estratégicas..."
         options={strategicLineOptions}
         emptyMessage="No hay líneas estratégicas disponibles."

@@ -80,15 +80,13 @@ const BASE_PROJECT = {
   name: 'Project',
   status: 'inactive',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: '2020',
   endYear: '2022',
   leadCoordinatorId: '1',
   geographicScope: 'national',
-  departmentIds: ['1'],
   countries: [],
-  cities: [],
-  neighborhoods: [],
+  locations: [{ departmentId: '1', city: 'Pando', neighborhood: '' }],
   zone: 'city',
 };
 
@@ -167,19 +165,41 @@ it('validates a custom beneficiary category and splits it into the counts', () =
 it.each(['publicSector', 'privateSector', 'internationalCooperation'])(
   'accepts counterparty %s',
   (counterpartyType) => {
-    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyType });
+    const result = projectSchema.safeParse({
+      ...BASE_PROJECT,
+      counterpartyTypes: [counterpartyType],
+    });
     expect(result.success).toBe(true);
-    expect(result.data?.counterpartyType).toBe(counterpartyType);
+    expect(result.data?.counterpartyTypes).toEqual([counterpartyType]);
   }
 );
 
-it.each(['', undefined, null, 'invalid'])(
-  'rejects a missing or invalid counterparty: %s',
-  (counterpartyType) => {
-    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyType });
+it('accepts several counterparties in a stable order and without repetitions', () => {
+  const result = projectSchema.safeParse({
+    ...BASE_PROJECT,
+    counterpartyTypes: ['privateSector', 'publicSector', 'privateSector'],
+  });
+  expect(result.data?.counterpartyTypes).toEqual(['publicSector', 'privateSector']);
+});
+
+it.each([[['']], [[null]], [['invalid']], [['publicSector', 'invalid']]])(
+  'rejects an invalid counterparty: %j',
+  (counterpartyTypes) => {
+    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyTypes });
     expect(result.success).toBe(false);
-    expect(result.error?.flatten().fieldErrors.counterpartyType).toEqual([
+    expect(result.error?.flatten().fieldErrors.counterpartyTypes).toEqual([
       'Seleccioná una contraparte válida',
+    ]);
+  }
+);
+
+it.each([[[]], [undefined], [null], ['publicSector']])(
+  'rejects a project without a list of counterparties: %j',
+  (counterpartyTypes) => {
+    const result = projectSchema.safeParse({ ...BASE_PROJECT, counterpartyTypes });
+    expect(result.success).toBe(false);
+    expect(result.error?.flatten().fieldErrors.counterpartyTypes).toEqual([
+      'Seleccioná al menos una contraparte',
     ]);
   }
 );
@@ -225,16 +245,72 @@ describe('geographic scope', () => {
 
   it('requires at least one department for a national project', () => {
     expect(
-      schema.safeParse({ ...input, departmentIds: [] }).error?.flatten().fieldErrors.departmentIds
-    ).toEqual(['Seleccioná al menos un departamento']);
+      schema.safeParse({ ...input, locations: [] }).error?.flatten().fieldErrors.locations
+    ).toEqual(['Agregá al menos una ubicación']);
   });
 
-  it('requires at least one country for an international project', () => {
+  it('requires a city for each department of a national project', () => {
+    for (const neighborhood of ['', 'Centro']) {
+      expect(
+        schema
+          .safeParse({ ...input, locations: [{ departmentId: '1', city: ' ', neighborhood }] })
+          .error?.flatten().fieldErrors.locations
+      ).toEqual(['Ingresá al menos una ciudad']);
+    }
+  });
+
+  it('does not require cities for an international project', () => {
     expect(
-      schema
-        .safeParse({ ...input, geographicScope: 'international', departmentIds: [] })
-        .error?.flatten().fieldErrors.countries
-    ).toEqual(['Ingresá al menos un país']);
+      schema.safeParse({
+        ...input,
+        geographicScope: 'international',
+        countries: ['Brasil'],
+        region: 'southAmerica',
+        locations: [],
+      }).success
+    ).toBe(true);
+  });
+
+  it('accepts an international project without countries', () => {
+    expect(
+      schema.parse({
+        ...input,
+        geographicScope: 'international',
+        countries: [],
+        region: 'otherRegions',
+        locations: [],
+      }).countries
+    ).toEqual([]);
+  });
+
+  it('accepts each region for an international project', () => {
+    for (const region of ['southAmerica', 'northAmerica', 'centralAmerica', 'otherRegions']) {
+      expect(
+        schema.parse({ ...input, geographicScope: 'international', region, locations: [] }).region
+      ).toBe(region);
+    }
+  });
+
+  it('requires a region for an international project', () => {
+    for (const region of [undefined, '']) {
+      expect(
+        schema
+          .safeParse({ ...input, geographicScope: 'international', region, locations: [] })
+          .error?.flatten().fieldErrors.region
+      ).toEqual(['Seleccioná una región']);
+    }
+  });
+
+  it('does not require a region for a national project', () => {
+    expect(schema.parse({ ...input, region: '' }).region).toBeNull();
+  });
+
+  it('rejects an invalid region', () => {
+    for (const region of ['europe', ['southAmerica', 'northAmerica']]) {
+      expect(schema.safeParse({ ...input, region }).error?.flatten().fieldErrors.region).toEqual([
+        'Seleccioná una región válida',
+      ]);
+    }
   });
 
   it('rejects a missing or invalid scope', () => {
@@ -245,34 +321,34 @@ describe('geographic scope', () => {
     }
   });
 
-  it('accepts several departments, cities and neighborhoods trimming blank values', () => {
+  it('accepts locations that associate departments, cities and neighborhoods', () => {
     const parsed = schema.parse({
       ...input,
-      departmentIds: ['1', '2'],
-      cities: [' Las Piedras ', '', 'Pando'],
-      neighborhoods: ['Centro'],
+      locations: [
+        { departmentId: '1', city: ' Las Piedras ', neighborhood: ' Centro ' },
+        { departmentId: '1', city: 'Las Piedras', neighborhood: '' },
+        { departmentId: '2', city: 'Salto', neighborhood: '' },
+      ],
     });
-    expect(parsed).toMatchObject({
-      departmentIds: [1, 2],
-      cities: ['Las Piedras', 'Pando'],
-      neighborhoods: ['Centro'],
-    });
+    expect(parsed.locations).toEqual([
+      { departmentId: 1, city: 'Las Piedras', neighborhood: 'Centro' },
+      { departmentId: 1, city: 'Las Piedras', neighborhood: '' },
+      { departmentId: 2, city: 'Salto', neighborhood: '' },
+    ]);
   });
 
-  it('rejects repeated departments and place names ignoring case', () => {
-    const errors = schema
-      .safeParse({
-        ...input,
-        departmentIds: ['1', '1'],
-        cities: ['Pando', 'pando'],
-        neighborhoods: ['Centro', 'CENTRO'],
-      })
-      .error?.flatten().fieldErrors;
-    expect(errors).toMatchObject({
-      departmentIds: ['No repitas departamentos'],
-      cities: ['No repitas ciudades'],
-      neighborhoods: ['No repitas barrios'],
-    });
+  it('rejects repeated locations ignoring case', () => {
+    expect(
+      schema
+        .safeParse({
+          ...input,
+          locations: [
+            { departmentId: '1', city: 'Pando', neighborhood: 'Centro' },
+            { departmentId: '1', city: 'pando', neighborhood: 'CENTRO' },
+          ],
+        })
+        .error?.flatten().fieldErrors.locations
+    ).toEqual(['No repitas ubicaciones']);
     expect(
       schema
         .safeParse({
@@ -284,58 +360,168 @@ describe('geographic scope', () => {
     ).toEqual(['No repitas países']);
   });
 
-  it('bounds each place name to 100 characters', () => {
-    expect(schema.safeParse({ ...input, cities: ['a'.repeat(100)] }).success).toBe(true);
-    expect(
-      schema.safeParse({ ...input, cities: ['a'.repeat(101)] }).error?.flatten().fieldErrors.cities
-    ).toEqual(['Máx. 100 caracteres por valor']);
+  it('rejects invalid departments', () => {
+    for (const location of [{ departmentId: '0', city: 'Pando', neighborhood: '' }, null]) {
+      expect(
+        schema.safeParse({ ...input, locations: [location] }).error?.flatten().fieldErrors.locations
+      ).toEqual(['Elegí departamentos válidos']);
+    }
   });
 
-  it('keeps only national values for a national project', () => {
-    const { projectData, departmentIds } = splitProjectFormData(
+  it('bounds each place name to 50 characters', () => {
+    const location = (city: string) => [{ departmentId: '1', city, neighborhood: '' }];
+    expect(schema.safeParse({ ...input, locations: location('a'.repeat(50)) }).success).toBe(true);
+    expect(
+      schema.safeParse({ ...input, locations: location('a'.repeat(51)) }).error?.flatten()
+        .fieldErrors.locations
+    ).toEqual(['Máx. 50 caracteres por valor']);
+  });
+
+  it('splits the locations into departments and localities for a national project', () => {
+    const { projectData, departmentIds, localities } = splitProjectFormData(
       schema.parse({
         ...input,
         countries: ['Brasil'],
-        cities: ['Pando'],
-        neighborhoods: ['Centro'],
+        region: 'southAmerica',
+        locations: [
+          { departmentId: '2', city: 'Pando', neighborhood: 'Centro' },
+          { departmentId: '2', city: 'Las Piedras', neighborhood: '' },
+          { departmentId: '1', city: 'Salto', neighborhood: '' },
+        ],
       }),
       BENEFICIARY_CATEGORY_KEYS
     );
-    expect(departmentIds).toEqual([1]);
+    expect(departmentIds).toEqual([2, 1]);
+    expect(localities).toEqual([
+      { departmentId: 2, city: 'Pando', neighborhood: 'Centro' },
+      { departmentId: 2, city: 'Las Piedras', neighborhood: null },
+      { departmentId: 1, city: 'Salto', neighborhood: null },
+    ]);
     expect(projectData).toMatchObject({
       geographicScope: 'national',
       countries: [],
-      cities: ['Pando'],
-      neighborhoods: ['Centro'],
+      region: null,
     });
-    expect(projectData).not.toHaveProperty('departmentIds');
-  });
-
-  it('drops neighborhoods when no city is loaded', () => {
-    const { projectData } = splitProjectFormData(
-      schema.parse({ ...input, neighborhoods: ['Centro'] }),
-      BENEFICIARY_CATEGORY_KEYS
-    );
-    expect(projectData).toMatchObject({ cities: [], neighborhoods: [] });
+    expect(projectData).not.toHaveProperty('locations');
   });
 
   it('keeps only the countries for an international project', () => {
-    const { projectData, departmentIds } = splitProjectFormData(
+    const { projectData, departmentIds, localities } = splitProjectFormData(
       schema.parse({
         ...input,
         geographicScope: 'international',
         countries: ['Argentina', 'Brasil'],
-        cities: ['Pando'],
-        neighborhoods: ['Centro'],
+        region: 'southAmerica',
+        locations: [{ departmentId: '1', city: 'Pando', neighborhood: 'Centro' }],
       }),
       BENEFICIARY_CATEGORY_KEYS
     );
     expect(departmentIds).toEqual([]);
+    expect(localities).toEqual([]);
     expect(projectData).toMatchObject({
       geographicScope: 'international',
       countries: ['Argentina', 'Brasil'],
-      cities: [],
-      neighborhoods: [],
+      region: 'southAmerica',
     });
+  });
+});
+
+describe('beneficiary drafts', () => {
+  const schema = buildProjectFormSchema(BENEFICIARY_CATEGORY_KEYS);
+  const form = {
+    ...BASE_PROJECT,
+    status: 'active',
+    endYear: '',
+    intensity: '',
+    year: '2024',
+    topicIds: ['1'],
+    strategicLineIds: ['1'],
+  };
+
+  it('splits drafts into counts per year', () => {
+    const parsed = schema.parse({ ...form, beneficiaryDrafts: [{ year: '2023', families: '7' }] });
+    const [draft] = splitProjectFormData(parsed, BENEFICIARY_CATEGORY_KEYS).beneficiaryDraftData;
+    expect(draft.year).toBe(2023);
+    expect(draft.counts.families).toBe(7);
+    expect(draft.counts.youth18To29).toBe(0);
+  });
+
+  it.each(['selected', 'draft'])(
+    'rejects positive custom category counts before the start in the %s year',
+    (source) => {
+      const customSchema = buildProjectFormSchema([...BENEFICIARY_CATEGORY_KEYS, 'customTest']);
+      const result = customSchema.safeParse({
+        ...form,
+        startYear: '2022',
+        year: source === 'selected' ? '2020' : '2024',
+        customTest: source === 'selected' ? '1' : '0',
+        beneficiaryDrafts: source === 'draft' ? [{ year: '2020', customTest: '1' }] : [],
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              path: [source === 'selected' ? 'year' : 'beneficiaryDrafts'],
+            }),
+          ])
+        );
+      }
+    }
+  );
+
+  it.each([
+    ['before the start year', form, '2019'],
+    ['after the end year', { ...form, status: 'inactive', endYear: '2024' }, '2025'],
+  ])('rejects a draft %s', (_case, values, year) => {
+    const result = schema.safeParse({ ...values, beneficiaryDrafts: [{ year, families: '1' }] });
+    expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toHaveLength(1);
+  });
+
+  it('allows clearing a draft before the start year', () => {
+    const parsed = schema.parse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2019', families: '0' }],
+    });
+    const [draft] = splitProjectFormData(parsed, BENEFICIARY_CATEGORY_KEYS).beneficiaryDraftData;
+    expect(draft.year).toBe(2019);
+    expect(Object.values(draft.counts).every((count) => count === 0)).toBe(true);
+  });
+
+  it.each(['selected', 'draft'])('allows zero counts after the end in the %s year', (source) => {
+    const parsed = schema.parse({
+      ...form,
+      status: 'inactive',
+      endYear: '2022',
+      year: source === 'selected' ? '2024' : '2022',
+      beneficiaryDrafts: source === 'draft' ? [{ year: '2024', families: '0' }] : [],
+    });
+    expect(parsed.endYear).toBe(2022);
+  });
+
+  it.each([
+    ['repeats another draft', [{ year: '2022' }, { year: '2022' }]],
+    ['repeats the selected year', [{ year: '2024' }]],
+  ])('rejects a draft that %s', (_case, beneficiaryDrafts) => {
+    const result = schema.safeParse({ ...form, beneficiaryDrafts });
+    expect(result.error?.flatten().fieldErrors.beneficiaryDrafts).toEqual([
+      'No repitas años de beneficiarios',
+    ]);
+  });
+
+  it('rejects invalid counts', () => {
+    const result = schema.safeParse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2022', families: '-1' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('requires intensity when a draft has direct children', () => {
+    const result = schema.safeParse({
+      ...form,
+      beneficiaryDrafts: [{ year: '2022', directChildrenAdolescents: '1' }],
+    });
+    expect(result.error?.flatten().fieldErrors.intensity).toEqual(['Elegí una intensidad']);
   });
 });

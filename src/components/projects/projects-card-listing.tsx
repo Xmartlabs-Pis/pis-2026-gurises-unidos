@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, ListFilter } from 'lucide-react';
+import { Search, ListFilter, Loader2Icon, TriangleAlert } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -20,7 +20,11 @@ import type { ProjectListItem } from '@/lib/projects/list';
 import { STATUS_FILTERS, type StatusFilterValue } from '@/lib/projects/constants';
 import { PROJECT_SEARCH_MAX_LENGTH } from '@/lib/validation/project-filters';
 import { ScrollToTopButton } from '@/components/scroll-to-top-button';
+import { ExportPdfButton } from '@/components/reports/export-pdf-button';
 import { useUrlFilters } from '@/hooks/use-url-filters';
+import { loadProjectDataYears } from '@/app/actions/projects';
+import { notify } from '@/lib/notify';
+import type { ImpactReportRequest } from '@/lib/validation/impact-report';
 
 const ALL_YEARS = 'all';
 
@@ -37,8 +41,14 @@ type ProjectsCardListProps = {
   search: string | undefined;
   departments?: { id: number; name: string }[];
   topics?: { id: number; name: string }[];
+  strategicLines?: { id: number; name: string }[];
+  partners?: { id: number; name: string }[];
+  beneficiaryCategories?: { id: number; name: string }[];
   departmentId?: number;
   topicId?: number;
+  strategicLineId?: number;
+  partnerId?: number;
+  beneficiaryCategoryId?: number;
 };
 
 export function ProjectsCardList({
@@ -52,24 +62,33 @@ export function ProjectsCardList({
   search,
   departments = [],
   topics = [],
+  strategicLines = [],
+  partners = [],
+  beneficiaryCategories = [],
   departmentId,
   topicId,
+  strategicLineId,
+  partnerId,
+  beneficiaryCategoryId,
 }: ProjectsCardListProps) {
-  const { searchText, changeSearch, updateFilters, clearFilters, isPending } = useUrlFilters({
+  const { searchText, changeSearch, updateFilters, isPending } = useUrlFilters({
     search,
     resetKeys: ['page'],
   });
 
   const year: YearFilterValue = beneficiaryYear ?? ALL_YEARS;
   const activeFilterCount =
-    Number(year !== (years[0] ?? ALL_YEARS)) +
+    Number(year !== ALL_YEARS) +
     Number(departmentId !== undefined) +
-    Number(topicId !== undefined);
+    Number(topicId !== undefined) +
+    Number(strategicLineId !== undefined) +
+    Number(partnerId !== undefined) +
+    Number(beneficiaryCategoryId !== undefined);
   const yearOptions: { value: YearFilterValue; label: string }[] = [
     { value: ALL_YEARS, label: 'Todos' },
     ...years.map((y) => ({
       value: y,
-      label: y === years[0] ? `${y} (por defecto)` : String(y),
+      label: String(y),
     })),
   ];
 
@@ -82,11 +101,131 @@ export function ProjectsCardList({
       search,
       departmentId: departmentId?.toString(),
       topicId: topicId?.toString(),
+      strategicLineId: strategicLineId?.toString(),
+      partnerId: partnerId?.toString(),
+      beneficiaryCategoryId: beneficiaryCategoryId?.toString(),
     }),
-    [status, year, search, departmentId, topicId]
+    [status, year, search, departmentId, topicId, strategicLineId, partnerId, beneficiaryCategoryId]
   );
 
   const filteredCountLabel = `${total} ${total === 1 ? 'proyecto' : 'proyectos'}`;
+
+  const [selectedIds, setSelectedIds] = useState<ReadonlyMap<number, number | null> | null>(null);
+  const [isSelectingAll, setIsSelectingAll] = useState(false);
+  const selectedCount = selectedIds?.size ?? 0;
+  const selectedYears = [...new Set([...(selectedIds?.values() ?? [])].filter((y) => y !== null))];
+  const reportYear = beneficiaryYear ?? (selectedYears.length === 1 ? selectedYears[0] : undefined);
+
+  function toggleSelection(id: number, dataYear: number | null) {
+    setSelectedIds((current) => {
+      if (!current) return current;
+      const next = new Map(current);
+      if (next.has(id)) next.delete(id);
+      else next.set(id, dataYear);
+      return next;
+    });
+  }
+
+  async function selectAllFiltered() {
+    setIsSelectingAll(true);
+    try {
+      const projects = await loadProjectDataYears(query);
+      setSelectedIds((current) =>
+        current
+          ? new Map([...current, ...projects.map(({ id, year }) => [id, year] as const)])
+          : current
+      );
+    } catch {
+      notify.error({ title: 'No se pudieron seleccionar los proyectos. Probá de nuevo.' });
+    } finally {
+      setIsSelectingAll(false);
+    }
+  }
+
+  const reportRequest: ImpactReportRequest | undefined =
+    reportYear === undefined
+      ? undefined
+      : { year: reportYear, projectIds: [...(selectedIds?.keys() ?? [])] };
+
+  const selectionWarning =
+    beneficiaryYear !== undefined
+      ? null
+      : selectedYears.length > 1
+        ? 'Los proyectos seleccionados tienen datos de distintos años y no se puede exportar un reporte con varios años. Elegí un año en los filtros.'
+        : selectedCount > 0 && selectedYears.length === 0
+          ? 'Los proyectos seleccionados no tienen datos cargados.'
+          : null;
+
+  const exportReportButton = (
+    <Button
+      variant="outline"
+      className="h-8 gap-2.5 rounded-md px-3 shadow-xs/10"
+      onClick={() => setSelectedIds(new Map())}
+    >
+      <p className="text-primary text-sm leading-5 font-medium tracking-normal">Exportar reporte</p>
+    </Button>
+  );
+
+  const selectionBar = selectedIds && (
+    <div
+      role="region"
+      aria-label="Selección de proyectos para el reporte"
+      className="bg-card sticky top-0 z-10 flex flex-col gap-3 rounded-lg border px-4 py-3 shadow-sm/10 lg:flex-row lg:items-center lg:justify-between"
+    >
+      <div className="flex flex-col gap-0.5">
+        <p className="text-primary text-sm leading-5 font-semibold">
+          {selectedCount === 1
+            ? '1 proyecto seleccionado'
+            : `${selectedCount} proyectos seleccionados`}
+        </p>
+        {selectionWarning ? (
+          <p
+            role="status"
+            className="text-status-warning flex items-center gap-1.5 text-xs leading-4"
+          >
+            <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+            {selectionWarning}
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-xs leading-4">
+            {reportYear === undefined
+              ? 'Elegí los proyectos a incluir en el reporte.'
+              : `Reporte ${reportYear}. Podés usar los filtros para encontrar más proyectos.`}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isSelectingAll || total === 0}
+          aria-busy={isSelectingAll}
+          onClick={() => void selectAllFiltered()}
+        >
+          {isSelectingAll && <Loader2Icon className="animate-spin" aria-hidden="true" />}
+          Seleccionar filtrados ({total})
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={selectedCount === 0}
+          onClick={() => setSelectedIds(new Map())}
+        >
+          Limpiar selección
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => setSelectedIds(null)}>
+          Cancelar
+        </Button>
+        <ExportPdfButton
+          href="/api/reports/impact"
+          body={reportRequest}
+          label="Exportar"
+          disabled={selectedCount === 0 || reportRequest === undefined}
+          className="h-8 rounded-md px-3"
+        />
+      </div>
+    </div>
+  );
 
   const newProjectButton = (
     <Button
@@ -126,7 +265,7 @@ export function ProjectsCardList({
       <PopoverTrigger
         render={<Button variant="outline" size="icon" className="relative h-9 w-9" />}
         aria-label="Filtros de proyectos"
-        aria-description={`${activeFilterCount} filtros activos`}
+        aria-description={`${activeFilterCount} ${activeFilterCount === 1 ? 'filtro activo' : 'filtros activos'}`}
       >
         <ListFilter />
         {activeFilterCount > 0 && (
@@ -138,7 +277,7 @@ export function ProjectsCardList({
           </span>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 gap-4 p-4">
+      <PopoverContent align="end" className="w-72 max-w-[calc(100vw-2rem)] gap-4 p-4">
         <div className="flex flex-col gap-2">
           <span>Año</span>
           {yearSelect}
@@ -158,6 +297,27 @@ export function ProjectsCardList({
               allLabel: 'Todas',
               options: topics,
               value: topicId,
+            },
+            {
+              key: 'strategicLineId',
+              label: 'Línea estratégica',
+              allLabel: 'Todas',
+              options: strategicLines,
+              value: strategicLineId,
+            },
+            {
+              key: 'partnerId',
+              label: 'Socio',
+              allLabel: 'Todos',
+              options: partners,
+              value: partnerId,
+            },
+            {
+              key: 'beneficiaryCategoryId',
+              label: 'Categoría de beneficiarios',
+              allLabel: 'Todas',
+              options: beneficiaryCategories,
+              value: beneficiaryCategoryId,
             },
           ] as const
         ).map(({ key, label, allLabel, options, value }) => {
@@ -197,7 +357,16 @@ export function ProjectsCardList({
           variant="ghost"
           size="sm"
           className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onClick={() => clearFilters(['beneficiaryYear', 'departmentId', 'topicId'])}
+          onClick={() =>
+            updateFilters({
+              beneficiaryYear: ALL_YEARS,
+              departmentId: null,
+              topicId: null,
+              strategicLineId: null,
+              partnerId: null,
+              beneficiaryCategoryId: null,
+            })
+          }
         >
           Limpiar filtros
         </Button>
@@ -207,8 +376,8 @@ export function ProjectsCardList({
 
   return (
     <div className="bg-primary-foreground flex h-full w-auto flex-col gap-5 pt-5 pr-4 pb-4 pl-4 lg:px-8 lg:py-7">
-      <div className="flex flex-row items-start justify-between gap-3 lg:items-center">
-        <div className="flex flex-col justify-center gap-0.5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-col justify-center gap-0.5">
           <p className="text-muted-foreground block text-xs leading-4 font-medium lg:hidden">
             Proyectos
           </p>
@@ -216,8 +385,8 @@ export function ProjectsCardList({
             {current.title}
           </h1>
         </div>
-        <div className="flex flex-col items-end gap-3">
-          <div className="lg:hidden">{filterMenu}</div>
+        <div className="flex items-center gap-2 lg:justify-end">
+          {!selectedIds && exportReportButton}
           {newProjectButton}
         </div>
       </div>
@@ -246,23 +415,27 @@ export function ProjectsCardList({
             {filteredCountLabel}
           </p>
         </div>
-        <InputGroup className="bg-background h-9 w-full rounded-md lg:ml-auto lg:w-80">
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput
-            aria-label="Buscar proyectos por nombre"
-            placeholder="Buscar por nombre..."
-            maxLength={PROJECT_SEARCH_MAX_LENGTH}
-            value={searchText}
-            onChange={(e) => changeSearch(e.target.value)}
-          />
-        </InputGroup>
-        <div className="hidden lg:block">{filterMenu}</div>
+        <div className="flex min-w-0 items-center gap-2 lg:ml-auto">
+          <InputGroup className="bg-background h-9 min-w-0 flex-1 rounded-md lg:w-80 lg:flex-none">
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Buscar proyectos por nombre"
+              placeholder="Buscar por nombre..."
+              maxLength={PROJECT_SEARCH_MAX_LENGTH}
+              value={searchText}
+              onChange={(e) => changeSearch(e.target.value)}
+            />
+          </InputGroup>
+          {filterMenu}
+        </div>
       </div>
       <p className="text-primary block text-lg leading-7 font-semibold lg:hidden">
         {filteredCountLabel}
       </p>
+
+      {selectionBar}
 
       <ProjectCardsGrid
         key={JSON.stringify(query)}
@@ -271,6 +444,8 @@ export function ProjectsCardList({
         totalPages={totalPages}
         query={query}
         isPending={isPending}
+        selectedIds={selectedIds}
+        onToggleSelection={toggleSelection}
       />
       <ScrollToTopButton />
     </div>

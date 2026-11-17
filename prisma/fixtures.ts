@@ -7,7 +7,22 @@ export const ADMIN = {
   status: 'active',
 } as const;
 
+export const PARTNERS = [
+  { name: 'INAU', counterpartyType: 'publicSector' },
+  { name: 'INEFOP', counterpartyType: 'publicSector' },
+  { name: 'ANEP', counterpartyType: 'publicSector' },
+  { name: 'Ministerio del Interior', counterpartyType: 'publicSector' },
+  { name: 'Fundación Telefónica', counterpartyType: 'privateSector' },
+  { name: 'Fundación UPM', counterpartyType: 'privateSector' },
+  { name: 'Reaching U', counterpartyType: 'privateSector' },
+  { name: 'PepsiCo', counterpartyType: 'privateSector' },
+  { name: 'BASF', counterpartyType: 'privateSector' },
+  { name: 'OSF', counterpartyType: 'internationalCooperation' },
+  { name: 'UNFPA', counterpartyType: 'internationalCooperation' },
+] as const;
+
 export const TABLES = [
+  'LoginThrottle',
   'ProjectCoordinator',
   'ProjectBeneficiaryValue',
   'ProjectBeneficiary',
@@ -15,6 +30,7 @@ export const TABLES = [
   'AuditLog',
   'Report',
   'Metric',
+  'Partner',
   'PublicSettings',
   'Project',
   'StrategicLine',
@@ -32,6 +48,8 @@ export const BENEFICIARY_CATEGORIES = [
   { key: 'communityLeaders', name: 'Referentes comunitarios' },
   { key: 'basicServiceStaff', name: 'Personal de servicios básicos' },
 ].map((category, index) => ({ ...category, sortOrder: index + 1, isSystem: true }));
+
+export const TOPICS = ['Educación', 'Salud', 'Protección', 'Comunidad', 'Empleo'] as const;
 
 export const STRATEGIC_LINES = [
   'Atención Directa',

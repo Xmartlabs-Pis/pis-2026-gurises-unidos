@@ -1,19 +1,9 @@
-import { redirect } from 'next/navigation';
-import { auth } from '@/auth';
 import { UserForm } from '@/components/user-form';
-import { ErrorScreen } from '@/components/error-screen';
 import { PageHeader } from '@/components/layout/page-header';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export default async function NewUserPage() {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect('/login');
-  }
-
-  if (session.user.role !== 'admin') {
-    return <ErrorScreen code={403} />;
-  }
+  await requireAdmin();
 
   return (
     <div className="bg-primary-foreground flex w-full flex-1 flex-col">

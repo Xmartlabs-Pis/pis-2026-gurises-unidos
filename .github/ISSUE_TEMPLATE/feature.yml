@@ -1,0 +1,37 @@
+name: Proponer una mejora
+description: Una idea o funcionalidad nueva para la plataforma.
+title: '[Mejora]: '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema resuelve
+      description: Contanos la necesidad antes que la solución. ¿Quién la tiene y en qué momento?
+      placeholder: Los coordinadores no pueden ver qué proyectos tienen datos sin cargar para el año actual.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Qué proponés
+      description: Cómo te imaginás que funcione. Si tenés un boceto o una captura, sumalo.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas que pensaste
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Proyectos
+        - Beneficiarios
+        - Dashboard público
+        - Métricas internas
+        - Usuarios y permisos
+        - Otra
+    validations:
+      required: true

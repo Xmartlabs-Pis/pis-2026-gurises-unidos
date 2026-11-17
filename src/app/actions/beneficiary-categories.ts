@@ -2,24 +2,21 @@
 
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
-import { Prisma } from '@/generated/prisma/client';
-import { requireUser } from '@/lib/auth/require-user';
 import { logAudit } from '@/lib/audit-log';
-import { parseId } from '@/lib/validation/ids';
 import { beneficiaryCategorySchema } from '@/lib/validation/beneficiary-category';
 import prisma from '@/lib/prisma';
+import {
+  catalogWriteError,
+  guardCatalogId,
+  parseCatalogFields,
+  readCatalogAdmin,
+  readName,
+  renameCatalogRecord,
+  type CatalogActionState,
+} from '@/lib/catalog-actions';
 
-export type BeneficiaryCategoryActionState = {
-  errors?: Record<string, string[]>;
-  formError?: string;
-  values?: {
-    name: string;
-  };
-  success?: boolean;
-};
+export type BeneficiaryCategoryActionState = CatalogActionState<{ name: string }>;
 
-const FORBIDDEN_MESSAGE = 'No tenés permisos para realizar esta acción.';
 const DUPLICATE_NAME_MESSAGE = 'Ya existe una categoría con ese nombre.';
 
 function revalidateBeneficiaryCategories() {
@@ -30,21 +27,13 @@ export async function createBeneficiaryCategory(
   _previousState: BeneficiaryCategoryActionState,
   formData: FormData
 ): Promise<BeneficiaryCategoryActionState> {
-  const user = await requireUser();
+  const access = await readCatalogAdmin();
+  if (!access.user) return access.state;
+  const user = access.user;
 
-  if (user.role !== 'admin') {
-    return { formError: FORBIDDEN_MESSAGE };
-  }
-
-  const name = String(formData.get('name') ?? '');
-  const parsed = beneficiaryCategorySchema.safeParse({ name });
-
-  if (!parsed.success) {
-    return {
-      errors: z.flattenError(parsed.error).fieldErrors,
-      values: { name },
-    };
-  }
+  const name = readName(formData);
+  const parsed = parseCatalogFields(beneficiaryCategorySchema, { name });
+  if (!parsed.ok) return parsed.state;
 
   try {
     const duplicate = await prisma.$transaction(async (tx) => {
@@ -78,40 +67,89 @@ export async function createBeneficiaryCategory(
       return false;
     });
 
-    if (duplicate) {
-      return { formError: DUPLICATE_NAME_MESSAGE, values: { name } };
-    }
+    if (duplicate) return { formError: DUPLICATE_NAME_MESSAGE, values: { name } };
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return {
-        formError: DUPLICATE_NAME_MESSAGE,
-        values: { name },
-      };
-    }
-
-    return {
-      formError: 'No se pudo crear la categoría. Intentá de nuevo.',
-      values: { name },
-    };
+    return catalogWriteError(
+      error,
+      { message: DUPLICATE_NAME_MESSAGE, values: { name } },
+      { message: 'No se pudo crear la categoría. Intentá de nuevo.', values: { name } }
+    );
   }
 
   revalidateBeneficiaryCategories();
+  return { success: true };
+}
 
+export async function editBeneficiaryCategory(
+  categoryId: number,
+  _previousState: BeneficiaryCategoryActionState,
+  formData: FormData
+): Promise<BeneficiaryCategoryActionState> {
+  const access = await readCatalogAdmin();
+  if (!access.user) return access.state;
+  const user = access.user;
+
+  const invalid = guardCatalogId(categoryId, 'La categoría no es válida.');
+  if (invalid) return invalid;
+
+  const name = readName(formData);
+  const parsed = parseCatalogFields(beneficiaryCategorySchema, { name });
+  if (!parsed.ok) return parsed.state;
+
+  try {
+    const error = await prisma.$transaction((tx) =>
+      renameCatalogRecord(tx, {
+        id: categoryId,
+        name: parsed.data.name,
+        authorId: user.id,
+        entity: 'beneficiaryCategory',
+        missing: 'La categoría no existe o ya fue eliminada.',
+        duplicate: DUPLICATE_NAME_MESSAGE,
+        inactive: 'Ese nombre pertenece a una categoría dada de baja. Elegí otro nombre.',
+        lock: () =>
+          tx.$queryRaw`SELECT "id" FROM "BeneficiaryCategory" WHERE "id" = ${categoryId} FOR UPDATE`,
+        findCurrent: () =>
+          tx.beneficiaryCategory.findFirst({
+            where: { id: categoryId, isActive: true },
+            select: { name: true },
+          }),
+        findDuplicate: () =>
+          tx.beneficiaryCategory.findFirst({
+            where: {
+              id: { not: categoryId },
+              name: { equals: parsed.data.name, mode: 'insensitive' },
+            },
+            select: { id: true, isActive: true },
+          }),
+        update: () =>
+          tx.beneficiaryCategory.update({
+            where: { id: categoryId },
+            data: { name: parsed.data.name },
+          }),
+      })
+    );
+    if (error) return { formError: error, values: { name } };
+  } catch (error) {
+    return catalogWriteError(
+      error,
+      { message: DUPLICATE_NAME_MESSAGE, values: { name } },
+      { message: 'No se pudo editar la categoría. Intentá de nuevo.', values: { name } }
+    );
+  }
+
+  revalidateBeneficiaryCategories();
   return { success: true };
 }
 
 export async function deleteBeneficiaryCategory(
   categoryId: number
 ): Promise<BeneficiaryCategoryActionState> {
-  const user = await requireUser();
+  const access = await readCatalogAdmin();
+  if (!access.user) return access.state;
+  const user = access.user;
 
-  if (user.role !== 'admin') {
-    return { formError: FORBIDDEN_MESSAGE };
-  }
-
-  if (!parseId(categoryId)) {
-    return { formError: 'La categoría no es válida.' };
-  }
+  const invalid = guardCatalogId(categoryId, 'La categoría no es válida.');
+  if (invalid) return invalid;
 
   try {
     const error = await prisma.$transaction(async (tx) => {
@@ -143,14 +181,11 @@ export async function deleteBeneficiaryCategory(
       return null;
     });
 
-    if (error) {
-      return { formError: error };
-    }
+    if (error) return { formError: error };
   } catch {
     return { formError: 'No se pudo eliminar la categoría. Intentá de nuevo.' };
   }
 
   revalidateBeneficiaryCategories();
-
   return { success: true };
 }

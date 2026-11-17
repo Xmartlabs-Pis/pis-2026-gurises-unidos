@@ -1,4 +1,4 @@
-import { CounterpartyType, ProjectStatus, Intensity } from '@/generated/prisma/enums';
+import { CounterpartyType, ProjectStatus, Intensity, Region } from '@/generated/prisma/enums';
 
 export const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: 'Activo',
@@ -25,6 +25,13 @@ export const COUNTERPARTY_LABEL: Record<CounterpartyType, string> = {
   publicSector: 'Sector Público',
   privateSector: 'Sector Privado',
   internationalCooperation: 'Cooperación Internacional',
+};
+
+export const REGION_LABEL: Record<Region, string> = {
+  southAmerica: 'Sudamérica',
+  northAmerica: 'Norteamérica',
+  centralAmerica: 'Centroamérica',
+  otherRegions: 'Otras regiones',
 };
 
 export const STATUS_OPTIONS = [
@@ -68,14 +75,6 @@ export type BeneficiaryFieldName = SystemBeneficiaryKey | `custom${string}`;
 
 export type BeneficiaryCategoryOption = { key: BeneficiaryFieldName; name: string };
 
-export const TOPIC_OPTIONS = [
-  { value: 'education', label: 'Educación' },
-  { value: 'health', label: 'Salud' },
-  { value: 'protection', label: 'Protección' },
-  { value: 'community', label: 'Comunidad' },
-  { value: 'employment', label: 'Empleo' },
-] as const;
-
 export const ZONE_OPTIONS = [
   { value: 'city', label: 'Montevideo' },
   { value: 'inland', label: 'Interior' },
@@ -88,8 +87,14 @@ export const GEOGRAPHIC_SCOPE_OPTIONS = [
   { value: 'international', label: 'Internacional' },
 ] as const;
 
+export const REGION_OPTIONS = [
+  { value: 'southAmerica', label: REGION_LABEL.southAmerica },
+  { value: 'northAmerica', label: REGION_LABEL.northAmerica },
+  { value: 'centralAmerica', label: REGION_LABEL.centralAmerica },
+  { value: 'otherRegions', label: REGION_LABEL.otherRegions },
+] as const;
+
 export const FIRST_PROJECT_YEAR = 1989;
-export const PREVIEW_TOPIC_FALLBACK = 'Educación';
 export const PREVIEW_LOCATION_FALLBACK = 'Montevideo';
 
 export function sumBeneficiaries(counts: Record<string, number>) {

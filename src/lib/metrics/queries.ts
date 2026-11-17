@@ -1,6 +1,9 @@
+import type { Prisma } from '@/generated/prisma/client';
 import prisma from '@/lib/prisma';
 import { METRIC_DEFINITIONS } from '@/lib/metrics/constants';
 import { sumBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
+import { getCurrentYear } from '@/lib/metrics/year';
+import type { MetricValues } from '@/lib/metrics/types';
 
 export async function getMetricSettings() {
   const savedMetrics = await prisma.metric.findMany({
@@ -13,12 +16,16 @@ export async function getMetricSettings() {
   }));
 }
 
-export async function getReferenceYear(currentYear = new Date().getFullYear()) {
-  const settings = await prisma.publicSettings.findUnique({
-    where: { id: 1 },
-    select: { referenceYear: true },
-  });
-  return settings?.referenceYear ?? currentYear - 1;
+export async function getPublishedYears(currentYear = getCurrentYear()) {
+  const [settings, availableYears] = await Promise.all([
+    prisma.publicSettings.findUnique({
+      where: { id: 1 },
+      select: { publishedYears: true },
+    }),
+    getMetricYears(currentYear),
+  ]);
+  const publishedYears = availableYears.filter((year) => settings?.publishedYears.includes(year));
+  return publishedYears.length ? publishedYears : availableYears;
 }
 
 export type MetricSetting = Awaited<ReturnType<typeof getMetricSettings>>[number];
@@ -35,17 +42,14 @@ export async function getMetricYears(currentYear: number) {
     .sort((a, b) => b - a);
 }
 
-export async function getMetricValues(year: number) {
-  const where = { year, project: { deletedAt: null } };
-  const [totals, projectRecords] = await Promise.all([
+export async function getMetricValues(
+  year: number,
+  projectWhere: Prisma.ProjectWhereInput = {}
+): Promise<MetricValues> {
+  const where = { year, project: { ...projectWhere, deletedAt: null } };
+  const [totals, activeProjects] = await Promise.all([
     sumBeneficiaryCounts(where),
-    prisma.projectBeneficiary.findMany({
-      where,
-      select: {
-        projectId: true,
-        project: { select: { departments: { select: { id: true } } } },
-      },
-    }),
+    prisma.projectBeneficiary.count({ where }),
   ]);
 
   return {
@@ -55,11 +59,6 @@ export async function getMetricValues(year: number) {
     families: totals.families,
     teachers: totals.basicServiceStaff,
     institutions: totals.coordinatedInstitutions,
-    departments: new Set(
-      projectRecords.flatMap(({ project }) => project.departments.map(({ id }) => id))
-    ).size,
-    active_projects: projectRecords.length,
+    active_projects: activeProjects,
   };
 }
-
-export type MetricValues = Awaited<ReturnType<typeof getMetricValues>>;

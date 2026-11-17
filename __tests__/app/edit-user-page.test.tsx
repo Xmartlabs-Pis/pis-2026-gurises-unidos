@@ -1,9 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const { authMock, findUniqueMock, notFoundMock, redirectMock } = vi.hoisted(() => ({
+const { authMock, findUniqueMock, forbiddenMock, notFoundMock, redirectMock } = vi.hoisted(() => ({
   authMock: vi.fn(),
   findUniqueMock: vi.fn(),
+  forbiddenMock: vi.fn(() => {
+    throw new Error('NEXT_FORBIDDEN');
+  }),
   notFoundMock: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -17,6 +20,7 @@ vi.mock('@/lib/prisma', () => ({
   default: { user: { findUnique: findUniqueMock } },
 }));
 vi.mock('next/navigation', () => ({
+  forbidden: forbiddenMock,
   notFound: notFoundMock,
   redirect: redirectMock,
   useRouter: () => ({ push: vi.fn() }),
@@ -30,6 +34,7 @@ vi.mock('@/app/actions/password', () => ({
 }));
 
 import EditUserPage from '@/app/(protected)/management/users/[id]/edit/page';
+import { hydrateSuspensePage, resolveSuspenseChild } from '../helpers/suspense-page';
 
 beforeEach(() => {
   authMock.mockReset();
@@ -61,7 +66,7 @@ test('loads the selected user and prefills the edit form', async () => {
     creator: { firstName: 'Mario', lastName: 'Pérez' },
   });
 
-  render(await EditUserPage({ params: Promise.resolve({ id: '42' }) }));
+  render(await hydrateSuspensePage(await EditUserPage({ params: Promise.resolve({ id: '42' }) })));
 
   expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Ana');
   expect((screen.getByLabelText('Apellido') as HTMLInputElement).value).toBe('García');
@@ -80,10 +85,20 @@ test('returns not found for an invalid user id without querying the database', a
   expect(findUniqueMock).not.toHaveBeenCalled();
 });
 
+test('shows the forbidden page to coordinators without querying the database', async () => {
+  authMock.mockResolvedValue({ user: { id: '2', role: 'coordinator' } });
+
+  await expect(EditUserPage({ params: Promise.resolve({ id: '42' }) })).rejects.toThrow(
+    'NEXT_FORBIDDEN'
+  );
+
+  expect(findUniqueMock).not.toHaveBeenCalled();
+});
+
 test('returns not found for a deleted user', async () => {
   findUniqueMock.mockResolvedValue(null);
 
-  await expect(EditUserPage({ params: Promise.resolve({ id: '42' }) })).rejects.toThrow(
-    'NEXT_NOT_FOUND'
-  );
+  await expect(
+    resolveSuspenseChild(await EditUserPage({ params: Promise.resolve({ id: '42' }) }))
+  ).rejects.toThrow('NEXT_NOT_FOUND');
 });

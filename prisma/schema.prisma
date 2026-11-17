@@ -37,6 +37,13 @@ enum GeographicScope {
   international
 }
 
+enum Region {
+  southAmerica
+  northAmerica
+  centralAmerica
+  otherRegions
+}
+
 enum Zone {
   city
   inland
@@ -50,6 +57,7 @@ enum AuditAction {
   deletion
   passwordChange
   passwordReset
+  loginFailure
 }
 
 enum AuditEntity {
@@ -59,6 +67,10 @@ enum AuditEntity {
   beneficiaryCategory
   metric
   topic
+  strategicLine
+  partner
+  publicSettings
+  authentication
 }
 
 enum CounterpartyType {
@@ -67,7 +79,18 @@ enum CounterpartyType {
   internationalCooperation
 }
 
+enum UserTokenType {
+  passwordReset
+  invitation
+}
+
 // ---------- TABLES ----------
+
+model LoginThrottle {
+  documentId     String    @id
+  failedAttempts Int       @default(0)
+  blockedUntil   DateTime?
+}
 
 model User {
   id                 Int        @id @default(autoincrement())
@@ -98,6 +121,8 @@ model User {
   beneficiaryCategories BeneficiaryCategory[]
   reportsGenerated      Report[]
   auditLogs             AuditLog[]
+
+  tokens UserToken[]
 }
 
 model Topic {
@@ -121,44 +146,61 @@ model Department {
   id   Int    @id @default(autoincrement())
   name String @unique
 
-  projects Project[]
+  projects   Project[]
+  localities ProjectLocality[]
 }
 
 model Project {
-  id                Int              @id @default(autoincrement())
-  name              String           @db.VarChar(100)
-  searchName        String?          @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
+  id                Int                @id @default(autoincrement())
+  name              String             @db.VarChar(100)
+  searchName        String?            @default(dbgenerated("lower(immutable_unaccent((name)::text))"))
   status            ProjectStatus
   intensity         Intensity?
-  counterpartyType  CounterpartyType
+  counterpartyTypes CounterpartyType[]
   startYear         Int
   endYear           Int?
   leadCoordinatorId Int
-  geographicScope   GeographicScope  @default(national)
-  countries         String[]         @default([])
-  cities            String[]         @default([])
-  neighborhoods     String[]         @default([])
-  zone              Zone
-  generalObjective  String?          @db.VarChar(500)
-  publicDescription String?          @db.VarChar(1000)
+  geographicScope   GeographicScope    @default(national)
+  countries         String[]           @default([])
+  region            Region?
+  zone              Zone?
+  generalObjective  String?            @db.VarChar(500)
+  publicDescription String?            @db.VarChar(1000)
   coverPhoto        String?
-  internalNotes     String?          @db.VarChar(1000)
-  showOnLanding     Boolean          @default(true)
-  createdAt         DateTime         @default(now())
+  coverCrop         Json?
+  internalNotes     String?            @db.VarChar(1000)
+  showOnLanding     Boolean            @default(true)
+  createdAt         DateTime           @default(now())
   createdBy         Int?
-  updatedAt         DateTime?        @updatedAt
+  updatedAt         DateTime?          @updatedAt
   deletedAt         DateTime?
   deletedBy         Int?
 
-  leadCoordinator User            @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
+  leadCoordinator User              @relation("ProjectLeadCoordinator", fields: [leadCoordinatorId], references: [id])
   departments     Department[]
-  creator         User?           @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
-  deleter         User?           @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
+  localities      ProjectLocality[]
+  creator         User?             @relation("ProjectCreatedBy", fields: [createdBy], references: [id])
+  deleter         User?             @relation("ProjectDeletedBy", fields: [deletedBy], references: [id])
   topics          Topic[]
   strategicLines  StrategicLine[]
+  partners        Partner[]
 
   projectCoordinators  ProjectCoordinator[]
   projectBeneficiaries ProjectBeneficiary[]
+}
+
+model ProjectLocality {
+  id           Int     @id @default(autoincrement())
+  projectId    Int
+  departmentId Int
+  city         String  @db.VarChar(100)
+  neighborhood String? @db.VarChar(100)
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([projectId])
+  @@index([departmentId])
 }
 
 model ProjectCoordinator {
@@ -226,12 +268,23 @@ model Metric {
 }
 
 model PublicSettings {
-  id            Int       @id @default(1)
-  referenceYear Int
-  updatedBy     Int?
-  updatedAt     DateTime? @updatedAt
+  id             Int       @id @default(1)
+  publishedYears Int[]     @default([])
+  updatedBy      Int?
+  updatedAt      DateTime? @updatedAt
 
   updater User? @relation(fields: [updatedBy], references: [id])
+}
+
+model Partner {
+  id               Int              @id @default(autoincrement())
+  name             String           @db.VarChar(100)
+  counterpartyType CounterpartyType
+  sortOrder        Int              @default(0)
+  isActive         Boolean          @default(true)
+  showPublicly     Boolean          @default(false)
+
+  projects Project[]
 }
 
 model Report {
@@ -247,12 +300,30 @@ model Report {
 
 model AuditLog {
   id         Int         @id @default(autoincrement())
-  authorId   Int
+  authorId   Int?
   action     AuditAction
   entity     AuditEntity
-  entityId   Int
+  entityId   Int?
   details    Json?
   occurredAt DateTime    @default(now())
 
-  author User @relation(fields: [authorId], references: [id])
+  author User? @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([occurredAt])
+  @@index([action, occurredAt])
+}
+
+model UserToken {
+  id        Int           @id @default(autoincrement())
+  userId    Int
+  type      UserTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  revokedAt DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }

@@ -13,22 +13,25 @@ const PROJECT: ProjectDetail['project'] = {
   name: 'El Resorte',
   status: 'active',
   intensity: 'high',
-  counterpartyType: 'publicSector',
+  counterpartyTypes: ['publicSector'],
   startYear: 2020,
   endYear: null,
   strategicLines: [
     { id: 1, name: 'Formación' },
     { id: 2, name: 'Participación' },
   ],
+  partners: [],
   leadCoordinatorId: 7,
   zone: 'city',
   geographicScope: 'national',
   countries: [],
-  cities: ['Montevideo'],
-  neighborhoods: ['Casavalle'],
+  region: null,
+  localities: [{ departmentId: 1, city: 'Montevideo', neighborhood: 'Casavalle' }],
   generalObjective: 'Support adolescents and families.',
   publicDescription: 'Community support project.',
+  internalNotes: null,
   coverPhoto: null,
+  coverCrop: null,
   leadCoordinator: { id: 7, firstName: 'Ana', lastName: 'García' },
   departments: [{ id: 1, name: 'Montevideo' }],
   topics: [{ id: 1, name: 'Educación' }],
@@ -49,11 +52,11 @@ test('shows an ongoing project period until the present', () => {
   renderHeader(null);
 
   expect(screen.getByText('2020–actualidad')).toBeDefined();
-  expect(screen.getByText('Líneas estratégicas:')).toBeDefined();
+  expect(screen.getByText('Líneas Estratégicas:')).toBeDefined();
   expect(screen.getByText('Formación, Participación')).toBeDefined();
 });
 
-test('shows the departments, cities and neighborhoods as the territory', () => {
+test('shows each city and neighborhood next to its department as the territory', () => {
   render(
     <ProjectDetailHeader
       project={{
@@ -61,9 +64,12 @@ test('shows the departments, cities and neighborhoods as the territory', () => {
         departments: [
           { id: 2, name: 'Canelones' },
           { id: 1, name: 'Montevideo' },
+          { id: 3, name: 'Salto' },
         ],
-        cities: ['Las Piedras', 'Montevideo'],
-        neighborhoods: ['Centro'],
+        localities: [
+          { departmentId: 1, city: 'Montevideo', neighborhood: 'Centro' },
+          { departmentId: 2, city: 'Las Piedras', neighborhood: null },
+        ],
       }}
       selectedYear={2026}
       years={[2026]}
@@ -72,7 +78,7 @@ test('shows the departments, cities and neighborhoods as the territory', () => {
   );
 
   expect(
-    screen.getAllByText('Canelones, Montevideo — Las Piedras, Montevideo — Centro')
+    screen.getAllByText('Canelones, Las Piedras; Montevideo, Montevideo, Centro; Salto')
   ).not.toHaveLength(0);
 });
 
@@ -84,8 +90,7 @@ test('shows the countries as the territory of an international project', () => {
         geographicScope: 'international',
         departments: [],
         countries: ['Argentina', 'Brasil'],
-        cities: [],
-        neighborhoods: [],
+        localities: [],
       }}
       selectedYear={2026}
       years={[2026]}
@@ -96,11 +101,79 @@ test('shows the countries as the territory of an international project', () => {
   expect(screen.getAllByText('Argentina, Brasil')).not.toHaveLength(0);
 });
 
+test('shows the region of an international project', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: ['México'],
+        region: 'northAmerica',
+        localities: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.getByText('Región:')).toBeDefined();
+  expect(screen.getByText('Norteamérica')).toBeDefined();
+});
+
+test('shows only the region of an international project without countries', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        geographicScope: 'international',
+        departments: [],
+        countries: [],
+        region: 'otherRegions',
+        localities: [],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.queryByText('Territorio:')).toBeNull();
+  expect(screen.getByText('Otras regiones')).toBeDefined();
+});
+
+test('does not show a region for a national project', () => {
+  renderHeader(null);
+
+  expect(screen.queryByText('Región:')).toBeNull();
+});
+
 test('shows the project counterparty', () => {
   renderHeader(null);
 
-  expect(screen.getByText('Contraparte:')).toBeDefined();
+  expect(screen.getByText('Contrapartes:')).toBeDefined();
   expect(screen.getByText('Sector Público')).toBeDefined();
+});
+
+test('shows all project topics', () => {
+  render(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        topics: [
+          { id: 1, name: 'Educación' },
+          { id: 2, name: 'Participación' },
+        ],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+
+  expect(screen.getByText('Temáticas:')).toBeDefined();
+  expect(screen.getByText('Educación, Participación')).toBeDefined();
 });
 
 test('shows the end year of a finished project', () => {
@@ -127,4 +200,41 @@ test('places the general objective before metadata in the mobile reading order',
   expect(objectivePosition).toBeGreaterThanOrEqual(0);
   expect(metadataPosition).toBeGreaterThanOrEqual(0);
   expect(objectivePosition).toBeLessThan(metadataPosition);
+});
+
+test('shows the export button to users who cannot edit the project', () => {
+  renderHeader(null);
+
+  expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+  expect(screen.queryByRole('link', { name: 'Editar proyecto' })).toBeNull();
+});
+
+test('shows the edit link only to users who can edit the project', () => {
+  render(<ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit />);
+
+  expect(screen.getByRole('button', { name: 'Exportar' })).toBeDefined();
+  expect(screen.getByRole('link', { name: 'Editar proyecto' })).toBeDefined();
+});
+
+test('shows the project partners only when it has some', () => {
+  const { rerender } = render(
+    <ProjectDetailHeader project={PROJECT} selectedYear={2026} years={[2026]} canEdit={false} />
+  );
+  expect(screen.queryByText('Socios:')).toBeNull();
+  rerender(
+    <ProjectDetailHeader
+      project={{
+        ...PROJECT,
+        partners: [
+          { id: 1, name: 'ANEP' },
+          { id: 2, name: 'INAU' },
+        ],
+      }}
+      selectedYear={2026}
+      years={[2026]}
+      canEdit={false}
+    />
+  );
+  expect(screen.getByText('Socios:')).toBeDefined();
+  expect(screen.getByText('ANEP, INAU')).toBeDefined();
 });

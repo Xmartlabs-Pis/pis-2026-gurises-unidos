@@ -1,4 +1,4 @@
-import type { MetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
 
 export const METRIC_DEFINITIONS: {
   key: keyof MetricValues;
@@ -6,6 +6,13 @@ export const METRIC_DEFINITIONS: {
   description: string;
   showPublicly: boolean;
 }[] = [
+  {
+    key: 'children_reached',
+    name: 'NNA alcanzados',
+    description:
+      'Suma de niños, niñas y adolescentes alcanzados con acciones directas e indirectas.',
+    showPublicly: true,
+  },
   {
     key: 'direct_children_reached',
     name: 'NNA directos',
@@ -35,12 +42,6 @@ export const METRIC_DEFINITIONS: {
     name: 'Instituciones vinculadas',
     description: 'Organizaciones coordinadas en el territorio.',
     showPublicly: false,
-  },
-  {
-    key: 'departments',
-    name: 'Departamentos',
-    description: 'Departamentos con presencia de la organización.',
-    showPublicly: true,
   },
   {
     key: 'active_projects',

@@ -8,21 +8,26 @@ const PROJECT = {
   searchName: 'project',
   status: 'active' as const,
   intensity: 'high' as const,
-  counterpartyType: 'publicSector' as const,
+  counterpartyTypes: ['publicSector' as const],
   startYear: 2024,
   endYear: null,
   leadCoordinatorId: 2,
   geographicScope: 'national' as const,
   countries: [],
-  cities: ['Las Piedras'],
-  neighborhoods: ['Centro'],
-  departments: [{ id: 3 }, { id: 5 }],
+  region: null,
+  departments: [{ id: 3 }, { id: 5 }, { id: 7 }],
+  localities: [
+    { departmentId: 5, city: 'Las Piedras', neighborhood: 'Centro' },
+    { departmentId: 3, city: 'Montevideo', neighborhood: null },
+    { departmentId: 5, city: 'Las Piedras', neighborhood: 'Barrio Obrero' },
+  ],
   zone: 'city' as const,
   generalObjective: null,
   publicDescription: null,
   internalNotes: null,
   showOnLanding: true,
   coverPhoto: '/cover.png',
+  coverCrop: null,
   createdAt: new Date('2024-01-01'),
   createdBy: 1,
   updatedAt: null,
@@ -53,6 +58,7 @@ it('defaults to the current year without copying historical beneficiary counts',
     directChildrenAdolescents: '0',
     topicIds: ['1', '4'],
     coverPhotoUrl: '/cover.png',
+    coverCrop: null,
     internalNotes: '',
   });
 });
@@ -77,21 +83,25 @@ it.each(['publicSector', 'privateSector', 'internationalCooperation'] as const)(
   'loads the stored counterparty into form values: %s',
   (counterpartyType) => {
     const values = projectToFormValues(
-      { ...PROJECT, counterpartyType },
+      { ...PROJECT, counterpartyTypes: [counterpartyType] },
       2026,
       BENEFICIARY_CATEGORY_OPTIONS
     );
-    expect(values.counterpartyType).toBe(counterpartyType);
+    expect(values.counterpartyTypes).toEqual([counterpartyType]);
   }
 );
 
-it('loads the stored location into form values', () => {
+it('loads the stored location into form values grouped by department', () => {
   expect(projectToFormValues(PROJECT, 2026, BENEFICIARY_CATEGORY_OPTIONS)).toMatchObject({
     geographicScope: 'national',
-    departmentIds: ['3', '5'],
     countries: [],
-    cities: ['Las Piedras'],
-    neighborhoods: ['Centro'],
+    region: '',
+    locations: [
+      { departmentId: '3', city: 'Montevideo', neighborhood: '' },
+      { departmentId: '5', city: 'Las Piedras', neighborhood: 'Centro' },
+      { departmentId: '5', city: 'Las Piedras', neighborhood: 'Barrio Obrero' },
+      { departmentId: '7', city: '', neighborhood: '' },
+    ],
   });
   expect(
     projectToFormValues(
@@ -99,9 +109,9 @@ it('loads the stored location into form values', () => {
         ...PROJECT,
         geographicScope: 'international',
         countries: ['Argentina'],
-        cities: [],
-        neighborhoods: [],
+        region: 'southAmerica',
         departments: [],
+        localities: [],
       },
       2026,
       BENEFICIARY_CATEGORY_OPTIONS
@@ -109,6 +119,16 @@ it('loads the stored location into form values', () => {
   ).toMatchObject({
     geographicScope: 'international',
     countries: ['Argentina'],
-    departmentIds: [],
+    region: 'southAmerica',
+    locations: [],
   });
+});
+
+it('loads the stored partners into form values', () => {
+  const values = projectToFormValues(
+    { ...PROJECT, partners: [{ id: 4 }, { id: 9 }] },
+    2026,
+    BENEFICIARY_CATEGORY_OPTIONS
+  );
+  expect(values.partnerIds).toEqual(['4', '9']);
 });

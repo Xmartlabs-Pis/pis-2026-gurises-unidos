@@ -1,0 +1,167 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import prisma from '@/lib/prisma';
+import { getMetricValues } from '@/lib/metrics/queries';
+import type { MetricValues } from '@/lib/metrics/types';
+import { getImpactReportData } from '@/lib/reports/impact-report';
+
+vi.mock('@/lib/prisma', () => ({
+  default: {
+    project: { findMany: vi.fn(), count: vi.fn() },
+    department: { count: vi.fn() },
+  },
+}));
+vi.mock('@/lib/metrics/queries', () => ({ getMetricValues: vi.fn() }));
+vi.mock('@/lib/metrics/year', () => ({ getCurrentYear: () => 2026 }));
+vi.mock('@/lib/beneficiary-categories', () => ({
+  getActiveBeneficiaryCategories: async () => [
+    { key: 'directChildrenAdolescents', name: 'NNA directos' },
+    { key: 'coordinatedInstitutions', name: 'Instituciones coordinadas' },
+  ],
+}));
+vi.mock('@/lib/projects/beneficiary-values', () => ({
+  sumBeneficiaryCounts: async () => ({ directChildrenAdolescents: 40, coordinatedInstitutions: 3 }),
+}));
+
+const PROJECT_IDS = [4, 9];
+
+function metricValues(overrides: Partial<MetricValues> = {}): MetricValues {
+  return {
+    children_reached: 0,
+    direct_children_reached: 0,
+    indirect_children_reached: 0,
+    families: 0,
+    teachers: 0,
+    institutions: 0,
+    active_projects: 0,
+    ...overrides,
+  };
+}
+
+function mockMetricsByYear(values: Record<number, MetricValues>) {
+  vi.mocked(getMetricValues).mockImplementation(async (year) => values[year] ?? metricValues());
+}
+
+const PROJECTS = [
+  {
+    name: 'Aldea',
+    publicDescription: 'Acompañamiento a familias.',
+    generalObjective: 'Objetivo',
+    geographicScope: 'national',
+    countries: [],
+    topics: [{ name: 'Salud' }, { name: 'Educación' }],
+    departments: [{ name: 'Montevideo' }],
+  },
+  {
+    name: 'El Resorte',
+    publicDescription: null,
+    generalObjective: 'Trabajo en territorio.',
+    geographicScope: 'national',
+    countries: [],
+    topics: [{ name: 'Educación' }],
+    departments: [{ name: 'Montevideo' }, { name: 'Salto' }],
+  },
+  {
+    name: 'Faro',
+    publicDescription: '',
+    generalObjective: null,
+    geographicScope: 'international',
+    countries: ['Brasil'],
+    region: 'southAmerica',
+    topics: [],
+    departments: [],
+  },
+  {
+    name: 'Hornero',
+    publicDescription: 'Talleres en escuelas.',
+    generalObjective: null,
+    geographicScope: 'international',
+    countries: [],
+    region: 'centralAmerica',
+    topics: [],
+    departments: [],
+  },
+];
+
+describe('getImpactReportData', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.department.count).mockResolvedValue(19);
+    vi.mocked(prisma.project.count).mockResolvedValue(3);
+    vi.mocked(prisma.project.findMany).mockResolvedValue(PROJECTS as never);
+  });
+
+  it('returns nothing when the year has no data', async () => {
+    mockMetricsByYear({});
+
+    expect(await getImpactReportData(PROJECT_IDS, 2026)).toBeNull();
+  });
+
+  it('builds the indicators with the NNA total and deltas', async () => {
+    mockMetricsByYear({
+      2026: metricValues({ children_reached: 110, families: 30, teachers: 45, active_projects: 3 }),
+      2025: metricValues({ children_reached: 100, families: 40, teachers: 45, active_projects: 4 }),
+    });
+
+    const data = await getImpactReportData(PROJECT_IDS, 2026);
+
+    expect(data?.kpis).toEqual([
+      expect.objectContaining({ value: 110, delta: '+10,0 % frente a 2025 (100)' }),
+      expect.objectContaining({ value: 30, delta: '−25,0 % frente a 2025 (40)' }),
+      expect.objectContaining({ value: 45, delta: 'Igual que en 2025' }),
+      expect.objectContaining({ value: 3, delta: '1 menos que en 2025 (4)' }),
+    ]);
+    expect(data?.comparisonYear).toBe(2025);
+    expect(data?.topics).toEqual([
+      { label: 'Educación', value: 2 },
+      { label: 'Salud', value: 1 },
+    ]);
+    expect(data?.departments).toEqual([
+      { label: 'Montevideo', value: 2 },
+      { label: 'Salto', value: 1 },
+    ]);
+    expect(data?.internationalCountries).toEqual(['Brasil', 'Centroamérica']);
+    expect(data?.categories).toEqual([
+      { label: 'NNA directos', value: 40 },
+      { label: 'Instituciones coordinadas', value: 3 },
+    ]);
+    expect(data?.pendingProjects).toBe(3);
+  });
+
+  it('hides the deltas without data from the previous year', async () => {
+    mockMetricsByYear({ 2024: metricValues({ children_reached: 5, active_projects: 1 }) });
+
+    const data = await getImpactReportData(PROJECT_IDS, 2024);
+
+    expect(data?.kpis.every(({ delta }) => delta === null)).toBe(true);
+    expect(data?.comparisonYear).toBeNull();
+    expect(data?.pendingProjects).toBeNull();
+  });
+
+  it('limits the report to the selected projects for any role', async () => {
+    mockMetricsByYear({ 2026: metricValues({ active_projects: 1 }) });
+
+    await getImpactReportData(PROJECT_IDS, 2026);
+
+    expect(getMetricValues).toHaveBeenCalledWith(2026, { id: { in: PROJECT_IDS } });
+    expect(getMetricValues).toHaveBeenCalledWith(2025, { id: { in: PROJECT_IDS } });
+  });
+
+  it('lists only the selected projects with data in the year, matching the indicators', async () => {
+    mockMetricsByYear({ 2026: metricValues({ active_projects: 4 }) });
+
+    const data = await getImpactReportData(PROJECT_IDS, 2026);
+
+    expect(prisma.project.findMany).toHaveBeenCalledOnce();
+    expect(prisma.project.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ projectBeneficiaries: { some: { year: 2026 } } }),
+      })
+    );
+    expect(data?.projects).toEqual([
+      { name: 'Aldea', description: 'Acompañamiento a familias.' },
+      { name: 'El Resorte', description: 'Trabajo en territorio.' },
+      { name: 'Faro', description: null },
+      { name: 'Hornero', description: 'Talleres en escuelas.' },
+    ]);
+  });
+});

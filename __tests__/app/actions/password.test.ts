@@ -67,10 +67,14 @@ function buildFormData(fields: Record<string, string | undefined>): FormData {
 
 function setupTransaction() {
   const userUpdate = vi.fn().mockResolvedValue({});
+  const loginThrottleDeleteMany = vi.fn().mockResolvedValue({ count: 1 });
   transactionMock.mockImplementation(async (callback) =>
-    callback({ user: { update: userUpdate } })
+    callback({
+      user: { update: userUpdate },
+      loginThrottle: { deleteMany: loginThrottleDeleteMany },
+    })
   );
-  return { userUpdate };
+  return { userUpdate, loginThrottleDeleteMany };
 }
 
 beforeEach(() => {
@@ -361,11 +365,23 @@ describe('resetPassword', () => {
     expect(result.formError).toBe('La cuenta seleccionada no existe.');
   });
 
+  test('rejects resetting the password of a user with a pending invitation', async () => {
+    authMock.mockResolvedValue({ user: { id: '1', role: 'admin' } });
+    findUniqueMock.mockResolvedValue(makeUser({ id: 9, status: 'pendingInvitation' }));
+
+    const result = await resetPassword({}, buildFormData(VALID_FIELDS));
+
+    expect(result.formError).toBe(
+      'La persona todavía no aceptó la invitación. Reenviale la invitación en su lugar.'
+    );
+    expect(hashPasswordMock).not.toHaveBeenCalled();
+  });
+
   test('hashes the new password, forces a change on next login, and logs the admin as the author', async () => {
     authMock.mockResolvedValue({ user: { id: '1', role: 'admin' } });
     findUniqueMock.mockResolvedValue(makeUser({ id: 9 }));
     hashPasswordMock.mockResolvedValue('new-hash');
-    const { userUpdate } = setupTransaction();
+    const { userUpdate, loginThrottleDeleteMany } = setupTransaction();
 
     const result = await resetPassword({}, buildFormData(VALID_FIELDS));
 
@@ -385,6 +401,9 @@ describe('resetPassword', () => {
       entityId: 9,
     });
     expect(result).toEqual({ success: true });
+    expect(loginThrottleDeleteMany).toHaveBeenCalledWith({
+      where: { documentId: makeUser({ id: 9 }).documentId },
+    });
   });
 
   test('allows resetting the password of a disabled account', async () => {

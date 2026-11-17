@@ -14,7 +14,7 @@ async function createProjectFixture(name: string) {
       name,
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear: 2020,
       leadCoordinatorId: seed.coordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
@@ -93,5 +93,27 @@ describe('listProjects search (integration)', () => {
     await prisma.project.update({ where: { id: projectId }, data: { deletedAt: new Date() } });
 
     expect(await searchProjectIds('onas')).not.toContain(projectId);
+  });
+});
+
+describe('listProjects partner filter (integration)', () => {
+  test('returns only the projects associated with the partner', async () => {
+    const partner = await prisma.partner.create({
+      data: { name: 'Filtered partner', counterpartyType: 'publicSector' },
+    });
+    try {
+      const included = await createProjectFixture('Project with partner');
+      await createProjectFixture('Project without partner');
+      await prisma.project.update({
+        where: { id: included },
+        data: { partners: { connect: { id: partner.id } } },
+      });
+      const { items } = await listProjects(
+        parseProjectFilters({ status: 'all', partnerId: String(partner.id) })
+      );
+      expect(items.map(({ id }) => id)).toEqual([included]);
+    } finally {
+      await prisma.partner.delete({ where: { id: partner.id } });
+    }
   });
 });

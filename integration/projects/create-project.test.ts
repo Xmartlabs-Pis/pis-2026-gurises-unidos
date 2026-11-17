@@ -11,26 +11,27 @@ const BENEFICIARY_YEAR = 2024;
 
 vi.mock('@/lib/audit-log', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/audit-log')>();
-  return { logAudit: vi.fn(actual.logAudit) };
+  return { ...actual, logAudit: vi.fn(actual.logAudit) };
 });
 
 let seed: SeedData;
 let createdProjectIds: number[] = [];
+
+function location(departmentId: number, city = '', neighborhood = '') {
+  return JSON.stringify({ departmentId: String(departmentId), city, neighborhood });
+}
 
 function buildFormData(overrides: Record<string, string | string[]> = {}): FormData {
   const fields: Record<string, string | string[]> = {
     name: 'Project under creation',
     status: 'active',
     intensity: 'high',
-    counterpartyType: 'publicSector',
+    counterpartyTypes: ['publicSector'],
     startYear: '2020',
     endYear: '',
     leadCoordinatorId: String(seed.coordinatorId),
     geographicScope: 'national',
-    departmentIds: [String(seed.departmentIds[0])],
-    cities: ['Colonia del Sacramento'],
-    neighborhoods: ['Barrio Sur'],
-    zone: 'rural',
+    locations: [location(seed.departmentIds[0], 'Colonia del Sacramento', 'Barrio Sur')],
     generalObjective: 'Objective',
     publicDescription: 'Public description',
     internalNotes: '',
@@ -60,7 +61,7 @@ async function createProjectFixture(name: string, startYear = 2020) {
       name,
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear,
       leadCoordinatorId: seed.coordinatorId,
       departments: { connect: { id: seed.departmentIds[0] } },
@@ -107,6 +108,25 @@ afterEach(async () => {
 });
 
 describe('createProject (integration)', () => {
+  test('persists the beneficiaries loaded in every year', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({
+          beneficiaryDrafts: [JSON.stringify({ year: '2022', families: '7' })],
+        })
+      )
+    );
+
+    const { projectBeneficiaries } = await loadProject(projectId);
+    expect(projectBeneficiaries.map(({ year, families }) => [year, families])).toEqual([
+      [2022, 7],
+      [BENEFICIARY_YEAR, 2],
+    ]);
+  });
+
   test('persists the project with its first beneficiaries and audits both', async () => {
     signInAs(seed.adminId);
 
@@ -117,7 +137,7 @@ describe('createProject (integration)', () => {
       name: 'Project under creation',
       status: 'active',
       intensity: 'high',
-      counterpartyType: 'publicSector',
+      counterpartyTypes: ['publicSector'],
       startYear: 2020,
       endYear: null,
       leadCoordinatorId: seed.coordinatorId,
@@ -125,9 +145,14 @@ describe('createProject (integration)', () => {
       topics: [{ id: seed.topicIds[0] }],
       geographicScope: 'national',
       countries: [],
-      cities: ['Colonia del Sacramento'],
-      neighborhoods: ['Barrio Sur'],
-      zone: 'rural',
+      localities: [
+        {
+          departmentId: seed.departmentIds[0],
+          city: 'Colonia del Sacramento',
+          neighborhood: 'Barrio Sur',
+        },
+      ],
+      zone: null,
       generalObjective: 'Objective',
       publicDescription: 'Public description',
       internalNotes: null,
@@ -174,6 +199,16 @@ describe('createProject (integration)', () => {
         },
       }),
     ]);
+  });
+
+  test('ignores a submitted zone and stores the project without one', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ zone: 'city' }))
+    );
+
+    expect((await loadProject(projectId)).zone).toBeNull();
   });
 
   test('stores an inactive project with its end year', async () => {
@@ -280,17 +315,17 @@ describe('createProject (integration)', () => {
     expect(await countRows()).toEqual(before);
   });
 
-  test('rejects an admin as lead coordinator', async () => {
+  test('allows an admin as lead coordinator', async () => {
     signInAs(seed.adminId);
-    const before = await countRows();
 
-    const result = await createProject(
-      {},
-      buildFormData({ leadCoordinatorId: String(seed.adminId) })
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ leadCoordinatorId: String(seed.adminId) }))
     );
 
-    expect(result.errors?.leadCoordinatorId).toEqual(['Elegí un coordinador válido']);
-    expect(await countRows()).toEqual(before);
+    expect(await loadProject(projectId)).toMatchObject({
+      leadCoordinatorId: seed.adminId,
+      createdBy: seed.adminId,
+    });
   });
 
   test('rejects an unknown topic', async () => {
@@ -352,9 +387,12 @@ describe('createProject (integration)', () => {
     signInAs(seed.adminId);
     const before = await countRows();
 
-    const result = await createProject({}, buildFormData({ departmentIds: ['999999'] }));
+    const result = await createProject(
+      {},
+      buildFormData({ locations: [location(999999, 'Colonia del Sacramento')] })
+    );
 
-    expect(result.errors?.departmentIds).toEqual(['Elegí departamentos válidos']);
+    expect(result.errors?.locations).toEqual(['Elegí departamentos válidos']);
     expect(await countRows()).toEqual(before);
   });
 
@@ -364,29 +402,110 @@ describe('createProject (integration)', () => {
     const projectId = await expectRedirectToNewProject(
       createProject(
         {},
-        buildFormData({ geographicScope: 'international', countries: ['Argentina', 'Brasil'] })
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Argentina', 'Brasil'],
+          region: 'southAmerica',
+        })
       )
     );
 
     expect(await loadProject(projectId)).toMatchObject({
       geographicScope: 'international',
       countries: ['Argentina', 'Brasil'],
-      cities: [],
-      neighborhoods: [],
+      region: 'southAmerica',
       departments: [],
+      localities: [],
     });
   });
 
-  test('persists several departments for a national project', async () => {
+  test('persists an international project with a region and no countries', async () => {
     signInAs(seed.adminId);
 
     const projectId = await expectRedirectToNewProject(
-      createProject({}, buildFormData({ departmentIds: seed.departmentIds.map(String) }))
+      createProject({}, buildFormData({ geographicScope: 'international', region: 'otherRegions' }))
     );
 
-    expect((await loadProject(projectId)).departments).toEqual(
-      [...seed.departmentIds].sort((a, b) => a - b).map((id) => ({ id }))
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: [],
+      region: 'otherRegions',
+    });
+  });
+
+  test('rejects an international project without a region and creates nothing', async () => {
+    signInAs(seed.adminId);
+    const before = await countRows();
+
+    const result = await createProject(
+      {},
+      buildFormData({ geographicScope: 'international', countries: ['Argentina'] })
     );
+
+    expect(result.errors?.region).toEqual(['Seleccioná una región']);
+    expect(await countRows()).toEqual(before);
+  });
+
+  test('persists the selected region of an international project', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({
+          geographicScope: 'international',
+          countries: ['Guatemala'],
+          region: 'centralAmerica',
+        })
+      )
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'international',
+      countries: ['Guatemala'],
+      region: 'centralAmerica',
+    });
+  });
+
+  test('drops a submitted region for a national project', async () => {
+    signInAs(seed.adminId);
+
+    const projectId = await expectRedirectToNewProject(
+      createProject({}, buildFormData({ region: 'southAmerica' }))
+    );
+
+    expect(await loadProject(projectId)).toMatchObject({
+      geographicScope: 'national',
+      region: null,
+    });
+  });
+
+  test('persists several departments with their own cities and neighborhoods', async () => {
+    signInAs(seed.adminId);
+    const [first, second] = seed.departmentIds;
+
+    const projectId = await expectRedirectToNewProject(
+      createProject(
+        {},
+        buildFormData({
+          locations: [
+            location(first, 'Colonia del Sacramento', 'Barrio Sur'),
+            location(first, 'Colonia del Sacramento', 'Centro'),
+            location(second, 'Paysandú'),
+          ],
+        })
+      )
+    );
+
+    const project = await loadProject(projectId);
+    expect(project.departments).toEqual(
+      [first, second].sort((a, b) => a - b).map((id) => ({ id }))
+    );
+    expect(project.localities).toEqual([
+      { departmentId: first, city: 'Colonia del Sacramento', neighborhood: 'Barrio Sur' },
+      { departmentId: first, city: 'Colonia del Sacramento', neighborhood: 'Centro' },
+      { departmentId: second, city: 'Paysandú', neighborhood: null },
+    ]);
   });
 
   test('rolls back the project when a later step of the creation fails', async () => {

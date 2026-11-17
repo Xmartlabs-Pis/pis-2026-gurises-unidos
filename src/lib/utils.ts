@@ -1,5 +1,3 @@
-export { cn } from 'cn';
-
 export function getInitials(name: string | null | undefined) {
   return (name ?? '')
     .trim()

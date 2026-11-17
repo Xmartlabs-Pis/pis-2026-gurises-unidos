@@ -1,11 +1,16 @@
 import { z } from 'zod';
 import { normalizeDocumentId } from '@/lib/utils';
+import { emailSchema } from '@/lib/validation/email';
+import { passwordSchema } from '@/lib/validation/password';
 
 export const PRESERVED_FIELDS = ['firstName', 'lastName', 'documentId', 'email', 'role'] as const;
+
+export const CREATION_METHODS = ['invitation', 'password'] as const;
 
 export type PreservedField = (typeof PRESERVED_FIELDS)[number];
 
 export type UserFormState = {
+  success?: boolean;
   errors?: Record<string, string[]>;
   formError?: string;
   values?: Partial<Record<PreservedField, string>>;
@@ -47,23 +52,18 @@ export const userEditFormSchema = z.object({
     .min(1, 'El documento es obligatorio.')
     .refine(isValidUruguayanDocumentId, 'Ingresá una cédula uruguaya válida.')
     .transform(normalizeDocumentId),
-  email: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, 'El correo es obligatorio.')
-    .max(254, 'El correo no puede superar los 254 caracteres.')
-    .pipe(z.email({ error: 'Ingresá un correo electrónico válido.' })),
+  email: emailSchema,
   role: z.enum(['admin', 'coordinator']),
 });
 
-export const userFormSchema = userEditFormSchema.extend({
-  password: z
-    .string()
-    .min(1, 'La contraseña es obligatoria.')
-    .min(8, 'La contraseña debe tener al menos 8 caracteres.')
-    .regex(/[A-Z]/, 'La contraseña debe tener al menos una mayúscula.')
-    .regex(/[a-z]/, 'La contraseña debe tener al menos una minúscula.')
-    .regex(/[0-9]/, 'La contraseña debe tener al menos un número.')
-    .max(72, 'La contraseña no puede superar los 72 caracteres.'),
-});
+export const userFormSchema = userEditFormSchema
+  .extend({
+    creationMethod: z.enum(CREATION_METHODS).default('invitation'),
+    password: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.creationMethod !== 'password') return;
+    const result = passwordSchema.safeParse(data.password ?? '');
+    if (result.success) return;
+    ctx.addIssue({ code: 'custom', path: ['password'], message: result.error.issues[0].message });
+  });

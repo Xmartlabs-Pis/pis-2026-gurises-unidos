@@ -16,7 +16,10 @@ import {
 } from '@/lib/validation/user';
 import { logAudit } from '@/lib/audit-log';
 import { mapUserDbError } from '@/lib/users/map-user-db-error';
-import bcrypt from 'bcryptjs';
+import { createUserToken } from '@/lib/auth/user-tokens';
+import { hashPassword } from '@/lib/credentials';
+import { sendInvitationEmail, type InvitedUser } from '@/lib/users/invitation';
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
 // Serializable so two admins acting on each other at once can't leave zero active admins
@@ -59,10 +62,16 @@ export async function createUser(
   }
 
   const userData = result.data;
-  const passwordHash = await bcrypt.hash(userData.password, 10);
+  const withPassword = userData.creationMethod === 'password';
+  const initialPassword = withPassword
+    ? (userData.password ?? '')
+    : randomBytes(32).toString('base64url');
+  const passwordHash = await hashPassword(initialPassword);
 
   const restoreConfirmed = formData.get('confirmRestore') === 'true';
-  let outcome: 'created' | 'restored' | 'restoreConfirmationRequired';
+  let outcome:
+    | { kind: 'restoreConfirmationRequired' }
+    | { kind: 'created' | 'restored'; user: InvitedUser; token: string | null };
 
   try {
     outcome = await prisma.$transaction(async (tx) => {
@@ -72,9 +81,9 @@ export async function createUser(
         lastName: userData.lastName,
         email: userData.email,
         role: userData.role,
-        status: 'active' as const,
+        status: withPassword ? ('active' as const) : ('pendingInvitation' as const),
         passwordHash,
-        mustChangePassword: true,
+        mustChangePassword: withPassword,
       };
 
       const deletedUser = await tx.user.findFirst({
@@ -83,26 +92,38 @@ export async function createUser(
       });
 
       if (deletedUser && !restoreConfirmed) {
-        return 'restoreConfirmationRequired';
+        return { kind: 'restoreConfirmationRequired' as const };
       }
 
       if (deletedUser) {
-        await tx.user.update({
+        const restoredUser = await tx.user.update({
           where: { id: deletedUser.id, deletedAt: { not: null } },
-          data: { ...profile, passwordChangedAt: new Date(), deletedAt: null },
+          data: {
+            ...profile,
+            passwordChangedAt: withPassword ? new Date() : null,
+            deletedAt: null,
+          },
         });
         await logAudit(tx, {
           authorId,
           action: 'creation',
           entity: 'user',
-          entityId: deletedUser.id,
+          entityId: restoredUser.id,
           details: { restored: true },
         });
-        return 'restored';
+        const token = withPassword
+          ? null
+          : await createUserToken(tx, restoredUser.id, 'invitation');
+        return { kind: 'restored' as const, user: restoredUser, token };
       }
 
       const createdUser = await tx.user.create({
-        data: { ...profile, documentId: userData.documentId, createdBy: authorId },
+        data: {
+          ...profile,
+          documentId: userData.documentId,
+          createdBy: authorId,
+          passwordChangedAt: withPassword ? new Date() : null,
+        },
       });
       await logAudit(tx, {
         authorId,
@@ -110,7 +131,8 @@ export async function createUser(
         entity: 'user',
         entityId: createdUser.id,
       });
-      return 'created';
+      const token = withPassword ? null : await createUserToken(tx, createdUser.id, 'invitation');
+      return { kind: 'created' as const, user: createdUser, token };
     });
   } catch (error) {
     const dbError = mapUserDbError(error);
@@ -128,11 +150,15 @@ export async function createUser(
     return { formError: 'No se pudo crear el usuario. Intentá de nuevo.', values };
   }
 
-  if (outcome === 'restoreConfirmationRequired') {
+  if (outcome.kind === 'restoreConfirmationRequired') {
     return { restoreConfirmationRequired: true, values };
   }
 
-  if (outcome === 'restored') {
+  if (outcome.token) {
+    await sendInvitationEmail(outcome.user, outcome.token, Number(session.user.id));
+  }
+
+  if (outcome.kind === 'restored') {
     revalidatePath('/management/users');
     return { restored: true };
   }
@@ -140,9 +166,53 @@ export async function createUser(
   redirect('/management/users');
 }
 
-export type ToggleableUserStatus = Extract<UserStatus, 'active' | 'disabled'>;
+type ResendInvitationResult = { error?: string; success?: boolean };
 
-export type UpdateUserStatusResult = { error?: string; success?: boolean };
+export async function resendInvitation(userId: number): Promise<ResendInvitationResult> {
+  const actor = await requireUser();
+
+  if (actor.role !== 'admin') {
+    return { error: 'No tenés permisos para realizar esta acción.' };
+  }
+
+  const targetId = parseId(userId);
+
+  if (!targetId) {
+    return { error: 'El usuario no es válido.' };
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id: targetId, deletedAt: null },
+    select: { id: true, firstName: true, email: true, role: true, status: true },
+  });
+
+  if (!target) {
+    return { error: 'El usuario no existe.' };
+  }
+
+  if (target.status !== 'pendingInvitation') {
+    return { error: 'El usuario no tiene una invitación pendiente.' };
+  }
+
+  let token: string;
+
+  try {
+    token = await prisma.$transaction((tx) => createUserToken(tx, target.id, 'invitation'));
+  } catch (error) {
+    console.error('Failed to create invitation token', error);
+    return { error: 'No se pudo reenviar la invitación. Intentá de nuevo.' };
+  }
+
+  if (!(await sendInvitationEmail(target, token, actor.id))) {
+    return { error: 'No se pudo enviar el correo de invitación. Intentá de nuevo.' };
+  }
+
+  return { success: true };
+}
+
+type ToggleableUserStatus = Extract<UserStatus, 'active' | 'disabled'>;
+
+type UpdateUserStatusResult = { error?: string; success?: boolean };
 
 export async function updateUserStatus(
   userId: number,
@@ -226,7 +296,7 @@ export async function updateUserStatus(
   return { success: true };
 }
 
-export type DeleteUserResult = { error?: string; success?: boolean };
+type DeleteUserResult = { error?: string; success?: boolean };
 
 export async function deleteUser(userId: number): Promise<DeleteUserResult> {
   const actor = await requireUser();
@@ -386,5 +456,6 @@ export async function updateUser(
   }
 
   revalidatePath('/management/users');
+  if (formData.get('returnResult') === 'true') return { success: true };
   redirect('/management/users');
 }

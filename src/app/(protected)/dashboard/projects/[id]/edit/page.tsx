@@ -1,25 +1,29 @@
+import { Suspense } from 'react';
 import { ProjectHistory } from '@/components/projects/form/project-history';
+import { ProjectFormSkeleton } from '@/components/projects/form/project-form-skeleton';
 import { STATUS_LABEL, INTENSITY_LABEL } from '@/lib/project-display';
-import { notFound } from 'next/navigation';
+import { forbidden, notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/require-user';
+import type { UserRole } from '@/generated/prisma/enums';
 import { canEditProject } from '@/lib/projects/permissions';
+import { getProjectHistory } from '@/lib/projects/history';
 import { parseId } from '@/lib/validation/ids';
 import { updateProject } from '@/app/actions/projects';
 import { ProjectForm } from '@/components/projects/form/project-form';
 import { projectToFormValues } from '@/components/projects/form/project-to-form-values';
 import prisma from '@/lib/prisma';
+import { ASSIGNABLE_LEAD_COORDINATOR_WHERE } from '@/lib/projects/constants';
 import {
   getActiveBeneficiaryCategories,
   getBeneficiaryCategoryLabels,
 } from '@/lib/beneficiary-categories';
+import { getProjectPartnerOptions } from '@/lib/partners';
 import { BENEFICIARY_VALUES_SELECT, toBeneficiaryCounts } from '@/lib/projects/beneficiary-values';
 import { DeleteProjectSection } from '@/components/projects/delete-project-section';
 import { BreadcrumbResourceLabel } from '@/components/layout/topbar-context';
-import { ErrorScreen } from '@/components/error-screen';
 
 export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-
   const { id } = await params;
   const projectId = parseId(id);
 
@@ -27,12 +31,31 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  return (
+    <Suspense fallback={<ProjectFormSkeleton mode="edit" />}>
+      <EditProjectForm projectId={projectId} user={user} />
+    </Suspense>
+  );
+}
+
+async function EditProjectForm({
+  projectId,
+  user,
+}: {
+  projectId: number;
+  user: { id: number; role: UserRole };
+}) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, deletedAt: null },
     include: {
       topics: { select: { id: true } },
       strategicLines: { select: { id: true } },
-      departments: { select: { id: true } },
+      partners: { select: { id: true } },
+      departments: { select: { id: true }, orderBy: { name: 'asc' } },
+      localities: {
+        select: { departmentId: true, city: true, neighborhood: true },
+        orderBy: { id: 'asc' },
+      },
       projectBeneficiaries: {
         orderBy: { year: 'desc' },
         select: { id: true, year: true, ...BENEFICIARY_VALUES_SELECT },
@@ -44,7 +67,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     notFound();
   }
 
-  if (!canEditProject(user, project)) return <ErrorScreen code={403} />;
+  if (!canEditProject(user, project)) forbidden();
   const currentYear = new Date().getFullYear();
 
   const [
@@ -53,40 +76,22 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
     history,
     topics,
     strategicLines,
+    partners,
     beneficiaryCategories,
     fieldLabels,
   ] = await Promise.all([
     prisma.user.findMany({
       where: {
-        OR: [
-          { role: 'coordinator', status: 'active', deletedAt: null },
-          { id: project.leadCoordinatorId },
-        ],
+        OR: [ASSIGNABLE_LEAD_COORDINATOR_WHERE, { id: project.leadCoordinatorId }],
       },
       orderBy: { firstName: 'asc' },
       select: { id: true, firstName: true, lastName: true },
     }),
     prisma.department.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
-    prisma.auditLog.findMany({
-      where: {
-        OR: [
-          { entity: 'project', entityId: project.id },
-          {
-            entity: 'beneficiary',
-            entityId: { in: project.projectBeneficiaries.map((b) => b.id) },
-          },
-        ],
-      },
-      orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-      select: {
-        id: true,
-        action: true,
-        entity: true,
-        details: true,
-        occurredAt: true,
-        author: { select: { firstName: true, lastName: true } },
-      },
-    }),
+    getProjectHistory(
+      project.id,
+      project.projectBeneficiaries.map(({ id }) => id)
+    ),
     prisma.topic.findMany({
       where: {
         OR: [{ isActive: true }, { id: { in: project.topics.map(({ id }) => id) } }],
@@ -99,6 +104,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     }),
+    getProjectPartnerOptions(),
     getActiveBeneficiaryCategories(),
     getBeneficiaryCategoryLabels(),
   ]);
@@ -137,6 +143,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
       <ProjectForm
         key={project.id}
         mode="edit"
+        projectId={project.id}
         initialValues={projectToFormValues(
           { ...project, projectBeneficiaries: beneficiaryRecords },
           currentYear,
@@ -144,6 +151,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
         )}
         beneficiaryRecords={beneficiaryRecords}
         strategicLines={strategicLines}
+        partners={partners}
         beneficiaryCategories={beneficiaryCategories}
         topics={topics}
         currentYear={currentYear}
@@ -151,6 +159,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
         departments={departments}
         cancelHref={`/dashboard/projects/${project.id}`}
         submitAction={submitAction}
+        canSelectCoordinator={user.role === 'admin'}
       >
         <ProjectHistory entries={history} fieldLabels={fieldLabels} />
         <DeleteProjectSection projectId={project.id} />

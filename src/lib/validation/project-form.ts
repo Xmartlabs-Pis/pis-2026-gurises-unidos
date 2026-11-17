@@ -6,7 +6,31 @@ import { beneficiaryYear, buildBeneficiaryCountsShape } from './project-benefici
 
 export const MAX_STRATEGIC_LINES = 3;
 export const TOPICS_ERROR_MESSAGE = 'Elegí temáticas válidas';
-export const MAX_PLACE_NAME_LENGTH = 100;
+export const PARTNERS_ERROR_MESSAGE = 'Elegí socios válidos';
+export const MAX_PLACE_NAME_LENGTH = 50;
+export const LOCATIONS_ERROR_MESSAGE = 'Elegí departamentos válidos';
+export const CITIES_REQUIRED_MESSAGE = 'Ingresá al menos una ciudad';
+export const REGION_ERROR_MESSAGE = 'Seleccioná una región válida';
+export const REGION_REQUIRED_MESSAGE = 'Seleccioná una región';
+
+const placeName = z
+  .string()
+  .trim()
+  .max(MAX_PLACE_NAME_LENGTH, `Máx. ${MAX_PLACE_NAME_LENGTH} caracteres por valor`);
+
+export function getLocationKey({
+  departmentId,
+  city,
+  neighborhood,
+}: {
+  departmentId: number | string;
+  city: string;
+  neighborhood: string;
+}) {
+  return [departmentId, city, neighborhood]
+    .map((part) => String(part).trim().toLocaleLowerCase('es'))
+    .join('|');
+}
 
 function placeNames(duplicateMessage: string) {
   return z
@@ -24,6 +48,7 @@ function placeNames(duplicateMessage: string) {
 
 const baseProjectFormSchema = projectSchema.safeExtend({
   year: beneficiaryYear,
+  beneficiaryDrafts: z.array(z.looseObject({ year: beneficiaryYear })).default([]),
   topicIds: z
     .array(
       z.coerce
@@ -44,34 +69,72 @@ const baseProjectFormSchema = projectSchema.safeExtend({
     .min(1, 'Seleccioná al menos una línea estratégica')
     .max(MAX_STRATEGIC_LINES, `Podés seleccionar hasta ${MAX_STRATEGIC_LINES} líneas estratégicas`)
     .refine((ids) => new Set(ids).size === ids.length, 'No repitas líneas estratégicas'),
+  partnerIds: z
+    .array(
+      z.coerce
+        .number({ error: PARTNERS_ERROR_MESSAGE })
+        .int(PARTNERS_ERROR_MESSAGE)
+        .positive(PARTNERS_ERROR_MESSAGE)
+        .max(MAX_INT32, PARTNERS_ERROR_MESSAGE)
+    )
+    .default([])
+    .refine((ids) => new Set(ids).size === ids.length, 'No repitas socios'),
   geographicScope: z.enum(['national', 'international'], {
     error: 'Seleccioná un alcance geográfico',
   }),
-  departmentIds: z
-    .array(
-      z.coerce
-        .number({ error: 'Elegí departamentos válidos' })
-        .int('Elegí departamentos válidos')
-        .positive('Elegí departamentos válidos')
-        .max(MAX_INT32, 'Elegí departamentos válidos')
-    )
-    .refine((ids) => new Set(ids).size === ids.length, 'No repitas departamentos'),
   countries: placeNames('No repitas países'),
-  cities: placeNames('No repitas ciudades'),
-  neighborhoods: placeNames('No repitas barrios'),
+  region: z.preprocess(
+    (value) => (value === '' || value === undefined ? null : value),
+    z
+      .enum(['southAmerica', 'northAmerica', 'centralAmerica', 'otherRegions'], {
+        error: REGION_ERROR_MESSAGE,
+      })
+      .nullable()
+  ),
+  locations: z
+    .array(
+      z.object(
+        {
+          departmentId: z.coerce
+            .number({ error: LOCATIONS_ERROR_MESSAGE })
+            .int(LOCATIONS_ERROR_MESSAGE)
+            .positive(LOCATIONS_ERROR_MESSAGE)
+            .max(MAX_INT32, LOCATIONS_ERROR_MESSAGE),
+          city: placeName,
+          neighborhood: placeName,
+        },
+        { error: LOCATIONS_ERROR_MESSAGE }
+      )
+    )
+    .refine((locations) => locations.every(({ city }) => city), CITIES_REQUIRED_MESSAGE)
+    .refine(
+      (locations) => new Set(locations.map(getLocationKey)).size === locations.length,
+      'No repitas ubicaciones'
+    ),
 });
 
 export function buildProjectFormSchema(keys: readonly string[]) {
-  const schema = baseProjectFormSchema.safeExtend(
-    buildBeneficiaryCountsShape(keys)
-  ) as unknown as typeof baseProjectFormSchema;
+  const countsShape = buildBeneficiaryCountsShape(keys);
+  const schema = baseProjectFormSchema.safeExtend({
+    ...countsShape,
+    beneficiaryDrafts: z.array(z.object({ year: beneficiaryYear, ...countsShape })).default([]),
+  }) as unknown as typeof baseProjectFormSchema;
   return schema
-    .refine((data) => data.year >= data.startYear, {
-      message: 'El año de beneficiarios no puede ser anterior al año de inicio',
-      path: ['year'],
-    })
     .refine(
-      (data) => data.status !== 'inactive' || data.endYear === null || data.year <= data.endYear,
+      (data) =>
+        data.year >= data.startYear ||
+        keys.every((key) => !Number((data as Record<string, unknown>)[key])),
+      {
+        message: 'El año de beneficiarios no puede ser anterior al año de inicio',
+        path: ['year'],
+      }
+    )
+    .refine(
+      (data) =>
+        data.status !== 'inactive' ||
+        data.endYear === null ||
+        data.year <= data.endYear ||
+        keys.every((key) => !Number((data as Record<string, unknown>)[key])),
       {
         message: 'El año de beneficiarios no puede ser posterior al año de fin',
         path: ['year'],
@@ -79,17 +142,41 @@ export function buildProjectFormSchema(keys: readonly string[]) {
     )
     .refine(
       (data) =>
+        data.beneficiaryDrafts.every(
+          (draft) =>
+            (draft.year >= data.startYear || keys.every((key) => !Number(draft[key]))) &&
+            (data.status !== 'inactive' ||
+              data.endYear === null ||
+              draft.year <= data.endYear ||
+              keys.every((key) => !Number(draft[key])))
+        ),
+      {
+        message: 'Hay beneficiarios en años fuera del período del proyecto',
+        path: ['beneficiaryDrafts'],
+      }
+    )
+    .refine(
+      (data) => {
+        const years = [data.year, ...data.beneficiaryDrafts.map(({ year }) => year)];
+        return new Set(years).size === years.length;
+      },
+      { message: 'No repitas años de beneficiarios', path: ['beneficiaryDrafts'] }
+    )
+    .refine(
+      (data) =>
         data.intensity !== null ||
-        !(Number((data as Record<string, unknown>)[DIRECT_CHILDREN_KEY]) > 0),
+        ![data as Record<string, unknown>, ...data.beneficiaryDrafts].some(
+          (counts) => Number(counts[DIRECT_CHILDREN_KEY]) > 0
+        ),
       { message: INTENSITY_REQUIRED_MESSAGE, path: ['intensity'] }
     )
-    .refine((data) => data.geographicScope !== 'national' || data.departmentIds.length > 0, {
-      message: 'Seleccioná al menos un departamento',
-      path: ['departmentIds'],
+    .refine((data) => data.geographicScope !== 'national' || data.locations.length > 0, {
+      message: 'Agregá al menos una ubicación',
+      path: ['locations'],
     })
-    .refine((data) => data.geographicScope !== 'international' || data.countries.length > 0, {
-      message: 'Ingresá al menos un país',
-      path: ['countries'],
+    .refine((data) => data.geographicScope !== 'international' || data.region !== null, {
+      message: REGION_REQUIRED_MESSAGE,
+      path: ['region'],
     });
 }
 
@@ -98,31 +185,40 @@ export type ProjectFormData = z.infer<typeof baseProjectFormSchema>;
 export function splitProjectFormData(data: ProjectFormData, keys: readonly string[]) {
   const {
     year,
+    beneficiaryDrafts,
     topicIds,
     strategicLineIds,
-    departmentIds,
+    partnerIds,
     countries,
-    cities,
-    neighborhoods,
+    locations,
     ...rest
   } = data;
   const fields: Record<string, unknown> = rest;
   const counts = Object.fromEntries(keys.map((key) => [key, fields[key] as number]));
   for (const key of keys) delete fields[key];
   const isNational = rest.geographicScope === 'national';
-  const nationalCities = isNational ? cities : [];
+  const nationalLocations = isNational ? locations : [];
 
   return {
     projectData: {
       ...rest,
       countries: isNational ? [] : countries,
-      cities: nationalCities,
-      neighborhoods: nationalCities.length > 0 ? neighborhoods : [],
+      region: isNational ? null : rest.region,
     },
     beneficiaryData: { year, counts },
+    beneficiaryDraftData: beneficiaryDrafts.map((draft) => ({
+      year: draft.year,
+      counts: Object.fromEntries(keys.map((key) => [key, draft[key] as number])),
+    })),
     topicIds,
     strategicLineIds,
-    departmentIds: isNational ? departmentIds : [],
+    partnerIds,
+    departmentIds: [...new Set(nationalLocations.map(({ departmentId }) => departmentId))],
+    localities: nationalLocations.map(({ departmentId, city, neighborhood }) => ({
+      departmentId,
+      city,
+      neighborhood: neighborhood || null,
+    })),
   };
 }
 
@@ -130,10 +226,19 @@ export function readProjectFormData(formData: FormData) {
   return {
     ...Object.fromEntries(formData),
     topicIds: formData.getAll('topicIds'),
+    counterpartyTypes: formData.getAll('counterpartyTypes'),
     strategicLineIds: formData.getAll('strategicLineIds'),
-    departmentIds: formData.getAll('departmentIds'),
+    partnerIds: formData.getAll('partnerIds'),
     countries: formData.getAll('countries'),
-    cities: formData.getAll('cities'),
-    neighborhoods: formData.getAll('neighborhoods'),
+    beneficiaryDrafts: formData.getAll('beneficiaryDrafts').map(parseJsonField),
+    locations: formData.getAll('locations').map(parseJsonField),
   };
+}
+
+function parseJsonField(value: FormDataEntryValue) {
+  try {
+    return JSON.parse(String(value));
+  } catch {
+    return null;
+  }
 }
